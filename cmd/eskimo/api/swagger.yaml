@@ -1,0 +1,364 @@
+# SPDX-License-Identifier: BUSL-1.1
+
+basePath: /v1
+definitions:
+  main.RequestCreateUser:
+    properties:
+      email:
+        description: '`email` is optional.'
+        example: jdoe@gmail.com
+        type: string
+      fullName:
+        description: '`fullName` is optional.'
+        example: John Doe
+        type: string
+      phoneNumber:
+        description: '`phoneNumber` is optional.'
+        example: "+12099216581"
+        type: string
+      referredBy:
+        example: billy112
+        type: string
+      username:
+        example: jdoe
+        type: string
+    type: object
+  multipart.FileHeader:
+    properties:
+      filename:
+        type: string
+      header:
+        $ref: '#/definitions/textproto.MIMEHeader'
+      size:
+        type: integer
+    type: object
+  server.ErrorResponse:
+    properties:
+      code:
+        example: SOMETHING_NOT_FOUND
+        type: string
+      error:
+        example: something is missing
+        type: string
+    type: object
+  textproto.MIMEHeader:
+    additionalProperties:
+      items:
+        type: string
+      type: array
+    type: object
+  users.User:
+    properties:
+      createdAt:
+        example: "2022-01-03T16:20:52.156534Z"
+        type: string
+      deletedAt:
+        example: "2022-01-03T16:20:52.156534Z"
+        type: string
+      email:
+        example: jdoe@gmail.com
+        type: string
+      fullName:
+        example: John Doe
+        type: string
+      id:
+        example: 226fcb86-fcce-458e-95f0-867e09c8c274
+        type: string
+      phoneNumber:
+        example: "+12099216581"
+        type: string
+      profilePictureURL:
+        example: https://somecdn.com/p1.jpg
+        type: string
+      referredBy:
+        example: billy112
+        type: string
+      updatedAt:
+        example: "2022-01-03T16:20:52.156534Z"
+        type: string
+      username:
+        example: jdoe
+        type: string
+    type: object
+info:
+  contact:
+    name: ICE
+    url: https://ice.io
+  description: API that handles everything related to user's account, including referrals.
+  title: User Account API
+  version: latest
+paths:
+  /user-validations/username:
+    get:
+      consumes:
+      - application/json
+      description: Validates a provided username
+      parameters:
+      - default: Bearer <Add access token here>
+        description: Insert your access token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: User's username to validate
+        in: query
+        name: username
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: username is ok and can be used
+        "400":
+          description: if validations fail
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "401":
+          description: if not authorized
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "409":
+          description: user exists
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "422":
+          description: if syntax fails
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "504":
+          description: if request times out
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+      tags:
+      - Accounts
+  /users:
+    post:
+      consumes:
+      - application/json
+      description: Creates an user account
+      parameters:
+      - default: Bearer <Add access token here>
+        description: Insert your access token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: Request params
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/main.RequestCreateUser'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/users.User'
+        "400":
+          description: if validations fail
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "401":
+          description: if not authorized
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "409":
+          description: user already exists with that ID or with that username
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "422":
+          description: if syntax fails
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "504":
+          description: if request times out
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+      tags:
+      - Accounts
+  /users/{userId}:
+    delete:
+      consumes:
+      - application/json
+      description: Deletes an user account
+      parameters:
+      - default: Bearer <Add access token here>
+        description: Insert your access token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: ID of the User
+        in: path
+        name: userId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK - found and deleted
+        "204":
+          description: No Content - already deleted
+        "400":
+          description: if validations fail
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "401":
+          description: if not authorized
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "403":
+          description: not allowed
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "422":
+          description: if syntax fails
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "504":
+          description: if request times out
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+      tags:
+      - Accounts
+    get:
+      consumes:
+      - application/json
+      description: Returns an user account
+      parameters:
+      - default: Bearer <Add access token here>
+        description: Insert your access token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: ID of the user
+        in: path
+        name: userId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/users.User'
+        "400":
+          description: if validations fail
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "401":
+          description: if not authorized
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "404":
+          description: if not found
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "422":
+          description: if syntax fails
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "504":
+          description: if request times out
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+      tags:
+      - Accounts
+    patch:
+      consumes:
+      - multipart/form-data
+      description: Modifies an user account
+      parameters:
+      - default: Bearer <Add access token here>
+        description: Insert your access token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: ID of the user
+        in: path
+        name: userId
+        required: true
+        type: string
+      - example: jdoe@gmail.com
+        in: formData
+        name: email
+        type: string
+      - example: John Doe
+        in: formData
+        name: fullName
+        type: string
+      - example: "+12099216581"
+        in: formData
+        name: phoneNumber
+        type: string
+      - example: jdoe
+        in: formData
+        name: username
+        type: string
+      - description: The new profile picture for the user
+        in: formData
+        name: profilePicture
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/users.User'
+        "400":
+          description: if validations fail
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "401":
+          description: if not authorized
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "403":
+          description: not allowed
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "404":
+          description: user is not found
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "422":
+          description: if syntax fails
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "504":
+          description: if request times out
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+      tags:
+      - Accounts
+schemes:
+- https
+swagger: "2.0"

@@ -1,0 +1,58 @@
+# SPDX-License-Identifier: BUSL-1.1
+
+name: PR
+on:
+  pull_request:
+    branches:
+      - master
+jobs:
+  pull_request:
+    name: PR
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 1
+      - name: Find latest Go Version
+        id: findLatestGoVersion
+        run: |
+          LATEST_GO_VERSION=$(make latestGoVersion)
+          echo "::set-output name=latestGoVersion::$LATEST_GO_VERSION"
+      - name: Setup GO
+        uses: actions/setup-go@v3
+        with:
+          go-version: ${{ steps.findLatestGoVersion.outputs.latestGoVersion }}
+      - name: Make
+        run: make
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v1
+      - id: buildx
+        name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+        with:
+          version: latest
+          install: true
+      - name: Build Image Information
+        id: build-image-info
+        env:
+          SERVICE_NAME: ${{ github.event.repository.name }}
+          PR_NUMBER: ${{ github.event.number }}
+        run: |
+          LATEST_TMP_TAG=registry.digitalocean.com/ice-io/$SERVICE_NAME:pr${PR_NUMBER}
+          DOCKERFILE_LOCATION=./cmd/$SERVICE_NAME/Dockerfile
+          echo "::set-output name=tags::${LATEST_TMP_TAG}"
+          echo "::set-output name=dockerFileLocation::$DOCKERFILE_LOCATION"
+          echo "::set-output name=buildArgs::SERVICE_NAME=$SERVICE_NAME"
+      - name: Build docker image
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          file: ${{ steps.build-image-info.outputs.dockerFileLocation }}
+          #those are not supported by golang docker image: linux/riscv64
+          #platforms: linux/s390x,linux/arm64,linux/amd64,linux/ppc64le
+          #commented because build takes too damn much with the other 3 platforms (~10 mins for each!!!) and we don`t need them atm
+          platforms: linux/amd64
+          push: false
+          build-args: ${{ steps.build-image-info.outputs.buildArgs }}
+          tags: ${{ steps.build-image-info.outputs.tags }}
