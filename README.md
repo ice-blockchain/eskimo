@@ -3,7 +3,7 @@
 ``Eskimo is handling everything related to user account management, including referrals.``
 
 ### Development
-
+tmp
 These are the crucial/critical operations you will need when developing Eskimo:
 
 1. If you need a DID token for `magic.link` for testing locally, see https://github.com/magiclabs/magic-admin-go/blob/master/token/did_test.go
