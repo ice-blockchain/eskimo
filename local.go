@@ -3,6 +3,7 @@
 package main
 
 import (
+	"github.com/ICE-Blockchain/eskimo/users/fixture"
 	"os"
 	"os/signal"
 	"syscall"
@@ -11,9 +12,8 @@ import (
 )
 
 func main() {
-	//TODO CHANGE_ME: import the correct fixture to start the 3rd party environment locally.
-	//cleanUP := fixture.TestSetup()
-	//defer cleanUP()
+	cleanUP := fixture.TestSetup()
+	defer cleanUP()
 	defer log.Info("stopping test environment, locally...")
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)

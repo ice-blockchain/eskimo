@@ -15,3 +15,23 @@ cmd/eskimo:
   defaultPagination:
     limit: 20
     maxLimit: 1000
+users:
+  db:
+    spaces:
+      - USERS
+    urls:
+      - localhost:3301
+    user: admin
+    password: pass
+  messageBroker:
+    #It's not used, because we`re not consuming anything in the production code.
+    #So, its configured here just for testing or other local purposes.
+    consumerGroup: eskimo-users
+    createTopics: true
+    urls:
+      - localhost:9092
+    topics:
+      - name: users-events
+        partitions: 10
+        replicationFactor: 1
+        retention: 1000h
