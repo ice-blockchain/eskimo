@@ -9,6 +9,8 @@ import (
 
 // Public API.
 
+const userNotFoundCode = "USER_NOT_FOUND"
+
 type (
 	RequestGetUser struct {
 		AuthenticatedUser server.AuthenticatedUser `json:"authenticatedUser" swaggerignore:"true"`
