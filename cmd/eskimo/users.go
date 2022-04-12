@@ -90,7 +90,7 @@ func (req *RequestCreateUser) GetClientIP() net.IP {
 }
 
 func (req *RequestCreateUser) Validate() *server.Response {
-	return server.RequiredStrings(map[string]string{"referredBy": req.ReferredBy, "username": req.Username})
+	return server.RequiredStrings(map[string]string{"username": req.Username})
 }
 
 func (req *RequestCreateUser) Bindings(c *gin.Context) []func(obj interface{}) error {
@@ -192,7 +192,7 @@ func (req *RequestGetUser) Bindings(c *gin.Context) []func(obj interface{}) erro
 func (s *service) ModifyUser(ctx context.Context, r server.ParsedRequest) server.Response {
 	req := r.(*RequestModifyUser)
 
-	err := s.usersRepository.ModifyUser(ctx, users.UserID(req.ID), req.user())
+	err := s.usersRepository.ModifyUser(ctx, req.user())
 
 	if err != nil {
 		if errors.Is(err, users.ErrNotFound) {
@@ -224,7 +224,7 @@ func newRequestModifyUser() server.ParsedRequest {
 
 func (req *RequestModifyUser) user() *users.User {
 	return &users.User{
-		ID:                req.AuthenticatedUser.ID,
+		ID:                req.ID,
 		Email:             req.Email,
 		FullName:          req.FullName,
 		PhoneNumber:       req.PhoneNumber,
@@ -244,9 +244,23 @@ func (req *RequestModifyUser) GetAuthenticatedUser() server.AuthenticatedUser {
 }
 
 func (req *RequestModifyUser) Validate() *server.Response {
-	// TODO what do you mean?
-	// If req body is empty also return error
-	return server.RequiredStrings(map[string]string{"username": req.Username})
+	if req.ID == "" {
+		return server.RequiredStrings(map[string]string{"userId": req.ID})
+	}
+
+	if req.ID != req.AuthenticatedUser.ID {
+		err := errors.Errorf("update account not allowed for anyone except the owner. `%v` tried to update `%v`", req.AuthenticatedUser.ID, req.ID)
+
+		return &server.Response{
+			Code: http.StatusForbidden,
+			Data: server.ErrorResponse{
+				Error: "only updating your own account is allowed",
+				Code:  "NOT_ALLOWED",
+			}.Fail(err),
+		}
+	}
+
+	return nil
 }
 
 func (req *RequestModifyUser) Bindings(c *gin.Context) []func(obj interface{}) error {
