@@ -71,12 +71,6 @@ func cleanUp(cleanUpStorage, cleanUpMessageBroker func()) (error, error) {
 	}()
 	wg.Wait()
 
-
-	err := recover()
-	if err != nil {
-		fmt.Println("aaa")
-	}
-
 	return dbError, mbError
 }
 
