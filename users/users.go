@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: BUSL-1.1
+
 package users
 
 import (
@@ -120,9 +122,9 @@ func (u *user) toUser() *User {
 		FullName:          u.FullName,
 		PhoneNumber:       u.PhoneNumber,
 		ProfilePictureURL: u.ProfilePicture,
-		CreatedAt:         time.Unix(0, u.CreatedAt).UTC(),
-		UpdatedAt:         time.Unix(0, u.UpdatedAt).UTC(),
-		DeletedAt:         time.Unix(0, u.DeletedAt).UTC(),
+		CreatedAt:         time.Unix(0, int64(u.CreatedAt)).UTC(),
+		UpdatedAt:         time.Unix(0, int64(u.UpdatedAt)).UTC(),
+		DeletedAt:         time.Unix(0, int64(u.DeletedAt)).UTC(),
 	}
 }
 

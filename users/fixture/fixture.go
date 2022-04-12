@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: BUSL-1.1
+
 package fixture
 
 import (
@@ -68,6 +70,12 @@ func cleanUp(cleanUpStorage, cleanUpMessageBroker func()) (error, error) {
 		cleanUpMessageBroker()
 	}()
 	wg.Wait()
+
+
+	err := recover()
+	if err != nil {
+		fmt.Println("aaa")
+	}
 
 	return dbError, mbError
 }

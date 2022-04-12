@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: BUSL-1.1
+
 package users
 
 import (
@@ -100,9 +102,9 @@ type (
 		FullName       string
 		PhoneNumber    string
 		ProfilePicture string
-		CreatedAt      int64
-		UpdatedAt      int64
-		DeletedAt      int64
+		CreatedAt      uint64
+		UpdatedAt      uint64
+		DeletedAt      uint64
 	}
 
 	// | config holds the configuration of this package mounted from `application.yaml`.
