@@ -32,6 +32,7 @@ func (s *service) setupUserRoutes(router *gin.Engine) {
 // @Accept       json
 // @Produce      json
 // @Param        Authorization  header    string             true  "Insert your access token"  default(Bearer <Add access token here>)
+//nolint:lll    // @Param        Authorization  header  string  true  "Insert your access token"  default(Bearer <Add access token here>)
 // @Param        request        body      RequestCreateUser  true  "Request params"
 // @Success      201            {object}  users.User
 // @Failure      400                {object}  server.ErrorResponse  "if validations fail"
@@ -46,6 +47,16 @@ func (s *service) CreateUser(ctx context.Context, r server.ParsedRequest) server
 
 	resp := req.user()
 	if err := s.usersRepository.AddUser(ctx, resp); err != nil {
+		if errors.Is(err, users.ErrDuplicate) {
+			return server.Response{
+				Code: http.StatusConflict,
+				Data: server.ErrorResponse{
+					Error: err.Error(),
+					Code:  userDuplicateCode,
+				}.Fail(errors.Wrapf(err, err.Error())),
+			}
+		}
+
 		return server.Unexpected(err)
 	}
 
@@ -103,7 +114,7 @@ func (req *RequestCreateUser) Bindings(c *gin.Context) []func(obj interface{}) e
 // @Tags         Accounts
 // @Accept       json
 // @Produce      json
-// @Param        Authorization  header    string  true  "Insert your access token"  default(Bearer <Add access token here>)
+//nolint:lll    // @Param        Authorization  header    string  true  "Insert your access token"  default(Bearer <Add access token here>)
 // @Param        userId             path      string             true   "ID of the user"
 // @Success      200                {object}  users.User
 // @Failure      400            {object}  server.ErrorResponse  "if validations fail"
@@ -115,8 +126,7 @@ func (req *RequestCreateUser) Bindings(c *gin.Context) []func(obj interface{}) e
 // @Router       /users/{userId} [GET].
 func (s *service) GetUser(ctx context.Context, r server.ParsedRequest) server.Response {
 	req := r.(*RequestGetUser)
-
-	resp, err := s.usersRepository.GetUser(ctx, users.UserID(req.ID))
+	resp, err := s.usersRepository.GetUser(ctx, req.ID)
 
 	if err != nil {
 		if errors.Is(err, users.ErrNotFound) {
@@ -133,19 +143,17 @@ func (s *service) GetUser(ctx context.Context, r server.ParsedRequest) server.Re
 	}
 
 	if req.AuthenticatedUser.ID == req.ID {
-		// User is trying to get their own account
+		// User is trying to get their own account.
 		return server.OK(resp)
-	} else {
-		// User is trying to get some other user's account
-		// return only username and profilePictureURL
-
-		respShort := users.User{
-			Username:          resp.Username,
-			ProfilePictureURL: resp.ProfilePictureURL,
-		}
-
-		return server.OK(respShort)
 	}
+
+	// User is trying to get some other user's account.
+	respShort := users.User{
+		Username:          resp.Username,
+		ProfilePictureURL: resp.ProfilePictureURL,
+	}
+
+	return server.OK(respShort)
 }
 
 func newRequestGetUser() server.ParsedRequest {
@@ -176,7 +184,7 @@ func (req *RequestGetUser) Bindings(c *gin.Context) []func(obj interface{}) erro
 // @Tags         Accounts
 // @Accept       multipart/form-data
 // @Produce      json
-// @Param        Authorization      header    string             true   "Insert your access token"  default(Bearer <Add access token here>)
+//nolint:lll    // @Param        Authorization      header    string             true   "Insert your access token"  default(Bearer <Add access token here>)
 // @Param        userId         path      string  true  "ID of the user"
 // @Param        multiPartFormData  formData  RequestModifyUser  true   "Request params"
 // @Param        profilePicture     formData  file               false  "The new profile picture for the user"
@@ -249,7 +257,8 @@ func (req *RequestModifyUser) Validate() *server.Response {
 	}
 
 	if req.ID != req.AuthenticatedUser.ID {
-		err := errors.Errorf("update account not allowed for anyone except the owner. `%v` tried to update `%v`", req.AuthenticatedUser.ID, req.ID)
+		err := errors.Errorf("update account not allowed for anyone except the owner. "+
+			"`%v` tried to update `%v`", req.AuthenticatedUser.ID, req.ID)
 
 		return &server.Response{
 			Code: http.StatusForbidden,
@@ -265,7 +274,11 @@ func (req *RequestModifyUser) Validate() *server.Response {
 
 func (req *RequestModifyUser) Bindings(c *gin.Context) []func(obj interface{}) error {
 	return []func(obj interface{}) error{
-		func(obj interface{}) error { return c.ShouldBindWith(obj, binding.FormMultipart) },
+		func(obj interface{}) error {
+			err := c.ShouldBindWith(obj, binding.FormMultipart)
+
+			return err
+		},
 		c.ShouldBindUri,
 		server.ShouldBindAuthenticatedUser(c),
 	}
@@ -277,7 +290,7 @@ func (req *RequestModifyUser) Bindings(c *gin.Context) []func(obj interface{}) e
 // @Tags         Accounts
 // @Accept       json
 // @Produce      json
-// @Param        Authorization  header  string  true  "Insert your access token"  default(Bearer <Add access token here>)
+//nolint:lll    // @Param        Authorization  header  string  true  "Insert your access token"  default(Bearer <Add access token here>)
 // @Param        userId         path    string  true  "ID of the User"
 // @Success      200            "OK - found and deleted"
 // @Success      204            "No Content - already deleted"
@@ -291,7 +304,7 @@ func (req *RequestModifyUser) Bindings(c *gin.Context) []func(obj interface{}) e
 func (s *service) DeleteUser(ctx context.Context, r server.ParsedRequest) server.Response {
 	req := r.(*RequestDeleteUser)
 
-	if err := s.usersRepository.RemoveUser(ctx, users.UserID(req.ID)); err != nil {
+	if err := s.usersRepository.RemoveUser(ctx, req.ID); err != nil {
 		if errors.Is(err, users.ErrNotFound) {
 			log.Error(errors.Wrap(err, "user not found"), "RequestRemoveUser", req)
 
@@ -323,7 +336,8 @@ func (req *RequestDeleteUser) Validate() *server.Response {
 		return server.RequiredStrings(map[string]string{"userId": req.ID})
 	}
 	if req.ID != req.AuthenticatedUser.ID {
-		err := errors.Errorf("delete account not allowed for anyone except the owner. `%v` tried to delete `%v`", req.AuthenticatedUser.ID, req.ID)
+		err := errors.Errorf("delete account not allowed for anyone except the owner. "+
+			"`%v` tried to delete `%v`", req.AuthenticatedUser.ID, req.ID)
 
 		return &server.Response{
 			Code: http.StatusForbidden,
@@ -347,7 +361,7 @@ func (req *RequestDeleteUser) Bindings(c *gin.Context) []func(obj interface{}) e
 // @Tags         Accounts
 // @Accept       json
 // @Produce      json
-// @Param        Authorization  header    string             true  "Insert your access token"  default(Bearer <Add access token here>)
+//nolint:lll    // @Param        Authorization  header    string             true  "Insert your access token"  default(Bearer <Add access token here>)
 // @Param        username       query   string  true  "User's username to validate"
 // @Success      200            "username is ok and can be used"
 // @Failure      400            {object}  server.ErrorResponse  "if validations fail"
@@ -360,9 +374,9 @@ func (req *RequestDeleteUser) Bindings(c *gin.Context) []func(obj interface{}) e
 func (s *service) ValidateUsername(_ context.Context, r server.ParsedRequest) server.Response {
 	req := r.(*RequestValidateUsername)
 
-	eval := regexp.MustCompile(`^[a-zA-Z][a-zA-Z\d_-]+$`)
+	eval := regexp.MustCompile(`[\w\-.]+`)
 
-	if len(req.Username) < 6 || len(req.Username) > 30 || eval.MatchString(req.Username) == false {
+	if len(req.Username) < 4 || len(req.Username) > 20 || eval.MatchString(req.Username) == false {
 		return server.Response{
 			Code: http.StatusBadRequest,
 			Data: server.ErrorResponse{
@@ -390,8 +404,6 @@ func (req *RequestValidateUsername) GetAuthenticatedUser() server.AuthenticatedU
 }
 
 func (req *RequestValidateUsername) Validate() *server.Response {
-	// TODO also validate structure of the username
-	// What do you mean? We are in RequestValidateUsername
 	return server.RequiredStrings(map[string]string{"username": req.Username})
 }
 

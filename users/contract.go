@@ -15,22 +15,23 @@ import (
 // Public API.
 
 var (
-	ErrNotFound = storage.ErrNotFound
+	ErrNotFound  = storage.ErrNotFound
+	ErrDuplicate = storage.ErrDuplicate
 )
 
 type (
-	UserID string
+	UserID = string
 	User   struct {
-		CreatedAt         time.Time `json:"createdAt,omitempty" example:"2022-01-03T16:20:52.156534Z"`
-		UpdatedAt         time.Time `json:"updatedAt,omitempty" example:"2022-01-03T16:20:52.156534Z"`
+		CreatedAt         time.Time  `json:"createdAt,omitempty" example:"2022-01-03T16:20:52.156534Z"`
+		UpdatedAt         time.Time  `json:"updatedAt,omitempty" example:"2022-01-03T16:20:52.156534Z"`
 		DeletedAt         *time.Time `json:"deletedAt,omitempty" example:"2022-01-03T16:20:52.156534Z"`
-		ID                string    `json:"id,omitempty" example:"226fcb86-fcce-458e-95f0-867e09c8c274"`
-		Email             string    `form:"email,omitempty" json:"email" example:"jdoe@gmail.com"`
-		FullName          string    `form:"fullName,omitempty" json:"fullName" example:"John Doe"`
-		PhoneNumber       string    `form:"phoneNumber,omitempty" json:"phoneNumber" example:"+12099216581"`
-		Username          string    `form:"username,omitempty" json:"username" example:"jdoe"`
-		ReferredBy        string    `form:"referredBy,omitempty" json:"referredBy" example:"billy112"`
-		ProfilePictureURL string    `json:"profilePictureURL,omitempty" example:"https://somecdn.com/p1.jpg"`
+		ID                string     `json:"id,omitempty" example:"226fcb86-fcce-458e-95f0-867e09c8c274"`
+		Email             string     `form:"email,omitempty" json:"email" example:"jdoe@gmail.com"`
+		FullName          string     `form:"fullName,omitempty" json:"fullName" example:"John Doe"`
+		PhoneNumber       string     `form:"phoneNumber,omitempty" json:"phoneNumber" example:"+12099216581"`
+		Username          string     `form:"username,omitempty" json:"username" example:"jdoe"`
+		ReferredBy        string     `form:"referredBy,omitempty" json:"referredBy" example:"billy112"`
+		ProfilePictureURL string     `json:"profilePictureURL,omitempty" example:"https://somecdn.com/p1.jpg"`
 		// ISO 3166 country code.
 		Country string `json:"country" example:"us"`
 	}
@@ -68,7 +69,7 @@ const (
 
 var (
 	//go:embed DDL.lua
-	DDL string
+	ddl string
 	//nolint:gochecknoglobals // Because its loaded once, at runtime.
 	cfg config
 )

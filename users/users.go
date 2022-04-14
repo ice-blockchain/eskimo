@@ -11,7 +11,6 @@ import (
 	"github.com/ICE-Blockchain/wintr/connectors/storage"
 	"github.com/ICE-Blockchain/wintr/log"
 	"github.com/framey-io/go-tarantool"
-	"github.com/google/uuid"
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	"time"
@@ -19,7 +18,7 @@ import (
 
 func New(ctx context.Context, cancel context.CancelFunc) Repository {
 	appCfg.MustLoadFromKey(applicationYamlKey, &cfg)
-	db := storage.MustConnect(ctx, cancel, DDL, applicationYamlKey)
+	db := storage.MustConnect(ctx, cancel, ddl, applicationYamlKey)
 
 	mb := messagebroker.MustConnect(ctx, applicationYamlKey)
 
@@ -54,18 +53,25 @@ func (r *repository) Close() error {
 	return errors.Wrap(r.close(), "closing users repository failed")
 }
 
+//nolint:funlen // A lot of SQL
 func (u *users) AddUser(ctx context.Context, user *User) error {
 	if ctx.Err() != nil {
 		return errors.Wrap(ctx.Err(), "add user failed because context failed")
 	}
 	user.created()
 
-	sql := `INSERT INTO users (ID, EMAIL, FULL_NAME, PHONE_NUMBER, USERNAME, REFERREDBY, PROFILE_PICTURE, CREATED_AT)
-				VALUES(:id, :email, :fullName, :phoneNumber, :username, :referredBy, :profilePictureURL, :createdAt)`
+	sql := `INSERT INTO users (ID, EMAIL, FULL_NAME, PHONE_NUMBER, USERNAME, REFERRED_BY, PROFILE_PICTURE, CREATED_AT, UPDATED_AT)
+    VALUES(:id, :email, :fullName, :phoneNumber, :username, :referredBy, :profilePictureURL, :createdAt, :updatedAt)`
 
-	var refer interface{}
+	var refer UserID
 	if user.ReferredBy != "" {
 		refer = user.ReferredBy
+	} else {
+		newUser, err := u.GetUser(ctx, "")
+		if err != nil {
+			return errors.Wrapf(err, "failed to get random user")
+		}
+		refer = newUser.ID
 	}
 
 	params := map[string]interface{}{
@@ -77,11 +83,11 @@ func (u *users) AddUser(ctx context.Context, user *User) error {
 		"referredBy":        refer,
 		"profilePictureURL": user.ProfilePictureURL,
 		"createdAt":         user.CreatedAt.UnixNano(),
+		"updatedAt":         user.UpdatedAt.UnixNano(),
 	}
 
 	query, err := u.db.PrepareExecute(sql, params)
-
-	if err := storage.CheckSQLDMLErr(query, err); err != nil {
+	if err = storage.CheckSQLDMLErr(query, err); err != nil {
 		return errors.Wrapf(err, "failed to add user %#v", user)
 	}
 
@@ -91,8 +97,8 @@ func (u *users) AddUser(ctx context.Context, user *User) error {
 }
 
 func (u *User) created() *User {
-	u.ID = fmt.Sprintf("%v%v", u.ID, uuid.New().String())
 	u.CreatedAt = time.Now().UTC()
+	u.UpdatedAt = u.CreatedAt
 
 	return u
 }
@@ -102,7 +108,16 @@ func (u *users) GetUser(ctx context.Context, id UserID) (*User, error) {
 		return nil, errors.Wrap(ctx.Err(), "get user failed because context failed")
 	}
 	result := new(user)
-	if err := u.db.GetTyped("USERS", nil, []interface{}{id}, result); err != nil {
+
+	var key interface{}
+
+	if id == "" {
+		key = []interface{}{}
+	} else {
+		key = []interface{}{id}
+	}
+
+	if err := u.db.GetTyped("USERS", "pk_unnamed_USERS_1", key, result); err != nil {
 		return nil, errors.Wrapf(err, "failed to get user by id %v", id)
 	}
 
@@ -115,8 +130,8 @@ func (u *users) GetUser(ctx context.Context, id UserID) (*User, error) {
 
 func (u *user) toUser() *User {
 	return &User{
-		ID:                string(u.ID),
-		ReferredBy:        string(u.ReferredBy),
+		ID:                u.ID,
+		ReferredBy:        u.ReferredBy,
 		Username:          u.Username,
 		Email:             u.Email,
 		FullName:          u.FullName,
@@ -124,7 +139,7 @@ func (u *user) toUser() *User {
 		ProfilePictureURL: u.ProfilePicture,
 		CreatedAt:         time.Unix(0, int64(u.CreatedAt)).UTC(),
 		UpdatedAt:         time.Unix(0, int64(u.UpdatedAt)).UTC(),
-		DeletedAt:         time.Unix(0, int64(u.DeletedAt)).UTC(),
+		DeletedAt:         nil,
 	}
 }
 
@@ -132,23 +147,16 @@ func (u *users) RemoveUser(ctx context.Context, userID UserID) error {
 	if ctx.Err() != nil {
 		return errors.Wrap(ctx.Err(), "remove user failed because context failed")
 	}
-
 	gUser, err := u.GetUser(ctx, userID)
-
 	if err != nil {
 		return err
 	}
-
 	sql := `DELETE FROM users WHERE id = :id`
-
-	params := map[string]interface{}{
-		"id": userID,
-	}
-
-	if err = storage.CheckSQLDMLErr(u.db.PrepareExecute(sql, params)); err != nil {
+	params := map[string]interface{}{"id": userID}
+	query, err := u.db.PrepareExecute(sql, params)
+	if err = storage.CheckSQLDMLErr(query, err); err != nil {
 		return errors.Wrapf(err, "failed to remove user with id %v", userID)
 	}
-
 	u.sendUsersMessage(ctx, gUser.deleted())
 
 	return nil
@@ -156,7 +164,7 @@ func (u *users) RemoveUser(ctx context.Context, userID UserID) error {
 
 func (u *User) deleted() *User {
 	now := time.Now().UTC()
-	u.DeletedAt = now
+	u.DeletedAt = &now
 
 	return u
 }
@@ -166,8 +174,6 @@ func (u *users) ModifyUser(ctx context.Context, user *User) error {
 		return errors.Wrap(ctx.Err(), "update user failed because context failed")
 	}
 	user.updated()
-
-	sql := `UPDATE users SET EMAIL = :email, FULL_NAME = :fullName, PHONE_NUMBER = :phoneNumber, USERNAME = :username, PROFILE_PICTURE = :profilePictureURL, UPDATED_AT = :updatedAt WHERE ID = :id`
 
 	params := map[string]interface{}{
 		"id":                user.ID,
@@ -179,13 +185,51 @@ func (u *users) ModifyUser(ctx context.Context, user *User) error {
 		"updatedAt":         user.UpdatedAt.UnixNano(),
 	}
 
-	if err := storage.CheckSQLDMLErr(u.db.PrepareExecute(sql, params)); err != nil {
+	sql := user.GenSQLUpdate(params)
+
+	query, err := u.db.PrepareExecute(sql, params)
+	if err = storage.CheckSQLDMLErr(query, err); err != nil {
 		return errors.Wrapf(err, "failed to update user with id %v", user.ID)
 	}
-
 	u.sendUsersMessage(ctx, user)
 
 	return nil
+}
+
+func (u *User) GenSQLUpdate(p map[string]interface{}) string {
+	sql := "UPDATE USERS set "
+	var values []string
+
+	for k, v := range p {
+		if v == "" {
+			continue
+		}
+
+		switch k {
+		case "phoneNumber":
+			values = append(values, "PHONE_NUMBER = :phoneNumber")
+		case "username":
+			values = append(values, "USERNAME = :username")
+		case "profilePictureURL":
+			values = append(values, "PROFILE_PICTURE = :profilePictureURL")
+		case "email":
+			values = append(values, "EMAIL = :email")
+		case "fullName":
+			values = append(values, "FULL_NAME = :fullName")
+		}
+	}
+
+	for i, v := range values {
+		if i < len(values)-1 {
+			sql += fmt.Sprintf("%s, ", v)
+		} else {
+			sql += fmt.Sprintf("%s ", v)
+		}
+	}
+
+	sql += "WHERE ID = :id"
+
+	return sql
 }
 
 func (u *User) updated() *User {
