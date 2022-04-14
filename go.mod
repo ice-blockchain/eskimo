@@ -11,6 +11,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.7.0
 	github.com/swaggo/swag v1.8.1
+	github.com/zeebo/xxh3 v1.0.2
 )
 
 require (
@@ -51,6 +52,7 @@ require (
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/klauspost/compress v1.15.1 // indirect
+	github.com/klauspost/cpuid/v2 v2.0.9 // indirect
 	github.com/leodido/go-urn v1.2.1 // indirect
 	github.com/magiclabs/magic-admin-go v0.1.0 // indirect
 	github.com/magiconair/properties v1.8.6 // indirect

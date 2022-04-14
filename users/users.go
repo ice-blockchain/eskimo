@@ -13,6 +13,7 @@ import (
 	"github.com/framey-io/go-tarantool"
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
+	"github.com/zeebo/xxh3"
 	"time"
 )
 
@@ -60,8 +61,10 @@ func (u *users) AddUser(ctx context.Context, user *User) error {
 	}
 	user.created()
 
-	sql := `INSERT INTO users (ID, EMAIL, FULL_NAME, PHONE_NUMBER, USERNAME, REFERRED_BY, PROFILE_PICTURE, CREATED_AT, UPDATED_AT)
-    VALUES(:id, :email, :fullName, :phoneNumber, :username, :referredBy, :profilePictureURL, :createdAt, :updatedAt)`
+	sql := `INSERT INTO users (ID, HASH_CODE, EMAIL, FULL_NAME, PHONE_NUMBER,` +
+		`USERNAME, REFERRED_BY, PROFILE_PICTURE, CREATED_AT, UPDATED_AT)` +
+		`VALUES(:id, :hashCode, :email, :fullName, :phoneNumber, ` +
+		`:username, :referredBy, :profilePictureURL, :createdAt, :updatedAt)`
 
 	var refer UserID
 	if user.ReferredBy != "" {
@@ -76,6 +79,7 @@ func (u *users) AddUser(ctx context.Context, user *User) error {
 
 	params := map[string]interface{}{
 		"id":                user.ID,
+		"hashCode":          u.hash(user.ID),
 		"email":             user.Email,
 		"fullName":          user.FullName,
 		"phoneNumber":       user.PhoneNumber,
@@ -94,6 +98,10 @@ func (u *users) AddUser(ctx context.Context, user *User) error {
 	u.sendUsersMessage(ctx, user)
 
 	return nil
+}
+
+func (u *users) hash(data string) uint64 {
+	return xxh3.HashStringSeed(data, uint64(time.Now().UTC().UnixNano()))
 }
 
 func (u *User) created() *User {
@@ -131,6 +139,7 @@ func (u *users) GetUser(ctx context.Context, id UserID) (*User, error) {
 func (u *user) toUser() *User {
 	return &User{
 		ID:                u.ID,
+		HashCode:          u.HashCode,
 		ReferredBy:        u.ReferredBy,
 		Username:          u.Username,
 		Email:             u.Email,

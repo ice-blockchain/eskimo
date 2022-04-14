@@ -1,6 +1,7 @@
 -- SPDX-License-Identifier: BUSL-1.1
 box.execute([[CREATE TABLE IF NOT EXISTS users  (
                     id STRING primary key,
+                    hash_code UNSIGNED NOT NULL UNIQUE,
                     referred_by STRING REFERENCES users(id) ON DELETE SET NULL,
                     username STRING NOT NULL UNIQUE,
                     email STRING,
