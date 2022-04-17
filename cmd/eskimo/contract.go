@@ -14,6 +14,8 @@ import (
 const userNotFoundCode = "USER_NOT_FOUND"
 const userDuplicateCode = "USER_DUPLICATE"
 
+const defaultUserImage = "https://ice-staging.b-cdn.net/profile/default-user-image.jpg"
+
 type (
 	RequestCreateUser struct {
 		AuthenticatedUser server.AuthenticatedUser `json:"authenticatedUser" swaggerignore:"true"`

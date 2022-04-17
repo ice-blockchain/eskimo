@@ -61,10 +61,10 @@ func (u *users) AddUser(ctx context.Context, user *User) error {
 	}
 	user.created()
 
-	sql := `INSERT INTO users (ID, HASH_CODE, EMAIL, FULL_NAME, PHONE_NUMBER,` +
-		`USERNAME, REFERRED_BY, PROFILE_PICTURE, CREATED_AT, UPDATED_AT)` +
-		`VALUES(:id, :hashCode, :email, :fullName, :phoneNumber, ` +
-		`:username, :referredBy, :profilePictureURL, :createdAt, :updatedAt)`
+	sql := `INSERT INTO users (ID, HASH_CODE, EMAIL, FULL_NAME, PHONE_NUMBER,
+			USERNAME, REFERRED_BY, PROFILE_PICTURE, CREATED_AT, UPDATED_AT)
+			VALUES(:id, :hashCode, :email, :fullName, :phoneNumber, 
+			:username, :referredBy, :profilePictureURL, :createdAt, :updatedAt)`
 
 	var refer UserID
 	if user.ReferredBy != "" {
@@ -205,6 +205,7 @@ func (u *users) ModifyUser(ctx context.Context, user *User) error {
 	return nil
 }
 
+//nolint:funlen // no able to split
 func (u *User) GenSQLUpdate(p map[string]interface{}) string {
 	sql := "UPDATE USERS set "
 	var values []string

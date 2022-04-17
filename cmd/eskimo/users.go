@@ -75,7 +75,7 @@ func (req *RequestCreateUser) user() *users.User {
 		PhoneNumber:       req.PhoneNumber,
 		Username:          req.Username,
 		ReferredBy:        req.ReferredBy,
-		ProfilePictureURL: "TODO some default",
+		ProfilePictureURL: defaultUserImage,
 		Country:           "TODO: get me based on req.ClientIP using https://www.ip2location.com/development-libraries/ip2location/go",
 	}
 }
@@ -237,7 +237,7 @@ func (req *RequestModifyUser) user() *users.User {
 		FullName:          req.FullName,
 		PhoneNumber:       req.PhoneNumber,
 		Username:          req.Username,
-		ProfilePictureURL: "TODO some default",
+		ProfilePictureURL: req.ProfilePicture.Filename,
 	}
 }
 

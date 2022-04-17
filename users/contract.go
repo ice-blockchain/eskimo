@@ -21,7 +21,7 @@ var (
 
 type (
 	UserID = string
-	User   struct { //nolint:govet
+	User   struct { //nolint:govet // This is about DB
 		CreatedAt         time.Time  `json:"createdAt,omitempty" example:"2022-01-03T16:20:52.156534Z"`
 		UpdatedAt         time.Time  `json:"updatedAt,omitempty" example:"2022-01-03T16:20:52.156534Z"`
 		DeletedAt         *time.Time `json:"deletedAt,omitempty" example:"2022-01-03T16:20:52.156534Z"`
@@ -95,7 +95,7 @@ type (
 	// | user is the internal (User) structure for deserialization from the DB
 	// because it cannot deserialize time.Time or map/json structures properly.
 	// !! Order of fields is crucial, so do not change it !!
-	user struct { //nolint:govet
+	user struct { //nolint:govet // This is about DB
 		_msgpack       struct{} `msgpack:",asArray"`
 		ID             UserID
 		HashCode       uint64
