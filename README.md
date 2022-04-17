@@ -10,7 +10,7 @@ These are the crucial/critical operations you will need when developing Eskimo:
 2. `make run`
     1. This runs the actual service.
     2. It will feed off of the properties in `./application.yaml`
-    3. By default, https://localhost/accounts runs the Open API (Swagger) entrypoint.
+    3. By default, https://localhost/users runs the Open API (Swagger) entrypoint.
 3. `make start-test-environment`
     1. This bootstraps a local test environment with **Eskimo**'s dependencies using your `docker` and `docker-compose` daemons.
     2. It is a blocking operation, SIGTERM or SIGINT will kill it.

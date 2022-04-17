@@ -18,7 +18,7 @@ import (
 //nolint:godot // Because those are comments parsed by swagger
 // @title                    User Account API
 // @version                  latest
-// @description              API that handles everything related to user's account, including referrals.
+// @description              API that handles everything related to user's account, including referrals and statistics.
 // @query.collection.format  multi
 // @schemes                  https
 // @contact.name             ICE
@@ -37,6 +37,9 @@ func main() {
 
 func (s *service) RegisterRoutes(engine *gin.Engine) {
 	s.setupUserRoutes(engine)
+	s.setupUserReferralRoutes(engine)
+	s.setupUserStatisticsRoutes(engine)
+	s.setupUserValidationRoutes(engine)
 }
 
 func (s *service) Init(ctx context.Context, cancel context.CancelFunc) {

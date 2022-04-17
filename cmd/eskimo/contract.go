@@ -6,6 +6,7 @@ import (
 	"github.com/ICE-Blockchain/eskimo/users"
 	"github.com/ICE-Blockchain/wintr/server"
 	"mime/multipart"
+	"net"
 )
 
 // Public API.
@@ -13,6 +14,7 @@ import (
 type (
 	RequestCreateUser struct {
 		AuthenticatedUser server.AuthenticatedUser `json:"authenticatedUser" swaggerignore:"true"`
+		ClientIP          net.IP                   `json:"clientIP" swaggerignore:"true"`
 		// `email` is optional.
 		Email string `json:"email" example:"jdoe@gmail.com"`
 		// `fullName` is optional.
@@ -42,6 +44,26 @@ type (
 	RequestValidateUsername struct {
 		AuthenticatedUser server.AuthenticatedUser `json:"authenticatedUser" swaggerignore:"true"`
 		Username          string                   `form:"username" example:"jdoe"`
+	}
+	RequestValidatePhoneNumber struct {
+		AuthenticatedUser server.AuthenticatedUser `json:"authenticatedUser" swaggerignore:"true"`
+		ValidationCode    string                   `form:"validationCode" example:"232323232"`
+		PhoneNumber       string                   `form:"phoneNumber" example:"+12099216581"`
+	}
+	RequestGetTopCountries struct {
+		AuthenticatedUser server.AuthenticatedUser `json:"authenticatedUser" swaggerignore:"true"`
+		Limit             uint64                   `form:"limit" example:"20"`
+		Offset            uint64                   `form:"offset" example:"5"`
+	}
+	RequestGetReferralAcquisitionHistory struct {
+		AuthenticatedUser server.AuthenticatedUser `json:"authenticatedUser" swaggerignore:"true"`
+		ID                string                   `uri:"userId" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
+		Days              uint64                   `form:"days" example:"5"`
+	}
+	RequestGetReferrals struct {
+		AuthenticatedUser server.AuthenticatedUser `json:"authenticatedUser" swaggerignore:"true"`
+		ID                string                   `uri:"userId" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
+		Type              string                   `form:"type" example:"T1"`
 	}
 )
 

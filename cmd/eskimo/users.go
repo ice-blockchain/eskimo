@@ -9,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
 	"github.com/pkg/errors"
+	"net"
 	"net/http"
 )
 
@@ -18,8 +19,7 @@ func (s *service) setupUserRoutes(router *gin.Engine) {
 		POST("users", server.RootHandler(newRequestCreateUser, s.CreateUser)).
 		GET("users/:userId", server.RootHandler(newRequestGetUser, s.GetUser)).
 		PATCH("users/:userId", server.RootHandler(newRequestModifyUser, s.ModifyUser)).
-		DELETE("users/:userId", server.RootHandler(newRequestDeleteUser, s.DeleteUser)).
-		GET("user-validations/username", server.RootHandler(newRequestValidateUsername, s.ValidateUsername))
+		DELETE("users/:userId", server.RootHandler(newRequestDeleteUser, s.DeleteUser))
 }
 
 // CreateUser godoc
@@ -28,7 +28,7 @@ func (s *service) setupUserRoutes(router *gin.Engine) {
 // @Tags         Accounts
 // @Accept       json
 // @Produce      json
-// @Param        Authorization  header  string  true  "Insert your access token"  default(Bearer <Add access token here>)
+// @Param        Authorization  header    string             true  "Insert your access token"  default(Bearer <Add access token here>)
 // @Param        request        body      RequestCreateUser  true  "Request params"
 // @Success      201            {object}  users.User
 // @Failure      400                {object}  server.ErrorResponse  "if validations fail"
@@ -59,6 +59,7 @@ func (req *RequestCreateUser) user() *users.User {
 		Username:          req.Username,
 		ReferredBy:        req.ReferredBy,
 		ProfilePictureURL: "TODO some default",
+		Country:           "TODO: get me based on req.ClientIP using https://www.ip2location.com/development-libraries/ip2location/go",
 	}
 }
 
@@ -72,12 +73,22 @@ func (req *RequestCreateUser) GetAuthenticatedUser() server.AuthenticatedUser {
 	return req.AuthenticatedUser
 }
 
+func (req *RequestCreateUser) SetClientIP(ip net.IP) {
+	if len(req.ClientIP) == 0 {
+		req.ClientIP = ip
+	}
+}
+
+func (req *RequestCreateUser) GetClientIP() net.IP {
+	return req.ClientIP
+}
+
 func (req *RequestCreateUser) Validate() *server.Response {
 	return server.RequiredStrings(map[string]string{"referredBy": req.ReferredBy, "username": req.Username})
 }
 
 func (req *RequestCreateUser) Bindings(c *gin.Context) []func(obj interface{}) error {
-	return []func(obj interface{}) error{c.ShouldBindJSON, server.ShouldBindAuthenticatedUser(c)}
+	return []func(obj interface{}) error{c.ShouldBindJSON, server.ShouldBindClientIP(c), server.ShouldBindAuthenticatedUser(c)}
 }
 
 // GetUser godoc
@@ -154,6 +165,11 @@ func (s *service) ModifyUser(ctx context.Context, r server.ParsedRequest) server
 	req := r.(*RequestModifyUser)
 
 	//TODO implement me
+
+	//if user specified a phoneNumber in the request body, then we proceed with phone number confirmation flow:
+	// step 0: don`t update the phone number in users table
+	// step 1: insert into phone_number_validation_codes // TODO ask Robert about the pattern of the code
+	// step 2: use https://www.twilio.com/docs/libraries/go to send SMS with that code to the user`s phone number
 
 	return server.OK(req)
 }
@@ -246,51 +262,4 @@ func (req *RequestDeleteUser) Validate() *server.Response {
 
 func (req *RequestDeleteUser) Bindings(c *gin.Context) []func(obj interface{}) error {
 	return []func(obj interface{}) error{c.ShouldBindUri, server.ShouldBindAuthenticatedUser(c)}
-}
-
-// ValidateUsername godoc
-// @Schemes
-// @Description  Validates a provided username
-// @Tags         Accounts
-// @Accept       json
-// @Produce      json
-// @Param        Authorization  header    string             true  "Insert your access token"  default(Bearer <Add access token here>)
-// @Param        username       query   string  true  "User's username to validate"
-// @Success      200            "username is ok and can be used"
-// @Failure      400            {object}  server.ErrorResponse  "if validations fail"
-// @Failure      401            {object}  server.ErrorResponse  "if not authorized"
-// @Failure      409            {object}  server.ErrorResponse  "user exists"
-// @Failure      422            {object}  server.ErrorResponse  "if syntax fails"
-// @Failure      500            {object}  server.ErrorResponse
-// @Failure      504            {object}  server.ErrorResponse  "if request times out"
-// @Router       /user-validations/username [GET].
-func (s *service) ValidateUsername(ctx context.Context, r server.ParsedRequest) server.Response {
-	req := r.(*RequestValidateUsername)
-
-	//TODO implement me
-
-	return server.OK(req)
-}
-
-func newRequestValidateUsername() server.ParsedRequest {
-	return new(RequestValidateUsername)
-}
-
-func (req *RequestValidateUsername) SetAuthenticatedUser(user server.AuthenticatedUser) {
-	if req.AuthenticatedUser.ID == "" {
-		req.AuthenticatedUser = user
-	}
-}
-
-func (req *RequestValidateUsername) GetAuthenticatedUser() server.AuthenticatedUser {
-	return req.AuthenticatedUser
-}
-
-func (req *RequestValidateUsername) Validate() *server.Response {
-	// TODO also validate structure of the username
-	return server.RequiredStrings(map[string]string{"username": req.Username})
-}
-
-func (req *RequestValidateUsername) Bindings(c *gin.Context) []func(obj interface{}) error {
-	return []func(obj interface{}) error{c.ShouldBindQuery, server.ShouldBindAuthenticatedUser(c)}
 }
