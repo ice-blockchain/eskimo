@@ -13,7 +13,6 @@ import (
 	"github.com/pkg/errors"
 	"net"
 	"net/http"
-	"regexp"
 )
 
 func (s *service) setupUserRoutes(router *gin.Engine) {
@@ -353,60 +352,4 @@ func (req *RequestDeleteUser) Validate() *server.Response {
 
 func (req *RequestDeleteUser) Bindings(c *gin.Context) []func(obj interface{}) error {
 	return []func(obj interface{}) error{c.ShouldBindUri, server.ShouldBindAuthenticatedUser(c)}
-}
-
-// ValidateUsername godoc
-// @Schemes
-// @Description  Validates a provided username
-// @Tags         Accounts
-// @Accept       json
-// @Produce      json
-//nolint:lll    // @Param        Authorization  header    string             true  "Insert your access token"  default(Bearer <Add access token here>)
-// @Param        username       query   string  true  "User's username to validate"
-// @Success      200            "username is ok and can be used"
-// @Failure      400            {object}  server.ErrorResponse  "if validations fail"
-// @Failure      401            {object}  server.ErrorResponse  "if not authorized"
-// @Failure      409            {object}  server.ErrorResponse  "user exists"
-// @Failure      422            {object}  server.ErrorResponse  "if syntax fails"
-// @Failure      500            {object}  server.ErrorResponse
-// @Failure      504            {object}  server.ErrorResponse  "if request times out"
-// @Router       /user-validations/username [GET].
-func (s *service) ValidateUsername(_ context.Context, r server.ParsedRequest) server.Response {
-	req := r.(*RequestValidateUsername)
-
-	eval := regexp.MustCompile(`[\w\-.]+`)
-
-	if len(req.Username) < 4 || len(req.Username) > 20 || eval.MatchString(req.Username) == false {
-		return server.Response{
-			Code: http.StatusBadRequest,
-			Data: server.ErrorResponse{
-				Error: "username incorrect",
-				Code:  "NOT_ALLOWED",
-			},
-		}
-	}
-
-	return server.OK(req)
-}
-
-func newRequestValidateUsername() server.ParsedRequest {
-	return new(RequestValidateUsername)
-}
-
-func (req *RequestValidateUsername) SetAuthenticatedUser(user server.AuthenticatedUser) {
-	if req.AuthenticatedUser.ID == "" {
-		req.AuthenticatedUser = user
-	}
-}
-
-func (req *RequestValidateUsername) GetAuthenticatedUser() server.AuthenticatedUser {
-	return req.AuthenticatedUser
-}
-
-func (req *RequestValidateUsername) Validate() *server.Response {
-	return server.RequiredStrings(map[string]string{"username": req.Username})
-}
-
-func (req *RequestValidateUsername) Bindings(c *gin.Context) []func(obj interface{}) error {
-	return []func(obj interface{}) error{c.ShouldBindQuery, server.ShouldBindAuthenticatedUser(c)}
 }

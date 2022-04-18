@@ -6,6 +6,8 @@ import (
 	"context"
 	"github.com/ICE-Blockchain/wintr/server"
 	"github.com/gin-gonic/gin"
+	"net/http"
+	"regexp"
 )
 
 func (s *service) setupUserValidationRoutes(router *gin.Engine) {
@@ -34,7 +36,17 @@ func (s *service) setupUserValidationRoutes(router *gin.Engine) {
 func (s *service) ValidateUsername(ctx context.Context, r server.ParsedRequest) server.Response {
 	req := r.(*RequestValidateUsername)
 
-	//TODO implement me
+	eval := regexp.MustCompile(`[\w\-.]+`)
+
+	if len(req.Username) < 4 || len(req.Username) > 20 || eval.MatchString(req.Username) == false {
+		return server.Response{
+			Code: http.StatusBadRequest,
+			Data: server.ErrorResponse{
+				Error: "username incorrect",
+				Code:  "NOT_ALLOWED",
+			},
+		}
+	}
 
 	return server.OK(req)
 }
