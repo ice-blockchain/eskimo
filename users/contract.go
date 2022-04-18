@@ -105,6 +105,7 @@ type (
 		FullName       string
 		PhoneNumber    string
 		ProfilePicture string
+		Country        string
 		CreatedAt      uint64
 		UpdatedAt      uint64
 		DeletedAt      uint64

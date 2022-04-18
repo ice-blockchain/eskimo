@@ -62,9 +62,9 @@ func (u *users) AddUser(ctx context.Context, user *User) error {
 	user.created()
 
 	sql := `INSERT INTO users (ID, HASH_CODE, EMAIL, FULL_NAME, PHONE_NUMBER,
-			USERNAME, REFERRED_BY, PROFILE_PICTURE, CREATED_AT, UPDATED_AT)
+			USERNAME, REFERRED_BY, PROFILE_PICTURE, COUNTRY, CREATED_AT, UPDATED_AT)
 			VALUES(:id, :hashCode, :email, :fullName, :phoneNumber, 
-			:username, :referredBy, :profilePictureURL, :createdAt, :updatedAt)`
+			:username, :referredBy, :profilePictureURL, :country, :createdAt, :updatedAt)`
 
 	var refer UserID
 	if user.ReferredBy != "" {
@@ -86,6 +86,7 @@ func (u *users) AddUser(ctx context.Context, user *User) error {
 		"username":          user.Username,
 		"referredBy":        refer,
 		"profilePictureURL": user.ProfilePictureURL,
+		"country":           user.Country,
 		"createdAt":         user.CreatedAt.UnixNano(),
 		"updatedAt":         user.UpdatedAt.UnixNano(),
 	}
@@ -146,6 +147,7 @@ func (u *user) toUser() *User {
 		FullName:          u.FullName,
 		PhoneNumber:       u.PhoneNumber,
 		ProfilePictureURL: u.ProfilePicture,
+		Country:           u.Country,
 		CreatedAt:         time.Unix(0, int64(u.CreatedAt)).UTC(),
 		UpdatedAt:         time.Unix(0, int64(u.UpdatedAt)).UTC(),
 		DeletedAt:         nil,
@@ -191,6 +193,7 @@ func (u *users) ModifyUser(ctx context.Context, user *User) error {
 		"phoneNumber":       user.PhoneNumber,
 		"username":          user.Username,
 		"profilePictureURL": user.ProfilePictureURL,
+		"country":           user.Country,
 		"updatedAt":         user.UpdatedAt.UnixNano(),
 	}
 
@@ -222,6 +225,8 @@ func (u *User) GenSQLUpdate(p map[string]interface{}) string {
 			values = append(values, "USERNAME = :username")
 		case "profilePictureURL":
 			values = append(values, "PROFILE_PICTURE = :profilePictureURL")
+		case "country":
+			values = append(values, "COUNTRY = :country")
 		case "email":
 			values = append(values, "EMAIL = :email")
 		case "fullName":
