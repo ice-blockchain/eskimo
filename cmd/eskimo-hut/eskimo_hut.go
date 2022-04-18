@@ -18,7 +18,7 @@ import (
 //nolint:godot // Because those are comments parsed by swagger
 // @title                    User Account API
 // @version                  latest
-// @description              API that handles everything related to read only operations for user's account.
+// @description              API that handles everything related to write only operations for user's account.
 // @query.collection.format  multi
 // @schemes                  https
 // @contact.name             ICE
@@ -37,25 +37,27 @@ func main() {
 
 func (s *service) RegisterRoutes(engine *gin.Engine) {
 	s.setupUserRoutes(engine)
-	s.setupUserReferralRoutes(engine)
-	s.setupUserStatisticsRoutes(engine)
+	s.setupUserValidationRoutes(engine)
 }
 
 func (s *service) Init(ctx context.Context, cancel context.CancelFunc) {
-	s.usersRepository = users.New(ctx, cancel)
+	s.usersProcessor = users.StartProcessor(ctx, cancel)
 }
 
 func (s *service) Close(ctx context.Context) error {
 	if ctx.Err() != nil {
-		return errors.Wrap(ctx.Err(), "could not close repository because context ended")
+		return errors.Wrap(ctx.Err(), "could not close usersProcessor because context ended")
 	}
 
-	return errors.Wrap(s.usersRepository.Close(), "could not close repository")
+	return errors.Wrap(s.usersProcessor.Close(), "could not close usersProcessor")
 }
 
 func (s *service) CheckHealth(ctx context.Context, r *server.RequestCheckHealth) server.Response {
 	log.Debug("checking health...", "package", "users")
-	//TODO to be implemented
+
+	if err := s.usersProcessor.CheckHealth(ctx); err != nil {
+		return server.Unexpected(err)
+	}
 
 	return server.OK(r)
 }

@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: BUSL-1.1
+
+development: false
+logger:
+  encoder: console
+  level: info
+cmd/eskimo-hut:
+  host: localhost
+  version: latest
+  defaultEndpointTimeout: 5s
+  httpServer:
+    port: 45443
+    certPath: .testdata/localhost.crt
+    keyPath: .testdata/localhost.key

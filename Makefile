@@ -54,6 +54,8 @@ generate:
 	go install github.com/swaggo/swag/cmd/swag@latest
 	swag init --parseDependency --parseInternal -d cmd/eskimo -g eskimo.go -o cmd/eskimo/api
 	swag fmt -d cmd/eskimo -g eskimo.go
+	swag init --parseDependency --parseInternal -d cmd/eskimo-hut -g eskimo_hut.go -o cmd/eskimo-hut/api
+	swag fmt -d cmd/eskimo-hut -g eskimo_hut.go
 #	go install github.com/golang/mock/mockgen@latest
 #	mockgen -source=CHANGE_ME.go -destination=CHANGE_ME.go -package=CHANGE_ME
 

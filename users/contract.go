@@ -3,6 +3,7 @@
 package users
 
 import (
+	"context"
 	"io"
 	"time"
 )
@@ -37,11 +38,17 @@ type (
 	Repository interface {
 		io.Closer
 	}
+	Processor interface {
+		Repository
+		CheckHealth(context.Context) error
+	}
 )
 
 // Private API.
 
 type (
 	repository struct {
+	}
+	processor struct {
 	}
 )

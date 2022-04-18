@@ -2,6 +2,51 @@
 
 basePath: /v1
 definitions:
+  main.RequestCreateUser:
+    properties:
+      email:
+        description: '`email` is optional.'
+        example: jdoe@gmail.com
+        type: string
+      fullName:
+        description: '`fullName` is optional.'
+        example: John Doe
+        type: string
+      phoneNumber:
+        description: '`phoneNumber` is optional.'
+        example: "+12099216581"
+        type: string
+      referredBy:
+        example: billy112
+        type: string
+      username:
+        example: jdoe
+        type: string
+    type: object
+  main.RequestValidatePhoneNumber:
+    properties:
+      phoneNumber:
+        example: "+12099216581"
+        type: string
+      validationCode:
+        example: "232323232"
+        type: string
+    type: object
+  main.RequestValidateUsername:
+    properties:
+      username:
+        example: jdoe
+        type: string
+    type: object
+  multipart.FileHeader:
+    properties:
+      filename:
+        type: string
+      header:
+        $ref: '#/definitions/textproto.MIMEHeader'
+      size:
+        type: integer
+    type: object
   server.ErrorResponse:
     properties:
       code:
@@ -11,27 +56,11 @@ definitions:
         example: something is missing
         type: string
     type: object
-  users.CountryStatistics:
-    properties:
-      country:
-        description: ISO 3166 country code.
-        example: us
+  textproto.MIMEHeader:
+    additionalProperties:
+      items:
         type: string
-      userCount:
-        example: 12121212
-        type: integer
-    type: object
-  users.ReferralAcquisition:
-    properties:
-      date:
-        example: "2022-01-03"
-        type: string
-      t1:
-        example: 22
-        type: integer
-      t2:
-        example: 13
-        type: integer
+      type: array
     type: object
   users.User:
     properties:
@@ -74,16 +103,17 @@ info:
   contact:
     name: ICE
     url: https://ice.io
-  description: API that handles everything related to read only operations for user's
+  description: API that handles everything related to write only operations for user's
     account.
   title: User Account API
   version: latest
 paths:
-  /user-statistics/top-countries:
-    get:
+  /user-validations/phone-number:
+    put:
       consumes:
       - application/json
-      description: Returns the paginated view of users per country.
+      description: Validates a provided phone number by a one time code previously
+        provided to the user via SMS.
       parameters:
       - default: Bearer <Add access token here>
         description: Insert your access token
@@ -91,29 +121,27 @@ paths:
         name: Authorization
         required: true
         type: string
-      - description: Limit of elements to return. Defaults to 20
-        in: query
-        name: limit
-        type: integer
-      - description: Number of elements to skip before collecting elements to return
-        in: query
-        name: offset
-        type: integer
+      - description: Request params
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/main.RequestValidatePhoneNumber'
       produces:
       - application/json
       responses:
         "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/users.CountryStatistics'
-            type: array
+          description: ok
         "400":
           description: if validations fail
           schema:
             $ref: '#/definitions/server.ErrorResponse'
         "401":
           description: if not authorized
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "404":
+          description: phone number is not in the process of validation
           schema:
             $ref: '#/definitions/server.ErrorResponse'
         "422":
@@ -129,12 +157,12 @@ paths:
           schema:
             $ref: '#/definitions/server.ErrorResponse'
       tags:
-      - Statistics
-  /users/{userId}:
-    get:
+      - Validations
+  /user-validations/username:
+    put:
       consumes:
       - application/json
-      description: Returns an user account
+      description: Validates a provided username
       parameters:
       - default: Bearer <Add access token here>
         description: Insert your access token
@@ -142,16 +170,66 @@ paths:
         name: Authorization
         required: true
         type: string
-      - description: ID of the user
-        in: path
-        name: userId
+      - description: Request params
+        in: body
+        name: request
         required: true
-        type: string
+        schema:
+          $ref: '#/definitions/main.RequestValidateUsername'
       produces:
       - application/json
       responses:
         "200":
-          description: OK
+          description: username is ok and can be used
+        "400":
+          description: if validations fail
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "401":
+          description: if not authorized
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "409":
+          description: user exists
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "422":
+          description: if syntax fails
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "504":
+          description: if request times out
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+      tags:
+      - Validations
+  /users:
+    post:
+      consumes:
+      - application/json
+      description: Creates an user account
+      parameters:
+      - default: Bearer <Add access token here>
+        description: Insert your access token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: Request params
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/main.RequestCreateUser'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
           schema:
             $ref: '#/definitions/users.User'
         "400":
@@ -162,8 +240,8 @@ paths:
           description: if not authorized
           schema:
             $ref: '#/definitions/server.ErrorResponse'
-        "404":
-          description: if not found
+        "409":
+          description: user already exists with that ID or with that username
           schema:
             $ref: '#/definitions/server.ErrorResponse'
         "422":
@@ -180,12 +258,11 @@ paths:
             $ref: '#/definitions/server.ErrorResponse'
       tags:
       - Accounts
-  /users/{userId}/referral-acquisition-history:
-    get:
+  /users/{userId}:
+    delete:
       consumes:
       - application/json
-      description: Returns the history of referral acquisition for the provided user
-        id.
+      description: Deletes an user account
       parameters:
       - default: Bearer <Add access token here>
         description: Insert your access token
@@ -193,30 +270,28 @@ paths:
         name: Authorization
         required: true
         type: string
-      - description: ID of the user
+      - description: ID of the User
         in: path
         name: userId
         required: true
         type: string
-      - description: The number of days to look in the past. Defaults to 5.
-        in: query
-        name: days
-        type: integer
       produces:
       - application/json
       responses:
         "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/users.ReferralAcquisition'
-            type: array
+          description: OK - found and deleted
+        "204":
+          description: No Content - already deleted
         "400":
           description: if validations fail
           schema:
             $ref: '#/definitions/server.ErrorResponse'
         "401":
           description: if not authorized
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "403":
+          description: not allowed
           schema:
             $ref: '#/definitions/server.ErrorResponse'
         "422":
@@ -232,12 +307,11 @@ paths:
           schema:
             $ref: '#/definitions/server.ErrorResponse'
       tags:
-      - Referrals
-  /users/{userId}/referrals:
-    get:
+      - Accounts
+    patch:
       consumes:
-      - application/json
-      description: Returns the referrals of an user.
+      - multipart/form-data
+      description: Modifies an user account
       parameters:
       - default: Bearer <Add access token here>
         description: Insert your access token
@@ -250,25 +324,47 @@ paths:
         name: userId
         required: true
         type: string
-      - description: 'Type of referrals: T1 or T2. Defaults to `T1`'
-        in: query
-        name: type
+      - example: jdoe@gmail.com
+        in: formData
+        name: email
         type: string
+      - example: John Doe
+        in: formData
+        name: fullName
+        type: string
+      - example: "+12099216581"
+        in: formData
+        name: phoneNumber
+        type: string
+      - example: jdoe
+        in: formData
+        name: username
+        type: string
+      - description: The new profile picture for the user
+        in: formData
+        name: profilePicture
+        type: file
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            items:
-              $ref: '#/definitions/users.User'
-            type: array
+            $ref: '#/definitions/users.User'
         "400":
           description: if validations fail
           schema:
             $ref: '#/definitions/server.ErrorResponse'
         "401":
           description: if not authorized
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "403":
+          description: not allowed
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "404":
+          description: user is not found
           schema:
             $ref: '#/definitions/server.ErrorResponse'
         "422":
@@ -284,7 +380,7 @@ paths:
           schema:
             $ref: '#/definitions/server.ErrorResponse'
       tags:
-      - Referrals
+      - Accounts
 schemes:
 - https
 swagger: "2.0"
