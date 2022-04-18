@@ -217,7 +217,7 @@ func (s *service) ModifyUser(ctx context.Context, r server.ParsedRequest) server
 		return server.Unexpected(err)
 	}
 
-	//if user specified a phoneNumber in the request body, then we proceed with phone number confirmation flow:
+	// if user specified a phoneNumber in the request body, then we proceed with phone number confirmation flow:
 	// step 0: don`t update the phone number in users table
 	// step 1: insert into phone_number_validation_codes // TODO ask Robert about the pattern of the code
 	// step 2: use https://www.twilio.com/docs/libraries/go to send SMS with that code to the user`s phone number
@@ -237,6 +237,7 @@ func (req *RequestModifyUser) user() *users.User {
 		PhoneNumber:       req.PhoneNumber,
 		Username:          req.Username,
 		ProfilePictureURL: req.ProfilePicture.Filename,
+		Country:           "TODO by clients IP",
 	}
 }
 

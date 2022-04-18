@@ -185,21 +185,25 @@ func (u *users) ModifyUser(ctx context.Context, user *User) error {
 		return errors.Wrap(ctx.Err(), "update user failed because context failed")
 	}
 	user.updated()
+	/*
+		params := map[string]interface{}{
+			"id":                user.ID,
+			"email":             user.Email,
+			"fullName":          user.FullName,
+			"phoneNumber":       user.PhoneNumber,
+			"username":          user.Username,
+			"profilePictureURL": user.ProfilePictureURL,
+			"country":           user.Country,
+			"updatedAt":         user.UpdatedAt.UnixNano(),
+		}
 
-	params := map[string]interface{}{
-		"id":                user.ID,
-		"email":             user.Email,
-		"fullName":          user.FullName,
-		"phoneNumber":       user.PhoneNumber,
-		"username":          user.Username,
-		"profilePictureURL": user.ProfilePictureURL,
-		"country":           user.Country,
-		"updatedAt":         user.UpdatedAt.UnixNano(),
-	}
-
-	sql := user.GenSQLUpdate(params)
-
+		sql := user.GenSQLUpdate(params)
+	*/
+	sql, params := user.GenSQLUpdate2()
 	query, err := u.db.PrepareExecute(sql, params)
+
+	fmt.Println(query)
+
 	if err = storage.CheckSQLDMLErr(query, err); err != nil {
 		return errors.Wrapf(err, "failed to update user with id %v", user.ID)
 	}
@@ -208,43 +212,48 @@ func (u *users) ModifyUser(ctx context.Context, user *User) error {
 	return nil
 }
 
-//nolint:funlen // no able to split
-func (u *User) GenSQLUpdate(p map[string]interface{}) string {
-	sql := "UPDATE USERS set "
-	var values []string
+//nolint:funlen // Fill DB
+func (u *User) GenSQLUpdate2() (sql string, params map[string]interface{}) {
+	params = make(map[string]interface{})
+	sql = "UPDATE USERS set "
 
-	for k, v := range p {
-		if v == "" {
-			continue
-		}
+	params["id"] = u.ID
+	params["updatedAt"] = u.UpdatedAt.UnixNano()
+	sql += "UPDATED_AT = :updatedAt"
 
-		switch k {
-		case "phoneNumber":
-			values = append(values, "PHONE_NUMBER = :phoneNumber")
-		case "username":
-			values = append(values, "USERNAME = :username")
-		case "profilePictureURL":
-			values = append(values, "PROFILE_PICTURE = :profilePictureURL")
-		case "country":
-			values = append(values, "COUNTRY = :country")
-		case "email":
-			values = append(values, "EMAIL = :email")
-		case "fullName":
-			values = append(values, "FULL_NAME = :fullName")
-		}
+	if u.Email != "" {
+		params["email"] = u.Email
+		sql += ", EMAIL = :email"
 	}
 
-	for i, v := range values {
-		if i < len(values)-1 {
-			sql += fmt.Sprintf("%s, ", v)
-		} else {
-			sql += fmt.Sprintf("%s ", v)
-		}
+	if u.FullName != "" {
+		params["fullName"] = u.FullName
+		sql += ", FULL_NAME = :fullName"
 	}
 
-	sql += "WHERE ID = :id"
+	if u.PhoneNumber != "" {
+		params["phoneNumber"] = u.PhoneNumber
+		sql += ", PHONE_NUMBER = :phoneNumber"
+	}
 
-	return sql
+	if u.Username != "" {
+		params["username"] = u.Username
+		sql += ", USERNAME = :username"
+	}
+
+	if u.ProfilePictureURL != "" {
+		params["profilePictureURL"] = u.ProfilePictureURL
+		sql += ", PROFILE_PICTURE = :profilePictureURL"
+	}
+
+	if u.Country != "" {
+		params["country"] = u.Country
+		sql += ", COUNTRY = :country"
+	}
+
+	sql += " WHERE ID = :id"
+
+	return sql, params
 }
 
 func (u *User) updated() *User {
