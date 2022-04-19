@@ -5,7 +5,6 @@ package users
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	appCfg "github.com/ICE-Blockchain/wintr/config"
 	messagebroker "github.com/ICE-Blockchain/wintr/connectors/message_broker"
 	"github.com/ICE-Blockchain/wintr/connectors/storage"
@@ -185,75 +184,36 @@ func (u *users) ModifyUser(ctx context.Context, user *User) error {
 		return errors.Wrap(ctx.Err(), "update user failed because context failed")
 	}
 	user.updated()
-	/*
-		params := map[string]interface{}{
-			"id":                user.ID,
-			"email":             user.Email,
-			"fullName":          user.FullName,
-			"phoneNumber":       user.PhoneNumber,
-			"username":          user.Username,
-			"profilePictureURL": user.ProfilePictureURL,
-			"country":           user.Country,
-			"updatedAt":         user.UpdatedAt.UnixNano(),
-		}
 
-		sql := user.GenSQLUpdate(params)
-	*/
-	sql, params := user.GenSQLUpdate2()
-	query, err := u.db.PrepareExecute(sql, params)
+	// In we can get field index from Schema by field name
+	// Get space from LUA using db.Call()
+	var params []interface{}
 
-	fmt.Println(query)
+	// I'll fix this bad hardcode
+	user.AppendNotEmpty(&params, 3, user.Username)
+	user.AppendNotEmpty(&params, 4, user.Email)
+	user.AppendNotEmpty(&params, 5, user.FullName)
+	user.AppendNotEmpty(&params, 6, user.PhoneNumber)
+	user.AppendNotEmpty(&params, 7, user.ProfilePictureURL)
+	user.AppendNotEmpty(&params, 8, user.Country)
+	user.AppendNotEmpty(&params, 10, user.UpdatedAt.UnixNano())
 
-	if err = storage.CheckSQLDMLErr(query, err); err != nil {
-		return errors.Wrapf(err, "failed to update user with id %v", user.ID)
+	// Also we can get index name from LUA later
+	_, err := u.db.Update("USERS", "pk_unnamed_USERS_1", []interface{}{user.ID}, params)
+
+	if err != nil {
+		return errors.Wrap(err, "error updating db")
 	}
+
 	u.sendUsersMessage(ctx, user)
 
 	return nil
 }
 
-//nolint:funlen // Fill DB
-func (u *User) GenSQLUpdate2() (sql string, params map[string]interface{}) {
-	params = make(map[string]interface{})
-	sql = "UPDATE USERS set "
-
-	params["id"] = u.ID
-	params["updatedAt"] = u.UpdatedAt.UnixNano()
-	sql += "UPDATED_AT = :updatedAt"
-
-	if u.Email != "" {
-		params["email"] = u.Email
-		sql += ", EMAIL = :email"
+func (u *User) AppendNotEmpty(params *[]interface{}, position uint, value interface{}) {
+	if value != "" {
+		*params = append(*params, []interface{}{"=", position, value})
 	}
-
-	if u.FullName != "" {
-		params["fullName"] = u.FullName
-		sql += ", FULL_NAME = :fullName"
-	}
-
-	if u.PhoneNumber != "" {
-		params["phoneNumber"] = u.PhoneNumber
-		sql += ", PHONE_NUMBER = :phoneNumber"
-	}
-
-	if u.Username != "" {
-		params["username"] = u.Username
-		sql += ", USERNAME = :username"
-	}
-
-	if u.ProfilePictureURL != "" {
-		params["profilePictureURL"] = u.ProfilePictureURL
-		sql += ", PROFILE_PICTURE = :profilePictureURL"
-	}
-
-	if u.Country != "" {
-		params["country"] = u.Country
-		sql += ", COUNTRY = :country"
-	}
-
-	sql += " WHERE ID = :id"
-
-	return sql, params
 }
 
 func (u *User) updated() *User {
