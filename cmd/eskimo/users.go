@@ -214,7 +214,7 @@ func (s *service) ModifyUser(ctx context.Context, r server.ParsedRequest) server
 	}
 
 	req.ProfilePicture.Filename = fmt.Sprintf("%v", gUser.HashCode)
-	err = uploadProfilePicture(ctx, &req.ProfilePicture)
+	err = s.usersRepository.UploadProfilePicture(ctx, &req.ProfilePicture)
 	if err != nil {
 		return server.Unexpected(err)
 	}

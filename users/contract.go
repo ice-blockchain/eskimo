@@ -9,6 +9,7 @@ import (
 	"github.com/ICE-Blockchain/wintr/connectors/storage"
 	"github.com/framey-io/go-tarantool"
 	"io"
+	"mime/multipart"
 	"time"
 )
 
@@ -59,6 +60,7 @@ type (
 		GetUser(context.Context, UserID) (*User, error)
 		RemoveUser(context.Context, UserID) error
 		ModifyUser(context.Context, *User) error
+		UploadProfilePicture(context.Context, *multipart.FileHeader) error
 	}
 )
 
@@ -118,5 +120,11 @@ type (
 				Name string `yaml:"name" json:"name"`
 			} `yaml:"topics"`
 		} `yaml:"messageBroker"`
+		Storage struct {
+			URL         string `yaml:"url"`
+			ZoneName    string `yaml:"zoneName"`
+			ProfilePath string `yaml:"profilePath"`
+			AccessKey   string `yaml:"accessKey"`
+		} `yaml:"storage"`
 	}
 )

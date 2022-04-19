@@ -91,11 +91,5 @@ type (
 			Limit    uint64 `yaml:"limit"`
 			MaxLimit uint64 `yaml:"maxLimit"`
 		} `yaml:"defaultPagination"`
-		Storage struct {
-			URL         string `yaml:"url"`
-			ZoneName    string `yaml:"zoneName"`
-			ProfilePath string `yaml:"profilePath"`
-			AccessKey   string `yaml:"accessKey"`
-		} `yaml:"storage"`
 	}
 )
