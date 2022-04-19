@@ -196,32 +196,37 @@ func (req *RequestGetUser) Bindings(c *gin.Context) []func(obj interface{}) erro
 // @Failure      500            {object}  server.ErrorResponse
 // @Failure      504            {object}  server.ErrorResponse  "if request times out"
 // @Router       /users/{userId} [PATCH].
+//nolint:funlen
 func (s *service) ModifyUser(ctx context.Context, r server.ParsedRequest) server.Response {
 	req := r.(*RequestModifyUser)
+	gUser, err := s.usersRepository.GetUser(ctx, req.ID)
 
-	err := s.usersRepository.ModifyUser(ctx, req.user())
+	if errors.Is(err, users.ErrNotFound) {
+		m := fmt.Sprintf("user with id `%v` was not found.", req.ID)
 
-	if err != nil {
-		if errors.Is(err, users.ErrNotFound) {
-			m := fmt.Sprintf("user with id `%v` was not found.", req.ID)
-
-			return server.Response{
-				Code: http.StatusNotFound,
-				Data: server.ErrorResponse{
-					Error: m,
-					Code:  userNotFoundCode,
-				}.Fail(errors.Wrapf(err, m)),
-			}
+		return server.Response{
+			Code: http.StatusNotFound,
+			Data: server.ErrorResponse{
+				Error: m,
+				Code:  userNotFoundCode,
+			}.Fail(errors.Wrapf(err, m)),
 		}
+	}
 
+	req.ProfilePicture.Filename = fmt.Sprintf("%v", gUser.HashCode)
+	err = uploadProfilePicture(ctx, &req.ProfilePicture)
+	if err != nil {
 		return server.Unexpected(err)
 	}
 
+	err = s.usersRepository.ModifyUser(ctx, req.user())
+	if err != nil {
+		return server.Unexpected(err)
+	}
 	// if user specified a phoneNumber in the request body, then we proceed with phone number confirmation flow:
 	// step 0: don`t update the phone number in users table
 	// step 1: insert into phone_number_validation_codes // TODO ask Robert about the pattern of the code
 	// step 2: use https://www.twilio.com/docs/libraries/go to send SMS with that code to the user`s phone number
-
 	return server.OK(req)
 }
 

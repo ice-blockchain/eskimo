@@ -84,12 +84,18 @@ type (
 	service struct {
 		usersRepository users.Repository
 	}
-	config struct {
+	config struct { //nolint:govet
 		Host              string `yaml:"host"`
 		Version           string `yaml:"version"`
 		DefaultPagination struct {
 			Limit    uint64 `yaml:"limit"`
 			MaxLimit uint64 `yaml:"maxLimit"`
 		} `yaml:"defaultPagination"`
+		Storage struct {
+			URL         string `yaml:"url"`
+			ZoneName    string `yaml:"zoneName"`
+			ProfilePath string `yaml:"profilePath"`
+			AccessKey   string `yaml:"accessKey"`
+		} `yaml:"storage"`
 	}
 )
