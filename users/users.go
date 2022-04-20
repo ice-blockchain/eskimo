@@ -144,19 +144,23 @@ func (u *users) GetUser(ctx context.Context, id UserID) (*User, error) {
 }
 
 func (u *user) toUser() *User {
+	profilePictureURL := fmt.Sprintf("%s/%s/%s", cfg.Storage.URLDownload,
+		cfg.Storage.ProfilePath,
+		u.ProfilePicture)
+
 	return &User{
-		ID:             u.ID,
-		HashCode:       u.HashCode,
-		ReferredBy:     u.ReferredBy,
-		Username:       u.Username,
-		Email:          u.Email,
-		FullName:       u.FullName,
-		PhoneNumber:    u.PhoneNumber,
-		ProfilePicture: multipart.FileHeader{Filename: u.ProfilePicture},
-		Country:        u.Country,
-		CreatedAt:      time.Unix(0, int64(u.CreatedAt)).UTC(),
-		UpdatedAt:      time.Unix(0, int64(u.UpdatedAt)).UTC(),
-		DeletedAt:      nil,
+		ID:                u.ID,
+		HashCode:          u.HashCode,
+		ReferredBy:        u.ReferredBy,
+		Username:          u.Username,
+		Email:             u.Email,
+		FullName:          u.FullName,
+		PhoneNumber:       u.PhoneNumber,
+		ProfilePictureURL: profilePictureURL,
+		Country:           u.Country,
+		CreatedAt:         time.Unix(0, int64(u.CreatedAt)).UTC(),
+		UpdatedAt:         time.Unix(0, int64(u.UpdatedAt)).UTC(),
+		DeletedAt:         nil,
 	}
 }
 
@@ -268,8 +272,6 @@ func (u *User) updated() *User {
 }
 
 func (u *users) UploadProfilePicture(_ context.Context, data *multipart.FileHeader) error {
-	req.EnableDumpAllWithoutRequestBody()
-	appCfg.MustLoadFromKey(applicationYamlKey, &cfg)
 	file, err := data.Open()
 	defer file.Close()
 	if err != nil {
@@ -279,12 +281,12 @@ func (u *users) UploadProfilePicture(_ context.Context, data *multipart.FileHead
 	if err != nil {
 		return errors.Wrap(err, "error reading file")
 	}
-	url := fmt.Sprintf("%s/%sq/%s/%s", cfg.Storage.URL,
+	url := fmt.Sprintf("%s/%s/%s/%s", cfg.Storage.URLUpload,
 		cfg.Storage.ZoneName,
 		cfg.Storage.ProfilePath,
 		data.Filename)
 	_, err = req.
-		SetRetryCount(10). //nolint:gomnd // Static config
+		SetRetryCount(int(cfg.Storage.RetryCount)).
 		SetRetryCondition(func(resp *req.Response, err error) bool {
 			return (err != nil) || (resp.StatusCode == http.StatusTooManyRequests)
 		}).

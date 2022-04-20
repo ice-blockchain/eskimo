@@ -25,16 +25,17 @@ var (
 type (
 	UserID = string
 	User   struct {
-		CreatedAt      time.Time            `json:"createdAt,omitempty" example:"2022-01-03T16:20:52.156534Z"`
-		UpdatedAt      time.Time            `json:"updatedAt,omitempty" example:"2022-01-03T16:20:52.156534Z"`
-		DeletedAt      *time.Time           `json:"deletedAt,omitempty" example:"2022-01-03T16:20:52.156534Z"`
-		ID             string               `json:"id,omitempty" example:"226fcb86-fcce-458e-95f0-867e09c8c274"`
-		Email          string               `form:"email,omitempty" json:"email" example:"jdoe@gmail.com"`
-		FullName       string               `form:"fullName,omitempty" json:"fullName" example:"John Doe"`
-		PhoneNumber    string               `form:"phoneNumber,omitempty" json:"phoneNumber" example:"+12099216581"`
-		Username       string               `form:"username,omitempty" json:"username" example:"jdoe"`
-		ReferredBy     string               `form:"referredBy,omitempty" json:"referredBy" example:"billy112"`
-		ProfilePicture multipart.FileHeader `json:"profilePicture,omitempty"`
+		CreatedAt         time.Time            `json:"createdAt,omitempty" example:"2022-01-03T16:20:52.156534Z"`
+		UpdatedAt         time.Time            `json:"updatedAt,omitempty" example:"2022-01-03T16:20:52.156534Z"`
+		DeletedAt         *time.Time           `json:"deletedAt,omitempty" example:"2022-01-03T16:20:52.156534Z"`
+		ID                string               `json:"id,omitempty" example:"226fcb86-fcce-458e-95f0-867e09c8c274"`
+		Email             string               `form:"email,omitempty" json:"email" example:"jdoe@gmail.com"`
+		FullName          string               `form:"fullName,omitempty" json:"fullName" example:"John Doe"`
+		PhoneNumber       string               `form:"phoneNumber,omitempty" json:"phoneNumber" example:"+12099216581"`
+		Username          string               `form:"username,omitempty" json:"username" example:"jdoe"`
+		ReferredBy        string               `form:"referredBy,omitempty" json:"referredBy" example:"billy112"`
+		ProfilePictureURL string               `json:"profilePictureURL,omitempty" example:"https://somecdn.com/p1.jpg"`
+		ProfilePicture    multipart.FileHeader `json:"-"`
 		// ISO 3166 country code.
 		Country  string `json:"country" example:"us"`
 		HashCode uint64 `json:"hash_code"`
@@ -62,7 +63,6 @@ type (
 		GetUser(context.Context, UserID) (*User, error)
 		RemoveUser(context.Context, UserID) error
 		ModifyUser(context.Context, *User) error
-		UploadProfilePicture(context.Context, *multipart.FileHeader) error
 	}
 )
 
@@ -118,10 +118,12 @@ type (
 	// | config holds the configuration of this package mounted from `application.yaml`.
 	config struct {
 		Storage struct {
-			URL         string `yaml:"url"`
+			URLUpload   string `yaml:"urlUpload"`
+			URLDownload string `yaml:"urlDownload"`
 			ZoneName    string `yaml:"zoneName"`
 			ProfilePath string `yaml:"profilePath"`
 			AccessKey   string `yaml:"accessKey"`
+			RetryCount  uint8  `yaml:"retry_count"`
 		} `yaml:"storage"`
 		MessageBroker struct {
 			Topics []struct {
