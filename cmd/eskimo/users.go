@@ -5,14 +5,16 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/ICE-Blockchain/eskimo/users"
-	"github.com/ICE-Blockchain/wintr/log"
-	"github.com/ICE-Blockchain/wintr/server"
+	"net"
+	"net/http"
+
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
 	"github.com/pkg/errors"
-	"net"
-	"net/http"
+
+	"github.com/ICE-Blockchain/eskimo/users"
+	"github.com/ICE-Blockchain/wintr/log"
+	"github.com/ICE-Blockchain/wintr/server"
 )
 
 func (s *service) setupUserRoutes(router *gin.Engine) {
@@ -31,7 +33,7 @@ func (s *service) setupUserRoutes(router *gin.Engine) {
 // @Accept       json
 // @Produce      json
 // @Param        Authorization  header    string             true  "Insert your access token"  default(Bearer <Add access token here>)
-//nolint:lll    // @Param        Authorization  header  string  true  "Insert your access token"  default(Bearer <Add access token here>)
+// @Param        Authorization  header  string  true  "Insert your access token"  default(Bearer <Add access token here>)
 // @Param        request        body      RequestCreateUser  true  "Request params"
 // @Success      201            {object}  users.User
 // @Failure      400                {object}  server.ErrorResponse  "if validations fail"
@@ -113,7 +115,7 @@ func (req *RequestCreateUser) Bindings(c *gin.Context) []func(obj interface{}) e
 // @Tags         Accounts
 // @Accept       json
 // @Produce      json
-//nolint:lll    // @Param        Authorization  header    string  true  "Insert your access token"  default(Bearer <Add access token here>)
+// @Param        Authorization  header    string  true  "Insert your access token"  default(Bearer <Add access token here>)
 // @Param        userId             path      string             true   "ID of the user"
 // @Success      200                {object}  users.User
 // @Failure      400            {object}  server.ErrorResponse  "if validations fail"
@@ -126,7 +128,6 @@ func (req *RequestCreateUser) Bindings(c *gin.Context) []func(obj interface{}) e
 func (s *service) GetUser(ctx context.Context, r server.ParsedRequest) server.Response {
 	req := r.(*RequestGetUser)
 	resp, err := s.usersRepository.GetUser(ctx, req.ID)
-
 	if err != nil {
 		if errors.Is(err, users.ErrNotFound) {
 			m := fmt.Sprintf("user with id `%v` was not found.", req.ID)
@@ -183,7 +184,7 @@ func (req *RequestGetUser) Bindings(c *gin.Context) []func(obj interface{}) erro
 // @Tags         Accounts
 // @Accept       multipart/form-data
 // @Produce      json
-//nolint:lll    // @Param        Authorization      header    string             true   "Insert your access token"  default(Bearer <Add access token here>)
+// @Param        Authorization      header    string             true   "Insert your access token"  default(Bearer <Add access token here>)
 // @Param        userId         path      string  true  "ID of the user"
 // @Param        multiPartFormData  formData  RequestModifyUser  true   "Request params"
 // @Param        profilePicture     formData  file               false  "The new profile picture for the user"
@@ -196,7 +197,6 @@ func (req *RequestGetUser) Bindings(c *gin.Context) []func(obj interface{}) erro
 // @Failure      500            {object}  server.ErrorResponse
 // @Failure      504            {object}  server.ErrorResponse  "if request times out"
 // @Router       /users/{userId} [PATCH].
-//nolint:funlen
 func (s *service) ModifyUser(ctx context.Context, r server.ParsedRequest) server.Response {
 	req := r.(*RequestModifyUser)
 	gUser, err := s.usersRepository.GetUser(ctx, req.ID)
@@ -206,10 +206,7 @@ func (s *service) ModifyUser(ctx context.Context, r server.ParsedRequest) server
 
 		return server.Response{
 			Code: http.StatusNotFound,
-			Data: server.ErrorResponse{
-				Error: m,
-				Code:  userNotFoundCode,
-			}.Fail(errors.Wrapf(err, m)),
+			Data: server.ErrorResponse{Error: m, Code: userNotFoundCode}.Fail(errors.Wrapf(err, m)),
 		}
 	}
 
@@ -228,7 +225,7 @@ func (s *service) ModifyUser(ctx context.Context, r server.ParsedRequest) server
 	// If user specified a phoneNumber in the request body, then we proceed with phone number confirmation flow:
 	// step 0: don`t update the phone number in users table
 	// step 1: insert into phone_number_validation_codes // TODO ask Robert about the pattern of the code
-	// step 2: use https://www.twilio.com/docs/libraries/go to send SMS with that code to the user`s phone number
+	// step 2: use https://www.twilio.com/docs/libraries/go to send SMS with that code to the user`s phone number.
 	return server.OK(req)
 }
 
@@ -283,8 +280,11 @@ func (req *RequestModifyUser) Bindings(c *gin.Context) []func(obj interface{}) e
 	return []func(obj interface{}) error{
 		func(obj interface{}) error {
 			err := c.ShouldBindWith(obj, binding.FormMultipart)
+			if err != nil {
+				return errors.Wrap(err, "bind failed")
+			}
 
-			return err
+			return nil
 		},
 		c.ShouldBindUri,
 		server.ShouldBindAuthenticatedUser(c),
@@ -297,7 +297,7 @@ func (req *RequestModifyUser) Bindings(c *gin.Context) []func(obj interface{}) e
 // @Tags         Accounts
 // @Accept       json
 // @Produce      json
-//nolint:lll    // @Param        Authorization  header  string  true  "Insert your access token"  default(Bearer <Add access token here>)
+// @Param        Authorization  header  string  true  "Insert your access token"  default(Bearer <Add access token here>)
 // @Param        userId         path    string  true  "ID of the User"
 // @Success      200            "OK - found and deleted"
 // @Success      204            "No Content - already deleted"

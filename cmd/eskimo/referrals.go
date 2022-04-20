@@ -4,13 +4,15 @@ package main
 
 import (
 	"context"
-	"github.com/ICE-Blockchain/eskimo/users"
-	"github.com/ICE-Blockchain/wintr/server"
-	"github.com/gin-gonic/gin"
-	"github.com/pkg/errors"
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/gin-gonic/gin"
+	"github.com/pkg/errors"
+
+	"github.com/ICE-Blockchain/eskimo/users"
+	"github.com/ICE-Blockchain/wintr/server"
 )
 
 func (s *service) setupUserReferralRoutes(router *gin.Engine) {
@@ -39,8 +41,8 @@ func (s *service) setupUserReferralRoutes(router *gin.Engine) {
 func (s *service) GetReferralAcquisitionHistory(ctx context.Context, r server.ParsedRequest) server.Response {
 	req := r.(*RequestGetReferralAcquisitionHistory)
 
-	//TODO implement me
-	if req.AuthenticatedUser.ID == req.ID {
+	//nolint:nolintlint,gocritic // TODO implement me.
+	if req.AuthenticatedUser.ID == req.ID { //nolint:nolintlint,gocritic
 		// User is trying to get their own referral acquisition history.
 	} else {
 		// User is trying to get some other user's referral acquisition history.
@@ -48,8 +50,8 @@ func (s *service) GetReferralAcquisitionHistory(ctx context.Context, r server.Pa
 
 	return server.OK([]*users.ReferralAcquisition{{
 		Date: time.Time{},
-		T1:   12, // the number of users where referred_by = :user_id
-		T2:   11, // the number of users where referred_by in (t1)
+		T1:   12, //nolint:gomnd    // The number of users where referred_by = :user_id.
+		T2:   11, //nolint:gomnd    // The number of users where referred_by in (t1).
 	}})
 }
 
@@ -94,22 +96,22 @@ func (req *RequestGetReferralAcquisitionHistory) Bindings(c *gin.Context) []func
 func (s *service) GetReferrals(ctx context.Context, r server.ParsedRequest) server.Response {
 	req := r.(*RequestGetReferrals)
 
-	//TODO implement me
-	if req.AuthenticatedUser.ID == req.ID {
+	//nolint:nolintlint,godox // TODO implement me
+	if req.AuthenticatedUser.ID == req.ID { //nolint:nolintlint,gocritic
 		// User is trying to get their own referrals.
 	} else {
 		// User is trying to get some other user's referrals.
 	}
 
 	return server.OK([]*users.User{{
-		// we implement only T1 ones for now.
-		// the order of the referrals is : referrals from mobile phone agenda, then the most recent ones (based on createdAt).
-		// return only those fields:
+		// We implement only T1 ones for now.
+		// The order of the referrals is : referrals from mobile phone agenda, then the most recent ones (based on createdAt).
+		// Return only those fields:.
 		ID:                "did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2",
 		Username:          "jdoe",
 		PhoneNumber:       "+12099216581",
 		ProfilePictureURL: "a.jpg",
-		// TODO we need to find out how to find out if someone is an agenda contact of another
+		//nolint:nolintlint,godox // TODO we need to find out how to find out if someone is an agenda contact of another.
 	}})
 }
 
@@ -130,8 +132,9 @@ func (req *RequestGetReferrals) GetAuthenticatedUser() server.AuthenticatedUser 
 func (req *RequestGetReferrals) Validate() *server.Response {
 	if req.Type == "" {
 		req.Type = "T1"
-	} else if strings.ToUpper(req.Type) != "T1" && strings.ToUpper(req.Type) != "T2" {
+	} else if strings.ToUpper(req.Type) != "T1" && strings.ToUpper(req.Type) != "T2" { //nolint:gocritic // later
 		err := errors.Errorf("type '%v' is invalid, valid types are [T1,T2]", req.Type)
+
 		return &server.Response{
 			Data: server.ErrorResponse{
 				Error: err.Error(),

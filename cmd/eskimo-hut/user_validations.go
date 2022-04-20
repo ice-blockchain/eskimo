@@ -4,16 +4,18 @@ package main
 
 import (
 	"context"
-	"github.com/ICE-Blockchain/wintr/server"
-	"github.com/gin-gonic/gin"
 	"net/http"
 	"regexp"
+
+	"github.com/gin-gonic/gin"
+
+	"github.com/ICE-Blockchain/wintr/server"
 )
 
 func (s *service) setupUserValidationRoutes(router *gin.Engine) {
 	router.
 		Group("/v1").
-		PUT("user-validations/username", server.RootHandler(newRequestValidateUsername, s.ValidateUsername)).
+		GET("user-validations/username", server.RootHandler(newRequestValidateUsername, s.ValidateUsername)).
 		PUT("user-validations/phone-number", server.RootHandler(newRequestValidatePhoneNumber, s.ValidatePhoneNumber))
 }
 
@@ -23,17 +25,17 @@ func (s *service) setupUserValidationRoutes(router *gin.Engine) {
 // @Tags         Validations
 // @Accept       json
 // @Produce      json
-// @Param        Authorization  header  string                   true  "Insert your access token"  default(Bearer <Add access token here>)
-// @Param        request        body    RequestValidateUsername  true  "Request params"
+// @Param        Authorization  header  string  true  "Insert your access token"  default(Bearer <Add access token here>)
+// @Param        username       query   string  true  "User's username to validate"
 // @Success      200            "username is ok and can be used"
-// @Failure      400            {object}  server.ErrorResponse  "if validations fail"
-// @Failure      401            {object}  server.ErrorResponse  "if not authorized"
+// @Failure      400             {object}  server.ErrorResponse  "if validations fail"
+// @Failure      401             {object}  server.ErrorResponse  "if not authorized"
 // @Failure      409            {object}  server.ErrorResponse  "user exists"
-// @Failure      422            {object}  server.ErrorResponse  "if syntax fails"
-// @Failure      500            {object}  server.ErrorResponse
-// @Failure      504            {object}  server.ErrorResponse  "if request times out"
-// @Router       /user-validations/username [PUT].
-func (s *service) ValidateUsername(ctx context.Context, r server.ParsedRequest) server.Response {
+// @Failure      422             {object}  server.ErrorResponse  "if syntax fails"
+// @Failure      500             {object}  server.ErrorResponse
+// @Failure      504             {object}  server.ErrorResponse  "if request times out"
+// @Router       /user-validations/username [GET].
+func (s *service) ValidateUsername(_ context.Context, r server.ParsedRequest) server.Response {
 	req := r.(*RequestValidateUsername)
 
 	eval := regexp.MustCompile(`[\w\-.]+`)
@@ -66,12 +68,12 @@ func (req *RequestValidateUsername) GetAuthenticatedUser() server.AuthenticatedU
 }
 
 func (req *RequestValidateUsername) Validate() *server.Response {
-	// TODO also validate structure of the username
+	//nolint:nolintlint,godox // TODO also validate structure of the username.
 	return server.RequiredStrings(map[string]string{"username": req.Username})
 }
 
 func (req *RequestValidateUsername) Bindings(c *gin.Context) []func(obj interface{}) error {
-	return []func(obj interface{}) error{c.ShouldBindJSON, server.ShouldBindAuthenticatedUser(c)}
+	return []func(obj interface{}) error{c.ShouldBindQuery, server.ShouldBindAuthenticatedUser(c)}
 }
 
 // ValidatePhoneNumber godoc
@@ -80,23 +82,24 @@ func (req *RequestValidateUsername) Bindings(c *gin.Context) []func(obj interfac
 // @Tags         Validations
 // @Accept       json
 // @Produce      json
-// @Param        Authorization  header  string                      true  "Insert your access token"  default(Bearer <Add access token here>)
-// @Param        request        body    RequestValidatePhoneNumber  true  "Request params"
-// @Success      200            "ok"
+// @Param        Authorization   header  string  true  "Insert your access token"  default(Bearer <Add access token here>)
+// @Param        phoneNumber     query   string  true  "User's phone number to validate"
+// @Param        validationCode  query   string  true  "User's validation code received by the user on the provided phone number"
+// @Success      200             "ok"
 // @Failure      400            {object}  server.ErrorResponse  "if validations fail"
 // @Failure      401            {object}  server.ErrorResponse  "if not authorized"
-// @Failure      404            {object}  server.ErrorResponse  "phone number is not in the process of validation"
+// @Failure      404             {object}  server.ErrorResponse  "phone number is not in the process of validation"
 // @Failure      422            {object}  server.ErrorResponse  "if syntax fails"
 // @Failure      500            {object}  server.ErrorResponse
 // @Failure      504            {object}  server.ErrorResponse  "if request times out"
 // @Router       /user-validations/phone-number [PUT].
-func (s *service) ValidatePhoneNumber(ctx context.Context, r server.ParsedRequest) server.Response {
+func (s *service) ValidatePhoneNumber(_ context.Context, r server.ParsedRequest) server.Response {
 	req := r.(*RequestValidatePhoneNumber)
 
-	//TODO implement me
+	//nolint:nolintlint,godox // TODO implement me
 	// if phone number & code match the ones in the database => remove the entry and return 200
 	// if entry for that phone number is not in phone_number_validation_codes => 404
-	// if entry exists but has wrong code => 400 INVALID_CODE
+	// if entry exists but has wrong code => 400 INVALID_CODE.
 
 	return server.OK(req)
 }
@@ -120,5 +123,5 @@ func (req *RequestValidatePhoneNumber) Validate() *server.Response {
 }
 
 func (req *RequestValidatePhoneNumber) Bindings(c *gin.Context) []func(obj interface{}) error {
-	return []func(obj interface{}) error{c.ShouldBindJSON, server.ShouldBindAuthenticatedUser(c)}
+	return []func(obj interface{}) error{c.ShouldBindQuery, server.ShouldBindAuthenticatedUser(c)}
 }

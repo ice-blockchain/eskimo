@@ -7,6 +7,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/framey-io/go-tarantool"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
@@ -15,7 +16,6 @@ import (
 	"github.com/ICE-Blockchain/wintr/connectors/storage"
 	storagefixture "github.com/ICE-Blockchain/wintr/connectors/storage/fixture"
 	"github.com/ICE-Blockchain/wintr/log"
-	"github.com/framey-io/go-tarantool"
 )
 
 func TestSetup() func() {

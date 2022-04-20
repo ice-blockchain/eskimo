@@ -5,15 +5,17 @@ package users
 import (
 	"context"
 	"encoding/json"
-	appCfg "github.com/ICE-Blockchain/wintr/config"
-	messagebroker "github.com/ICE-Blockchain/wintr/connectors/message_broker"
-	"github.com/ICE-Blockchain/wintr/connectors/storage"
-	"github.com/ICE-Blockchain/wintr/log"
+	"time"
+
 	"github.com/framey-io/go-tarantool"
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	"github.com/zeebo/xxh3"
-	"time"
+
+	appCfg "github.com/ICE-Blockchain/wintr/config"
+	messagebroker "github.com/ICE-Blockchain/wintr/connectors/message_broker"
+	"github.com/ICE-Blockchain/wintr/connectors/storage"
+	"github.com/ICE-Blockchain/wintr/log"
 )
 
 func New(ctx context.Context, cancel context.CancelFunc) Repository {
@@ -184,18 +186,6 @@ func (u *users) ModifyUser(ctx context.Context, user *User) error {
 		return errors.Wrap(ctx.Err(), "update user failed because context failed")
 	}
 	user.updated()
-
-	params := map[string]interface{}{
-		"id":                user.ID,
-		"email":             user.Email,
-		"fullName":          user.FullName,
-		"phoneNumber":       user.PhoneNumber,
-		"username":          user.Username,
-		"profilePictureURL": user.ProfilePictureURL,
-		"country":           user.Country,
-		"updatedAt":         user.UpdatedAt.UnixNano(),
-	}
-
 	sql, params := user.GenSQLUpdate()
 	query, err := u.db.PrepareExecute(sql, params)
 	if err = storage.CheckSQLDMLErr(query, err); err != nil {
@@ -260,7 +250,6 @@ func (u *User) updated() *User {
 
 func (u *users) sendUsersMessage(ctx context.Context, user *User) {
 	valueBytes, err := json.Marshal(user)
-
 	if err != nil {
 		log.Error(errors.Wrapf(err, "failed to marshal user %v", user))
 

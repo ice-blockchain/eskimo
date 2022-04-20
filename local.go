@@ -3,11 +3,11 @@
 package main
 
 import (
-	"github.com/ICE-Blockchain/eskimo/users/fixture"
 	"os"
 	"os/signal"
 	"syscall"
 
+	"github.com/ICE-Blockchain/eskimo/users/fixture"
 	"github.com/ICE-Blockchain/wintr/log"
 )
 
