@@ -6,7 +6,6 @@ import (
 	"context"
 	_ "embed"
 	"io"
-	"mime/multipart"
 	"time"
 
 	"github.com/framey-io/go-tarantool"
@@ -62,7 +61,6 @@ type (
 		GetUser(context.Context, UserID) (*User, error)
 		RemoveUser(context.Context, UserID) error
 		ModifyUser(context.Context, *User) error
-		UploadProfilePicture(context.Context, *multipart.FileHeader) error
 	}
 )
 
