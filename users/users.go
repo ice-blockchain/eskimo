@@ -185,24 +185,21 @@ func (u *users) ModifyUser(ctx context.Context, user *User) error {
 	}
 	user.updated()
 
-	// In we can get field index from Schema by field name
-	// Get space from LUA using db.Call()
-	var params []interface{}
+	params := map[string]interface{}{
+		"id":                user.ID,
+		"email":             user.Email,
+		"fullName":          user.FullName,
+		"phoneNumber":       user.PhoneNumber,
+		"username":          user.Username,
+		"profilePictureURL": user.ProfilePictureURL,
+		"country":           user.Country,
+		"updatedAt":         user.UpdatedAt.UnixNano(),
+	}
 
-	// I'll fix this bad hardcode
-	user.AppendNotEmpty(&params, 3, user.Username)
-	user.AppendNotEmpty(&params, 4, user.Email)
-	user.AppendNotEmpty(&params, 5, user.FullName)
-	user.AppendNotEmpty(&params, 6, user.PhoneNumber)
-	user.AppendNotEmpty(&params, 7, user.ProfilePictureURL)
-	user.AppendNotEmpty(&params, 8, user.Country)
-	user.AppendNotEmpty(&params, 10, user.UpdatedAt.UnixNano())
-
-	// Also we can get index name from LUA later
-	_, err := u.db.Update("USERS", "pk_unnamed_USERS_1", []interface{}{user.ID}, params)
-
-	if err != nil {
-		return errors.Wrap(err, "error updating db")
+	sql, params := user.GenSQLUpdate()
+	query, err := u.db.PrepareExecute(sql, params)
+	if err = storage.CheckSQLDMLErr(query, err); err != nil {
+		return errors.Wrapf(err, "failed to update user with id %v", user.ID)
 	}
 
 	u.sendUsersMessage(ctx, user)
@@ -210,10 +207,48 @@ func (u *users) ModifyUser(ctx context.Context, user *User) error {
 	return nil
 }
 
-func (u *User) AppendNotEmpty(params *[]interface{}, position uint, value interface{}) {
-	if value != "" {
-		*params = append(*params, []interface{}{"=", position, value})
+//nolint:funlen // Fill DB cause a lot of fields
+func (u *User) GenSQLUpdate() (sql string, params map[string]interface{}) {
+	params = make(map[string]interface{})
+	sql = "UPDATE USERS set "
+
+	params["id"] = u.ID
+	params["updatedAt"] = u.UpdatedAt.UnixNano()
+	sql += "UPDATED_AT = :updatedAt"
+
+	if u.Email != "" {
+		params["email"] = u.Email
+		sql += ", EMAIL = :email"
 	}
+
+	if u.FullName != "" {
+		params["fullName"] = u.FullName
+		sql += ", FULL_NAME = :fullName"
+	}
+
+	if u.PhoneNumber != "" {
+		params["phoneNumber"] = u.PhoneNumber
+		sql += ", PHONE_NUMBER = :phoneNumber"
+	}
+
+	if u.Username != "" {
+		params["username"] = u.Username
+		sql += ", USERNAME = :username"
+	}
+
+	if u.ProfilePictureURL != "" {
+		params["profilePictureURL"] = u.ProfilePictureURL
+		sql += ", PROFILE_PICTURE = :profilePictureURL"
+	}
+
+	if u.Country != "" {
+		params["country"] = u.Country
+		sql += ", COUNTRY = :country"
+	}
+
+	sql += " WHERE ID = :id"
+
+	return sql, params
 }
 
 func (u *User) updated() *User {
