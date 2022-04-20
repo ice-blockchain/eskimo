@@ -5,10 +5,15 @@ package users
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"io"
+	"mime/multipart"
+	"net/http"
 	"time"
 
 	"github.com/framey-io/go-tarantool"
 	"github.com/hashicorp/go-multierror"
+	"github.com/imroc/req/v3"
 	"github.com/pkg/errors"
 	"github.com/zeebo/xxh3"
 
@@ -86,7 +91,7 @@ func (u *users) AddUser(ctx context.Context, user *User) error {
 		"phoneNumber":       user.PhoneNumber,
 		"username":          user.Username,
 		"referredBy":        refer,
-		"profilePictureURL": user.ProfilePictureURL,
+		"profilePictureURL": user.ProfilePicture.Filename,
 		"country":           user.Country,
 		"createdAt":         user.CreatedAt.UnixNano(),
 		"updatedAt":         user.UpdatedAt.UnixNano(),
@@ -140,18 +145,18 @@ func (u *users) GetUser(ctx context.Context, id UserID) (*User, error) {
 
 func (u *user) toUser() *User {
 	return &User{
-		ID:                u.ID,
-		HashCode:          u.HashCode,
-		ReferredBy:        u.ReferredBy,
-		Username:          u.Username,
-		Email:             u.Email,
-		FullName:          u.FullName,
-		PhoneNumber:       u.PhoneNumber,
-		ProfilePictureURL: u.ProfilePicture,
-		Country:           u.Country,
-		CreatedAt:         time.Unix(0, int64(u.CreatedAt)).UTC(),
-		UpdatedAt:         time.Unix(0, int64(u.UpdatedAt)).UTC(),
-		DeletedAt:         nil,
+		ID:             u.ID,
+		HashCode:       u.HashCode,
+		ReferredBy:     u.ReferredBy,
+		Username:       u.Username,
+		Email:          u.Email,
+		FullName:       u.FullName,
+		PhoneNumber:    u.PhoneNumber,
+		ProfilePicture: multipart.FileHeader{Filename: u.ProfilePicture},
+		Country:        u.Country,
+		CreatedAt:      time.Unix(0, int64(u.CreatedAt)).UTC(),
+		UpdatedAt:      time.Unix(0, int64(u.UpdatedAt)).UTC(),
+		DeletedAt:      nil,
 	}
 }
 
@@ -186,6 +191,20 @@ func (u *users) ModifyUser(ctx context.Context, user *User) error {
 		return errors.Wrap(ctx.Err(), "update user failed because context failed")
 	}
 	user.updated()
+
+	gUser, err := u.GetUser(ctx, user.ID)
+	if err != nil {
+		return errors.Wrapf(ErrNotFound, "no user found with id %v", user.ID)
+	}
+
+	if user.ProfilePicture.Filename != "" && user.ProfilePicture.Size != 0 {
+		user.ProfilePicture.Filename = fmt.Sprintf("%v", gUser.HashCode)
+		err = u.UploadProfilePicture(ctx, &user.ProfilePicture)
+		if err != nil {
+			return errors.Wrapf(err, "failed to upload user image, id %v", user.ID)
+		}
+	}
+
 	sql, params := user.GenSQLUpdate()
 	query, err := u.db.PrepareExecute(sql, params)
 	if err = storage.CheckSQLDMLErr(query, err); err != nil {
@@ -226,8 +245,8 @@ func (u *User) GenSQLUpdate() (sql string, params map[string]interface{}) {
 		sql += ", USERNAME = :username"
 	}
 
-	if u.ProfilePictureURL != "" {
-		params["profilePictureURL"] = u.ProfilePictureURL
+	if u.ProfilePicture.Filename != "" {
+		params["profilePictureURL"] = u.ProfilePicture.Filename
 		sql += ", PROFILE_PICTURE = :profilePictureURL"
 	}
 
@@ -246,6 +265,37 @@ func (u *User) updated() *User {
 	u.UpdatedAt = now
 
 	return u
+}
+
+func (u *users) UploadProfilePicture(_ context.Context, data *multipart.FileHeader) error {
+	req.EnableDumpAllWithoutRequestBody()
+	appCfg.MustLoadFromKey(applicationYamlKey, &cfg)
+	file, err := data.Open()
+	defer file.Close()
+	if err != nil {
+		return errors.Wrap(err, "error opening file")
+	}
+	fileData, err := io.ReadAll(file)
+	if err != nil {
+		return errors.Wrap(err, "error reading file")
+	}
+	url := fmt.Sprintf("%s/%sq/%s/%s", cfg.Storage.URL,
+		cfg.Storage.ZoneName,
+		cfg.Storage.ProfilePath,
+		data.Filename)
+	_, err = req.
+		SetRetryCount(10). //nolint:gomnd // Static config
+		SetRetryCondition(func(resp *req.Response, err error) bool {
+			return (err != nil) || (resp.StatusCode == http.StatusTooManyRequests)
+		}).
+		SetHeader("AccessKey", cfg.Storage.AccessKey).
+		SetHeader("Content-Type", data.Header.Get("Content-Type")).
+		SetBodyBytes(fileData).Put(url)
+	if err != nil {
+		return errors.Wrap(err, "error uploading file")
+	}
+
+	return nil
 }
 
 func (u *users) sendUsersMessage(ctx context.Context, user *User) {

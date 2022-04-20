@@ -3,17 +3,11 @@
 package fixture
 
 import (
-	"fmt"
 	"sync"
-	"testing"
 
-	"github.com/framey-io/go-tarantool"
-	"github.com/google/uuid"
 	"github.com/pkg/errors"
-	"github.com/stretchr/testify/require"
 
 	messagebrokerfixture "github.com/ICE-Blockchain/wintr/connectors/message_broker/fixture"
-	"github.com/ICE-Blockchain/wintr/connectors/storage"
 	storagefixture "github.com/ICE-Blockchain/wintr/connectors/storage/fixture"
 	"github.com/ICE-Blockchain/wintr/log"
 )
@@ -72,25 +66,4 @@ func cleanUp(cleanUpStorage, cleanUpMessageBroker func()) (error, error) {
 	wg.Wait()
 
 	return dbError, mbError
-}
-
-func MustInsertUserWithTime(t *testing.T, db tarantool.Connector, user *User) {
-	t.Helper()
-	user.ID = fmt.Sprintf("%v%v", user.ID, uuid.New().String())
-
-	sql := `INSERT INTO users (id, email, fullName, phoneNumber, username, referredBy, profilePictureURL, createdAt)
-				VALUES(:id, :email, :fullName, :phoneNumber, :username, :referredBy, :profilePictureURL, :createdAt)`
-
-	params := map[string]interface{}{
-		"id":                user.ID,
-		"email":             user.Email,
-		"fullName":          user.FullName,
-		"phoneNumber":       user.PhoneNumber,
-		"username":          user.Username,
-		"referredBy":        user.ReferredBy,
-		"profilePictureURL": user.ProfilePictureURL,
-		"createdAt":         user.CreatedAt.UnixNano(),
-	}
-
-	require.NoError(t, storage.CheckSQLDMLErr(db.PrepareExecute(sql, params)))
 }

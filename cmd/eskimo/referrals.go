@@ -4,6 +4,7 @@ package main
 
 import (
 	"context"
+	"mime/multipart"
 	"net/http"
 	"strings"
 	"time"
@@ -107,10 +108,10 @@ func (s *service) GetReferrals(ctx context.Context, r server.ParsedRequest) serv
 		// We implement only T1 ones for now.
 		// The order of the referrals is : referrals from mobile phone agenda, then the most recent ones (based on createdAt).
 		// Return only those fields:.
-		ID:                "did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2",
-		Username:          "jdoe",
-		PhoneNumber:       "+12099216581",
-		ProfilePictureURL: "a.jpg",
+		ID:             "did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2",
+		Username:       "jdoe",
+		PhoneNumber:    "+12099216581",
+		ProfilePicture: multipart.FileHeader{Filename: "a.jpg"},
 		//nolint:nolintlint,godox // TODO we need to find out how to find out if someone is an agenda contact of another.
 	}})
 }

@@ -5,6 +5,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"mime/multipart"
 	"net"
 	"net/http"
 
@@ -70,14 +71,14 @@ func newRequestCreateUser() server.ParsedRequest {
 
 func (req *RequestCreateUser) user() *users.User {
 	return &users.User{
-		ID:                req.AuthenticatedUser.ID,
-		Email:             req.Email,
-		FullName:          req.FullName,
-		PhoneNumber:       req.PhoneNumber,
-		Username:          req.Username,
-		ReferredBy:        req.ReferredBy,
-		ProfilePictureURL: defaultUserImage,
-		Country:           "TODO: get me based on req.ClientIP using https://www.ip2location.com/development-libraries/ip2location/go",
+		ID:             req.AuthenticatedUser.ID,
+		Email:          req.Email,
+		FullName:       req.FullName,
+		PhoneNumber:    req.PhoneNumber,
+		Username:       req.Username,
+		ReferredBy:     req.ReferredBy,
+		ProfilePicture: multipart.FileHeader{Filename: defaultUserImage},
+		Country:        "TODO: get me based on req.ClientIP using https://www.ip2location.com/development-libraries/ip2location/go",
 	}
 }
 
@@ -149,8 +150,8 @@ func (s *service) GetUser(ctx context.Context, r server.ParsedRequest) server.Re
 
 	// User is trying to get some other user's account.
 	respShort := users.User{
-		Username:          resp.Username,
-		ProfilePictureURL: resp.ProfilePictureURL,
+		Username:       resp.Username,
+		ProfilePicture: multipart.FileHeader{Filename: resp.ProfilePicture.Filename},
 	}
 
 	return server.OK(respShort)
@@ -199,27 +200,21 @@ func (req *RequestGetUser) Bindings(c *gin.Context) []func(obj interface{}) erro
 // @Router       /users/{userId} [PATCH].
 func (s *service) ModifyUser(ctx context.Context, r server.ParsedRequest) server.Response {
 	req := r.(*RequestModifyUser)
-	gUser, err := s.usersRepository.GetUser(ctx, req.ID)
 
-	if errors.Is(err, users.ErrNotFound) {
-		m := fmt.Sprintf("user with id `%v` was not found.", req.ID)
-
-		return server.Response{
-			Code: http.StatusNotFound,
-			Data: server.ErrorResponse{Error: m, Code: userNotFoundCode}.Fail(errors.Wrapf(err, m)),
-		}
-	}
-
-	if req.ProfilePicture.Filename != "" {
-		req.ProfilePicture.Filename = fmt.Sprintf("%v", gUser.HashCode)
-		err = users.RetryUpload(ctx, &req.ProfilePicture)
-		if err != nil {
-			return server.Unexpected(err)
-		}
-	}
-
-	err = s.usersRepository.ModifyUser(ctx, req.user())
+	err := s.usersRepository.ModifyUser(ctx, req.user())
 	if err != nil {
+		if errors.Is(err, users.ErrNotFound) {
+			m := fmt.Sprintf("user with id `%v` was not found.", req.ID)
+
+			return server.Response{
+				Code: http.StatusNotFound,
+				Data: server.ErrorResponse{
+					Error: m,
+					Code:  userNotFoundCode,
+				}.Fail(errors.Wrapf(err, m)),
+			}
+		}
+
 		return server.Unexpected(err)
 	}
 	// If user specified a phoneNumber in the request body, then we proceed with phone number confirmation flow:
@@ -235,13 +230,13 @@ func newRequestModifyUser() server.ParsedRequest {
 
 func (req *RequestModifyUser) user() *users.User {
 	return &users.User{
-		ID:                req.ID,
-		Email:             req.Email,
-		FullName:          req.FullName,
-		PhoneNumber:       req.PhoneNumber,
-		Username:          req.Username,
-		ProfilePictureURL: req.ProfilePicture.Filename,
-		Country:           "TODO by clients IP",
+		ID:             req.ID,
+		Email:          req.Email,
+		FullName:       req.FullName,
+		PhoneNumber:    req.PhoneNumber,
+		Username:       req.Username,
+		ProfilePicture: req.ProfilePicture,
+		Country:        "TODO by clients IP",
 	}
 }
 
