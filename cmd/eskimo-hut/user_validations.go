@@ -15,7 +15,7 @@ import (
 func (s *service) setupUserValidationRoutes(router *gin.Engine) {
 	router.
 		Group("/v1").
-		GET("user-validations/username", server.RootHandler(newRequestValidateUsername, s.ValidateUsername)).
+		PUT("user-validations/username", server.RootHandler(newRequestValidateUsername, s.ValidateUsername)).
 		PUT("user-validations/phone-number", server.RootHandler(newRequestValidatePhoneNumber, s.ValidatePhoneNumber))
 }
 
@@ -73,7 +73,7 @@ func (req *RequestValidateUsername) Validate() *server.Response {
 }
 
 func (req *RequestValidateUsername) Bindings(c *gin.Context) []func(obj interface{}) error {
-	return []func(obj interface{}) error{c.ShouldBindQuery, server.ShouldBindAuthenticatedUser(c)}
+	return []func(obj interface{}) error{c.ShouldBindJSON, server.ShouldBindAuthenticatedUser(c)}
 }
 
 // ValidatePhoneNumber godoc

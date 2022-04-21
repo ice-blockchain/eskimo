@@ -57,6 +57,12 @@ type (
 		UserRepository
 	}
 
+	Processor interface {
+		// Repository.
+		io.Closer
+		CheckHealth(context.Context) error
+	}
+
 	// UserRepository manages the database operations related to `users`.
 	UserRepository interface {
 		AddUser(context.Context, *User) error
@@ -95,6 +101,8 @@ type (
 		close func() error
 		UserRepository
 	}
+
+	processor struct{}
 
 	// | user is the internal (User) structure for deserialization from the DB
 	// because it cannot deserialize time.Time or map/json structures properly.

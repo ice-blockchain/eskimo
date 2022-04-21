@@ -323,3 +323,18 @@ func (u *users) sendUsersMessage(ctx context.Context, user *User) {
 		Topic:   cfg.MessageBroker.Topics[0].Name,
 	}, responder)
 }
+
+func StartProcessor(ctx context.Context, cancel context.CancelFunc) Processor {
+	//nolint:nolintlint    // TODO implement me.
+	return &processor{}
+}
+
+func (p processor) Close() error {
+	//nolint:nolintlint    // TODO implement me.
+	return nil
+}
+
+func (p processor) CheckHealth(ctx context.Context) error {
+	//nolint:nolintlint    // TODO implement me.
+	return nil
+}

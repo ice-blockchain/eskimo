@@ -3,26 +3,33 @@
 package main
 
 import (
-	"github.com/ICE-Blockchain/eskimo/users"
-	"github.com/ICE-Blockchain/wintr/server"
 	"mime/multipart"
 	"net"
+
+	"github.com/ICE-Blockchain/eskimo/users"
+	"github.com/ICE-Blockchain/wintr/server"
 )
 
 // Public API.
+const (
+	userNotFoundCode  = "USER_NOT_FOUND"
+	userDuplicateCode = "USER_DUPLICATE"
+)
+
+const defaultUserImage = "https://ice-staging.b-cdn.net/profile/default-user-image.jpg"
 
 type (
 	RequestCreateUser struct {
-		AuthenticatedUser server.AuthenticatedUser `json:"authenticatedUser" swaggerignore:"true"`
-		ClientIP          net.IP                   `json:"clientIP" swaggerignore:"true"`
 		// `email` is optional.
 		Email string `json:"email" example:"jdoe@gmail.com"`
 		// `fullName` is optional.
 		FullName string `json:"fullName" example:"John Doe"`
 		// `phoneNumber` is optional.
-		PhoneNumber string `json:"phoneNumber" example:"+12099216581"`
-		Username    string `json:"username" example:"jdoe"`
-		ReferredBy  string `json:"referredBy" example:"billy112"`
+		PhoneNumber       string                   `json:"phoneNumber" example:"+12099216581"`
+		Username          string                   `json:"username" example:"jdoe"`
+		ReferredBy        string                   `json:"referredBy" example:"billy112"`
+		AuthenticatedUser server.AuthenticatedUser `json:"authenticatedUser" swaggerignore:"true"`
+		ClientIP          net.IP                   `json:"clientIP" swaggerignore:"true"`
 	}
 	RequestModifyUser struct {
 		Email             string                   `form:"email" json:"email" example:"jdoe@gmail.com"`
@@ -40,6 +47,7 @@ type (
 	RequestValidateUsername struct {
 		AuthenticatedUser server.AuthenticatedUser `json:"authenticatedUser" swaggerignore:"true"`
 		Username          string                   `json:"username" example:"jdoe"`
+		Extra             string                   `json:"extra"`
 	}
 	RequestValidatePhoneNumber struct {
 		AuthenticatedUser server.AuthenticatedUser `json:"authenticatedUser" swaggerignore:"true"`
@@ -58,7 +66,8 @@ var cfg config
 type (
 	// | service implements server.State and is responsible for managing the state and lifecycle of the package.
 	service struct {
-		usersProcessor users.Processor
+		usersProcessor  users.Processor
+		usersRepository users.Repository
 	}
 	config struct {
 		Host    string `yaml:"host"`

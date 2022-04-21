@@ -4,13 +4,17 @@ package main
 
 import (
 	"context"
-	"github.com/ICE-Blockchain/eskimo/users"
-	"github.com/ICE-Blockchain/wintr/server"
+	"fmt"
+	"net"
+	"net/http"
+
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
 	"github.com/pkg/errors"
-	"net"
-	"net/http"
+
+	"github.com/ICE-Blockchain/eskimo/users"
+	"github.com/ICE-Blockchain/wintr/log"
+	"github.com/ICE-Blockchain/wintr/server"
 )
 
 func (s *service) setupUserRoutes(router *gin.Engine) {
@@ -28,6 +32,7 @@ func (s *service) setupUserRoutes(router *gin.Engine) {
 // @Accept       json
 // @Produce      json
 // @Param        Authorization  header    string             true  "Insert your access token"  default(Bearer <Add access token here>)
+// @Param        Authorization  header  string  true  "Insert your access token"  default(Bearer <Add access token here>)
 // @Param        request        body      RequestCreateUser  true  "Request params"
 // @Success      201            {object}  users.User
 // @Failure      400                {object}  server.ErrorResponse  "if validations fail"
@@ -40,7 +45,20 @@ func (s *service) setupUserRoutes(router *gin.Engine) {
 func (s *service) CreateUser(ctx context.Context, r server.ParsedRequest) server.Response {
 	req := r.(*RequestCreateUser)
 
-	//TODO implement me
+	resp := req.user()
+	if err := s.usersRepository.AddUser(ctx, resp); err != nil {
+		if errors.Is(err, users.ErrDuplicate) {
+			return server.Response{
+				Code: http.StatusConflict,
+				Data: server.ErrorResponse{
+					Error: err.Error(),
+					Code:  userDuplicateCode,
+				}.Fail(errors.Wrapf(err, err.Error())),
+			}
+		}
+
+		return server.Unexpected(err)
+	}
 
 	return server.Created(req)
 }
@@ -57,7 +75,7 @@ func (req *RequestCreateUser) user() *users.User {
 		PhoneNumber:       req.PhoneNumber,
 		Username:          req.Username,
 		ReferredBy:        req.ReferredBy,
-		ProfilePictureURL: "TODO some default",
+		ProfilePictureURL: defaultUserImage,
 		Country:           "TODO: get me based on req.ClientIP using https://www.ip2location.com/development-libraries/ip2location/go",
 	}
 }
@@ -83,7 +101,7 @@ func (req *RequestCreateUser) GetClientIP() net.IP {
 }
 
 func (req *RequestCreateUser) Validate() *server.Response {
-	return server.RequiredStrings(map[string]string{"referredBy": req.ReferredBy, "username": req.Username})
+	return server.RequiredStrings(map[string]string{"username": req.Username})
 }
 
 func (req *RequestCreateUser) Bindings(c *gin.Context) []func(obj interface{}) error {
@@ -97,10 +115,10 @@ func (req *RequestCreateUser) Bindings(c *gin.Context) []func(obj interface{}) e
 // @Accept       multipart/form-data
 // @Produce      json
 // @Param        Authorization      header    string             true   "Insert your access token"  default(Bearer <Add access token here>)
-// @Param        userId             path      string             true   "ID of the user"
+// @Param        userId         path      string  true  "ID of the user"
 // @Param        multiPartFormData  formData  RequestModifyUser  true   "Request params"
 // @Param        profilePicture     formData  file               false  "The new profile picture for the user"
-// @Success      200                {object}  users.User
+// @Success      200            {object}  users.User
 // @Failure      400            {object}  server.ErrorResponse  "if validations fail"
 // @Failure      401            {object}  server.ErrorResponse  "if not authorized"
 // @Failure      403                {object}  server.ErrorResponse  "not allowed"
@@ -112,18 +130,43 @@ func (req *RequestCreateUser) Bindings(c *gin.Context) []func(obj interface{}) e
 func (s *service) ModifyUser(ctx context.Context, r server.ParsedRequest) server.Response {
 	req := r.(*RequestModifyUser)
 
-	//TODO implement me
+	err := s.usersRepository.ModifyUser(ctx, req.user())
+	if err != nil {
+		if errors.Is(err, users.ErrNotFound) {
+			m := fmt.Sprintf("user with id `%v` was not found.", req.ID)
 
-	//if user specified a phoneNumber in the request body, then we proceed with phone number confirmation flow:
+			return server.Response{
+				Code: http.StatusNotFound,
+				Data: server.ErrorResponse{
+					Error: m,
+					Code:  userNotFoundCode,
+				}.Fail(errors.Wrapf(err, m)),
+			}
+		}
+
+		return server.Unexpected(err)
+	}
+	// If user specified a phoneNumber in the request body, then we proceed with phone number confirmation flow:
 	// step 0: don`t update the phone number in users table
 	// step 1: insert into phone_number_validation_codes // TODO ask Robert about the pattern of the code
-	// step 2: use https://www.twilio.com/docs/libraries/go to send SMS with that code to the user`s phone number
-
+	// step 2: use https://www.twilio.com/docs/libraries/go to send SMS with that code to the user`s phone number.
 	return server.OK(req)
 }
 
 func newRequestModifyUser() server.ParsedRequest {
 	return new(RequestModifyUser)
+}
+
+func (req *RequestModifyUser) user() *users.User {
+	return &users.User{
+		ID:             req.ID,
+		Email:          req.Email,
+		FullName:       req.FullName,
+		PhoneNumber:    req.PhoneNumber,
+		Username:       req.Username,
+		ProfilePicture: req.ProfilePicture,
+		Country:        "TODO by clients IP",
+	}
 }
 
 func (req *RequestModifyUser) SetAuthenticatedUser(user server.AuthenticatedUser) {
@@ -137,14 +180,36 @@ func (req *RequestModifyUser) GetAuthenticatedUser() server.AuthenticatedUser {
 }
 
 func (req *RequestModifyUser) Validate() *server.Response {
-	// TODO implement me
-	// If req body is empty also return error
-	return server.RequiredStrings(map[string]string{})
+	if req.ID == "" {
+		return server.RequiredStrings(map[string]string{"userId": req.ID})
+	}
+
+	if req.ID != req.AuthenticatedUser.ID {
+		err := errors.Errorf("update account not allowed for anyone except the owner. "+
+			"`%v` tried to update `%v`", req.AuthenticatedUser.ID, req.ID)
+
+		return &server.Response{
+			Code: http.StatusForbidden,
+			Data: server.ErrorResponse{
+				Error: "only updating your own account is allowed",
+				Code:  "NOT_ALLOWED",
+			}.Fail(err),
+		}
+	}
+
+	return nil
 }
 
 func (req *RequestModifyUser) Bindings(c *gin.Context) []func(obj interface{}) error {
 	return []func(obj interface{}) error{
-		func(obj interface{}) error { return c.ShouldBindWith(obj, binding.FormMultipart) },
+		func(obj interface{}) error {
+			err := c.ShouldBindWith(obj, binding.FormMultipart)
+			if err != nil {
+				return errors.Wrap(err, "bind failed")
+			}
+
+			return nil
+		},
 		c.ShouldBindUri,
 		server.ShouldBindAuthenticatedUser(c),
 	}
@@ -170,7 +235,15 @@ func (req *RequestModifyUser) Bindings(c *gin.Context) []func(obj interface{}) e
 func (s *service) DeleteUser(ctx context.Context, r server.ParsedRequest) server.Response {
 	req := r.(*RequestDeleteUser)
 
-	//TODO implement me
+	if err := s.usersRepository.RemoveUser(ctx, req.ID); err != nil {
+		if errors.Is(err, users.ErrNotFound) {
+			log.Error(errors.Wrap(err, "user not found"), "RequestRemoveUser", req)
+
+			return server.NoContent()
+		}
+
+		return server.Unexpected(err)
+	}
 
 	return server.OK(req)
 }
@@ -194,7 +267,8 @@ func (req *RequestDeleteUser) Validate() *server.Response {
 		return server.RequiredStrings(map[string]string{"userId": req.ID})
 	}
 	if req.ID != req.AuthenticatedUser.ID {
-		err := errors.Errorf("delete account not allowed for anyone except the owner. `%v` tried to delete `%v`", req.AuthenticatedUser.ID, req.ID)
+		err := errors.Errorf("delete account not allowed for anyone except the owner. "+
+			"`%v` tried to delete `%v`", req.AuthenticatedUser.ID, req.ID)
 
 		return &server.Response{
 			Code: http.StatusForbidden,
