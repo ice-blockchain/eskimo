@@ -34,7 +34,7 @@ func (s *service) setupUserValidationRoutes(router *gin.Engine) {
 // @Failure      422             {object}  server.ErrorResponse  "if syntax fails"
 // @Failure      500             {object}  server.ErrorResponse
 // @Failure      504             {object}  server.ErrorResponse  "if request times out"
-// @Router       /user-validations/username [GET].
+// @Router       /user-validations/username [PUT].
 func (s *service) ValidateUsername(_ context.Context, r server.ParsedRequest) server.Response {
 	req := r.(*RequestValidateUsername)
 

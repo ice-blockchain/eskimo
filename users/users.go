@@ -220,45 +220,38 @@ func (u *users) ModifyUser(ctx context.Context, user *User) error {
 	return nil
 }
 
-//nolint:funlen // Fill DB cause a lot of fields
+//nolint:funlen // A lot of fields in DB table
 func (u *User) GenSQLUpdate() (sql string, params map[string]interface{}) {
 	params = make(map[string]interface{})
-	sql = "UPDATE USERS set "
-
 	params["id"] = u.ID
 	params["updatedAt"] = u.UpdatedAt.UnixNano()
-	sql += "UPDATED_AT = :updatedAt"
+
+	sql = fmt.Sprintf("UPDATE USERS set UPDATED_AT = :updatedAt")
 
 	if u.Email != "" {
 		params["email"] = u.Email
 		sql += ", EMAIL = :email"
 	}
-
 	if u.FullName != "" {
 		params["fullName"] = u.FullName
 		sql += ", FULL_NAME = :fullName"
 	}
-
 	if u.PhoneNumber != "" {
 		params["phoneNumber"] = u.PhoneNumber
 		sql += ", PHONE_NUMBER = :phoneNumber"
 	}
-
 	if u.Username != "" {
 		params["username"] = u.Username
 		sql += ", USERNAME = :username"
 	}
-
 	if u.ProfilePicture.Filename != "" {
 		params["profilePictureURL"] = u.ProfilePicture.Filename
 		sql += ", PROFILE_PICTURE = :profilePictureURL"
 	}
-
 	if u.Country != "" {
 		params["country"] = u.Country
 		sql += ", COUNTRY = :country"
 	}
-
 	sql += " WHERE ID = :id"
 
 	return sql, params
