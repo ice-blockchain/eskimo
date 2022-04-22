@@ -15,6 +15,17 @@ cmd/eskimo:
   defaultPagination:
     limit: 20
     maxLimit: 1000
+cmd/eskimo-hut:
+  host: localhost
+  version: local
+  defaultEndpointTimeout: 30s
+  httpServer:
+    port: 443
+    certPath: cmd/eskimo-hut/.testdata/localhost.crt
+    keyPath: cmd/eskimo-hut/.testdata/localhost.key
+  defaultPagination:
+    limit: 20
+    maxLimit: 1000
 users:
   db:
     spaces:
@@ -35,3 +46,10 @@ users:
         partitions: 10
         replicationFactor: 1
         retention: 1000h
+  storage:
+    urlUpload: https://storage.bunnycdn.com
+    urlDownload: https://ice-staging.b-cdn.net
+    zoneName: ice-staging
+    profilePath: profile
+    accessKey: access_key_hidden
+    retryCount: 3
