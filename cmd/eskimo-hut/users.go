@@ -32,7 +32,7 @@ func (s *service) setupUserRoutes(router *gin.Engine) {
 // @Accept       json
 // @Produce      json
 // @Param        Authorization  header    string             true  "Insert your access token"  default(Bearer <Add access token here>)
-// @Param        Authorization  header  string  true  "Insert your access token"  default(Bearer <Add access token here>)
+// @Param        Authorization  header    string             true  "Insert your access token"  default(Bearer <Add access token here>)
 // @Param        request        body      RequestCreateUser  true  "Request params"
 // @Success      201            {object}  users.User
 // @Failure      400                {object}  server.ErrorResponse  "if validations fail"
@@ -115,10 +115,10 @@ func (req *RequestCreateUser) Bindings(c *gin.Context) []func(obj interface{}) e
 // @Accept       multipart/form-data
 // @Produce      json
 // @Param        Authorization      header    string             true   "Insert your access token"  default(Bearer <Add access token here>)
-// @Param        userId         path      string  true  "ID of the user"
+// @Param        userId             path      string             true   "ID of the user"
 // @Param        multiPartFormData  formData  RequestModifyUser  true   "Request params"
 // @Param        profilePicture     formData  file               false  "The new profile picture for the user"
-// @Success      200            {object}  users.User
+// @Success      200                {object}  users.User
 // @Failure      400            {object}  server.ErrorResponse  "if validations fail"
 // @Failure      401            {object}  server.ErrorResponse  "if not authorized"
 // @Failure      403                {object}  server.ErrorResponse  "not allowed"

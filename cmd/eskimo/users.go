@@ -27,8 +27,8 @@ func (s *service) setupUserRoutes(router *gin.Engine) {
 // @Accept       json
 // @Produce      json
 // @Param        Authorization  header    string  true  "Insert your access token"  default(Bearer <Add access token here>)
-// @Param        userId             path      string             true   "ID of the user"
-// @Success      200                {object}  users.User
+// @Param        userId         path      string  true  "ID of the user"
+// @Success      200            {object}  users.User
 // @Failure      400            {object}  server.ErrorResponse  "if validations fail"
 // @Failure      401            {object}  server.ErrorResponse  "if not authorized"
 // @Failure      404            {object}  server.ErrorResponse  "if not found"

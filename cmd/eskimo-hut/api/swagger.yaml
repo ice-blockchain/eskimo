@@ -1,5 +1,3 @@
-# SPDX-License-Identifier: BUSL-1.1
-
 basePath: /v1
 definitions:
   main.RequestCreateUser:
@@ -19,21 +17,6 @@ definitions:
       referredBy:
         example: billy112
         type: string
-      username:
-        example: jdoe
-        type: string
-    type: object
-  main.RequestValidatePhoneNumber:
-    properties:
-      phoneNumber:
-        example: "+12099216581"
-        type: string
-      validationCode:
-        example: "232323232"
-        type: string
-    type: object
-  main.RequestValidateUsername:
-    properties:
       username:
         example: jdoe
         type: string
@@ -121,12 +104,17 @@ paths:
         name: Authorization
         required: true
         type: string
-      - description: Request params
-        in: body
-        name: request
+      - description: User's phone number to validate
+        in: query
+        name: phoneNumber
         required: true
-        schema:
-          $ref: '#/definitions/main.RequestValidatePhoneNumber'
+        type: string
+      - description: User's validation code received by the user on the provided phone
+          number
+        in: query
+        name: validationCode
+        required: true
+        type: string
       produces:
       - application/json
       responses:
@@ -159,7 +147,7 @@ paths:
       tags:
       - Validations
   /user-validations/username:
-    put:
+    get:
       consumes:
       - application/json
       description: Validates a provided username
@@ -170,12 +158,11 @@ paths:
         name: Authorization
         required: true
         type: string
-      - description: Request params
-        in: body
-        name: request
+      - description: User's username to validate
+        in: query
+        name: username
         required: true
-        schema:
-          $ref: '#/definitions/main.RequestValidateUsername'
+        type: string
       produces:
       - application/json
       responses:
@@ -213,6 +200,12 @@ paths:
       - application/json
       description: Creates an user account
       parameters:
+      - default: Bearer <Add access token here>
+        description: Insert your access token
+        in: header
+        name: Authorization
+        required: true
+        type: string
       - default: Bearer <Add access token here>
         description: Insert your access token
         in: header
