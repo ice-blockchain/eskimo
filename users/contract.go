@@ -23,8 +23,9 @@ var (
 )
 
 type (
-	UserID = string
-	User   struct {
+	UserID   = string
+	Username = string
+	User     struct {
 		CreatedAt         time.Time            `json:"createdAt,omitempty" example:"2022-01-03T16:20:52.156534Z"`
 		UpdatedAt         time.Time            `json:"updatedAt,omitempty" example:"2022-01-03T16:20:52.156534Z"`
 		DeletedAt         *time.Time           `json:"deletedAt,omitempty" example:"2022-01-03T16:20:52.156534Z"`
@@ -53,8 +54,8 @@ type (
 
 	// Repository main API exposed that handles all the features(including internal/system ones) of this package.
 	Repository interface {
-		io.Closer
-		UserRepository
+		ReadRepository
+		WriteRepository
 	}
 
 	Processor interface {
@@ -62,12 +63,16 @@ type (
 		CheckHealth(context.Context) error
 	}
 
-	// UserRepository manages the database operations related to `users`.
-	UserRepository interface {
+	WriteRepository interface {
 		AddUser(context.Context, *User) error
-		GetUser(context.Context, UserID) (*User, error)
 		RemoveUser(context.Context, UserID) error
 		ModifyUser(context.Context, *User) error
+	}
+
+	ReadRepository interface {
+		io.Closer
+		GetUser(context.Context, UserID) (*User, error)
+		UsernameExists(context.Context, Username) (bool, error)
 	}
 )
 
@@ -99,12 +104,13 @@ type (
 	// | repository implements the public API that this package exposes.
 	repository struct {
 		close func() error
-		UserRepository
+		ReadRepository
 	}
 
 	processor struct {
 		close func() error
-		UserRepository
+		ReadRepository
+		WriteRepository
 	}
 
 	// | user is the internal (User) structure for deserialization from the DB
@@ -115,11 +121,14 @@ type (
 		ID                 UserID
 		HashCode           uint64
 		ReferredBy         UserID
-		Username           string
+		Username           Username
 		Email              string
 		FullName           string
 		PhoneNumber        string
 		ProfilePictureName string
+		Country            string
+		CreatedAt          uint64
+		UpdatedAt          uint64
 	}
 
 	// | config holds the configuration of this package mounted from `application.yaml`.
@@ -136,3 +145,7 @@ type (
 		} `yaml:"messageBroker"`
 	}
 )
+
+func (u *users) Close() error {
+	return nil
+}

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: BUSL-1.1
+
 package users
 
 import (
@@ -21,6 +23,23 @@ func (u *users) GetUser(ctx context.Context, id UserID) (*User, error) {
 	}
 
 	return result.toUser(), nil
+}
+
+func (u *users) UsernameExists(ctx context.Context, name Username) (bool, error) {
+	if ctx.Err() != nil {
+		return false, errors.Wrap(ctx.Err(), "get user failed because context failed")
+	}
+	result := new(user)
+
+	if err := u.db.GetTyped("USERS", "USERS_USERNAME_LOOKUP_IX", []interface{}{name}, result); err != nil {
+		return false, errors.Wrapf(err, "failed to get user")
+	}
+
+	if result.ID != "" {
+		return true, nil
+	}
+
+	return false, nil
 }
 
 func (u *user) toUser() *User {

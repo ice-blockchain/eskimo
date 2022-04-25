@@ -16,16 +16,19 @@ import (
 	"github.com/ICE-Blockchain/wintr/log"
 )
 
-func StartRepository(ctx context.Context, cancel context.CancelFunc) Repository {
+func New(ctx context.Context, cancel context.CancelFunc) ReadRepository {
 	appCfg.MustLoadFromKey(applicationYamlKey, &cfg)
 
 	db := storage.MustConnect(ctx, cancel, ddl, applicationYamlKey)
-	mb := messagebroker.MustConnect(ctx, applicationYamlKey)
 
 	return &repository{
-		close:          closeAll(db, mb),
-		UserRepository: &users{mb: mb, db: db},
+		close:          closeDB(db),
+		ReadRepository: &users{db: db},
 	}
+}
+
+func (r repository) Close() error {
+	return nil
 }
 
 func StartProcessor(ctx context.Context, cancel context.CancelFunc) Processor {
@@ -34,10 +37,17 @@ func StartProcessor(ctx context.Context, cancel context.CancelFunc) Processor {
 	db := storage.MustConnect(ctx, cancel, ddl, applicationYamlKey)
 	mb := messagebroker.MustConnect(ctx, applicationYamlKey)
 
+	u := &users{db: db, mb: mb}
+
 	return &processor{
-		close:          closeAll(db, mb),
-		UserRepository: &users{db: db, mb: mb},
+		close:           closeAll(db, mb),
+		ReadRepository:  u,
+		WriteRepository: u,
 	}
+}
+
+func (p processor) Close() error {
+	return nil
 }
 
 func closeAll(db tarantool.Connector, mb messagebroker.Client) func() error {
@@ -59,39 +69,34 @@ func closeAll(db tarantool.Connector, mb messagebroker.Client) func() error {
 	}
 }
 
-func (r *repository) Close() error {
-	log.Info("closing users repository...")
+func closeDB(db tarantool.Connector) func() error {
+	log.Info("closing db connection...")
 
-	return errors.Wrap(r.close(), "closing users repository failed")
+	return func() error {
+		err := errors.Wrap(db.Close(), "closing db connection failed")
+
+		return errors.Wrap(err, "closing users repository failed")
+	}
 }
 
-func (u *users) sendUsersMessage(ctx context.Context, user *User) {
+func (u *users) sendUsersMessage(ctx context.Context, user *User) error {
 	valueBytes, err := json.Marshal(user)
 	if err != nil {
-		log.Error(errors.Wrapf(err, "failed to marshal user %v", user))
-
-		return
+		return errors.Wrapf(err, "failed to marshal user %v", user)
 	}
 
-	//nolint:govet // Because we don`t need to cancel it cuz its a fire and forget action.
-	pCtx, _ := context.WithTimeout(context.Background(), messageBrokerProduceRecordDeadline)
-
-	var responder chan<- error
-	if ctx.Value(messageBrokerProduceMessageResponseChanKey{}) != nil {
-		responder = ctx.Value(messageBrokerProduceMessageResponseChanKey{}).(chan error)
-	}
-
-	u.mb.SendMessage(pCtx, &messagebroker.Message{
-		Key:     user.ID,
-		Value:   valueBytes,
+	m := &messagebroker.Message{
 		Headers: map[string]string{"producer": "eskimo"},
+		Key:     user.ID,
 		Topic:   cfg.MessageBroker.Topics[0].Name,
-	}, responder)
-}
+		Value:   valueBytes,
+	}
 
-func (p processor) Close() error {
-	//nolint:nolintlint    // TODO implement me.
-	return nil
+	responder := make(chan error, 1)
+	defer close(responder)
+	u.mb.SendMessage(ctx, m, responder)
+
+	return errors.Wrapf(<-responder, "failed to send users message to broker")
 }
 
 func (p processor) CheckHealth(ctx context.Context) error {

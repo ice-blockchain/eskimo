@@ -61,3 +61,13 @@ func (s *service) CheckHealth(ctx context.Context, r *server.RequestCheckHealth)
 
 	return server.OK(r)
 }
+
+func getServerErrorResponse(httpCode int, msg, code string) server.Response {
+	return server.Response{
+		Code: httpCode,
+		Data: server.ErrorResponse{
+			Error: msg,
+			Code:  code,
+		},
+	}
+}

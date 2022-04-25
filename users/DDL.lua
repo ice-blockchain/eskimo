@@ -20,3 +20,4 @@ box.execute([[CREATE TABLE IF NOT EXISTS phone_number_validation_codes  (
                     created_at UNSIGNED NOT NULL
                      ) WITH ENGINE = 'vinyl';]])
 -- TODO will add indexes later on
+box.execute([[CREATE INDEX IF NOT EXISTS users_username_lookup_ix ON users (username);]])

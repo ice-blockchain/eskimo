@@ -40,7 +40,7 @@ users:
         partitions: 10
         replicationFactor: 1
         retention: 1000h
-  storage:
+  pictureStorage:
     urlUpload: https://storage.bunnycdn.com/ice-staging/profile
     urlDownload: https://ice-staging.b-cdn.net/profile
     accessKey: access_key_hidden

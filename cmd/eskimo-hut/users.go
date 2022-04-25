@@ -49,13 +49,7 @@ func (s *service) CreateUser(ctx context.Context, r server.ParsedRequest) server
 		if errors.Is(err, users.ErrDuplicate) {
 			msg := fmt.Sprintf("user with id `%v` already exists.", resp.ID)
 
-			return server.Response{
-				Code: http.StatusConflict,
-				Data: server.ErrorResponse{
-					Error: msg,
-					Code:  userDuplicateCode,
-				}.Fail(errors.Wrapf(err, msg)),
-			}
+			return getServerErrorResponse(http.StatusConflict, msg, userDuplicateCode)
 		}
 
 		return server.Unexpected(err)
@@ -129,13 +123,10 @@ func (req *RequestCreateUser) Bindings(c *gin.Context) []func(obj interface{}) e
 // @Router       /users/{userId} [PATCH].
 func (s *service) ModifyUser(ctx context.Context, r server.ParsedRequest) server.Response {
 	req := r.(*RequestModifyUser)
-
 	err := s.usersProcessor.ModifyUser(ctx, req.user())
 	if err != nil {
-		var msg string
+		var msg, respCode string
 		var httpCode int
-		var respCode string
-
 		switch {
 		case errors.Is(err, users.ErrNotFound):
 			msg = fmt.Sprintf("user with id `%v` was not found.", req.ID)
@@ -151,13 +142,7 @@ func (s *service) ModifyUser(ctx context.Context, r server.ParsedRequest) server
 			respCode = userBadRequest
 		}
 
-		return server.Response{
-			Code: httpCode,
-			Data: server.ErrorResponse{
-				Error: msg,
-				Code:  respCode,
-			}.Fail(errors.Wrapf(err, msg)),
-		}
+		return getServerErrorResponse(httpCode, msg, respCode)
 	}
 	// If user specified a phoneNumber in the request body, then we proceed with phone number confirmation flow:
 	// step 0: don`t update the phone number in users table
@@ -198,16 +183,12 @@ func (req *RequestModifyUser) Validate() *server.Response {
 	}
 
 	if req.ID != req.AuthenticatedUser.ID {
-		err := errors.Errorf("update account not allowed for anyone except the owner. "+
+		msg := fmt.Sprintf("update account not allowed for anyone except the owner. "+
 			"`%v` tried to update `%v`", req.AuthenticatedUser.ID, req.ID)
 
-		return &server.Response{
-			Code: http.StatusForbidden,
-			Data: server.ErrorResponse{
-				Error: "only updating your own account is allowed",
-				Code:  "NOT_ALLOWED",
-			}.Fail(err),
-		}
+		resp := getServerErrorResponse(http.StatusForbidden, msg, notAllowed)
+
+		return &resp
 	}
 
 	return nil
@@ -280,16 +261,12 @@ func (req *RequestDeleteUser) Validate() *server.Response {
 		return server.RequiredStrings(map[string]string{"userId": req.ID})
 	}
 	if req.ID != req.AuthenticatedUser.ID {
-		err := errors.Errorf("delete account not allowed for anyone except the owner. "+
+		msg := fmt.Sprintf("delete account not allowed for anyone except the owner. "+
 			"`%v` tried to delete `%v`", req.AuthenticatedUser.ID, req.ID)
 
-		return &server.Response{
-			Code: http.StatusForbidden,
-			Data: server.ErrorResponse{
-				Error: "only deleting your own account is allowed",
-				Code:  "NOT_ALLOWED",
-			}.Fail(err),
-		}
+		resp := getServerErrorResponse(http.StatusForbidden, msg, notAllowed)
+
+		return &resp
 	}
 
 	return nil

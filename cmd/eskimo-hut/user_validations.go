@@ -4,6 +4,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"regexp"
 
@@ -35,19 +36,29 @@ func (s *service) setupUserValidationRoutes(router *gin.Engine) {
 // @Failure      500            {object}  server.ErrorResponse
 // @Failure      504            {object}  server.ErrorResponse  "if request times out"
 // @Router       /user-validations/username [PUT].
-func (s *service) ValidateUsername(_ context.Context, r server.ParsedRequest) server.Response {
+func (s *service) ValidateUsername(ctx context.Context, r server.ParsedRequest) server.Response {
 	req := r.(*RequestValidateUsername)
 
 	eval := regexp.MustCompile(`[\w\-.]+`)
 
 	if len(req.Username) < 4 || len(req.Username) > 20 || eval.MatchString(req.Username) == false {
-		return server.Response{
-			Code: http.StatusBadRequest,
-			Data: server.ErrorResponse{
-				Error: "username incorrect",
-				Code:  "NOT_ALLOWED",
-			},
-		}
+		msg := fmt.Sprintf("username `%v` incorrect.", req.Username)
+
+		return getServerErrorResponse(http.StatusBadRequest, msg, userIncorrect)
+	}
+
+	exist, err := s.usersProcessor.UsernameExists(ctx, req.Username)
+
+	if err != nil {
+		msg := fmt.Sprintf("unable to check username `%v`", req.Username)
+
+		return getServerErrorResponse(http.StatusBadRequest, msg, userBadRequest)
+	}
+
+	if exist {
+		msg := fmt.Sprintf("username `%v` already exists", req.Username)
+
+		return getServerErrorResponse(http.StatusConflict, msg, userDuplicateCode)
 	}
 
 	return server.OK(req)

@@ -43,18 +43,13 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "type": "string",
-                        "description": "User's phone number to validate",
-                        "name": "phoneNumber",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "User's validation code received by the user on the provided phone number",
-                        "name": "validationCode",
-                        "in": "query",
-                        "required": true
+                        "description": "Request params",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.RequestValidatePhoneNumber"
+                        }
                     }
                 ],
                 "responses": {
@@ -101,7 +96,7 @@ const docTemplate = `{
             }
         },
         "/user-validations/username": {
-            "get": {
+            "put": {
                 "description": "Validates a provided username",
                 "consumes": [
                     "application/json"
@@ -122,11 +117,13 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "type": "string",
-                        "description": "User's username to validate",
-                        "name": "username",
-                        "in": "query",
-                        "required": true
+                        "description": "Request params",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.RequestValidateUsername"
+                        }
                     }
                 ],
                 "responses": {
@@ -185,14 +182,6 @@ const docTemplate = `{
                     "Accounts"
                 ],
                 "parameters": [
-                    {
-                        "type": "string",
-                        "default": "Bearer \u003cAdd access token here\u003e",
-                        "description": "Insert your access token",
-                        "name": "Authorization",
-                        "in": "header",
-                        "required": true
-                    },
                     {
                         "type": "string",
                         "default": "Bearer \u003cAdd access token here\u003e",
@@ -471,6 +460,28 @@ const docTemplate = `{
                 }
             }
         },
+        "main.RequestValidatePhoneNumber": {
+            "type": "object",
+            "properties": {
+                "phoneNumber": {
+                    "type": "string",
+                    "example": "+12099216581"
+                },
+                "validationCode": {
+                    "type": "string",
+                    "example": "232323232"
+                }
+            }
+        },
+        "main.RequestValidateUsername": {
+            "type": "object",
+            "properties": {
+                "username": {
+                    "type": "string",
+                    "example": "jdoe"
+                }
+            }
+        },
         "multipart.FileHeader": {
             "type": "object",
             "properties": {
@@ -530,6 +541,9 @@ const docTemplate = `{
                 "fullName": {
                     "type": "string",
                     "example": "John Doe"
+                },
+                "hashCode": {
+                    "type": "integer"
                 },
                 "id": {
                     "type": "string",
