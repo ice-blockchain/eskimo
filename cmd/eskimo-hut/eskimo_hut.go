@@ -4,12 +4,12 @@ package main
 
 import (
 	"context"
+	"github.com/ICE-Blockchain/eskimo/users"
 
 	"github.com/gin-gonic/gin"
 	"github.com/pkg/errors"
 
 	"github.com/ICE-Blockchain/eskimo/cmd/eskimo-hut/api"
-	"github.com/ICE-Blockchain/eskimo/users"
 	appCfg "github.com/ICE-Blockchain/wintr/config"
 	"github.com/ICE-Blockchain/wintr/log"
 	"github.com/ICE-Blockchain/wintr/server"
@@ -41,7 +41,6 @@ func (s *service) RegisterRoutes(engine *gin.Engine) {
 }
 
 func (s *service) Init(ctx context.Context, cancel context.CancelFunc) {
-	s.usersRepository = users.New(ctx, cancel)
 	s.usersProcessor = users.StartProcessor(ctx, cancel)
 }
 

@@ -7,11 +7,10 @@ box.execute([[CREATE TABLE IF NOT EXISTS users  (
                     email STRING,
                     full_name STRING,
                     phone_number STRING,
-                    profile_picture STRING NOT NULL,
+                    profile_picture_name STRING NOT NULL,
                     country STRING NOT NULL,
                     created_at UNSIGNED NOT NULL,
-                    updated_at UNSIGNED NOT NULL,
-                    deleted_at UNSIGNED
+                    updated_at UNSIGNED NOT NULL
                      ) WITH ENGINE = 'vinyl';]])
 box.execute([[CREATE TABLE IF NOT EXISTS phone_number_validation_codes  (
                     id STRING primary key,

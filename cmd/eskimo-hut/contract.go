@@ -14,9 +14,8 @@ import (
 const (
 	userNotFoundCode  = "USER_NOT_FOUND"
 	userDuplicateCode = "USER_DUPLICATE"
+	userBadRequest    = "USER_BAD_REQUEST"
 )
-
-const defaultUserImage = "https://ice-staging.b-cdn.net/profile/default-user-image.jpg"
 
 type (
 	RequestCreateUser struct {
@@ -47,7 +46,6 @@ type (
 	RequestValidateUsername struct {
 		AuthenticatedUser server.AuthenticatedUser `json:"authenticatedUser" swaggerignore:"true"`
 		Username          string                   `json:"username" example:"jdoe"`
-		Extra             string                   `json:"extra"`
 	}
 	RequestValidatePhoneNumber struct {
 		AuthenticatedUser server.AuthenticatedUser `json:"authenticatedUser" swaggerignore:"true"`
@@ -66,8 +64,7 @@ var cfg config
 type (
 	// | service implements server.State and is responsible for managing the state and lifecycle of the package.
 	service struct {
-		usersProcessor  users.Processor
-		usersRepository users.Repository
+		usersProcessor users.Processor
 	}
 	config struct {
 		Host    string `yaml:"host"`

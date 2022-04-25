@@ -38,7 +38,7 @@ type (
 		ProfilePicture    multipart.FileHeader `json:"-"`
 		// ISO 3166 country code.
 		Country  string `json:"country" example:"us"`
-		HashCode uint64 `json:"hash_code"`
+		HashCode uint64 `json:"hashCode"`
 	}
 	ReferralAcquisition struct {
 		Date time.Time `json:"date" example:"2022-01-03"`
@@ -58,8 +58,7 @@ type (
 	}
 
 	Processor interface {
-		// Repository.
-		io.Closer
+		Repository
 		CheckHealth(context.Context) error
 	}
 
@@ -76,6 +75,7 @@ type (
 const (
 	applicationYamlKey                 = "users"
 	messageBrokerProduceRecordDeadline = 25 * time.Second
+	defaultUserImage                   = "default-user-image.jpg"
 )
 
 var (
@@ -102,37 +102,33 @@ type (
 		UserRepository
 	}
 
-	processor struct{}
+	processor struct {
+		close func() error
+		UserRepository
+	}
 
 	// | user is the internal (User) structure for deserialization from the DB
 	// because it cannot deserialize time.Time or map/json structures properly.
 	// !! Order of fields is crucial, so do not change it !!
 	user struct { //nolint:govet // This is about DB
-		_msgpack       struct{} `msgpack:",asArray"`
-		ID             UserID
-		HashCode       uint64
-		ReferredBy     UserID
-		Username       string
-		Email          string
-		FullName       string
-		PhoneNumber    string
-		ProfilePicture string
-		Country        string
-		CreatedAt      uint64
-		UpdatedAt      uint64
-		DeletedAt      uint64
+		_msgpack           struct{} `msgpack:",asArray"`
+		ID                 UserID
+		HashCode           uint64
+		ReferredBy         UserID
+		Username           string
+		Email              string
+		FullName           string
+		PhoneNumber        string
+		ProfilePictureName string
 	}
 
 	// | config holds the configuration of this package mounted from `application.yaml`.
 	config struct {
-		Storage struct {
+		PictureStorage struct {
 			URLUpload   string `yaml:"urlUpload"`
 			URLDownload string `yaml:"urlDownload"`
-			ZoneName    string `yaml:"zoneName"`
-			ProfilePath string `yaml:"profilePath"`
 			AccessKey   string `yaml:"accessKey"`
-			RetryCount  uint8  `yaml:"retry_count"`
-		} `yaml:"storage"`
+		} `yaml:"pictureStorage"`
 		MessageBroker struct {
 			Topics []struct {
 				Name string `yaml:"name" json:"name"`

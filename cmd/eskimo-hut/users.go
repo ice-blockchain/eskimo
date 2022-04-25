@@ -32,7 +32,6 @@ func (s *service) setupUserRoutes(router *gin.Engine) {
 // @Accept       json
 // @Produce      json
 // @Param        Authorization  header    string             true  "Insert your access token"  default(Bearer <Add access token here>)
-// @Param        Authorization  header    string             true  "Insert your access token"  default(Bearer <Add access token here>)
 // @Param        request        body      RequestCreateUser  true  "Request params"
 // @Success      201            {object}  users.User
 // @Failure      400                {object}  server.ErrorResponse  "if validations fail"
@@ -46,21 +45,23 @@ func (s *service) CreateUser(ctx context.Context, r server.ParsedRequest) server
 	req := r.(*RequestCreateUser)
 
 	resp := req.user()
-	if err := s.usersRepository.AddUser(ctx, resp); err != nil {
+	if err := s.usersProcessor.AddUser(ctx, resp); err != nil {
 		if errors.Is(err, users.ErrDuplicate) {
+			msg := fmt.Sprintf("user with id `%v` already exists.", resp.ID)
+
 			return server.Response{
 				Code: http.StatusConflict,
 				Data: server.ErrorResponse{
-					Error: err.Error(),
+					Error: msg,
 					Code:  userDuplicateCode,
-				}.Fail(errors.Wrapf(err, err.Error())),
+				}.Fail(errors.Wrapf(err, msg)),
 			}
 		}
 
 		return server.Unexpected(err)
 	}
 
-	return server.Created(req)
+	return server.Created(resp)
 }
 
 func newRequestCreateUser() server.ParsedRequest {
@@ -69,14 +70,13 @@ func newRequestCreateUser() server.ParsedRequest {
 
 func (req *RequestCreateUser) user() *users.User {
 	return &users.User{
-		ID:                req.AuthenticatedUser.ID,
-		Email:             req.Email,
-		FullName:          req.FullName,
-		PhoneNumber:       req.PhoneNumber,
-		Username:          req.Username,
-		ReferredBy:        req.ReferredBy,
-		ProfilePictureURL: defaultUserImage,
-		Country:           "TODO: get me based on req.ClientIP using https://www.ip2location.com/development-libraries/ip2location/go",
+		ID:          req.AuthenticatedUser.ID,
+		Email:       req.Email,
+		FullName:    req.FullName,
+		PhoneNumber: req.PhoneNumber,
+		Username:    req.Username,
+		ReferredBy:  req.ReferredBy,
+		Country:     "TODO: get me based on req.ClientIP using https://www.ip2location.com/development-libraries/ip2location/go",
 	}
 }
 
@@ -130,27 +130,40 @@ func (req *RequestCreateUser) Bindings(c *gin.Context) []func(obj interface{}) e
 func (s *service) ModifyUser(ctx context.Context, r server.ParsedRequest) server.Response {
 	req := r.(*RequestModifyUser)
 
-	err := s.usersRepository.ModifyUser(ctx, req.user())
+	err := s.usersProcessor.ModifyUser(ctx, req.user())
 	if err != nil {
-		if errors.Is(err, users.ErrNotFound) {
-			m := fmt.Sprintf("user with id `%v` was not found.", req.ID)
+		var msg string
+		var httpCode int
+		var respCode string
 
-			return server.Response{
-				Code: http.StatusNotFound,
-				Data: server.ErrorResponse{
-					Error: m,
-					Code:  userNotFoundCode,
-				}.Fail(errors.Wrapf(err, m)),
-			}
+		switch {
+		case errors.Is(err, users.ErrNotFound):
+			msg = fmt.Sprintf("user with id `%v` was not found.", req.ID)
+			httpCode = http.StatusNotFound
+			respCode = userNotFoundCode
+		case errors.Is(err, users.ErrDuplicate):
+			msg = fmt.Sprintf("user with id `%v` already exists.", req.ID)
+			httpCode = http.StatusConflict
+			respCode = userDuplicateCode
+		default:
+			msg = fmt.Sprintf("unable to modify user `%v`: %v.", req, err.Error())
+			httpCode = http.StatusBadRequest
+			respCode = userBadRequest
 		}
 
-		return server.Unexpected(err)
+		return server.Response{
+			Code: httpCode,
+			Data: server.ErrorResponse{
+				Error: msg,
+				Code:  respCode,
+			}.Fail(errors.Wrapf(err, msg)),
+		}
 	}
 	// If user specified a phoneNumber in the request body, then we proceed with phone number confirmation flow:
 	// step 0: don`t update the phone number in users table
 	// step 1: insert into phone_number_validation_codes // TODO ask Robert about the pattern of the code
 	// step 2: use https://www.twilio.com/docs/libraries/go to send SMS with that code to the user`s phone number.
-	return server.OK(req)
+	return server.OK()
 }
 
 func newRequestModifyUser() server.ParsedRequest {
@@ -205,7 +218,7 @@ func (req *RequestModifyUser) Bindings(c *gin.Context) []func(obj interface{}) e
 		func(obj interface{}) error {
 			err := c.ShouldBindWith(obj, binding.FormMultipart)
 			if err != nil {
-				return errors.Wrap(err, "bind failed")
+				return errors.Wrap(err, "FormMultipart binding failed")
 			}
 
 			return nil
@@ -235,7 +248,7 @@ func (req *RequestModifyUser) Bindings(c *gin.Context) []func(obj interface{}) e
 func (s *service) DeleteUser(ctx context.Context, r server.ParsedRequest) server.Response {
 	req := r.(*RequestDeleteUser)
 
-	if err := s.usersRepository.RemoveUser(ctx, req.ID); err != nil {
+	if err := s.usersProcessor.RemoveUser(ctx, req.ID); err != nil {
 		if errors.Is(err, users.ErrNotFound) {
 			log.Error(errors.Wrap(err, "user not found"), "RequestRemoveUser", req)
 
@@ -245,7 +258,7 @@ func (s *service) DeleteUser(ctx context.Context, r server.ParsedRequest) server
 		return server.Unexpected(err)
 	}
 
-	return server.OK(req)
+	return server.OK()
 }
 
 func newRequestDeleteUser() server.ParsedRequest {

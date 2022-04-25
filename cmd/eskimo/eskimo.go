@@ -42,7 +42,7 @@ func (s *service) RegisterRoutes(engine *gin.Engine) {
 }
 
 func (s *service) Init(ctx context.Context, cancel context.CancelFunc) {
-	s.usersRepository = users.New(ctx, cancel)
+	s.usersRepository = users.StartRepository(ctx, cancel)
 }
 
 func (s *service) Close(ctx context.Context) error {

@@ -7,9 +7,8 @@ import (
 	"github.com/ICE-Blockchain/wintr/server"
 )
 
-const userNotFoundCode = "USER_NOT_FOUND"
-
 // Public API.
+
 type (
 	RequestGetUser struct {
 		AuthenticatedUser server.AuthenticatedUser `json:"authenticatedUser" swaggerignore:"true"`
@@ -35,6 +34,7 @@ type (
 // Private API.
 
 const applicationYamlKey = "cmd/eskimo"
+const userNotFoundCode = "USER_NOT_FOUND"
 
 //nolint:gochecknoglobals // Because its loaded once, at runtime.
 var cfg config
@@ -45,11 +45,7 @@ type (
 		usersRepository users.Repository
 	}
 	config struct {
-		Host              string `yaml:"host"`
-		Version           string `yaml:"version"`
-		DefaultPagination struct {
-			Limit    uint64 `yaml:"limit"`
-			MaxLimit uint64 `yaml:"maxLimit"`
-		} `yaml:"defaultPagination"`
+		Host    string `yaml:"host"`
+		Version string `yaml:"version"`
 	}
 )
