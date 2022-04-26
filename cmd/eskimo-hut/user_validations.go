@@ -46,9 +46,7 @@ func (s *service) ValidateUsername(ctx context.Context, r server.ParsedRequest) 
 
 		return getServerErrorResponse(http.StatusBadRequest, msg, userIncorrect)
 	}
-
 	exist, err := s.usersProcessor.UsernameExists(ctx, req.Username)
-
 	if err != nil {
 		msg := fmt.Sprintf("unable to check username `%v`", req.Username)
 

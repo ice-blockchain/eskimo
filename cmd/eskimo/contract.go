@@ -33,8 +33,10 @@ type (
 
 // Private API.
 
-const applicationYamlKey = "cmd/eskimo"
-const userNotFoundCode = "USER_NOT_FOUND"
+const (
+	applicationYamlKey = "cmd/eskimo"
+	userNotFoundCode   = "USER_NOT_FOUND"
+)
 
 //nolint:gochecknoglobals // Because its loaded once, at runtime.
 var cfg config

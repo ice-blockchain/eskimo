@@ -11,6 +11,7 @@ import (
 	"github.com/zeebo/xxh3"
 
 	"github.com/ICE-Blockchain/wintr/connectors/storage"
+	"github.com/ICE-Blockchain/wintr/log"
 )
 
 //nolint:funlen // A lot of SQL
@@ -50,7 +51,9 @@ func (u *users) AddUser(ctx context.Context, user *User) error {
 		return errors.Wrapf(err, "failed to add user %#v", user)
 	}
 
-	u.sendUsersMessage(ctx, user)
+	if err = u.sendUsersMessage(ctx, user); err != nil {
+		log.Error(err, "Error sending user message")
+	}
 
 	return nil
 }

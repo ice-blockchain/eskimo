@@ -9,6 +9,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/ICE-Blockchain/wintr/connectors/storage"
+	"github.com/ICE-Blockchain/wintr/log"
 )
 
 func (u *users) RemoveUser(ctx context.Context, userID UserID) error {
@@ -28,7 +29,9 @@ func (u *users) RemoveUser(ctx context.Context, userID UserID) error {
 		return errors.Wrapf(err, "failed to remove user with id %v", userID)
 	}
 
-	u.sendUsersMessage(ctx, gUser.deleted())
+	if err = u.sendUsersMessage(ctx, gUser.deleted()); err != nil {
+		log.Error(err, "Error sending user message")
+	}
 
 	return nil
 }

@@ -76,11 +76,9 @@ type (
 	}
 )
 
-// Private API.
 const (
-	applicationYamlKey                 = "users"
-	messageBrokerProduceRecordDeadline = 25 * time.Second
-	defaultUserImage                   = "default-user-image.jpg"
+	applicationYamlKey = "users"
+	defaultUserImage   = "default-user-image.jpg"
 )
 
 var (
@@ -91,10 +89,6 @@ var (
 )
 
 type (
-	// | messageBrokerProduceMessageResponseChanKey is the context.Context value key
-	// that returns `chan error` that holds the outcome of a sendMessage operation.
-	messageBrokerProduceMessageResponseChanKey struct{}
-
 	// | users implements the UserRepository and only handles everything related to `users`.
 	users struct {
 		mb messagebroker.Client

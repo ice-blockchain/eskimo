@@ -7,7 +7,7 @@ require (
 	github.com/framey-io/go-tarantool v0.0.0-20220317175443-747a509561d8
 	github.com/gin-gonic/gin v1.7.7
 	github.com/hashicorp/go-multierror v1.1.1
-	github.com/imroc/req/v3 v3.10.0
+	github.com/imroc/req/v3 v3.11.0
 	github.com/pkg/errors v0.9.1
 	github.com/swaggo/swag v1.8.1
 	github.com/zeebo/xxh3 v1.0.2
@@ -22,7 +22,7 @@ require (
 	github.com/btcsuite/btcd/chaincfg/chainhash v1.0.1 // indirect
 	github.com/cenkalti/backoff/v4 v4.1.3 // indirect
 	github.com/containerd/cgroups v1.0.3 // indirect
-	github.com/containerd/containerd v1.6.2 // indirect
+	github.com/containerd/containerd v1.6.3 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.0.1 // indirect
 	github.com/docker/distribution v2.8.1+incompatible // indirect
 	github.com/docker/docker v20.10.14+incompatible // indirect
@@ -62,7 +62,7 @@ require (
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/morikuni/aec v1.0.0 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
-	github.com/opencontainers/image-spec v1.0.2 // indirect
+	github.com/opencontainers/image-spec v1.0.3-0.20211202183452-c5a74bcca799 // indirect
 	github.com/opencontainers/runc v1.1.1 // indirect
 	github.com/pelletier/go-toml v1.9.5 // indirect
 	github.com/pelletier/go-toml/v2 v2.0.0-beta.8 // indirect
@@ -86,12 +86,12 @@ require (
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
 	go.opencensus.io v0.23.0 // indirect
 	golang.org/x/crypto v0.0.0-20220411220226-7b82a4e95df4 // indirect
-	golang.org/x/net v0.0.0-20220421235706-1d1ef9303861 // indirect
+	golang.org/x/net v0.0.0-20220425223048-2871e0cb64e4 // indirect
 	golang.org/x/sys v0.0.0-20220422013727-9388b58f7150 // indirect
 	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/tools v0.1.10 // indirect
-	google.golang.org/genproto v0.0.0-20220421151946-72621c1f0bd3 // indirect
-	google.golang.org/grpc v1.45.0 // indirect
+	google.golang.org/genproto v0.0.0-20220422154200-b37d22cd5731 // indirect
+	google.golang.org/grpc v1.46.0 // indirect
 	google.golang.org/protobuf v1.28.0 // indirect
 	gopkg.in/ini.v1 v1.66.4 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect

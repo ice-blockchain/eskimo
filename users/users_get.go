@@ -5,6 +5,7 @@ package users
 import (
 	"context"
 	"fmt"
+
 	"github.com/pkg/errors"
 )
 

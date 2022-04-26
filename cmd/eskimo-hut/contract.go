@@ -11,13 +11,6 @@ import (
 )
 
 // Public API.
-const (
-	userNotFoundCode  = "USER_NOT_FOUND"
-	userDuplicateCode = "USER_DUPLICATE"
-	userBadRequest    = "USER_BAD_REQUEST"
-	userIncorrect     = "USER_INCORRECT"
-	notAllowed        = "NOT_ALLOWED"
-)
 
 type (
 	RequestCreateUser struct {
@@ -58,7 +51,14 @@ type (
 
 // Private API.
 
-const applicationYamlKey = "cmd/eskimo-hut"
+const (
+	applicationYamlKey = "cmd/eskimo-hut"
+	userNotFoundCode   = "USER_NOT_FOUND"
+	userDuplicateCode  = "USER_DUPLICATE"
+	userBadRequest     = "USER_BAD_REQUEST"
+	userIncorrect      = "USER_INCORRECT"
+	notAllowed         = "NOT_ALLOWED"
+)
 
 //nolint:gochecknoglobals // Because its loaded once, at runtime.
 var cfg config

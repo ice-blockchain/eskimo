@@ -14,6 +14,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/ICE-Blockchain/wintr/connectors/storage"
+	"github.com/ICE-Blockchain/wintr/log"
 )
 
 func (u *users) ModifyUser(ctx context.Context, user *User) error {
@@ -41,7 +42,9 @@ func (u *users) ModifyUser(ctx context.Context, user *User) error {
 		return errors.Wrapf(err, "failed to update user with id %v", user.ID)
 	}
 
-	u.sendUsersMessage(ctx, user)
+	if err = u.sendUsersMessage(ctx, user); err != nil {
+		log.Error(err, "Error sending user message")
+	}
 
 	return nil
 }
