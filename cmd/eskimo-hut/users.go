@@ -4,7 +4,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"net"
 	"net/http"
 
@@ -47,9 +46,7 @@ func (s *service) CreateUser(ctx context.Context, r server.ParsedRequest) server
 	resp := req.user()
 	if err := s.usersProcessor.AddUser(ctx, resp); err != nil {
 		if errors.Is(err, users.ErrDuplicate) {
-			msg := fmt.Sprintf("user with id `%v` already exists.", resp.ID)
-
-			return getServerErrorResponse(http.StatusConflict, msg, userDuplicateCode)
+			return getServerErrorResponse(http.StatusConflict, err, userDuplicateCode)
 		}
 
 		return server.Unexpected(err)
@@ -125,24 +122,22 @@ func (s *service) ModifyUser(ctx context.Context, r server.ParsedRequest) server
 	req := r.(*RequestModifyUser)
 	err := s.usersProcessor.ModifyUser(ctx, req.user())
 	if err != nil {
-		var msg, respCode string
+		log.Error(err)
+		var respCode string
 		var httpCode int
 		switch {
 		case errors.Is(err, users.ErrNotFound):
-			msg = fmt.Sprintf("user with id `%v` was not found.", req.ID)
 			httpCode = http.StatusNotFound
 			respCode = userNotFoundCode
 		case errors.Is(err, users.ErrDuplicate):
-			msg = fmt.Sprintf("user with id `%v` already exists.", req.ID)
 			httpCode = http.StatusConflict
 			respCode = userDuplicateCode
 		default:
-			msg = fmt.Sprintf("unable to modify user `%v`: %v.", req, err.Error())
 			httpCode = http.StatusBadRequest
 			respCode = userBadRequest
 		}
 
-		return getServerErrorResponse(httpCode, msg, respCode)
+		return getServerErrorResponse(httpCode, err, respCode)
 	}
 	// If user specified a phoneNumber in the request body, then we proceed with phone number confirmation flow:
 	// step 0: don`t update the phone number in users table
@@ -183,10 +178,10 @@ func (req *RequestModifyUser) Validate() *server.Response {
 	}
 
 	if req.ID != req.AuthenticatedUser.ID {
-		msg := fmt.Sprintf("update account not allowed for anyone except the owner. "+
+		err := errors.Errorf("update account not allowed for anyone except the owner. "+
 			"`%v` tried to update `%v`", req.AuthenticatedUser.ID, req.ID)
 
-		resp := getServerErrorResponse(http.StatusForbidden, msg, notAllowed)
+		resp := getServerErrorResponse(http.StatusForbidden, err, notAllowed)
 
 		return &resp
 	}
@@ -231,8 +226,6 @@ func (s *service) DeleteUser(ctx context.Context, r server.ParsedRequest) server
 
 	if err := s.usersProcessor.RemoveUser(ctx, req.ID); err != nil {
 		if errors.Is(err, users.ErrNotFound) {
-			log.Error(errors.Wrap(err, "user not found"), "RequestRemoveUser", req)
-
 			return server.NoContent()
 		}
 
@@ -261,10 +254,10 @@ func (req *RequestDeleteUser) Validate() *server.Response {
 		return server.RequiredStrings(map[string]string{"userId": req.ID})
 	}
 	if req.ID != req.AuthenticatedUser.ID {
-		msg := fmt.Sprintf("delete account not allowed for anyone except the owner. "+
+		err := errors.Errorf("delete account not allowed for anyone except the owner. "+
 			"`%v` tried to delete `%v`", req.AuthenticatedUser.ID, req.ID)
 
-		resp := getServerErrorResponse(http.StatusForbidden, msg, notAllowed)
+		resp := getServerErrorResponse(http.StatusForbidden, err, notAllowed)
 
 		return &resp
 	}

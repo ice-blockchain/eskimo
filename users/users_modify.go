@@ -42,14 +42,9 @@ func (u *users) ModifyUser(ctx context.Context, user *User) error {
 		return errors.Wrapf(err, "failed to update user with id %v", user.ID)
 	}
 
-	if err = u.sendUsersMessage(ctx, user); err != nil {
-		log.Error(err, "Error sending user message")
-	}
-
-	return nil
+	return errors.Wrap(u.sendUsersMessage(ctx, user), "failed to send updated user message")
 }
 
-//nolint:funlen // A lot of fields in DB table
 func (u *User) genSQLUpdate() (sql string, params map[string]interface{}) {
 	params = make(map[string]interface{})
 	params["id"] = u.ID
@@ -64,10 +59,6 @@ func (u *User) genSQLUpdate() (sql string, params map[string]interface{}) {
 	if u.FullName != "" {
 		params["fullName"] = u.FullName
 		sql += ", FULL_NAME = :fullName"
-	}
-	if u.PhoneNumber != "" {
-		params["phoneNumber"] = u.PhoneNumber
-		sql += ", PHONE_NUMBER = :phoneNumber"
 	}
 	if u.Username != "" {
 		params["username"] = u.Username
@@ -95,7 +86,12 @@ func (u *User) updated() *User {
 
 func (u *users) uploadProfilePicture(ctx context.Context, data *multipart.FileHeader) error {
 	file, err := data.Open()
-	defer file.Close()
+	defer func(file multipart.File) {
+		err = file.Close()
+		if err != nil {
+			log.Error(err, "error closing file")
+		}
+	}(file)
 	if err != nil {
 		return errors.Wrap(err, "error opening file")
 	}
@@ -114,9 +110,6 @@ func (u *users) uploadProfilePicture(ctx context.Context, data *multipart.FileHe
 		SetHeader("AccessKey", cfg.PictureStorage.AccessKey).
 		SetHeader("Content-Type", data.Header.Get("Content-Type")).
 		SetBodyBytes(fileData).Put(url)
-	if err != nil {
-		return errors.Wrap(err, "error uploading file")
-	}
 
-	return nil
+	return errors.Wrap(err, "error uploading file")
 }

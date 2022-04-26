@@ -44,7 +44,7 @@ var cfg config
 type (
 	// | service implements server.State and is responsible for managing the state and lifecycle of the package.
 	service struct {
-		readRepository users.ReadRepository
+		usersReadRepository users.ReadRepository
 	}
 	config struct {
 		Host    string `yaml:"host"`

@@ -13,11 +13,11 @@ cmd/eskimo:
     certPath: cmd/eskimo/.testdata/localhost.crt
     keyPath: cmd/eskimo/.testdata/localhost.key
 cmd/eskimo-hut:
-  host: localhost
+  host: localhost:1443
   version: local
   defaultEndpointTimeout: 30s
   httpServer:
-    port: 443
+    port: 1443
     certPath: cmd/eskimo-hut/.testdata/localhost.crt
     keyPath: cmd/eskimo-hut/.testdata/localhost.key
 users:

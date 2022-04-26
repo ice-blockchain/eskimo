@@ -4,11 +4,11 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"regexp"
 
 	"github.com/gin-gonic/gin"
+	"github.com/pkg/errors"
 
 	"github.com/ICE-Blockchain/wintr/server"
 )
@@ -39,27 +39,20 @@ func (s *service) setupUserValidationRoutes(router *gin.Engine) {
 func (s *service) ValidateUsername(ctx context.Context, r server.ParsedRequest) server.Response {
 	req := r.(*RequestValidateUsername)
 
-	eval := regexp.MustCompile(`[\w\-.]+`)
-
-	if len(req.Username) < 4 || len(req.Username) > 20 || eval.MatchString(req.Username) == false {
-		msg := fmt.Sprintf("username `%v` incorrect.", req.Username)
-
-		return getServerErrorResponse(http.StatusBadRequest, msg, userIncorrect)
-	}
 	exist, err := s.usersProcessor.UsernameExists(ctx, req.Username)
 	if err != nil {
-		msg := fmt.Sprintf("unable to check username `%v`", req.Username)
+		err := errors.Errorf("unable to check username `%v`", req.Username)
 
-		return getServerErrorResponse(http.StatusBadRequest, msg, userBadRequest)
+		return getServerErrorResponse(http.StatusBadRequest, err, userBadRequest)
 	}
 
 	if exist {
-		msg := fmt.Sprintf("username `%v` already exists", req.Username)
+		err := errors.Errorf("username `%v` already exists", req.Username)
 
-		return getServerErrorResponse(http.StatusConflict, msg, userDuplicateCode)
+		return getServerErrorResponse(http.StatusConflict, err, userDuplicateCode)
 	}
 
-	return server.OK(req)
+	return server.OK()
 }
 
 func newRequestValidateUsername() server.ParsedRequest {
@@ -77,7 +70,15 @@ func (req *RequestValidateUsername) GetAuthenticatedUser() server.AuthenticatedU
 }
 
 func (req *RequestValidateUsername) Validate() *server.Response {
-	//nolint:nolintlint,godox // TODO also validate structure of the username.
+	eval := regexp.MustCompile(`[\w\-.]+`)
+
+	if len(req.Username) < 4 || len(req.Username) > 20 || eval.MatchString(req.Username) == false {
+		err := errors.Errorf("username `%v` incorrect", req.Username)
+		resp := getServerErrorResponse(http.StatusBadRequest, err, userIncorrect)
+
+		return &resp
+	}
+
 	return server.RequiredStrings(map[string]string{"username": req.Username})
 }
 

@@ -36,11 +36,7 @@ func (u *users) UsernameExists(ctx context.Context, name Username) (bool, error)
 		return false, errors.Wrapf(err, "failed to get user")
 	}
 
-	if result.ID != "" {
-		return true, nil
-	}
-
-	return false, nil
+	return result.ID != "", nil
 }
 
 func (u *user) toUser() *User {

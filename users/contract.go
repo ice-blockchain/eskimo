@@ -76,6 +76,8 @@ type (
 	}
 )
 
+// Private API.
+
 const (
 	applicationYamlKey = "users"
 	defaultUserImage   = "default-user-image.jpg"
@@ -139,7 +141,3 @@ type (
 		} `yaml:"messageBroker"`
 	}
 )
-
-func (u *users) Close() error {
-	return nil
-}

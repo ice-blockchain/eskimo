@@ -11,7 +11,6 @@ import (
 	"github.com/zeebo/xxh3"
 
 	"github.com/ICE-Blockchain/wintr/connectors/storage"
-	"github.com/ICE-Blockchain/wintr/log"
 )
 
 //nolint:funlen // A lot of SQL
@@ -21,17 +20,17 @@ func (u *users) AddUser(ctx context.Context, user *User) error {
 	}
 	user.created()
 
-	var refer UserID
+	var referral UserID
 	if user.ReferredBy != "" {
-		refer = fmt.Sprintf("'%v'", user.ReferredBy)
+		referral = ":referredBy"
 	} else {
-		refer = `(SELECT ID FROM users LIMIT 1)`
+		referral = `(SELECT ID FROM users ORDER BY random() LIMIT 1)`
 	}
 
 	sql := fmt.Sprintf(`INSERT INTO users (ID, HASH_CODE, EMAIL, FULL_NAME, PHONE_NUMBER,
 	USERNAME, REFERRED_BY, PROFILE_PICTURE_NAME, COUNTRY, CREATED_AT, UPDATED_AT)
 	VALUES(:id, :hashCode, :email, :fullName, :phoneNumber,
-	:username, %v, :profilePictureName, :country, :createdAt, :updatedAt)`, refer)
+	:username, %v, :profilePictureName, :country, :createdAt, :updatedAt)`, referral)
 
 	params := map[string]interface{}{
 		"id":                 user.ID,
@@ -46,16 +45,16 @@ func (u *users) AddUser(ctx context.Context, user *User) error {
 		"updatedAt":          user.UpdatedAt.UnixNano(),
 	}
 
+	if user.ReferredBy != "" {
+		params["referredBy"] = user.ReferredBy
+	}
+
 	query, err := u.db.PrepareExecute(sql, params)
 	if err = storage.CheckSQLDMLErr(query, err); err != nil {
 		return errors.Wrapf(err, "failed to add user %#v", user)
 	}
 
-	if err = u.sendUsersMessage(ctx, user); err != nil {
-		log.Error(err, "Error sending user message")
-	}
-
-	return nil
+	return errors.Wrap(u.sendUsersMessage(ctx, user), "failed to send user created message")
 }
 
 func (u *users) hash(data string) uint64 {

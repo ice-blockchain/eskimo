@@ -27,10 +27,6 @@ func New(ctx context.Context, cancel context.CancelFunc) ReadRepository {
 	}
 }
 
-func (r repository) Close() error {
-	return nil
-}
-
 func StartProcessor(ctx context.Context, cancel context.CancelFunc) Processor {
 	appCfg.MustLoadFromKey(applicationYamlKey, &cfg)
 
@@ -46,7 +42,7 @@ func StartProcessor(ctx context.Context, cancel context.CancelFunc) Processor {
 	}
 }
 
-func (p processor) Close() error {
+func (u *users) Close() error {
 	return nil
 }
 
@@ -70,19 +66,18 @@ func closeAll(db tarantool.Connector, mb messagebroker.Client) func() error {
 }
 
 func closeDB(db tarantool.Connector) func() error {
-	log.Info("closing db connection...")
-
 	return func() error {
-		err := errors.Wrap(db.Close(), "closing db connection failed")
+		m := "closing db connection failed"
+		log.Info(m)
 
-		return errors.Wrap(err, "closing users repository failed")
+		return errors.Wrap(db.Close(), m)
 	}
 }
 
 func (u *users) sendUsersMessage(ctx context.Context, user *User) error {
 	valueBytes, err := json.Marshal(user)
 	if err != nil {
-		return errors.Wrapf(err, "failed to marshal user %v", user)
+		return errors.Wrapf(err, "failed to marshal user %#v", user)
 	}
 
 	m := &messagebroker.Message{
@@ -99,7 +94,7 @@ func (u *users) sendUsersMessage(ctx context.Context, user *User) error {
 	return errors.Wrapf(<-responder, "failed to send users message to broker")
 }
 
-func (p processor) CheckHealth(ctx context.Context) error {
+func (p *processor) CheckHealth(_ context.Context) error {
 	//nolint:nolintlint    // TODO implement me.
 	return nil
 }
