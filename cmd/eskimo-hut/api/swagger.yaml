@@ -80,6 +80,8 @@ definitions:
       fullName:
         example: John Doe
         type: string
+      hashCode:
+        type: integer
       id:
         example: 226fcb86-fcce-458e-95f0-867e09c8c274
         type: string

@@ -4,8 +4,13 @@ package main
 
 import (
 	"context"
-	"github.com/ICE-Blockchain/wintr/server"
+	"net/http"
+	"regexp"
+
 	"github.com/gin-gonic/gin"
+	"github.com/pkg/errors"
+
+	"github.com/ICE-Blockchain/wintr/server"
 )
 
 func (s *service) setupUserValidationRoutes(router *gin.Engine) {
@@ -34,9 +39,20 @@ func (s *service) setupUserValidationRoutes(router *gin.Engine) {
 func (s *service) ValidateUsername(ctx context.Context, r server.ParsedRequest) server.Response {
 	req := r.(*RequestValidateUsername)
 
-	//TODO implement me
+	exist, err := s.usersProcessor.UsernameExists(ctx, req.Username)
+	if err != nil {
+		err = errors.Wrapf(err, "unable to check username `%v`", req.Username)
 
-	return server.OK(req)
+		return getServerErrorResponse(http.StatusInternalServerError, err, userBadRequest)
+	}
+
+	if exist {
+		err = errors.Wrapf(err, "username `%v` already exists", req.Username)
+
+		return getServerErrorResponse(http.StatusConflict, err, userDuplicateCode)
+	}
+
+	return server.OK()
 }
 
 func newRequestValidateUsername() server.ParsedRequest {
@@ -54,8 +70,16 @@ func (req *RequestValidateUsername) GetAuthenticatedUser() server.AuthenticatedU
 }
 
 func (req *RequestValidateUsername) Validate() *server.Response {
-	// TODO also validate structure of the username
-	return server.RequiredStrings(map[string]string{"username": req.Username})
+	eval := regexp.MustCompile(`[\w\-.]+`)
+
+	if len(req.Username) < 4 || len(req.Username) > 20 || eval.MatchString(req.Username) == false {
+		err := errors.Errorf("username `%v` incorrect", req.Username)
+		resp := getServerErrorResponse(http.StatusBadRequest, err, userIncorrect)
+
+		return &resp
+	}
+
+	return nil
 }
 
 func (req *RequestValidateUsername) Bindings(c *gin.Context) []func(obj interface{}) error {
@@ -78,13 +102,13 @@ func (req *RequestValidateUsername) Bindings(c *gin.Context) []func(obj interfac
 // @Failure      500            {object}  server.ErrorResponse
 // @Failure      504            {object}  server.ErrorResponse  "if request times out"
 // @Router       /user-validations/phone-number [PUT].
-func (s *service) ValidatePhoneNumber(ctx context.Context, r server.ParsedRequest) server.Response {
+func (s *service) ValidatePhoneNumber(_ context.Context, r server.ParsedRequest) server.Response {
 	req := r.(*RequestValidatePhoneNumber)
 
-	//TODO implement me
+	//nolint:nolintlint,godox // TODO implement me
 	// if phone number & code match the ones in the database => remove the entry and return 200
 	// if entry for that phone number is not in phone_number_validation_codes => 404
-	// if entry exists but has wrong code => 400 INVALID_CODE
+	// if entry exists but has wrong code => 400 INVALID_CODE.
 
 	return server.OK(req)
 }

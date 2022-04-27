@@ -4,9 +4,11 @@ package main
 
 import (
 	"context"
+
+	"github.com/gin-gonic/gin"
+
 	"github.com/ICE-Blockchain/eskimo/users"
 	"github.com/ICE-Blockchain/wintr/server"
-	"github.com/gin-gonic/gin"
 )
 
 func (s *service) setupUserStatisticsRoutes(router *gin.Engine) {
@@ -32,10 +34,10 @@ func (s *service) setupUserStatisticsRoutes(router *gin.Engine) {
 // @Failure      504            {object}  server.ErrorResponse  "if request times out"
 // @Router       /user-statistics/top-countries [GET].
 func (s *service) GetTopCountries(ctx context.Context, r server.ParsedRequest) server.Response {
-	//req := r.(*RequestGetTopCountries)
+	//nolint:nolintlint,gocritic // req := r.(*RequestGetTopCountries)
 
 	return server.OK([]*users.CountryStatistics{{
-		UserCount: 111,
+		UserCount: 111, //nolint:gomnd // TODO
 		Country:   "us",
 	}})
 }

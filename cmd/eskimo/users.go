@@ -4,8 +4,14 @@ package main
 
 import (
 	"context"
-	"github.com/ICE-Blockchain/wintr/server"
+	"fmt"
+	"net/http"
+
 	"github.com/gin-gonic/gin"
+	"github.com/pkg/errors"
+
+	"github.com/ICE-Blockchain/eskimo/users"
+	"github.com/ICE-Blockchain/wintr/server"
 )
 
 func (s *service) setupUserRoutes(router *gin.Engine) {
@@ -32,15 +38,35 @@ func (s *service) setupUserRoutes(router *gin.Engine) {
 // @Router       /users/{userId} [GET].
 func (s *service) GetUser(ctx context.Context, r server.ParsedRequest) server.Response {
 	req := r.(*RequestGetUser)
+	resp, err := s.usersRepository.GetUser(ctx, req.ID)
+	if err != nil {
+		if errors.Is(err, users.ErrNotFound) {
+			m := fmt.Sprintf("user with id `%v` was not found.", req.ID)
 
-	//TODO implement me
-	if req.AuthenticatedUser.ID == req.ID {
-		// User is trying to get their own account
-	} else {
-		// User is trying to get some other user's account
+			return server.Response{
+				Code: http.StatusNotFound,
+				Data: server.ErrorResponse{
+					Error: m,
+					Code:  userNotFoundCode,
+				}.Fail(errors.Wrapf(err, m)),
+			}
+		}
+
+		return server.Unexpected(err)
 	}
 
-	return server.OK(req)
+	if req.AuthenticatedUser.ID == req.ID {
+		// User is trying to get their own account.
+		return server.OK(resp)
+	}
+	// User is trying to get some other user's account.
+	respShort := users.User{
+		ID:                resp.ID,
+		Username:          resp.Username,
+		ProfilePictureURL: resp.ProfilePictureURL,
+	}
+
+	return server.OK(respShort)
 }
 
 func newRequestGetUser() server.ParsedRequest {

@@ -4,12 +4,12 @@ package main
 
 import (
 	"context"
-	"github.com/ICE-Blockchain/eskimo/cmd/eskimo/api"
-	"github.com/ICE-Blockchain/eskimo/users"
 
 	"github.com/gin-gonic/gin"
 	"github.com/pkg/errors"
 
+	"github.com/ICE-Blockchain/eskimo/cmd/eskimo/api"
+	"github.com/ICE-Blockchain/eskimo/users"
 	appCfg "github.com/ICE-Blockchain/wintr/config"
 	"github.com/ICE-Blockchain/wintr/log"
 	"github.com/ICE-Blockchain/wintr/server"
@@ -53,9 +53,9 @@ func (s *service) Close(ctx context.Context) error {
 	return errors.Wrap(s.usersRepository.Close(), "could not close repository")
 }
 
-func (s *service) CheckHealth(ctx context.Context, r *server.RequestCheckHealth) server.Response {
+func (s *service) CheckHealth(_ context.Context, r *server.RequestCheckHealth) server.Response {
 	log.Debug("checking health...", "package", "users")
-	//TODO to be implemented
+	//nolint:nolintlint,godox // TODO to be implemented. // Not yet
 
 	return server.OK(r)
 }

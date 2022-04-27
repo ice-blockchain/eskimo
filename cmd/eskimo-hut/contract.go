@@ -3,26 +3,27 @@
 package main
 
 import (
-	"github.com/ICE-Blockchain/eskimo/users"
-	"github.com/ICE-Blockchain/wintr/server"
 	"mime/multipart"
 	"net"
+
+	"github.com/ICE-Blockchain/eskimo/users"
+	"github.com/ICE-Blockchain/wintr/server"
 )
 
 // Public API.
 
 type (
 	RequestCreateUser struct {
-		AuthenticatedUser server.AuthenticatedUser `json:"authenticatedUser" swaggerignore:"true"`
-		ClientIP          net.IP                   `json:"clientIP" swaggerignore:"true"`
 		// `email` is optional.
 		Email string `json:"email" example:"jdoe@gmail.com"`
 		// `fullName` is optional.
 		FullName string `json:"fullName" example:"John Doe"`
 		// `phoneNumber` is optional.
-		PhoneNumber string `json:"phoneNumber" example:"+12099216581"`
-		Username    string `json:"username" example:"jdoe"`
-		ReferredBy  string `json:"referredBy" example:"billy112"`
+		PhoneNumber       string                   `json:"phoneNumber" example:"+12099216581"`
+		Username          string                   `json:"username" example:"jdoe"`
+		ReferredBy        string                   `json:"referredBy" example:"billy112"`
+		AuthenticatedUser server.AuthenticatedUser `json:"authenticatedUser" swaggerignore:"true"`
+		ClientIP          net.IP                   `json:"clientIP" swaggerignore:"true"`
 	}
 	RequestModifyUser struct {
 		Email             string                   `form:"email" json:"email" example:"jdoe@gmail.com"`
@@ -50,7 +51,14 @@ type (
 
 // Private API.
 
-const applicationYamlKey = "cmd/eskimo-hut"
+const (
+	applicationYamlKey = "cmd/eskimo-hut"
+	userNotFoundCode   = "USER_NOT_FOUND"
+	userDuplicateCode  = "USER_DUPLICATE"
+	userBadRequest     = "USER_BAD_REQUEST"
+	userIncorrect      = "USER_INCORRECT"
+	notAllowed         = "NOT_ALLOWED"
+)
 
 //nolint:gochecknoglobals // Because its loaded once, at runtime.
 var cfg config

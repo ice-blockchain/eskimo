@@ -4,12 +4,12 @@ package main
 
 import (
 	"context"
-	"github.com/ICE-Blockchain/eskimo/cmd/eskimo/api"
-	"github.com/ICE-Blockchain/eskimo/users"
 
 	"github.com/gin-gonic/gin"
 	"github.com/pkg/errors"
 
+	"github.com/ICE-Blockchain/eskimo/cmd/eskimo-hut/api"
+	"github.com/ICE-Blockchain/eskimo/users"
 	appCfg "github.com/ICE-Blockchain/wintr/config"
 	"github.com/ICE-Blockchain/wintr/log"
 	"github.com/ICE-Blockchain/wintr/server"
@@ -60,4 +60,14 @@ func (s *service) CheckHealth(ctx context.Context, r *server.RequestCheckHealth)
 	}
 
 	return server.OK(r)
+}
+
+func getServerErrorResponse(httpCode int, err error, code string) server.Response {
+	return server.Response{
+		Code: httpCode,
+		Data: server.ErrorResponse{
+			Error: err.Error(),
+			Code:  code,
+		}.Fail(err),
+	}
 }

@@ -4,13 +4,15 @@ package main
 
 import (
 	"context"
-	"github.com/ICE-Blockchain/eskimo/users"
-	"github.com/ICE-Blockchain/wintr/server"
+	"net"
+	"net/http"
+
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
 	"github.com/pkg/errors"
-	"net"
-	"net/http"
+
+	"github.com/ICE-Blockchain/eskimo/users"
+	"github.com/ICE-Blockchain/wintr/server"
 )
 
 func (s *service) setupUserRoutes(router *gin.Engine) {
@@ -40,9 +42,16 @@ func (s *service) setupUserRoutes(router *gin.Engine) {
 func (s *service) CreateUser(ctx context.Context, r server.ParsedRequest) server.Response {
 	req := r.(*RequestCreateUser)
 
-	//TODO implement me
+	resp := req.user()
+	if err := s.usersProcessor.AddUser(ctx, resp); err != nil {
+		if errors.Is(err, users.ErrDuplicate) {
+			return getServerErrorResponse(http.StatusConflict, err, userDuplicateCode)
+		}
 
-	return server.Created(req)
+		return server.Unexpected(err)
+	}
+
+	return server.Created(resp)
 }
 
 func newRequestCreateUser() server.ParsedRequest {
@@ -51,14 +60,13 @@ func newRequestCreateUser() server.ParsedRequest {
 
 func (req *RequestCreateUser) user() *users.User {
 	return &users.User{
-		ID:                req.AuthenticatedUser.ID,
-		Email:             req.Email,
-		FullName:          req.FullName,
-		PhoneNumber:       req.PhoneNumber,
-		Username:          req.Username,
-		ReferredBy:        req.ReferredBy,
-		ProfilePictureURL: "TODO some default",
-		Country:           "TODO: get me based on req.ClientIP using https://www.ip2location.com/development-libraries/ip2location/go",
+		ID:          req.AuthenticatedUser.ID,
+		Email:       req.Email,
+		FullName:    req.FullName,
+		PhoneNumber: req.PhoneNumber,
+		Username:    req.Username,
+		ReferredBy:  req.ReferredBy,
+		Country:     "TODO: get me based on req.ClientIP using https://www.ip2location.com/development-libraries/ip2location/go",
 	}
 }
 
@@ -83,7 +91,7 @@ func (req *RequestCreateUser) GetClientIP() net.IP {
 }
 
 func (req *RequestCreateUser) Validate() *server.Response {
-	return server.RequiredStrings(map[string]string{"referredBy": req.ReferredBy, "username": req.Username})
+	return server.RequiredStrings(map[string]string{"username": req.Username})
 }
 
 func (req *RequestCreateUser) Bindings(c *gin.Context) []func(obj interface{}) error {
@@ -111,19 +119,45 @@ func (req *RequestCreateUser) Bindings(c *gin.Context) []func(obj interface{}) e
 // @Router       /users/{userId} [PATCH].
 func (s *service) ModifyUser(ctx context.Context, r server.ParsedRequest) server.Response {
 	req := r.(*RequestModifyUser)
+	err := s.usersProcessor.ModifyUser(ctx, req.user())
+	if err != nil {
+		var respCode string
+		var httpCode int
+		switch {
+		case errors.Is(err, users.ErrNotFound):
+			httpCode = http.StatusNotFound
+			respCode = userNotFoundCode
+		case errors.Is(err, users.ErrDuplicate):
+			httpCode = http.StatusConflict
+			respCode = userDuplicateCode
+		default:
+			httpCode = http.StatusInternalServerError
+			respCode = userBadRequest
+		}
 
-	//TODO implement me
-
-	//if user specified a phoneNumber in the request body, then we proceed with phone number confirmation flow:
+		return getServerErrorResponse(httpCode, err, respCode)
+	}
+	// If user specified a phoneNumber in the request body, then we proceed with phone number confirmation flow:
 	// step 0: don`t update the phone number in users table
 	// step 1: insert into phone_number_validation_codes // TODO ask Robert about the pattern of the code
-	// step 2: use https://www.twilio.com/docs/libraries/go to send SMS with that code to the user`s phone number
-
-	return server.OK(req)
+	// step 2: use https://www.twilio.com/docs/libraries/go to send SMS with that code to the user`s phone number.
+	return server.OK()
 }
 
 func newRequestModifyUser() server.ParsedRequest {
 	return new(RequestModifyUser)
+}
+
+func (req *RequestModifyUser) user() *users.User {
+	return &users.User{
+		ID:             req.ID,
+		Email:          req.Email,
+		FullName:       req.FullName,
+		PhoneNumber:    req.PhoneNumber,
+		Username:       req.Username,
+		ProfilePicture: req.ProfilePicture,
+		Country:        "TODO by clients IP",
+	}
 }
 
 func (req *RequestModifyUser) SetAuthenticatedUser(user server.AuthenticatedUser) {
@@ -137,14 +171,32 @@ func (req *RequestModifyUser) GetAuthenticatedUser() server.AuthenticatedUser {
 }
 
 func (req *RequestModifyUser) Validate() *server.Response {
-	// TODO implement me
-	// If req body is empty also return error
-	return server.RequiredStrings(map[string]string{})
+	if req.ID == "" {
+		return server.RequiredStrings(map[string]string{"userId": req.ID})
+	}
+
+	if req.ID != req.AuthenticatedUser.ID {
+		err := errors.Errorf("update account not allowed for anyone except the owner. "+
+			"`%v` tried to update `%v`", req.AuthenticatedUser.ID, req.ID)
+
+		resp := getServerErrorResponse(http.StatusForbidden, err, notAllowed)
+
+		return &resp
+	}
+
+	return nil
 }
 
 func (req *RequestModifyUser) Bindings(c *gin.Context) []func(obj interface{}) error {
 	return []func(obj interface{}) error{
-		func(obj interface{}) error { return c.ShouldBindWith(obj, binding.FormMultipart) },
+		func(obj interface{}) error {
+			err := c.ShouldBindWith(obj, binding.FormMultipart)
+			if err != nil {
+				return errors.Wrap(err, "FormMultipart binding failed")
+			}
+
+			return nil
+		},
 		c.ShouldBindUri,
 		server.ShouldBindAuthenticatedUser(c),
 	}
@@ -170,9 +222,15 @@ func (req *RequestModifyUser) Bindings(c *gin.Context) []func(obj interface{}) e
 func (s *service) DeleteUser(ctx context.Context, r server.ParsedRequest) server.Response {
 	req := r.(*RequestDeleteUser)
 
-	//TODO implement me
+	if err := s.usersProcessor.RemoveUser(ctx, req.ID); err != nil {
+		if errors.Is(err, users.ErrNotFound) {
+			return server.NoContent()
+		}
 
-	return server.OK(req)
+		return server.Unexpected(err)
+	}
+
+	return server.OK()
 }
 
 func newRequestDeleteUser() server.ParsedRequest {
@@ -194,15 +252,12 @@ func (req *RequestDeleteUser) Validate() *server.Response {
 		return server.RequiredStrings(map[string]string{"userId": req.ID})
 	}
 	if req.ID != req.AuthenticatedUser.ID {
-		err := errors.Errorf("delete account not allowed for anyone except the owner. `%v` tried to delete `%v`", req.AuthenticatedUser.ID, req.ID)
+		err := errors.Errorf("delete account not allowed for anyone except the owner. "+
+			"`%v` tried to delete `%v`", req.AuthenticatedUser.ID, req.ID)
 
-		return &server.Response{
-			Code: http.StatusForbidden,
-			Data: server.ErrorResponse{
-				Error: "only deleting your own account is allowed",
-				Code:  "NOT_ALLOWED",
-			}.Fail(err),
-		}
+		resp := getServerErrorResponse(http.StatusForbidden, err, notAllowed)
+
+		return &resp
 	}
 
 	return nil

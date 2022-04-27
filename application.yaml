@@ -12,6 +12,35 @@ cmd/eskimo:
     port: 443
     certPath: cmd/eskimo/.testdata/localhost.crt
     keyPath: cmd/eskimo/.testdata/localhost.key
-  defaultPagination:
-    limit: 20
-    maxLimit: 1000
+cmd/eskimo-hut:
+  host: localhost:1443
+  version: local
+  defaultEndpointTimeout: 30s
+  httpServer:
+    port: 1443
+    certPath: cmd/eskimo-hut/.testdata/localhost.crt
+    keyPath: cmd/eskimo-hut/.testdata/localhost.key
+users:
+  db:
+    spaces:
+      - USERS
+    urls:
+      - localhost:3301
+    user: admin
+    password: pass
+  messageBroker:
+    #It's not used, because we`re not consuming anything in the production code.
+    #So, its configured here just for testing or other local purposes.
+    consumerGroup: eskimo-users-testing
+    createTopics: true
+    urls:
+      - localhost:9092
+    topics:
+      - name: users-events
+        partitions: 10
+        replicationFactor: 1
+        retention: 1000h
+  pictureStorage:
+    urlUpload: https://storage.bunnycdn.com/ice-staging/profile
+    urlDownload: https://ice-staging.b-cdn.net/profile
+    accessKey: access_key_hidden

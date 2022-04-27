@@ -1,12 +1,13 @@
 -- SPDX-License-Identifier: BUSL-1.1
 box.execute([[CREATE TABLE IF NOT EXISTS users  (
                     id STRING primary key,
+                    hash_code UNSIGNED NOT NULL UNIQUE,
                     referred_by STRING REFERENCES users(id) ON DELETE SET NULL,
                     username STRING NOT NULL UNIQUE,
                     email STRING,
                     full_name STRING,
                     phone_number STRING,
-                    profile_picture STRING NOT NULL,
+                    profile_picture_name STRING NOT NULL,
                     country STRING NOT NULL,
                     created_at UNSIGNED NOT NULL,
                     updated_at UNSIGNED NOT NULL
@@ -19,3 +20,4 @@ box.execute([[CREATE TABLE IF NOT EXISTS phone_number_validation_codes  (
                     created_at UNSIGNED NOT NULL
                      ) WITH ENGINE = 'vinyl';]])
 -- TODO will add indexes later on
+box.execute([[CREATE INDEX IF NOT EXISTS users_username_lookup_ix ON users (username);]])

@@ -399,6 +399,9 @@ const docTemplate = `{
                     "type": "string",
                     "example": "John Doe"
                 },
+                "hashCode": {
+                    "type": "integer"
+                },
                 "id": {
                     "type": "string",
                     "example": "226fcb86-fcce-458e-95f0-867e09c8c274"
