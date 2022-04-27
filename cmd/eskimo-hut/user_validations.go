@@ -41,13 +41,13 @@ func (s *service) ValidateUsername(ctx context.Context, r server.ParsedRequest) 
 
 	exist, err := s.usersProcessor.UsernameExists(ctx, req.Username)
 	if err != nil {
-		err := errors.Errorf("unable to check username `%v`", req.Username)
+		err = errors.Wrapf(err, "unable to check username `%v`", req.Username)
 
-		return getServerErrorResponse(http.StatusBadRequest, err, userBadRequest)
+		return getServerErrorResponse(http.StatusInternalServerError, err, userBadRequest)
 	}
 
 	if exist {
-		err := errors.Errorf("username `%v` already exists", req.Username)
+		err = errors.Wrapf(err, "username `%v` already exists", req.Username)
 
 		return getServerErrorResponse(http.StatusConflict, err, userDuplicateCode)
 	}
@@ -79,7 +79,7 @@ func (req *RequestValidateUsername) Validate() *server.Response {
 		return &resp
 	}
 
-	return server.RequiredStrings(map[string]string{"username": req.Username})
+	return nil
 }
 
 func (req *RequestValidateUsername) Bindings(c *gin.Context) []func(obj interface{}) error {

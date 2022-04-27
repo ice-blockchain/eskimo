@@ -16,7 +16,7 @@ import (
 	"github.com/ICE-Blockchain/wintr/log"
 )
 
-func New(ctx context.Context, cancel context.CancelFunc) ReadRepository {
+func New(ctx context.Context, cancel context.CancelFunc) Repository {
 	appCfg.MustLoadFromKey(applicationYamlKey, &cfg)
 
 	db := storage.MustConnect(ctx, cancel, ddl, applicationYamlKey)
@@ -33,17 +33,19 @@ func StartProcessor(ctx context.Context, cancel context.CancelFunc) Processor {
 	db := storage.MustConnect(ctx, cancel, ddl, applicationYamlKey)
 	mb := messagebroker.MustConnect(ctx, applicationYamlKey)
 
-	u := &users{db: db, mb: mb}
-
 	return &processor{
 		close:           closeAll(db, mb),
-		ReadRepository:  u,
-		WriteRepository: u,
+		ReadRepository:  &users{db: db},
+		WriteRepository: &users{db: db, mb: mb},
 	}
 }
 
-func (u *users) Close() error {
-	return nil
+func (p *processor) Close() error {
+	return errors.Wrap(p.close(), "closing users processor failed")
+}
+
+func (r *repository) Close() error {
+	return errors.Wrap(r.close(), "closing users repository failed")
 }
 
 func closeAll(db tarantool.Connector, mb messagebroker.Client) func() error {

@@ -54,12 +54,14 @@ type (
 
 	// Repository main API exposed that handles all the features(including internal/system ones) of this package.
 	Repository interface {
+		io.Closer
 		ReadRepository
-		WriteRepository
 	}
 
 	Processor interface {
-		Repository
+		io.Closer
+		ReadRepository
+		WriteRepository
 		CheckHealth(context.Context) error
 	}
 
@@ -70,7 +72,6 @@ type (
 	}
 
 	ReadRepository interface {
-		io.Closer
 		GetUser(context.Context, UserID) (*User, error)
 		UsernameExists(context.Context, Username) (bool, error)
 	}

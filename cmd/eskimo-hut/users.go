@@ -12,7 +12,6 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/ICE-Blockchain/eskimo/users"
-	"github.com/ICE-Blockchain/wintr/log"
 	"github.com/ICE-Blockchain/wintr/server"
 )
 
@@ -122,7 +121,6 @@ func (s *service) ModifyUser(ctx context.Context, r server.ParsedRequest) server
 	req := r.(*RequestModifyUser)
 	err := s.usersProcessor.ModifyUser(ctx, req.user())
 	if err != nil {
-		log.Error(err)
 		var respCode string
 		var httpCode int
 		switch {
@@ -133,7 +131,7 @@ func (s *service) ModifyUser(ctx context.Context, r server.ParsedRequest) server
 			httpCode = http.StatusConflict
 			respCode = userDuplicateCode
 		default:
-			httpCode = http.StatusBadRequest
+			httpCode = http.StatusInternalServerError
 			respCode = userBadRequest
 		}
 

@@ -38,7 +38,7 @@ func (s *service) setupUserRoutes(router *gin.Engine) {
 // @Router       /users/{userId} [GET].
 func (s *service) GetUser(ctx context.Context, r server.ParsedRequest) server.Response {
 	req := r.(*RequestGetUser)
-	resp, err := s.usersReadRepository.GetUser(ctx, req.ID)
+	resp, err := s.usersRepository.GetUser(ctx, req.ID)
 	if err != nil {
 		if errors.Is(err, users.ErrNotFound) {
 			m := fmt.Sprintf("user with id `%v` was not found.", req.ID)
@@ -51,13 +51,14 @@ func (s *service) GetUser(ctx context.Context, r server.ParsedRequest) server.Re
 				}.Fail(errors.Wrapf(err, m)),
 			}
 		}
+
+		return server.Unexpected(err)
 	}
 
 	if req.AuthenticatedUser.ID == req.ID {
 		// User is trying to get their own account.
 		return server.OK(resp)
 	}
-
 	// User is trying to get some other user's account.
 	respShort := users.User{
 		ID:                resp.ID,
