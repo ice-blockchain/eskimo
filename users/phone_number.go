@@ -10,10 +10,10 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/ICE-Blockchain/wintr/connectors/storage"
+	"github.com/ice-blockchain/wintr/connectors/storage"
 )
 
-func (u *users) AddPhoneValidationCode(ctx context.Context, id UserID, number string) error {
+func (u *users) addPhoneValidationCode(ctx context.Context, id UserID, number string) error {
 	if ctx.Err() != nil {
 		return errors.Wrap(ctx.Err(), "add phone number failed because context failed")
 	}
@@ -34,12 +34,8 @@ func (u *users) AddPhoneValidationCode(ctx context.Context, id UserID, number st
 	}
 
 	query, err := u.db.PrepareExecute(sql, params)
-	if err = storage.CheckSQLDMLErr(query, err); err != nil {
-		return errors.Wrapf(err, "failed to add phone number %#v", number)
-	}
 
-	// Do we send messages to mb?
-	return nil
+	return errors.Wrapf(storage.CheckSQLDMLErr(query, err), "failed to add phone number %v", number)
 }
 
 func (u *users) generatePhoneValidationCode() string {
@@ -52,7 +48,7 @@ func (u *users) sendValidationCode(number, code string) error {
 	return nil
 }
 
-func (u *users) UpdatePhoneValidationCode(ctx context.Context, id UserID, number string) error {
+func (u *users) updatePhoneValidationCode(ctx context.Context, id UserID, number string) error {
 	if ctx.Err() != nil {
 		return errors.Wrap(ctx.Err(), "update phone number failed because context failed")
 	}
@@ -63,45 +59,46 @@ func (u *users) UpdatePhoneValidationCode(ctx context.Context, id UserID, number
 		return errors.Wrapf(err, "failed to send validation code to phone number %v", number)
 	}
 
-	sql := fmt.Sprintf(`UPDATE %v SET validation_code = :validationCode, phone_number = :phoneNumber WHERE id = :userID`, tableCodes)
+	sql := fmt.Sprintf(`UPDATE %v SET validation_code = :validationCode, phone_number = :phoneNumber, created_at = :createdAt WHERE id = :userID`, tableCodes)
 
 	params := map[string]interface{}{
 		"userID":         id,
 		"validationCode": validationCode,
 		"phoneNumber":    number,
+		"createdAt":      time.Now().UTC().UnixNano(),
 	}
 
 	query, err := u.db.PrepareExecute(sql, params)
-	if err = storage.CheckSQLDMLErr(query, err); err != nil {
-		return errors.Wrapf(err, "failed to update phone number %v", number)
-	}
 
-	// Do we send messages to mb?
-	return nil
+	return errors.Wrapf(storage.CheckSQLDMLErr(query, err), "failed to update phone number %v", number)
 }
 
-func (u *users) PhoneNumberConfirmation(ctx context.Context, number, code string) (bool, error) {
+func (p *phoneNumberValidationCodes) ConfirmPhoneNumber(ctx context.Context, conf *PhoneNumberConfirm) error {
 	if ctx.Err() != nil {
-		return false, errors.Wrap(ctx.Err(), "check phone code failed because context failed")
+		return errors.Wrap(ctx.Err(), "check phone code failed because context failed")
 	}
 	result := new(phoneNumberValidationCode)
 
-	if err := u.db.GetTyped(tableCodes, "unique_unnamed_PHONE_NUMBER_VALIDATION_CODES_2", []interface{}{number}, result); err != nil {
-		return false, errors.Wrapf(err, "failed to get user by phone number %v", number)
+	pk := fmt.Sprintf("pk_unnamed_%v_1", tableCodes)
+	if err := p.db.GetTyped(tableCodes, pk, []interface{}{conf.ID}, result); err != nil {
+		return errors.Wrapf(err, "failed to get user by id %v", conf.ID)
 	}
 
 	if result.ID == "" {
-		return false, errors.Wrapf(ErrNotFound, "no user found with phone number %v", number)
+		return errors.Wrapf(ErrNotFound, "no user found with id %v", conf.ID)
 	}
 
-	if result.ValidationCode == code {
-		err := u.updateUserPhone(ctx, result.PhoneNumber, result.ID)
-		if err != nil {
-			return false, errors.Wrapf(err, "error updating users")
-		}
-
-		return true, nil
+	if result.PhoneNumber != conf.PhoneNumber {
+		return errors.Wrapf(ErrNotFound, "no phone %v waiting for confirmation", conf.PhoneNumber)
 	}
 
-	return false, nil
+	if result.ValidationCode != conf.ValidationCode {
+		return ErrInvalidPhoneValidationCode
+	}
+
+	if time.Since(time.Unix(int64(result.CreatedAt), 0)) > cfg.PhoneValidation.ExpirationTime {
+		return ErrExpiredPhoneValidationCode
+	}
+
+	return nil
 }

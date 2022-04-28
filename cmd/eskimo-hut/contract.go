@@ -6,8 +6,8 @@ import (
 	"mime/multipart"
 	"net"
 
-	"github.com/ICE-Blockchain/eskimo/users"
-	"github.com/ICE-Blockchain/wintr/server"
+	"github.com/ice-blockchain/eskimo/users"
+	"github.com/ice-blockchain/wintr/server"
 )
 
 // Public API.
@@ -56,9 +56,10 @@ const (
 	userNotFoundCode   = "USER_NOT_FOUND"
 	userDuplicateCode  = "USER_DUPLICATE"
 	userBadRequest     = "USER_BAD_REQUEST"
-	userInvalidCode    = "USER_INVALID_CODE"
 	userIncorrect      = "USER_INCORRECT"
 	notAllowed         = "NOT_ALLOWED"
+	userInvalidCode    = "INVALID_VALIDATION_CODE"
+	userExpiredCode    = "EXPIRED_VALIDATION_CODE"
 )
 
 //nolint:gochecknoglobals // Because its loaded once, at runtime.

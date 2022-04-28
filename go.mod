@@ -1,12 +1,12 @@
-module github.com/ICE-Blockchain/eskimo
+module github.com/ice-blockchain/eskimo
 
 go 1.18
 
 require (
-	github.com/ICE-Blockchain/wintr v1.2.0
 	github.com/framey-io/go-tarantool v0.0.0-20220317175443-747a509561d8
 	github.com/gin-gonic/gin v1.7.7
 	github.com/hashicorp/go-multierror v1.1.1
+	github.com/ice-blockchain/wintr v1.4.0
 	github.com/imroc/req/v3 v3.11.0
 	github.com/pkg/errors v0.9.1
 	github.com/swaggo/swag v1.8.1
@@ -19,7 +19,6 @@ require (
 	github.com/Microsoft/go-winio v0.5.2 // indirect
 	github.com/Microsoft/hcsshim v0.9.2 // indirect
 	github.com/btcsuite/btcd/btcec/v2 v2.1.3 // indirect
-	github.com/btcsuite/btcd/chaincfg/chainhash v1.0.1 // indirect
 	github.com/cenkalti/backoff/v4 v4.1.3 // indirect
 	github.com/containerd/cgroups v1.0.3 // indirect
 	github.com/containerd/containerd v1.6.3 // indirect

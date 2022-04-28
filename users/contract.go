@@ -10,16 +10,19 @@ import (
 	"time"
 
 	"github.com/framey-io/go-tarantool"
+	"github.com/pkg/errors"
 
-	messagebroker "github.com/ICE-Blockchain/wintr/connectors/message_broker"
-	"github.com/ICE-Blockchain/wintr/connectors/storage"
+	messagebroker "github.com/ice-blockchain/wintr/connectors/message_broker"
+	"github.com/ice-blockchain/wintr/connectors/storage"
 )
 
 // Public API.
 
 var (
-	ErrNotFound  = storage.ErrNotFound
-	ErrDuplicate = storage.ErrDuplicate
+	ErrNotFound                   = storage.ErrNotFound
+	ErrDuplicate                  = storage.ErrDuplicate
+	ErrInvalidPhoneValidationCode = errors.New("invalid phone validation code")
+	ErrExpiredPhoneValidationCode = errors.New("expired phone validation code")
 )
 
 type (
@@ -51,6 +54,11 @@ type (
 		Country   string `json:"country" example:"us"`
 		UserCount uint64 `json:"userCount" example:"12121212"`
 	}
+	PhoneNumberConfirm struct {
+		ID             UserID `json:"id"`
+		PhoneNumber    string `json:"phoneNumber"`
+		ValidationCode string `json:"code"`
+	}
 
 	// Repository main API exposed that handles all the features(including internal/system ones) of this package.
 	Repository interface {
@@ -62,7 +70,7 @@ type (
 		io.Closer
 		ReadRepository
 		WriteRepository
-		PhoneValidationRepository
+		PhoneNumberValidationRepository
 		CheckHealth(context.Context) error
 	}
 
@@ -70,6 +78,7 @@ type (
 		AddUser(context.Context, *User) error
 		RemoveUser(context.Context, UserID) error
 		ModifyUser(context.Context, *User) error
+		UpdateUserPhoneNumber(ctx context.Context, number string, id UserID) error
 	}
 
 	ReadRepository interface {
@@ -77,8 +86,8 @@ type (
 		UsernameExists(context.Context, Username) (bool, error)
 	}
 
-	PhoneValidationRepository interface {
-		PhoneNumberConfirmation(context.Context, string, string) (bool, error)
+	PhoneNumberValidationRepository interface {
+		ConfirmPhoneNumber(context.Context, *PhoneNumberConfirm) error
 	}
 )
 
@@ -104,6 +113,10 @@ type (
 		db tarantool.Connector
 	}
 
+	phoneNumberValidationCodes struct {
+		db tarantool.Connector
+	}
+
 	// | repository implements the public API that this package exposes.
 	repository struct {
 		close func() error
@@ -114,7 +127,7 @@ type (
 		close func() error
 		ReadRepository
 		WriteRepository
-		PhoneValidationRepository
+		PhoneNumberValidationRepository
 	}
 
 	// | user is the internal (User) structure for deserialization from the DB
@@ -155,5 +168,8 @@ type (
 				Name string `yaml:"name" json:"name"`
 			} `yaml:"topics"`
 		} `yaml:"messageBroker"`
+		PhoneValidation struct {
+			ExpirationTime time.Duration `yaml:"expirationTime"`
+		} `yaml:"phoneValidation"`
 	}
 )

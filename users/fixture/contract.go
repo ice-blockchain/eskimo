@@ -2,6 +2,6 @@
 
 package fixture
 
-import "github.com/ICE-Blockchain/eskimo/users"
+import "github.com/ice-blockchain/eskimo/users"
 
 type User = users.User

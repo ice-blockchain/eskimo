@@ -8,11 +8,11 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/pkg/errors"
 
-	"github.com/ICE-Blockchain/eskimo/cmd/eskimo-hut/api"
-	"github.com/ICE-Blockchain/eskimo/users"
-	appCfg "github.com/ICE-Blockchain/wintr/config"
-	"github.com/ICE-Blockchain/wintr/log"
-	"github.com/ICE-Blockchain/wintr/server"
+	"github.com/ice-blockchain/eskimo/cmd/eskimo-hut/api"
+	"github.com/ice-blockchain/eskimo/users"
+	appCfg "github.com/ice-blockchain/wintr/config"
+	"github.com/ice-blockchain/wintr/log"
+	"github.com/ice-blockchain/wintr/server"
 )
 
 //nolint:godot // Because those are comments parsed by swagger
@@ -63,15 +63,10 @@ func (s *service) CheckHealth(ctx context.Context, r *server.RequestCheckHealth)
 }
 
 func getServerErrorResponse(httpCode int, err error, code string) server.Response {
-	msg := ""
-	if err != nil {
-		msg = err.Error()
-	}
-
 	return server.Response{
 		Code: httpCode,
 		Data: server.ErrorResponse{
-			Error: msg,
+			Error: err.Error(),
 			Code:  code,
 		}.Fail(err),
 	}

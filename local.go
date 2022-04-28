@@ -7,8 +7,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/ICE-Blockchain/eskimo/users/fixture"
-	"github.com/ICE-Blockchain/wintr/log"
+	"github.com/ice-blockchain/eskimo/users/fixture"
+	"github.com/ice-blockchain/wintr/log"
 )
 
 func main() {

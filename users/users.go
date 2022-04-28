@@ -10,10 +10,10 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 
-	appCfg "github.com/ICE-Blockchain/wintr/config"
-	messagebroker "github.com/ICE-Blockchain/wintr/connectors/message_broker"
-	"github.com/ICE-Blockchain/wintr/connectors/storage"
-	"github.com/ICE-Blockchain/wintr/log"
+	appCfg "github.com/ice-blockchain/wintr/config"
+	messagebroker "github.com/ice-blockchain/wintr/connectors/message_broker"
+	"github.com/ice-blockchain/wintr/connectors/storage"
+	"github.com/ice-blockchain/wintr/log"
 )
 
 func New(ctx context.Context, cancel context.CancelFunc) Repository {
@@ -34,10 +34,10 @@ func StartProcessor(ctx context.Context, cancel context.CancelFunc) Processor {
 	mb := messagebroker.MustConnect(ctx, applicationYamlKey)
 
 	return &processor{
-		close:                     closeAll(db, mb),
-		ReadRepository:            &users{db: db},
-		WriteRepository:           &users{db: db, mb: mb},
-		PhoneValidationRepository: &users{db: db, mb: mb},
+		close:                           closeAll(db, mb),
+		ReadRepository:                  &users{db: db},
+		WriteRepository:                 &users{db: db, mb: mb},
+		PhoneNumberValidationRepository: &phoneNumberValidationCodes{db: db},
 	}
 }
 

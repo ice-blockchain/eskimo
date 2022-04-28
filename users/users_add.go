@@ -10,7 +10,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/zeebo/xxh3"
 
-	"github.com/ICE-Blockchain/wintr/connectors/storage"
+	"github.com/ice-blockchain/wintr/connectors/storage"
 )
 
 //nolint:funlen // A lot of SQL
@@ -37,6 +37,7 @@ func (u *users) AddUser(ctx context.Context, user *User) error {
 		"hashCode":           u.hash(user.ID),
 		"email":              user.Email,
 		"fullName":           user.FullName,
+		"phoneNumber":        user.PhoneNumber,
 		"username":           user.Username,
 		"profilePictureName": defaultUserImage,
 		"country":            user.Country,
@@ -51,10 +52,6 @@ func (u *users) AddUser(ctx context.Context, user *User) error {
 	query, err := u.db.PrepareExecute(sql, params)
 	if err = storage.CheckSQLDMLErr(query, err); err != nil {
 		return errors.Wrapf(err, "failed to add user %#v", user)
-	}
-
-	if err = u.AddPhoneValidationCode(ctx, user.ID, user.PhoneNumber); err != nil {
-		return errors.Wrap(err, "failed to add users phone number")
 	}
 
 	return errors.Wrap(u.sendUsersMessage(ctx, user), "failed to send user created message")

@@ -10,8 +10,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/pkg/errors"
 
-	"github.com/ICE-Blockchain/eskimo/users"
-	"github.com/ICE-Blockchain/wintr/server"
+	"github.com/ice-blockchain/eskimo/users"
+	"github.com/ice-blockchain/wintr/server"
 )
 
 func (s *service) setupUserValidationRoutes(router *gin.Engine) {
@@ -105,20 +105,33 @@ func (req *RequestValidateUsername) Bindings(c *gin.Context) []func(obj interfac
 // @Router       /user-validations/phone-number [PUT].
 func (s *service) ValidatePhoneNumber(ctx context.Context, r server.ParsedRequest) server.Response {
 	req := r.(*RequestValidatePhoneNumber)
-	valid, err := s.usersProcessor.PhoneNumberConfirmation(ctx, req.PhoneNumber, req.ValidationCode)
+	err := s.usersProcessor.ConfirmPhoneNumber(ctx, req.confirm())
 	if err != nil {
-		if errors.Is(err, users.ErrNotFound) {
+		switch {
+		case errors.Is(err, users.ErrNotFound):
 			return getServerErrorResponse(http.StatusNotFound, err, userNotFoundCode)
+		case errors.Is(err, users.ErrInvalidPhoneValidationCode):
+			return getServerErrorResponse(http.StatusBadRequest, errors.New("phone validation code invalid"), userInvalidCode)
+		case errors.Is(err, users.ErrExpiredPhoneValidationCode):
+			return getServerErrorResponse(http.StatusBadRequest, errors.New("phone validation code expired"), userExpiredCode)
 		}
 
-		return getServerErrorResponse(http.StatusInternalServerError, err, userBadRequest)
+		return server.Unexpected(err)
 	}
 
-	if !valid {
-		return getServerErrorResponse(http.StatusBadRequest, errors.New("phone validation code invalid"), userInvalidCode)
+	if err = s.usersProcessor.UpdateUserPhoneNumber(ctx, req.PhoneNumber, req.AuthenticatedUser.ID); err != nil {
+		return server.Unexpected(err)
 	}
 
 	return server.OK()
+}
+
+func (req *RequestValidatePhoneNumber) confirm() *users.PhoneNumberConfirm {
+	return &users.PhoneNumberConfirm{
+		ID:             req.AuthenticatedUser.ID,
+		PhoneNumber:    req.PhoneNumber,
+		ValidationCode: req.ValidationCode,
+	}
 }
 
 func newRequestValidatePhoneNumber() server.ParsedRequest {

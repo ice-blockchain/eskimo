@@ -7,9 +7,9 @@ import (
 
 	"github.com/pkg/errors"
 
-	messagebrokerfixture "github.com/ICE-Blockchain/wintr/connectors/message_broker/fixture"
-	storagefixture "github.com/ICE-Blockchain/wintr/connectors/storage/fixture"
-	"github.com/ICE-Blockchain/wintr/log"
+	messagebrokerfixture "github.com/ice-blockchain/wintr/connectors/message_broker/fixture"
+	storagefixture "github.com/ice-blockchain/wintr/connectors/storage/fixture"
+	"github.com/ice-blockchain/wintr/log"
 )
 
 func TestSetup() func() {

@@ -8,7 +8,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/ICE-Blockchain/wintr/connectors/storage"
+	"github.com/ice-blockchain/wintr/connectors/storage"
 )
 
 func (u *users) RemoveUser(ctx context.Context, userID UserID) error {
