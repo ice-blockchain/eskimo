@@ -21,23 +21,14 @@ func (u *users) ModifyUser(ctx context.Context, user *User) error {
 	if ctx.Err() != nil {
 		return errors.Wrap(ctx.Err(), "update user failed because context failed")
 	}
-	gUser, err := u.GetUser(ctx, user.ID)
-	if err != nil {
-		return errors.Wrapf(ErrNotFound, "no user found with id %v", user.ID)
-	}
 
-	if err = u.checkUploadProfilePicture(ctx, user, gUser.HashCode); err != nil {
-		return errors.Wrapf(err, "failed to upload user image, id %v", user.ID)
-	}
-
-	if user.PhoneNumber != "" && user.PhoneNumber != gUser.PhoneNumber {
-		if err = u.updatePhoneValidationCode(ctx, user.ID, user.PhoneNumber); err != nil {
-			return errors.Wrap(err, "failed to update users phone number validation code")
-		}
+	if err := u.checkUploadProfilePicture(ctx, user, user.HashCode); err != nil {
+		return err
 	}
 
 	sql, params := user.genSQLUpdate()
 	query, err := u.db.PrepareExecute(sql, params)
+
 	if err = storage.CheckSQLDMLErr(query, err); err != nil {
 		return errors.Wrapf(err, "failed to update user with id %v", user.ID)
 	}

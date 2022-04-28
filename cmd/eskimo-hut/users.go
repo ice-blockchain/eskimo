@@ -119,28 +119,26 @@ func (req *RequestCreateUser) Bindings(c *gin.Context) []func(obj interface{}) e
 // @Router       /users/{userId} [PATCH].
 func (s *service) ModifyUser(ctx context.Context, r server.ParsedRequest) server.Response {
 	req := r.(*RequestModifyUser)
-	err := s.usersProcessor.ModifyUser(ctx, req.user())
-	if err != nil {
-		var respCode string
-		var httpCode int
-		switch {
-		case errors.Is(err, users.ErrNotFound):
-			httpCode = http.StatusNotFound
-			respCode = userNotFoundCode
-		case errors.Is(err, users.ErrDuplicate):
-			httpCode = http.StatusConflict
-			respCode = userDuplicateCode
-		default:
-			httpCode = http.StatusInternalServerError
-			respCode = userBadRequest
-		}
 
-		return getServerErrorResponse(httpCode, err, respCode)
+	gUser, err := s.usersProcessor.GetUser(ctx, req.ID)
+	if err != nil {
+		return getServerErrorResponse(http.StatusNotFound, err, userNotFoundCode)
 	}
-	// If user specified a phoneNumber in the request body, then we proceed with phone number confirmation flow:
-	// step 0: don`t update the phone number in users table
-	// step 1: insert into phone_number_validation_codes // TODO ask Robert about the pattern of the code
-	// step 2: use https://www.twilio.com/docs/libraries/go to send SMS with that code to the user`s phone number.
+
+	if req.PhoneNumber != "" && req.PhoneNumber != gUser.PhoneNumber {
+		if err = s.usersProcessor.UpdatePhoneValidationCode(ctx, req.ID, req.PhoneNumber); err != nil {
+			return server.Unexpected(err)
+		}
+	}
+
+	user := req.user()
+	user.HashCode = gUser.HashCode
+
+	err = s.usersProcessor.ModifyUser(ctx, user)
+	if err != nil {
+		return server.Unexpected(err)
+	}
+
 	return server.OK()
 }
 

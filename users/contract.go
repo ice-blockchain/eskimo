@@ -88,6 +88,7 @@ type (
 
 	PhoneNumberValidationRepository interface {
 		ConfirmPhoneNumber(context.Context, *PhoneNumberConfirm) error
+		UpdatePhoneValidationCode(context.Context, UserID, string) error
 	}
 )
 
