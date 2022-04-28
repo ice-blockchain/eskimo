@@ -10,6 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/pkg/errors"
 
+	"github.com/ICE-Blockchain/eskimo/users"
 	"github.com/ICE-Blockchain/wintr/server"
 )
 
@@ -102,15 +103,22 @@ func (req *RequestValidateUsername) Bindings(c *gin.Context) []func(obj interfac
 // @Failure      500            {object}  server.ErrorResponse
 // @Failure      504            {object}  server.ErrorResponse  "if request times out"
 // @Router       /user-validations/phone-number [PUT].
-func (s *service) ValidatePhoneNumber(_ context.Context, r server.ParsedRequest) server.Response {
+func (s *service) ValidatePhoneNumber(ctx context.Context, r server.ParsedRequest) server.Response {
 	req := r.(*RequestValidatePhoneNumber)
+	valid, err := s.usersProcessor.PhoneNumberConfirmation(ctx, req.PhoneNumber, req.ValidationCode)
+	if err != nil {
+		if errors.Is(err, users.ErrNotFound) {
+			return getServerErrorResponse(http.StatusNotFound, err, userNotFoundCode)
+		}
 
-	//nolint:nolintlint,godox // TODO implement me
-	// if phone number & code match the ones in the database => remove the entry and return 200
-	// if entry for that phone number is not in phone_number_validation_codes => 404
-	// if entry exists but has wrong code => 400 INVALID_CODE.
+		return getServerErrorResponse(http.StatusInternalServerError, err, userBadRequest)
+	}
 
-	return server.OK(req)
+	if !valid {
+		return getServerErrorResponse(http.StatusBadRequest, errors.New("phone validation code invalid"), userInvalidCode)
+	}
+
+	return server.OK()
 }
 
 func newRequestValidatePhoneNumber() server.ParsedRequest {

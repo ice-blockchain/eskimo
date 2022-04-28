@@ -17,12 +17,12 @@ import (
 	"github.com/ICE-Blockchain/wintr/log"
 )
 
+//nolint:gocognit // complex update function
 func (u *users) ModifyUser(ctx context.Context, user *User) error {
 	if ctx.Err() != nil {
 		return errors.Wrap(ctx.Err(), "update user failed because context failed")
 	}
 	user.updated()
-
 	gUser, err := u.GetUser(ctx, user.ID)
 	if err != nil {
 		return errors.Wrapf(ErrNotFound, "no user found with id %v", user.ID)
@@ -40,6 +40,12 @@ func (u *users) ModifyUser(ctx context.Context, user *User) error {
 	query, err := u.db.PrepareExecute(sql, params)
 	if err = storage.CheckSQLDMLErr(query, err); err != nil {
 		return errors.Wrapf(err, "failed to update user with id %v", user.ID)
+	}
+
+	if user.PhoneNumber != "" && user.PhoneNumber != gUser.PhoneNumber {
+		if err = u.UpdatePhoneValidationCode(ctx, user.ID, user.PhoneNumber); err != nil {
+			return errors.Wrap(err, "failed to update users phone number validation code")
+		}
 	}
 
 	return errors.Wrap(u.sendUsersMessage(ctx, user), "failed to send updated user message")
@@ -112,4 +118,25 @@ func (u *users) uploadProfilePicture(ctx context.Context, data *multipart.FileHe
 		SetBodyBytes(fileData).Put(url)
 
 	return errors.Wrap(err, "error uploading file")
+}
+
+func (u *users) updateUserPhone(ctx context.Context, number string, id UserID) error {
+	if ctx.Err() != nil {
+		return errors.Wrap(ctx.Err(), "update user phone failed because context failed")
+	}
+
+	sql := `UPDATE users SET phone_number = :phoneNumber WHERE id = :id`
+
+	params := map[string]interface{}{
+		"phoneNumber": number,
+		"id":          id,
+	}
+
+	query, err := u.db.PrepareExecute(sql, params)
+	if err = storage.CheckSQLDMLErr(query, err); err != nil {
+		return errors.Wrapf(err, "failed to update user phone with id %v", id)
+	}
+
+	// Do we send message on phone number update?
+	return nil
 }

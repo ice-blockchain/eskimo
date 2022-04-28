@@ -56,6 +56,7 @@ const (
 	userNotFoundCode   = "USER_NOT_FOUND"
 	userDuplicateCode  = "USER_DUPLICATE"
 	userBadRequest     = "USER_BAD_REQUEST"
+	userInvalidCode    = "USER_INVALID_CODE"
 	userIncorrect      = "USER_INCORRECT"
 	notAllowed         = "NOT_ALLOWED"
 )

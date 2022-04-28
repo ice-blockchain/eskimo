@@ -62,6 +62,7 @@ type (
 		io.Closer
 		ReadRepository
 		WriteRepository
+		PhoneValidationRepository
 		CheckHealth(context.Context) error
 	}
 
@@ -75,6 +76,10 @@ type (
 		GetUser(context.Context, UserID) (*User, error)
 		UsernameExists(context.Context, Username) (bool, error)
 	}
+
+	PhoneValidationRepository interface {
+		PhoneNumberConfirmation(context.Context, string, string) (bool, error)
+	}
 )
 
 // Private API.
@@ -82,6 +87,7 @@ type (
 const (
 	applicationYamlKey = "users"
 	defaultUserImage   = "default-user-image.jpg"
+	tableCodes         = "PHONE_NUMBER_VALIDATION_CODES"
 )
 
 var (
@@ -108,6 +114,7 @@ type (
 		close func() error
 		ReadRepository
 		WriteRepository
+		PhoneValidationRepository
 	}
 
 	// | user is the internal (User) structure for deserialization from the DB
@@ -126,6 +133,14 @@ type (
 		Country            string
 		CreatedAt          uint64
 		UpdatedAt          uint64
+	}
+
+	phoneNumberValidationCode struct {
+		_msgpack       struct{} `msgpack:",asArray"`
+		ID             UserID
+		PhoneNumber    string
+		ValidationCode string
+		CreatedAt      uint64
 	}
 
 	// | config holds the configuration of this package mounted from `application.yaml`.
