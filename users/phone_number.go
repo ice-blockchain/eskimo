@@ -9,21 +9,38 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/twilio/twilio-go"
+	openapi "github.com/twilio/twilio-go/rest/api/v2010"
 
 	"github.com/ice-blockchain/wintr/connectors/storage"
 )
 
 func (u *users) generatePhoneValidationCode() string {
-	return fmt.Sprintf("%04d", rand.Intn(9999-1)+1) //nolint:gomnd,gosec // Do we need super random here?
+	rand.Seed(time.Now().UnixNano())
+
+	return fmt.Sprintf("%04d", rand.Intn(999999-1)+1) //nolint:gomnd,gosec // We don't need cryptosecure random
 }
 
 func (u *users) sendValidationCode(number, code string) error {
-	fmt.Println(number, code)
-	//nolint:nolintlint    // TODO Here we send SMS to phone number.
-	// If user specified a phoneNumber in the request body, then we proceed with phone number confirmation flow:
-	// step 0: don`t update the phone number in users table
-	// step 1: insert into phone_number_validation_codes // TODO ask Robert about the pattern of the code
-	// step 2: use https://www.twilio.com/docs/libraries/go to send SMS with that code to the user`s phone number.
+	msg := fmt.Sprintf("ice: %v is your confirmation code. It expires in %v minutes. Don’t share this code with anyone.",
+		code,
+		cfg.PhoneNumberValidation.ExpirationTime.Minutes(),
+	)
+
+	client := twilio.NewRestClientWithParams(twilio.ClientParams{
+		Username: cfg.PhoneNumberValidation.User,
+		Password: cfg.PhoneNumberValidation.Password,
+	})
+
+	params := &openapi.CreateMessageParams{}
+	params.SetTo(number)
+	params.SetFrom(cfg.PhoneNumberValidation.PhoneNumber)
+	params.SetBody(msg)
+
+	_, err := client.ApiV2010.CreateMessage(params)
+	if err != nil {
+		return errors.Wrapf(err, "twilio error")
+	}
 
 	return nil
 }
@@ -72,7 +89,7 @@ func (u *users) ConfirmPhoneNumber(ctx context.Context, conf *PhoneNumberConfirm
 		return ErrInvalidPhoneValidationCode
 	}
 
-	if time.Since(time.Unix(int64(result.CreatedAt), 0)) > cfg.PhoneValidation.ExpirationTime {
+	if time.Since(time.Unix(int64(result.CreatedAt), 0)) > cfg.PhoneNumberValidation.ExpirationTime {
 		return ErrExpiredPhoneValidationCode
 	}
 

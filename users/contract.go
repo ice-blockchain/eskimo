@@ -165,8 +165,11 @@ type (
 				Name string `yaml:"name" json:"name"`
 			} `yaml:"topics"`
 		} `yaml:"messageBroker"`
-		PhoneValidation struct {
+		PhoneNumberValidation struct {
+			User           string        `yaml:"user"`
+			Password       string        `yaml:"password"`
+			PhoneNumber    string        `yaml:"phoneNumber"`
 			ExpirationTime time.Duration `yaml:"expirationTime"`
-		} `yaml:"phoneValidation"`
+		} `yaml:"phoneNumberValidation"`
 	}
 )

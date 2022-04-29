@@ -40,6 +40,7 @@ require (
 	github.com/goccy/go-json v0.9.7 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
+	github.com/golang/mock v1.6.0 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
@@ -76,6 +77,7 @@ require (
 	github.com/subosito/gotenv v1.2.0 // indirect
 	github.com/swaggo/gin-swagger v1.4.3 // indirect
 	github.com/testcontainers/testcontainers-go v0.13.0 // indirect
+	github.com/twilio/twilio-go v0.24.1 // indirect
 	github.com/twmb/franz-go v1.4.2 // indirect
 	github.com/twmb/franz-go/pkg/kadm v0.0.0-20220331035613-01d0c45d69d2 // indirect
 	github.com/twmb/franz-go/pkg/kmsg v1.0.0 // indirect

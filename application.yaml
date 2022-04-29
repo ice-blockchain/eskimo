@@ -44,5 +44,8 @@ users:
     urlUpload: https://storage.bunnycdn.com/ice-staging/profile
     urlDownload: https://ice-staging.b-cdn.net/profile
     accessKey: access_key_hidden
-  phoneValidation:
+  phoneNumberValidation:
+    user: 
+    password:
+    phoneNumber:
     expirationTime: 3m
