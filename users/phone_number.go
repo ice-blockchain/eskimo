@@ -36,7 +36,7 @@ func (u *users) UpdatePhoneValidationCode(ctx context.Context, id UserID, number
 	if err := u.sendValidationCode(number, validationCode); err != nil {
 		return errors.Wrapf(err, "failed to send validation code to phone number %v", number)
 	}
-	sql := fmt.Sprintf(`REPLACE INTO %v (ID, PHONE_NUMBER, VALIDATION_CODE, CREATED_AT) VALUES (:id, :phoneNumber, :validationCode, :createdAt)`, tableCodes)
+	sql := fmt.Sprintf(`REPLACE INTO %v (X_ID, PHONE_NUMBER, VALIDATION_CODE, CREATED_AT) VALUES (:id, :phoneNumber, :validationCode, :createdAt)`, tableCodes)
 
 	params := map[string]interface{}{
 		"id":             id,

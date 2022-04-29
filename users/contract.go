@@ -36,7 +36,7 @@ type (
 		Email                string               `form:"email,omitempty" json:"email" example:"jdoe@gmail.com"`
 		FullName             string               `form:"fullName,omitempty" json:"fullName" example:"John Doe"`
 		PhoneNumber          string               `form:"phoneNumber,omitempty" json:"phoneNumber" example:"+12099216581"`
-		confirmedPhoneNumber string               `form:"phoneNumber,omitempty" example:"+12099216581"`
+		confirmedPhoneNumber string               `form:"confirmedPhoneNumber,omitempty" example:"+12099216581"`
 		Username             string               `form:"username,omitempty" json:"username" example:"jdoe"`
 		ReferredBy           string               `form:"referredBy,omitempty" json:"referredBy" example:"billy112"`
 		ProfilePictureURL    string               `json:"profilePictureURL,omitempty" example:"https://somecdn.com/p1.jpg"`
