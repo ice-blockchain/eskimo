@@ -36,18 +36,7 @@ func (p *phoneNumberValidationCodes) UpdatePhoneValidationCode(ctx context.Conte
 	if err := p.sendValidationCode(number, validationCode); err != nil {
 		return errors.Wrapf(err, "failed to send validation code to phone number %v", number)
 	}
-
-	user, err := p.getUser(ctx, id)
-	if err != nil {
-		return err
-	}
-
-	var sql string
-	if user.ID == "" {
-		sql = fmt.Sprintf(`INSERT INTO %v (ID, PHONE_NUMBER, VALIDATION_CODE, CREATED_AT) VALUES (:id, :phoneNumber, :validationCode, :createdAt)`, tableCodes)
-	} else {
-		sql = fmt.Sprintf(`UPDATE %v SET validation_code = :validationCode, phone_number = :phoneNumber, created_at = :createdAt WHERE id = :id`, tableCodes)
-	}
+	sql := fmt.Sprintf(`REPLACE INTO %v (ID, PHONE_NUMBER, VALIDATION_CODE, CREATED_AT) VALUES (:id, :phoneNumber, :validationCode, :createdAt)`, tableCodes)
 
 	params := map[string]interface{}{
 		"id":             id,
@@ -61,12 +50,12 @@ func (p *phoneNumberValidationCodes) UpdatePhoneValidationCode(ctx context.Conte
 	return errors.Wrapf(storage.CheckSQLDMLErr(query, err), "failed to update phone number %v", number)
 }
 
-func (p *phoneNumberValidationCodes) ConfirmPhoneNumber(ctx context.Context, conf *PhoneNumberConfirm) error {
+func (p *phoneNumberValidationCodes) ConfirmPhoneNumber(ctx context.Context, conf *PhoneNumberConfirmation) error {
 	if ctx.Err() != nil {
 		return errors.Wrap(ctx.Err(), "check phone code failed because context failed")
 	}
 
-	result, err := p.getUser(ctx, conf.ID)
+	result, err := p.getPhoneNumberValidationUser(ctx, conf.ID)
 	if err != nil {
 		return errors.Wrapf(err, "failed to get user by id %v", conf.ID)
 	}
@@ -90,7 +79,7 @@ func (p *phoneNumberValidationCodes) ConfirmPhoneNumber(ctx context.Context, con
 	return nil
 }
 
-func (p *phoneNumberValidationCodes) getUser(ctx context.Context, id UserID) (*phoneNumberValidationCode, error) {
+func (p *phoneNumberValidationCodes) getPhoneNumberValidationUser(_ context.Context, id UserID) (*phoneNumberValidationCode, error) {
 	result := new(phoneNumberValidationCode)
 
 	pk := fmt.Sprintf("pk_unnamed_%v_1", tableCodes)

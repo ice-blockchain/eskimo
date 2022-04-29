@@ -54,10 +54,10 @@ type (
 		Country   string `json:"country" example:"us"`
 		UserCount uint64 `json:"userCount" example:"12121212"`
 	}
-	PhoneNumberConfirm struct {
-		ID             UserID `json:"id"`
-		PhoneNumber    string `json:"phoneNumber"`
-		ValidationCode string `json:"code"`
+	PhoneNumberConfirmation struct {
+		ID             UserID `json:"id" example:"226fcb86-fcce-458e-95f0-867e09c8c274"`
+		PhoneNumber    string `json:"phoneNumber" example:"+12345678"`
+		ValidationCode string `json:"code" example:"1234"`
 	}
 
 	// Repository main API exposed that handles all the features(including internal/system ones) of this package.
@@ -87,7 +87,7 @@ type (
 	}
 
 	PhoneNumberValidationRepository interface {
-		ConfirmPhoneNumber(context.Context, *PhoneNumberConfirm) error
+		ConfirmPhoneNumber(context.Context, *PhoneNumberConfirmation) error
 		UpdatePhoneValidationCode(context.Context, UserID, string) error
 	}
 )
