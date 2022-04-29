@@ -188,16 +188,7 @@ func (req *RequestModifyUser) Validate() *server.Response {
 }
 
 func (req *RequestModifyUser) hasValues() bool {
-	switch {
-	case req.Email != "":
-		return true
-	case req.FullName != "":
-		return true
-	case req.PhoneNumber != "":
-		return true
-	case req.Username != "":
-		return true
-	case req.ProfilePicture.Filename != "":
+	if req.Email != "" || req.FullName != "" || req.PhoneNumber != "" || req.Username != "" || req.ProfilePicture.Filename != "" {
 		return true
 	}
 

@@ -28,7 +28,7 @@ func (u *users) ModifyUser(ctx context.Context, user *User) error {
 	// Phone number change or new number -> send SMS.
 	if user.PhoneNumber != "" && user.PhoneNumber != gUser.PhoneNumber {
 		confirm := new(PhoneNumberConfirmation)
-		confirm.ID = user.ID
+		confirm.UserID = user.ID
 		confirm.PhoneNumber = user.PhoneNumber
 		if err = u.updatePhoneValidationCode(ctx, confirm); err != nil {
 			return errors.Wrapf(err, "update phone validation code failed")

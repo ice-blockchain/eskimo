@@ -4,8 +4,9 @@ package users
 
 import (
 	"context"
+	"crypto/rand"
 	"fmt"
-	"math/rand"
+	"math/big"
 	"time"
 
 	"github.com/pkg/errors"
@@ -13,12 +14,16 @@ import (
 	openapi "github.com/twilio/twilio-go/rest/api/v2010"
 
 	"github.com/ice-blockchain/wintr/connectors/storage"
+	"github.com/ice-blockchain/wintr/log"
 )
 
 func (u *users) generatePhoneValidationCode() string {
-	rand.Seed(time.Now().UnixNano())
+	n, err := rand.Int(rand.Reader, big.NewInt(999999)) //nolint:gomnd // static value
+	if err != nil {
+		log.Fatal(err, "crypto random generator failed")
+	}
 
-	return fmt.Sprintf("%06d", rand.Intn(999999-1)+1) //nolint:gomnd,gosec // We don't need cryptosecure random
+	return fmt.Sprintf("%06d", n.Uint64())
 }
 
 func (u *users) sendValidationCodeSMS(number, code string) error {
@@ -48,7 +53,7 @@ func (u *users) sendValidationCodeSMS(number, code string) error {
 func (u *users) updatePhoneValidationCode(ctx context.Context, conf *PhoneNumberConfirmation) error {
 	sql := fmt.Sprintf(`REPLACE INTO %v (USER_ID, PHONE_NUMBER, VALIDATION_CODE, CREATED_AT) VALUES (:id, :phoneNumber, :validationCode, :createdAt)`, tableCodes)
 	params := map[string]interface{}{
-		"id":          conf.ID,
+		"id":          conf.UserID,
 		"phoneNumber": conf.PhoneNumber,
 		"createdAt":   time.Now().UTC().UnixNano(),
 	}
@@ -82,13 +87,13 @@ func (u *users) ConfirmPhoneNumber(ctx context.Context, conf *PhoneNumberConfirm
 	if ctx.Err() != nil {
 		return errors.Wrap(ctx.Err(), "check phone code failed because context failed")
 	}
-	result, err := u.getPhoneNumberValidationUser(ctx, conf.ID)
+	result, err := u.getPhoneNumberValidationUser(ctx, conf.UserID)
 
 	switch {
 	case err != nil:
-		return errors.Wrapf(err, "failed to get user by id %v", conf.ID)
+		return errors.Wrapf(err, "failed to get user by id %v", conf.UserID)
 	case result.ID == "":
-		return errors.Wrapf(ErrNotFound, "no user found with id %v", conf.ID)
+		return errors.Wrapf(ErrNotFound, "no user found with id %v", conf.UserID)
 	case result.PhoneNumber != conf.PhoneNumber:
 		return errors.Wrapf(ErrNotFound, "no phone %v waiting for confirmation", conf.PhoneNumber)
 	case result.ValidationCode != conf.ValidationCode:
@@ -98,13 +103,13 @@ func (u *users) ConfirmPhoneNumber(ctx context.Context, conf *PhoneNumberConfirm
 	}
 
 	user := new(User)
-	user.ID = conf.ID
+	user.ID = conf.UserID
 	user.confirmedPhoneNumber = conf.PhoneNumber
 	if err = u.ModifyUser(ctx, user); err != nil {
 		return errors.Wrapf(err, "error updating users")
 	}
 	confirm := new(PhoneNumberConfirmation)
-	confirm.ID = user.ID
+	confirm.UserID = user.ID
 	confirm.PhoneNumber = conf.PhoneNumber
 	confirm.ValidationCode = user.ID
 
