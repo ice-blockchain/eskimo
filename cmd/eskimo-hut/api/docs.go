@@ -547,7 +547,7 @@ const docTemplate = `{
                 },
                 "id": {
                     "type": "string",
-                    "example": "226fcb86-fcce-458e-95f0-867e09c8c274"
+                    "example": "did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"
                 },
                 "phoneNumber": {
                     "type": "string",
@@ -559,7 +559,7 @@ const docTemplate = `{
                 },
                 "referredBy": {
                     "type": "string",
-                    "example": "billy112"
+                    "example": "did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"
                 },
                 "updatedAt": {
                     "type": "string",

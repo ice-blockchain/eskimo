@@ -54,7 +54,7 @@ definitions:
       hashCode:
         type: integer
       id:
-        example: 226fcb86-fcce-458e-95f0-867e09c8c274
+        example: did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2
         type: string
       phoneNumber:
         example: "+12099216581"
@@ -63,7 +63,7 @@ definitions:
         example: https://somecdn.com/p1.jpg
         type: string
       referredBy:
-        example: billy112
+        example: did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2
         type: string
       updatedAt:
         example: "2022-01-03T16:20:52.156534Z"
