@@ -34,10 +34,9 @@ func StartProcessor(ctx context.Context, cancel context.CancelFunc) Processor {
 	mb := messagebroker.MustConnect(ctx, applicationYamlKey)
 
 	return &processor{
-		close:                           closeAll(db, mb),
-		ReadRepository:                  &users{db: db},
-		WriteRepository:                 &users{db: db, mb: mb},
-		PhoneNumberValidationRepository: &users{db: db, mb: mb},
+		close:           closeAll(db, mb),
+		ReadRepository:  &users{db: db},
+		WriteRepository: &users{db: db, mb: mb},
 	}
 }
 

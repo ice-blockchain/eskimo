@@ -14,7 +14,7 @@ box.execute([[CREATE TABLE IF NOT EXISTS users  (
                      ) WITH ENGINE = 'vinyl';]])
 box.execute([[CREATE INDEX IF NOT EXISTS users_username_lookup_ix ON users (username);]])
 box.execute([[CREATE TABLE IF NOT EXISTS phone_number_validation_codes  (
-                    x_id STRING primary key REFERENCES users(id) ON DELETE CASCADE,
+                    user_id STRING primary key REFERENCES users(id) ON DELETE CASCADE,
                     phone_number STRING NOT NULL UNIQUE,
                     validation_code STRING NOT NULL UNIQUE,
                     created_at UNSIGNED NOT NULL

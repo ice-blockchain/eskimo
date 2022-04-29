@@ -45,7 +45,8 @@ users:
     urlDownload: https://ice-staging.b-cdn.net/profile
     accessKey: access_key_hidden
   phoneNumberValidation:
-    user: 
-    password:
-    phoneNumber:
-    expirationTime: 3m
+    twilioCredentials:
+      user: user_hidden
+      password: password_hidden
+    fromPhoneNumber: +12345678
+    expirationTime: 10m

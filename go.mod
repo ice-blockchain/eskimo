@@ -10,6 +10,7 @@ require (
 	github.com/imroc/req/v3 v3.11.0
 	github.com/pkg/errors v0.9.1
 	github.com/swaggo/swag v1.8.1
+	github.com/twilio/twilio-go v0.24.1
 	github.com/zeebo/xxh3 v1.0.2
 )
 
@@ -77,7 +78,6 @@ require (
 	github.com/subosito/gotenv v1.2.0 // indirect
 	github.com/swaggo/gin-swagger v1.4.3 // indirect
 	github.com/testcontainers/testcontainers-go v0.13.0 // indirect
-	github.com/twilio/twilio-go v0.24.1 // indirect
 	github.com/twmb/franz-go v1.4.2 // indirect
 	github.com/twmb/franz-go/pkg/kadm v0.0.0-20220331035613-01d0c45d69d2 // indirect
 	github.com/twmb/franz-go/pkg/kmsg v1.0.0 // indirect
@@ -88,7 +88,7 @@ require (
 	go.opencensus.io v0.23.0 // indirect
 	golang.org/x/crypto v0.0.0-20220427172511-eb4f295cb31f // indirect
 	golang.org/x/net v0.0.0-20220425223048-2871e0cb64e4 // indirect
-	golang.org/x/sys v0.0.0-20220422013727-9388b58f7150 // indirect
+	golang.org/x/sys v0.0.0-20220429121018-84afa8d3f7b3 // indirect
 	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/tools v0.1.10 // indirect
 	google.golang.org/genproto v0.0.0-20220426171045-31bebdecfb46 // indirect

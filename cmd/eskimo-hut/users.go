@@ -123,11 +123,15 @@ func (s *service) ModifyUser(ctx context.Context, r server.ParsedRequest) server
 	user := req.user()
 	err := s.usersProcessor.ModifyUser(ctx, user)
 	if err != nil {
-		if errors.Is(err, users.ErrNotFound) {
+		err = errors.Wrap(err, "modify user failed")
+		switch {
+		case errors.Is(err, users.ErrNotFound):
 			return getServerErrorResponse(http.StatusNotFound, err, userNotFoundCode)
+		case errors.Is(err, users.ErrDuplicate):
+			return getServerErrorResponse(http.StatusConflict, err, userDuplicateCode)
+		default:
+			return server.Unexpected(err)
 		}
-
-		return server.Unexpected(err)
 	}
 
 	return server.OK()
@@ -173,7 +177,31 @@ func (req *RequestModifyUser) Validate() *server.Response {
 		return &resp
 	}
 
+	if !req.hasValues() {
+		err := errors.New("modify request without values")
+		resp := getServerErrorResponse(http.StatusBadRequest, err, userBadRequest)
+
+		return &resp
+	}
+
 	return nil
+}
+
+func (req *RequestModifyUser) hasValues() bool {
+	switch {
+	case req.Email != "":
+		return true
+	case req.FullName != "":
+		return true
+	case req.PhoneNumber != "":
+		return true
+	case req.Username != "":
+		return true
+	case req.ProfilePicture.Filename != "":
+		return true
+	}
+
+	return false
 }
 
 func (req *RequestModifyUser) Bindings(c *gin.Context) []func(obj interface{}) error {

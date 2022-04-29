@@ -108,13 +108,14 @@ func (s *service) ValidatePhoneNumber(ctx context.Context, r server.ParsedReques
 
 	err := s.usersProcessor.ConfirmPhoneNumber(ctx, req.confirm())
 	if err != nil {
+		err = errors.Wrap(err, "confirm phone number failed")
 		switch {
 		case errors.Is(err, users.ErrNotFound):
 			return getServerErrorResponse(http.StatusNotFound, err, userNotFoundCode)
 		case errors.Is(err, users.ErrInvalidPhoneValidationCode):
-			return getServerErrorResponse(http.StatusBadRequest, errors.New("phone validation code invalid"), userInvalidCode)
+			return getServerErrorResponse(http.StatusBadRequest, err, userInvalidCode)
 		case errors.Is(err, users.ErrExpiredPhoneValidationCode):
-			return getServerErrorResponse(http.StatusBadRequest, errors.New("phone validation code expired"), userExpiredCode)
+			return getServerErrorResponse(http.StatusBadRequest, err, userExpiredCode)
 		}
 
 		return server.Unexpected(err)

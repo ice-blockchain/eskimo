@@ -21,14 +21,16 @@ func (u *users) ModifyUser(ctx context.Context, user *User) error {
 	if ctx.Err() != nil {
 		return errors.Wrap(ctx.Err(), "update user failed because context failed")
 	}
-
 	gUser, err := u.GetUser(ctx, user.ID)
 	if err != nil {
 		return errors.Wrapf(err, "get user failed")
 	}
-
+	// Phone number change or new number -> send SMS.
 	if user.PhoneNumber != "" && user.PhoneNumber != gUser.PhoneNumber {
-		if err = u.UpdatePhoneValidationCode(ctx, user.ID, user.PhoneNumber); err != nil {
+		confirm := new(PhoneNumberConfirmation)
+		confirm.ID = user.ID
+		confirm.PhoneNumber = user.PhoneNumber
+		if err = u.updatePhoneValidationCode(ctx, confirm); err != nil {
 			return errors.Wrapf(err, "update phone validation code failed")
 		}
 	}

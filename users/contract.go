@@ -36,7 +36,7 @@ type (
 		Email                string               `form:"email,omitempty" json:"email" example:"jdoe@gmail.com"`
 		FullName             string               `form:"fullName,omitempty" json:"fullName" example:"John Doe"`
 		PhoneNumber          string               `form:"phoneNumber,omitempty" json:"phoneNumber" example:"+12099216581"`
-		confirmedPhoneNumber string               `form:"confirmedPhoneNumber,omitempty" example:"+12099216581"`
+		confirmedPhoneNumber string               `form:"confirmedPhoneNumber,omitempty" json:"-" example:"+12099216581"`
 		Username             string               `form:"username,omitempty" json:"username" example:"jdoe"`
 		ReferredBy           string               `form:"referredBy,omitempty" json:"referredBy" example:"billy112"`
 		ProfilePictureURL    string               `json:"profilePictureURL,omitempty" example:"https://somecdn.com/p1.jpg"`
@@ -71,7 +71,6 @@ type (
 		io.Closer
 		ReadRepository
 		WriteRepository
-		PhoneNumberValidationRepository
 		CheckHealth(context.Context) error
 	}
 
@@ -79,16 +78,12 @@ type (
 		AddUser(context.Context, *User) error
 		RemoveUser(context.Context, UserID) error
 		ModifyUser(context.Context, *User) error
+		ConfirmPhoneNumber(context.Context, *PhoneNumberConfirmation) error
 	}
 
 	ReadRepository interface {
 		GetUser(context.Context, UserID) (*User, error)
 		UsernameExists(context.Context, Username) (bool, error)
-	}
-
-	PhoneNumberValidationRepository interface {
-		ConfirmPhoneNumber(context.Context, *PhoneNumberConfirmation) error
-		UpdatePhoneValidationCode(context.Context, UserID, string) error
 	}
 )
 
@@ -124,7 +119,6 @@ type (
 		close func() error
 		ReadRepository
 		WriteRepository
-		PhoneNumberValidationRepository
 	}
 
 	// | user is the internal (User) structure for deserialization from the DB
@@ -166,10 +160,12 @@ type (
 			} `yaml:"topics"`
 		} `yaml:"messageBroker"`
 		PhoneNumberValidation struct {
-			User           string        `yaml:"user"`
-			Password       string        `yaml:"password"`
-			PhoneNumber    string        `yaml:"phoneNumber"`
-			ExpirationTime time.Duration `yaml:"expirationTime"`
+			TwilioCredentials struct {
+				User     string `yaml:"user"`
+				Password string `yaml:"password"`
+			} `yaml:"twilioCredentials"`
+			FromPhoneNumber string        `yaml:"fromPhoneNumber"`
+			ExpirationTime  time.Duration `yaml:"expirationTime"`
 		} `yaml:"phoneNumberValidation"`
 	}
 )
