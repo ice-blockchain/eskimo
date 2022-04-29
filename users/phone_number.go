@@ -20,7 +20,7 @@ import (
 func (u *users) generatePhoneValidationCode() string {
 	n, err := rand.Int(rand.Reader, big.NewInt(999999)) //nolint:gomnd // static value
 	if err != nil {
-		log.Fatal(err, "crypto random generator failed")
+		log.Error(err, "crypto random generator failed")
 	}
 
 	return fmt.Sprintf("%06d", n.Uint64())
