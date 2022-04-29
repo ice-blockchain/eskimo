@@ -22,8 +22,20 @@ func (u *users) ModifyUser(ctx context.Context, user *User) error {
 		return errors.Wrap(ctx.Err(), "update user failed because context failed")
 	}
 
-	if err := u.checkUploadProfilePicture(ctx, user, user.HashCode); err != nil {
-		return err
+	gUser, err := u.GetUser(ctx, user.ID)
+	if err != nil {
+		return errors.Wrapf(err, "get user failed")
+	}
+
+	if user.PhoneNumber != "" && user.PhoneNumber != gUser.PhoneNumber {
+		if err = u.UpdatePhoneValidationCode(ctx, user.ID, user.PhoneNumber); err != nil {
+			return errors.Wrapf(err, "update phone validation code failed")
+		}
+	}
+
+	user.ProfilePicture.Filename = fmt.Sprintf("%v", gUser.HashCode)
+	if err = u.uploadProfilePicture(ctx, &user.ProfilePicture); err != nil {
+		return errors.Wrapf(err, "failed to upload profile picture")
 	}
 
 	sql, params := user.genSQLUpdate()
@@ -36,6 +48,7 @@ func (u *users) ModifyUser(ctx context.Context, user *User) error {
 	return errors.Wrap(u.sendUsersMessage(ctx, user), "failed to send updated user message")
 }
 
+//nolint:funlen // SQL large again
 func (u *User) genSQLUpdate() (sql string, params map[string]interface{}) {
 	params = make(map[string]interface{})
 	params["id"] = u.ID
@@ -63,22 +76,19 @@ func (u *User) genSQLUpdate() (sql string, params map[string]interface{}) {
 		params["country"] = u.Country
 		sql += ", COUNTRY = :country"
 	}
+	if u.confirmedPhoneNumber != "" {
+		params["phoneNumber"] = u.confirmedPhoneNumber
+		sql += ", PHONE_NUMBER = :phoneNumber"
+	}
 	sql += " WHERE ID = :id"
 
 	return sql, params
 }
 
-func (u *users) checkUploadProfilePicture(ctx context.Context, user *User, hashCode uint64) error {
-	if user.ProfilePicture.Filename == "" || user.ProfilePicture.Size == 0 {
+func (u *users) uploadProfilePicture(ctx context.Context, data *multipart.FileHeader) error {
+	if data.Size == 0 {
 		return nil
 	}
-
-	user.ProfilePicture.Filename = fmt.Sprintf("%v", hashCode)
-
-	return errors.Wrapf(u.uploadProfilePicture(ctx, &user.ProfilePicture), "failed to upload user image, id %v", user.ID)
-}
-
-func (u *users) uploadProfilePicture(ctx context.Context, data *multipart.FileHeader) error {
 	file, err := data.Open()
 	defer func(file multipart.File) {
 		err = file.Close()
@@ -106,23 +116,4 @@ func (u *users) uploadProfilePicture(ctx context.Context, data *multipart.FileHe
 		SetBodyBytes(fileData).Put(url)
 
 	return errors.Wrap(err, "error uploading file")
-}
-
-func (u *users) UpdateUserPhoneNumber(ctx context.Context, number string, id UserID) error {
-	if ctx.Err() != nil {
-		return errors.Wrap(ctx.Err(), "update user phone failed because context failed")
-	}
-
-	sql := `UPDATE users SET phone_number = :phoneNumber, updated_at = :updatedAt WHERE id = :id`
-
-	params := map[string]interface{}{
-		"phoneNumber": number,
-		"id":          id,
-		"updatedAt":   time.Now().UTC().UnixNano(),
-	}
-
-	query, err := u.db.PrepareExecute(sql, params)
-	err = storage.CheckSQLDMLErr(query, err)
-
-	return errors.Wrapf(err, "failed to update user phone with id %v", id)
 }

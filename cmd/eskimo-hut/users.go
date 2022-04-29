@@ -120,22 +120,13 @@ func (req *RequestCreateUser) Bindings(c *gin.Context) []func(obj interface{}) e
 func (s *service) ModifyUser(ctx context.Context, r server.ParsedRequest) server.Response {
 	req := r.(*RequestModifyUser)
 
-	gUser, err := s.usersProcessor.GetUser(ctx, req.ID)
-	if err != nil {
-		return getServerErrorResponse(http.StatusNotFound, err, userNotFoundCode)
-	}
-
-	if req.PhoneNumber != "" && req.PhoneNumber != gUser.PhoneNumber {
-		if err = s.usersProcessor.UpdatePhoneValidationCode(ctx, req.ID, req.PhoneNumber); err != nil {
-			return server.Unexpected(err)
-		}
-	}
-
 	user := req.user()
-	user.HashCode = gUser.HashCode
-
-	err = s.usersProcessor.ModifyUser(ctx, user)
+	err := s.usersProcessor.ModifyUser(ctx, user)
 	if err != nil {
+		if errors.Is(err, users.ErrNotFound) {
+			return getServerErrorResponse(http.StatusNotFound, err, userNotFoundCode)
+		}
+
 		return server.Unexpected(err)
 	}
 

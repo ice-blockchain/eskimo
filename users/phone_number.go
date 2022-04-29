@@ -13,11 +13,11 @@ import (
 	"github.com/ice-blockchain/wintr/connectors/storage"
 )
 
-func (p *phoneNumberValidationCodes) generatePhoneValidationCode() string {
+func (u *users) generatePhoneValidationCode() string {
 	return fmt.Sprintf("%04d", rand.Intn(9999-1)+1) //nolint:gomnd,gosec // Do we need super random here?
 }
 
-func (p *phoneNumberValidationCodes) sendValidationCode(number, code string) error {
+func (u *users) sendValidationCode(number, code string) error {
 	fmt.Println(number, code)
 	//nolint:nolintlint    // TODO Here we send SMS to phone number.
 	// If user specified a phoneNumber in the request body, then we proceed with phone number confirmation flow:
@@ -28,12 +28,12 @@ func (p *phoneNumberValidationCodes) sendValidationCode(number, code string) err
 	return nil
 }
 
-func (p *phoneNumberValidationCodes) UpdatePhoneValidationCode(ctx context.Context, id UserID, number string) error {
+func (u *users) UpdatePhoneValidationCode(ctx context.Context, id UserID, number string) error {
 	if ctx.Err() != nil {
 		return errors.Wrap(ctx.Err(), "update phone number failed because context failed")
 	}
-	validationCode := p.generatePhoneValidationCode()
-	if err := p.sendValidationCode(number, validationCode); err != nil {
+	validationCode := u.generatePhoneValidationCode()
+	if err := u.sendValidationCode(number, validationCode); err != nil {
 		return errors.Wrapf(err, "failed to send validation code to phone number %v", number)
 	}
 	sql := fmt.Sprintf(`REPLACE INTO %v (ID, PHONE_NUMBER, VALIDATION_CODE, CREATED_AT) VALUES (:id, :phoneNumber, :validationCode, :createdAt)`, tableCodes)
@@ -45,17 +45,17 @@ func (p *phoneNumberValidationCodes) UpdatePhoneValidationCode(ctx context.Conte
 		"createdAt":      time.Now().UTC().UnixNano(),
 	}
 
-	query, err := p.db.PrepareExecute(sql, params)
+	query, err := u.db.PrepareExecute(sql, params)
 
 	return errors.Wrapf(storage.CheckSQLDMLErr(query, err), "failed to update phone number %v", number)
 }
 
-func (p *phoneNumberValidationCodes) ConfirmPhoneNumber(ctx context.Context, conf *PhoneNumberConfirmation) error {
+func (u *users) ConfirmPhoneNumber(ctx context.Context, conf *PhoneNumberConfirmation) error {
 	if ctx.Err() != nil {
 		return errors.Wrap(ctx.Err(), "check phone code failed because context failed")
 	}
 
-	result, err := p.getPhoneNumberValidationUser(ctx, conf.ID)
+	result, err := u.getPhoneNumberValidationUser(ctx, conf.ID)
 	if err != nil {
 		return errors.Wrapf(err, "failed to get user by id %v", conf.ID)
 	}
@@ -76,14 +76,18 @@ func (p *phoneNumberValidationCodes) ConfirmPhoneNumber(ctx context.Context, con
 		return ErrExpiredPhoneValidationCode
 	}
 
-	return nil
+	user := new(User)
+	user.ID = conf.ID
+	user.confirmedPhoneNumber = conf.PhoneNumber
+
+	return errors.Wrapf(u.ModifyUser(ctx, user), "error updating users")
 }
 
-func (p *phoneNumberValidationCodes) getPhoneNumberValidationUser(_ context.Context, id UserID) (*phoneNumberValidationCode, error) {
+func (u *users) getPhoneNumberValidationUser(_ context.Context, id UserID) (*phoneNumberValidationCode, error) {
 	result := new(phoneNumberValidationCode)
 
 	pk := fmt.Sprintf("pk_unnamed_%v_1", tableCodes)
-	if err := p.db.GetTyped(tableCodes, pk, []interface{}{id}, result); err != nil {
+	if err := u.db.GetTyped(tableCodes, pk, []interface{}{id}, result); err != nil {
 		return &phoneNumberValidationCode{}, errors.Wrapf(err, "failed to get user by id %v", id)
 	}
 

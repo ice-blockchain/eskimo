@@ -105,6 +105,7 @@ func (req *RequestValidateUsername) Bindings(c *gin.Context) []func(obj interfac
 // @Router       /user-validations/phone-number [PUT].
 func (s *service) ValidatePhoneNumber(ctx context.Context, r server.ParsedRequest) server.Response {
 	req := r.(*RequestValidatePhoneNumber)
+
 	err := s.usersProcessor.ConfirmPhoneNumber(ctx, req.confirm())
 	if err != nil {
 		switch {
@@ -116,10 +117,6 @@ func (s *service) ValidatePhoneNumber(ctx context.Context, r server.ParsedReques
 			return getServerErrorResponse(http.StatusBadRequest, errors.New("phone validation code expired"), userExpiredCode)
 		}
 
-		return server.Unexpected(err)
-	}
-
-	if err = s.usersProcessor.UpdateUserPhoneNumber(ctx, req.PhoneNumber, req.AuthenticatedUser.ID); err != nil {
 		return server.Unexpected(err)
 	}
 

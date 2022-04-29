@@ -37,7 +37,7 @@ func StartProcessor(ctx context.Context, cancel context.CancelFunc) Processor {
 		close:                           closeAll(db, mb),
 		ReadRepository:                  &users{db: db},
 		WriteRepository:                 &users{db: db, mb: mb},
-		PhoneNumberValidationRepository: &phoneNumberValidationCodes{db: db},
+		PhoneNumberValidationRepository: &users{db: db, mb: mb},
 	}
 }
 
