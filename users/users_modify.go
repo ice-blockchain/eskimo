@@ -25,14 +25,8 @@ func (u *users) ModifyUser(ctx context.Context, user *User) error {
 	if err != nil {
 		return errors.Wrapf(err, "get user failed")
 	}
-	// Phone number change or new number -> send SMS.
-	if user.PhoneNumber != "" && user.PhoneNumber != gUser.PhoneNumber {
-		confirm := new(PhoneNumberConfirmation)
-		confirm.UserID = user.ID
-		confirm.PhoneNumber = user.PhoneNumber
-		if err = u.updatePhoneValidationCode(ctx, confirm); err != nil {
-			return errors.Wrapf(err, "update phone validation code failed")
-		}
+	if err = u.triggerNewPhoneNumberValidation(ctx, user, gUser); err != nil {
+		return errors.Wrap(err, "failed to trigger new phone number validation")
 	}
 
 	user.ProfilePicture.Filename = fmt.Sprintf("%v", gUser.HashCode)
@@ -41,6 +35,9 @@ func (u *users) ModifyUser(ctx context.Context, user *User) error {
 	}
 
 	sql, params := user.genSQLUpdate()
+	if len(params) == 1+1 {
+		return nil
+	}
 	query, err := u.db.PrepareExecute(sql, params)
 
 	if err = storage.CheckSQLDMLErr(query, err); err != nil {
@@ -48,6 +45,20 @@ func (u *users) ModifyUser(ctx context.Context, user *User) error {
 	}
 
 	return errors.Wrap(u.sendUsersMessage(ctx, user), "failed to send updated user message")
+}
+
+func (u *users) triggerNewPhoneNumberValidation(ctx context.Context, newUser, oldUser *User) error {
+	if newUser.PhoneNumber == "" || newUser.PhoneNumber == oldUser.PhoneNumber {
+		return nil
+	}
+
+	confirm := new(PhoneNumberConfirmation)
+	confirm.UserID = newUser.ID
+	confirm.PhoneNumber = newUser.PhoneNumber
+
+	err := u.updatePhoneValidationCode(ctx, confirm)
+
+	return errors.Wrapf(err, "update phone validation code failed")
 }
 
 //nolint:funlen // SQL large again
