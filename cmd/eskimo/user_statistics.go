@@ -34,7 +34,7 @@ func (s *service) setupUserStatisticsRoutes(router *gin.Engine) {
 // @Router       /user-statistics/top-countries [GET].
 func (s *service) GetTopCountries(ctx context.Context, r server.ParsedRequest) server.Response {
 	req := r.(*RequestGetTopCountries)
-	result, err := s.usersRepository.TopCountriesGet(ctx, req.Limit, req.Offset)
+	result, err := s.usersRepository.GetTopCountries(ctx, req.Limit, req.Offset)
 	if err != nil {
 		return server.Unexpected(err)
 	}
