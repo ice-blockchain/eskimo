@@ -124,7 +124,7 @@ type (
 	// | user is the internal (User) structure for deserialization from the DB
 	// because it cannot deserialize time.Time or map/json structures properly.
 	// !! Order of fields is crucial, so do not change it !!
-	user struct { //nolint:govet // This is about DB
+	user struct {
 		_msgpack           struct{} `msgpack:",asArray"`
 		ID                 UserID
 		HashCode           uint64

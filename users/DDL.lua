@@ -18,4 +18,9 @@ box.execute([[CREATE TABLE IF NOT EXISTS phone_number_validation_codes  (
                     validation_code STRING NOT NULL UNIQUE,
                     created_at UNSIGNED NOT NULL
                      ) WITH ENGINE = 'vinyl';]])
+box.execute([[CREATE TABLE IF NOT EXISTS users_per_country  (
+                    country STRING primary key,
+                    user_count UNSIGNED NOT NULL DEFAULT 0
+                     ) WITH ENGINE = 'vinyl';]])
+box.execute([[CREATE INDEX IF NOT EXISTS users_per_country_user_count_ix ON users_per_country (user_count);]])
 -- TODO will add indexes later on

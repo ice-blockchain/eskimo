@@ -2,6 +2,10 @@
 
 ``Eskimo is handling everything related to user account management, including referrals.``
 
+# TODOs
+1. TRANSFORM VALIDATE USERNAME to GET by USERNAME
+
+
 ### Development
 
 These are the crucial/critical operations you will need when developing Eskimo:
