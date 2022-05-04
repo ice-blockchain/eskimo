@@ -3,10 +3,12 @@
 package users
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"fmt"
 	"math/big"
+	"text/template"
 	"time"
 
 	"github.com/pkg/errors"
@@ -26,11 +28,26 @@ func (u *users) generatePhoneValidationCode() string {
 	return fmt.Sprintf("%06d", n.Uint64())
 }
 
+func (u *users) generateSMSMessage(code string) (string, error) {
+	var b bytes.Buffer
+	tpl := template.Must(template.New("smsMessage").Parse(cfg.PhoneNumberValidation.SmsTemplate))
+
+	err := tpl.Execute(&b, map[string]interface{}{
+		"code":           code,
+		"expirationTime": cfg.PhoneNumberValidation.ExpirationTime.Minutes(),
+	})
+	if err != nil {
+		return "", errors.Wrapf(err, "invalid SMS template")
+	}
+
+	return b.String(), nil
+}
+
 func (u *users) sendValidationCodeSMS(number, code string) error {
-	msg := fmt.Sprintf("%v is your ice confirmation code. It expires in %v minutes. Don’t share this code with anyone.",
-		code,
-		cfg.PhoneNumberValidation.ExpirationTime.Minutes(),
-	)
+	msg, err := u.generateSMSMessage(code)
+	if err != nil {
+		return errors.Wrapf(err, "unable to generate validation SMS")
+	}
 
 	client := twilio.NewRestClientWithParams(twilio.ClientParams{
 		Username: cfg.PhoneNumberValidation.TwilioCredentials.User,
@@ -42,7 +59,7 @@ func (u *users) sendValidationCodeSMS(number, code string) error {
 	params.SetFrom(cfg.PhoneNumberValidation.FromPhoneNumber)
 	params.SetBody(msg)
 
-	_, err := client.ApiV2010.CreateMessage(params)
+	_, err = client.ApiV2010.CreateMessage(params)
 	if err != nil {
 		return errors.Wrapf(err, "twilio error")
 	}

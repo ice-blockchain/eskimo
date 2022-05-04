@@ -165,6 +165,7 @@ type (
 				Password string `yaml:"password"`
 			} `yaml:"twilioCredentials"`
 			FromPhoneNumber string        `yaml:"fromPhoneNumber"`
+			SmsTemplate     string        `yaml:"smsTemplate"`
 			ExpirationTime  time.Duration `yaml:"expirationTime"`
 		} `yaml:"phoneNumberValidation"`
 	}
