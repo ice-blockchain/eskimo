@@ -10,7 +10,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/zeebo/xxh3"
 
-	"github.com/ICE-Blockchain/wintr/connectors/storage"
+	"github.com/ice-blockchain/wintr/connectors/storage"
 )
 
 //nolint:funlen // A lot of SQL

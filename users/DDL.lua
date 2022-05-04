@@ -13,11 +13,9 @@ box.execute([[CREATE TABLE IF NOT EXISTS users  (
                     updated_at UNSIGNED NOT NULL
                      ) WITH ENGINE = 'vinyl';]])
 box.execute([[CREATE TABLE IF NOT EXISTS phone_number_validation_codes  (
-                    id STRING primary key,
-                    user_id STRING NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    user_id STRING primary key REFERENCES users(id) ON DELETE CASCADE,
                     phone_number STRING NOT NULL UNIQUE,
                     validation_code STRING NOT NULL UNIQUE,
                     created_at UNSIGNED NOT NULL
                      ) WITH ENGINE = 'vinyl';]])
 -- TODO will add indexes later on
-box.execute([[CREATE INDEX IF NOT EXISTS users_username_lookup_ix ON users (username);]])

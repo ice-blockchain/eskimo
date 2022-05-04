@@ -13,31 +13,33 @@ import (
 	"github.com/imroc/req/v3"
 	"github.com/pkg/errors"
 
-	"github.com/ICE-Blockchain/wintr/connectors/storage"
-	"github.com/ICE-Blockchain/wintr/log"
+	"github.com/ice-blockchain/wintr/connectors/storage"
+	"github.com/ice-blockchain/wintr/log"
 )
 
 func (u *users) ModifyUser(ctx context.Context, user *User) error {
 	if ctx.Err() != nil {
 		return errors.Wrap(ctx.Err(), "update user failed because context failed")
 	}
-	user.updated()
-
 	gUser, err := u.GetUser(ctx, user.ID)
 	if err != nil {
-		return errors.Wrapf(ErrNotFound, "no user found with id %v", user.ID)
+		return errors.Wrapf(err, "get user failed")
+	}
+	if err = u.triggerNewPhoneNumberValidation(ctx, user, gUser); err != nil {
+		return errors.Wrap(err, "failed to trigger new phone number validation")
 	}
 
-	if user.ProfilePicture.Filename != "" && user.ProfilePicture.Size != 0 {
-		user.ProfilePicture.Filename = fmt.Sprintf("%v", gUser.HashCode)
-		err = u.uploadProfilePicture(ctx, &user.ProfilePicture)
-		if err != nil {
-			return errors.Wrapf(err, "failed to upload user image, id %v", user.ID)
-		}
+	user.ProfilePicture.Filename = fmt.Sprintf("%v", gUser.HashCode)
+	if err = u.uploadProfilePicture(ctx, &user.ProfilePicture); err != nil {
+		return errors.Wrapf(err, "failed to upload profile picture")
 	}
 
 	sql, params := user.genSQLUpdate()
+	if len(params) == 1+1 {
+		return nil
+	}
 	query, err := u.db.PrepareExecute(sql, params)
+
 	if err = storage.CheckSQLDMLErr(query, err); err != nil {
 		return errors.Wrapf(err, "failed to update user with id %v", user.ID)
 	}
@@ -45,10 +47,25 @@ func (u *users) ModifyUser(ctx context.Context, user *User) error {
 	return errors.Wrap(u.sendUsersMessage(ctx, user), "failed to send updated user message")
 }
 
+func (u *users) triggerNewPhoneNumberValidation(ctx context.Context, newUser, oldUser *User) error {
+	if newUser.PhoneNumber == "" || newUser.PhoneNumber == oldUser.PhoneNumber {
+		return nil
+	}
+
+	confirm := new(PhoneNumberConfirmation)
+	confirm.UserID = newUser.ID
+	confirm.PhoneNumber = newUser.PhoneNumber
+
+	err := u.updatePhoneValidationCode(ctx, confirm)
+
+	return errors.Wrapf(err, "update phone validation code failed")
+}
+
+//nolint:funlen // SQL large again
 func (u *User) genSQLUpdate() (sql string, params map[string]interface{}) {
 	params = make(map[string]interface{})
 	params["id"] = u.ID
-	params["updatedAt"] = u.UpdatedAt.UnixNano()
+	params["updatedAt"] = time.Now().UTC().UnixNano()
 
 	sql = fmt.Sprintf("UPDATE USERS set UPDATED_AT = :updatedAt")
 
@@ -72,19 +89,19 @@ func (u *User) genSQLUpdate() (sql string, params map[string]interface{}) {
 		params["country"] = u.Country
 		sql += ", COUNTRY = :country"
 	}
+	if u.confirmedPhoneNumber != "" {
+		params["phoneNumber"] = u.confirmedPhoneNumber
+		sql += ", PHONE_NUMBER = :phoneNumber"
+	}
 	sql += " WHERE ID = :id"
 
 	return sql, params
 }
 
-func (u *User) updated() *User {
-	now := time.Now().UTC()
-	u.UpdatedAt = now
-
-	return u
-}
-
 func (u *users) uploadProfilePicture(ctx context.Context, data *multipart.FileHeader) error {
+	if data.Size == 0 {
+		return nil
+	}
 	file, err := data.Open()
 	defer func(file multipart.File) {
 		err = file.Close()

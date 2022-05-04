@@ -3,8 +3,8 @@
 package main
 
 import (
-	"github.com/ICE-Blockchain/eskimo/users"
-	"github.com/ICE-Blockchain/wintr/server"
+	"github.com/ice-blockchain/eskimo/users"
+	"github.com/ice-blockchain/wintr/server"
 )
 
 // Public API.

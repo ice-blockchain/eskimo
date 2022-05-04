@@ -11,8 +11,8 @@ import (
 	"github.com/gin-gonic/gin/binding"
 	"github.com/pkg/errors"
 
-	"github.com/ICE-Blockchain/eskimo/users"
-	"github.com/ICE-Blockchain/wintr/server"
+	"github.com/ice-blockchain/eskimo/users"
+	"github.com/ice-blockchain/wintr/server"
 )
 
 func (s *service) setupUserRoutes(router *gin.Engine) {
@@ -119,28 +119,21 @@ func (req *RequestCreateUser) Bindings(c *gin.Context) []func(obj interface{}) e
 // @Router       /users/{userId} [PATCH].
 func (s *service) ModifyUser(ctx context.Context, r server.ParsedRequest) server.Response {
 	req := r.(*RequestModifyUser)
-	err := s.usersProcessor.ModifyUser(ctx, req.user())
+
+	user := req.user()
+	err := s.usersProcessor.ModifyUser(ctx, user)
 	if err != nil {
-		var respCode string
-		var httpCode int
+		err = errors.Wrap(err, "modify user failed")
 		switch {
 		case errors.Is(err, users.ErrNotFound):
-			httpCode = http.StatusNotFound
-			respCode = userNotFoundCode
+			return getServerErrorResponse(http.StatusNotFound, err, userNotFoundCode)
 		case errors.Is(err, users.ErrDuplicate):
-			httpCode = http.StatusConflict
-			respCode = userDuplicateCode
+			return getServerErrorResponse(http.StatusConflict, err, userDuplicateCode)
 		default:
-			httpCode = http.StatusInternalServerError
-			respCode = userBadRequest
+			return server.Unexpected(err)
 		}
-
-		return getServerErrorResponse(httpCode, err, respCode)
 	}
-	// If user specified a phoneNumber in the request body, then we proceed with phone number confirmation flow:
-	// step 0: don`t update the phone number in users table
-	// step 1: insert into phone_number_validation_codes // TODO ask Robert about the pattern of the code
-	// step 2: use https://www.twilio.com/docs/libraries/go to send SMS with that code to the user`s phone number.
+
 	return server.OK()
 }
 
@@ -184,7 +177,22 @@ func (req *RequestModifyUser) Validate() *server.Response {
 		return &resp
 	}
 
+	if !req.hasValues() {
+		err := errors.New("modify request without values")
+		resp := getServerErrorResponse(http.StatusBadRequest, err, userBadRequest)
+
+		return &resp
+	}
+
 	return nil
+}
+
+func (req *RequestModifyUser) hasValues() bool {
+	if req.Email != "" || req.FullName != "" || req.PhoneNumber != "" || req.Username != "" || req.ProfilePicture.Filename != "" {
+		return true
+	}
+
+	return false
 }
 
 func (req *RequestModifyUser) Bindings(c *gin.Context) []func(obj interface{}) error {

@@ -7,8 +7,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/ICE-Blockchain/eskimo/users"
-	"github.com/ICE-Blockchain/wintr/server"
+	"github.com/ice-blockchain/eskimo/users"
+	"github.com/ice-blockchain/wintr/server"
 )
 
 func (s *service) setupUserStatisticsRoutes(router *gin.Engine) {
