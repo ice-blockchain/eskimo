@@ -9,22 +9,22 @@ import (
 	"github.com/pkg/errors"
 )
 
-func (u *users) incTopCountries(ctx context.Context, countryNew string) error {
+func (mb *usersMessageConsumer) incrementCountryUserCount(ctx context.Context, countryNew string) error {
 	if ctx.Err() != nil {
 		return errors.Wrap(ctx.Err(), "inc countries failed because context failed")
 	}
 
-	return errors.Wrapf(u.db.UpdateTyped("USERS_PER_COUNTRY", "pk_unnamed_USERS_PER_COUNTRY_1",
+	return errors.Wrapf(mb.db.UpdateTyped("USERS_PER_COUNTRY", "pk_unnamed_USERS_PER_COUNTRY_1",
 		tarantool.StringKey{S: countryNew}, []tarantool.Op{{Op: "+", Field: 1, Arg: 1}}, &[]*user{}),
 		"error updating USERS_PER_COUNTRY")
 }
 
-func (u *users) decTopCountries(ctx context.Context, countryOld string) error {
+func (mb *usersMessageConsumer) decrementCountryUserCount(ctx context.Context, countryOld string) error {
 	if ctx.Err() != nil {
 		return errors.Wrap(ctx.Err(), "dec countries failed because context failed")
 	}
 
-	return errors.Wrapf(u.db.UpdateTyped("USERS_PER_COUNTRY", "pk_unnamed_USERS_PER_COUNTRY_1",
+	return errors.Wrapf(mb.db.UpdateTyped("USERS_PER_COUNTRY", "pk_unnamed_USERS_PER_COUNTRY_1",
 		tarantool.StringKey{S: countryOld}, []tarantool.Op{{Op: "-", Field: 1, Arg: 1}}, &[]*user{}),
 		"error updating USERS_PER_COUNTRY")
 }

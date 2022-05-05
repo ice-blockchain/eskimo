@@ -41,8 +41,9 @@ func (s *service) setupUserRoutes(router *gin.Engine) {
 // @Router       /users [POST].
 func (s *service) CreateUser(ctx context.Context, r server.ParsedRequest) server.Response {
 	req := r.(*RequestCreateUser)
-
 	resp := req.user()
+	resp.Country = s.ipDatabase.GetCountry(ctx, req.ClientIP.String())
+
 	if err := s.usersProcessor.AddUser(ctx, resp); err != nil {
 		if errors.Is(err, users.ErrDuplicate) {
 			return getServerErrorResponse(http.StatusConflict, err, userDuplicateCode)
@@ -66,7 +67,6 @@ func (req *RequestCreateUser) user() *users.User {
 		PhoneNumber: req.PhoneNumber,
 		Username:    req.Username,
 		ReferredBy:  req.ReferredBy,
-		Country:     "TODO: get me based on req.ClientIP using https://www.ip2location.com/development-libraries/ip2location/go",
 	}
 }
 
@@ -121,6 +121,7 @@ func (s *service) ModifyUser(ctx context.Context, r server.ParsedRequest) server
 	req := r.(*RequestModifyUser)
 
 	user := req.user()
+	user.Country = s.ipDatabase.GetCountry(ctx, req.ClientIP.String())
 	err := s.usersProcessor.ModifyUser(ctx, user)
 	if err != nil {
 		err = errors.Wrap(err, "modify user failed")

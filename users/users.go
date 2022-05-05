@@ -5,6 +5,7 @@ package users
 import (
 	"context"
 	"encoding/json"
+	"io"
 
 	"github.com/framey-io/go-tarantool"
 	"github.com/hashicorp/go-multierror"
@@ -32,6 +33,8 @@ func StartProcessor(ctx context.Context, cancel context.CancelFunc) Processor {
 
 	db := storage.MustConnect(ctx, cancel, ddl, applicationYamlKey)
 	mb := messagebroker.MustConnect(ctx, applicationYamlKey)
+
+	startUsersMessageConsuming(ctx, db)
 
 	return &processor{
 		close:           closeAll(db, mb),
@@ -94,6 +97,26 @@ func (u *users) sendUsersMessage(ctx context.Context, user *User) error {
 	u.mb.SendMessage(ctx, m, responder)
 
 	return errors.Wrapf(<-responder, "failed to send users message to broker")
+}
+
+type usersMessageConsumer struct {
+	db tarantool.Connector
+}
+
+func (mb *usersMessageConsumer) Process(ctx context.Context, m *messagebroker.Message) error {
+	if ctx.Err() != nil {
+		log.Panic(errors.Wrap(ctx.Err(), "unexpected deadline while processing message"))
+	}
+
+	return nil
+}
+
+func startUsersMessageConsuming(ctx context.Context, db tarantool.Connector) io.Closer {
+	processors := map[messagebroker.Topic]messagebroker.Processor{
+		cfg.MessageBroker.Topics[0].Name: &usersMessageConsumer{db},
+	}
+
+	return messagebroker.MustConnectAndStartConsuming(ctx, func() {}, applicationYamlKey, processors)
 }
 
 func (p *processor) CheckHealth(_ context.Context) error {
