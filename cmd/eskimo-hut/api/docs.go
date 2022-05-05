@@ -275,6 +275,12 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
+                        "example": "us",
+                        "name": "country",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "string",
                         "example": "jdoe@gmail.com",
                         "name": "email",
                         "in": "formData"

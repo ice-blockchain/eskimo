@@ -5,6 +5,7 @@ package users
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -40,7 +41,7 @@ func (u *users) AddUser(ctx context.Context, user *User) error {
 		"phoneNumber":        user.PhoneNumber,
 		"username":           user.Username,
 		"profilePictureName": defaultUserImage,
-		"country":            user.Country,
+		"country":            strings.ToLower(user.Country),
 		"createdAt":          user.CreatedAt.UnixNano(),
 		"updatedAt":          user.UpdatedAt.UnixNano(),
 	}

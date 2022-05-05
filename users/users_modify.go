@@ -8,6 +8,7 @@ import (
 	"io"
 	"mime/multipart"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/imroc/req/v3"
@@ -86,7 +87,7 @@ func (u *User) genSQLUpdate() (sql string, params map[string]interface{}) {
 		sql += ", PROFILE_PICTURE_NAME = :profilePictureName"
 	}
 	if u.Country != "" {
-		params["country"] = u.Country
+		params["country"] = strings.ToLower(u.Country)
 		sql += ", COUNTRY = :country"
 	}
 	if u.confirmedPhoneNumber != "" {

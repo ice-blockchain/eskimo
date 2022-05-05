@@ -271,6 +271,10 @@ paths:
         name: userId
         required: true
         type: string
+      - example: us
+        in: formData
+        name: country
+        type: string
       - example: jdoe@gmail.com
         in: formData
         name: email

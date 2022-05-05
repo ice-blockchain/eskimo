@@ -119,9 +119,8 @@ func (req *RequestCreateUser) Bindings(c *gin.Context) []func(obj interface{}) e
 // @Router       /users/{userId} [PATCH].
 func (s *service) ModifyUser(ctx context.Context, r server.ParsedRequest) server.Response {
 	req := r.(*RequestModifyUser)
-
 	user := req.user()
-	user.Country = s.ipDatabase.GetCountry(ctx, req.ClientIP.String())
+
 	err := s.usersProcessor.ModifyUser(ctx, user)
 	if err != nil {
 		err = errors.Wrap(err, "modify user failed")
