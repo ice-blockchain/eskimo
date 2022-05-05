@@ -24,6 +24,9 @@ type (
 
 const applicationYamlKey = "ip2location"
 
+//nolint:gochecknoglobals // Because its loaded once, at runtime.
+var cfg config
+
 type ip2locationRepository struct {
 	db *ip2location.DB
 }
@@ -32,6 +35,3 @@ type ip2locationRepository struct {
 type config struct {
 	BinaryLocation string `yaml:"binaryLocation"`
 }
-
-//nolint:gochecknoglobals // Because its loaded once, at runtime.
-var cfg config

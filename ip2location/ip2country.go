@@ -21,7 +21,7 @@ func New(ctx context.Context) Repository {
 
 	db, err := ip2location.OpenDB(cfg.BinaryLocation)
 	if err != nil {
-		log.Error(errors.Wrap(err, "unable to open IP database"))
+		log.Panic(errors.Wrap(err, "unable to open IP database"))
 
 		return &ip2locationRepository{}
 	}
@@ -30,16 +30,14 @@ func New(ctx context.Context) Repository {
 }
 
 func (i *ip2locationRepository) Close() error {
-	if i.db == nil {
-		return nil
-	}
-
 	return errors.Wrap(i.Close(), "error closing IP database")
 }
 
 func (i *ip2locationRepository) GetCountry(ctx context.Context, ip IP) string {
 	if ctx.Err() != nil {
-		log.Panic(errors.Wrap(ctx.Err(), "context error"))
+		log.Error(errors.Wrap(ctx.Err(), "context error"))
+
+		return ""
 	}
 
 	results, err := i.db.Get_all(ip)

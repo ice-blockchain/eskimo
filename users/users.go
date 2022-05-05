@@ -33,22 +33,14 @@ func StartProcessor(ctx context.Context, cancel context.CancelFunc) Processor {
 	db := storage.MustConnect(ctx, cancel, ddl, applicationYamlKey)
 	mbProducer := messagebroker.MustConnect(ctx, applicationYamlKey)
 
-	mbProcessors, finishers := processors(context.Background(), db, mbProducer)
+	mbProcessors := processors(context.Background(), db, mbProducer)
 	mbConsumer := messagebroker.MustConnectAndStartConsuming(context.Background(), cancel, applicationYamlKey, mbProcessors)
 
 	return &processor{
-		close:           closeAll(mbConsumer, mbProducer, finishers, db),
+		close:           closeAll(mbConsumer, mbProducer, db),
 		ReadRepository:  &users{db: db},
 		WriteRepository: &users{db: db, mb: mbProducer},
 	}
-}
-
-func processors(ctx context.Context, db tarantool.Connector, mb messagebroker.Client) (map[messagebroker.Topic]messagebroker.Processor, []func()) {
-	finishers := make([]func(), 0, 1+1)
-
-	return map[messagebroker.Topic]messagebroker.Processor{
-		cfg.MessageBroker.Topics[0].Name: &usersSource{db},
-	}, finishers
 }
 
 func (p *processor) Close() error {
@@ -59,13 +51,9 @@ func (r *repository) Close() error {
 	return errors.Wrap(r.close(), "closing users repository failed")
 }
 
-//nolint:gocognit // More errors more complexity
-func closeAll(mbConsumer, mbProducer messagebroker.Client, finishers []func(), db tarantool.Connector) func() error {
+func closeAll(mbConsumer, mbProducer messagebroker.Client, db tarantool.Connector) func() error {
 	return func() error {
 		err1 := errors.Wrap(mbConsumer.Close(), "closing message broker consumer connection failed")
-		for _, finish := range finishers {
-			finish()
-		}
 		err2 := errors.Wrap(mbProducer.Close(), "closing message broker producer connection failed")
 		err3 := errors.Wrap(db.Close(), "closing db connection failed")
 		errs := make([]error, 0, 1+1+1)
@@ -115,14 +103,6 @@ func (u *users) sendUsersMessage(ctx context.Context, user *User) error {
 	u.mb.SendMessage(ctx, m, responder)
 
 	return errors.Wrapf(<-responder, "failed to send users message to broker")
-}
-
-func (mb *usersSource) Process(ctx context.Context, m *messagebroker.Message) error {
-	if ctx.Err() != nil {
-		log.Panic(errors.Wrap(ctx.Err(), "unexpected deadline while processing message"))
-	}
-
-	return nil
 }
 
 func (p *processor) CheckHealth(_ context.Context) error {
