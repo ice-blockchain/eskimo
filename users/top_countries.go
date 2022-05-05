@@ -9,7 +9,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func (mb *usersMessageConsumer) incrementCountryUserCount(ctx context.Context, countryNew string) error {
+func (mb *usersSource) incrementCountryUserCount(ctx context.Context, countryNew string) error {
 	if ctx.Err() != nil {
 		return errors.Wrap(ctx.Err(), "inc countries failed because context failed")
 	}
@@ -19,7 +19,7 @@ func (mb *usersMessageConsumer) incrementCountryUserCount(ctx context.Context, c
 		"error updating USERS_PER_COUNTRY")
 }
 
-func (mb *usersMessageConsumer) decrementCountryUserCount(ctx context.Context, countryOld string) error {
+func (mb *usersSource) decrementCountryUserCount(ctx context.Context, countryOld string) error {
 	if ctx.Err() != nil {
 		return errors.Wrap(ctx.Err(), "dec countries failed because context failed")
 	}
@@ -29,7 +29,7 @@ func (mb *usersMessageConsumer) decrementCountryUserCount(ctx context.Context, c
 		"error updating USERS_PER_COUNTRY")
 }
 
-func (u *users) GetTopCountries(ctx context.Context, limit, offset uint64) (cs []*CountryStatistics, err error) {
+func (u *users) GetTopCountries(ctx context.Context, limit Limit, offset Offset) (cs []*CountryStatistics, err error) {
 	if ctx.Err() != nil {
 		return nil, errors.Wrap(ctx.Err(), "get top countries failed because context failed")
 	}

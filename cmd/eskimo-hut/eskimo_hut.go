@@ -9,7 +9,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/ice-blockchain/eskimo/cmd/eskimo-hut/api"
-	"github.com/ice-blockchain/eskimo/ip2country"
+	"github.com/ice-blockchain/eskimo/ip2location"
 	"github.com/ice-blockchain/eskimo/users"
 	appCfg "github.com/ice-blockchain/wintr/config"
 	"github.com/ice-blockchain/wintr/log"
@@ -42,7 +42,7 @@ func (s *service) RegisterRoutes(engine *gin.Engine) {
 }
 
 func (s *service) Init(ctx context.Context, cancel context.CancelFunc) {
-	s.ipDatabase = ip2country.New(ctx)
+	s.ip2locationRepository = ip2location.New(ctx)
 	s.usersProcessor = users.StartProcessor(ctx, cancel)
 }
 
@@ -51,7 +51,9 @@ func (s *service) Close(ctx context.Context) error {
 		return errors.Wrap(ctx.Err(), "could not close usersProcessor because context ended")
 	}
 
-	_ = s.ipDatabase.Close()
+	if err := s.ip2locationRepository.Close(); err != nil {
+		log.Error(errors.Wrap(err, "error closing ip2locationRepository"))
+	}
 
 	return errors.Wrap(s.usersProcessor.Close(), "could not close usersProcessor")
 }

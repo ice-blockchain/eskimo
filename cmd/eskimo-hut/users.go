@@ -42,7 +42,7 @@ func (s *service) setupUserRoutes(router *gin.Engine) {
 func (s *service) CreateUser(ctx context.Context, r server.ParsedRequest) server.Response {
 	req := r.(*RequestCreateUser)
 	resp := req.user()
-	resp.Country = s.ipDatabase.GetCountry(ctx, req.ClientIP.String())
+	resp.Country = s.ip2locationRepository.GetCountry(ctx, req.ClientIP.String())
 
 	if err := s.usersProcessor.AddUser(ctx, resp); err != nil {
 		if errors.Is(err, users.ErrDuplicate) {
@@ -149,7 +149,7 @@ func (req *RequestModifyUser) user() *users.User {
 		PhoneNumber:    req.PhoneNumber,
 		Username:       req.Username,
 		ProfilePicture: req.ProfilePicture,
-		Country:        "TODO by clients IP",
+		Country:        req.Country,
 	}
 }
 

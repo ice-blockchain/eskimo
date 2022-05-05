@@ -51,3 +51,5 @@ users:
     fromPhoneNumber: +12345678
     expirationTime: 10m
     smsTemplate: '{{.code}} is your ice confirmation code. It expires in {{.expirationTime}} minutes. Don’t share this code with anyone.'
+ip2location:
+  binaryLocation: /somefile.db
