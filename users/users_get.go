@@ -58,5 +58,6 @@ func (u *user) toUser() *User {
 		FullName:          u.FullName,
 		PhoneNumber:       u.PhoneNumber,
 		ProfilePictureURL: profilePictureURL,
+		Country:           u.Country,
 	}
 }

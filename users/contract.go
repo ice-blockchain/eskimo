@@ -92,9 +92,11 @@ type (
 // Private API.
 
 const (
-	applicationYamlKey = "users"
-	defaultUserImage   = "default-user-image.jpg"
-	tableCodes         = "PHONE_NUMBER_VALIDATION_CODES"
+	applicationYamlKey                     = "users"
+	defaultUserImage                       = "default-user-image.jpg"
+	tableCodes                             = "PHONE_NUMBER_VALIDATION_CODES"
+	Add                arithmeticOperation = "+"
+	Substract          arithmeticOperation = "-"
 )
 
 var (
@@ -105,6 +107,7 @@ var (
 )
 
 type (
+	arithmeticOperation string
 	// | users implements the UserRepository and only handles everything related to `users`.
 	users struct {
 		mb messagebroker.Client

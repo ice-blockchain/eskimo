@@ -45,7 +45,7 @@ func (u *users) ModifyUser(ctx context.Context, user *User) error {
 		return errors.Wrapf(err, "failed to update user with id %v", user.ID)
 	}
 
-	return errors.Wrap(u.sendUsersMessage(ctx, user), "failed to send updated user message")
+	return errors.Wrap(u.sendUsersMessage(ctx, user, gUser.Country), "failed to send updated user message")
 }
 
 func (u *users) triggerNewPhoneNumberValidation(ctx context.Context, newUser, oldUser *User) error {
