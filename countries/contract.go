@@ -35,7 +35,7 @@ var (
 //go:embed countrycodes.map
 var countriesList string
 
-type ip2locationRepository struct {
+type countriesRepository struct {
 	db *ip2location.DB
 }
 

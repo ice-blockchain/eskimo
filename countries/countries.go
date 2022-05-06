@@ -34,17 +34,17 @@ func New(ctx context.Context) Repository {
 	if err != nil {
 		log.Panic(errors.Wrap(err, "unable to open IP database"))
 
-		return &ip2locationRepository{}
+		return &countriesRepository{}
 	}
 
-	return &ip2locationRepository{db: db}
+	return &countriesRepository{db: db}
 }
 
-func (i *ip2locationRepository) Close() error {
+func (i *countriesRepository) Close() error {
 	return errors.Wrap(i.Close(), "error closing IP database")
 }
 
-func (i *ip2locationRepository) Get(ctx context.Context, ip IP) string {
+func (i *countriesRepository) Get(ctx context.Context, ip IP) string {
 	if ctx.Err() != nil {
 		log.Error(errors.Wrap(ctx.Err(), "context error"))
 
