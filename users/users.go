@@ -43,6 +43,12 @@ func StartProcessor(ctx context.Context, cancel context.CancelFunc) Processor {
 	}
 }
 
+func processors(ctx context.Context, db tarantool.Connector, mb messagebroker.Client) map[messagebroker.Topic]messagebroker.Processor {
+	return map[messagebroker.Topic]messagebroker.Processor{
+		cfg.MessageBroker.Topics[0].Name: &usersSource{db},
+	}
+}
+
 func (p *processor) Close() error {
 	return errors.Wrap(p.close(), "closing users processor failed")
 }

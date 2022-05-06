@@ -3,6 +3,7 @@
 package main
 
 import (
+	_ "embed"
 	"mime/multipart"
 	"net"
 
@@ -61,7 +62,13 @@ const (
 )
 
 //nolint:gochecknoglobals // Because its loaded once, at runtime.
-var cfg config
+var (
+	cfg       config
+	countries map[string]bool
+)
+
+//go:embed countrycodes.map
+var countriesList string
 
 type (
 	// | service implements server.State and is responsible for managing the state and lifecycle of the package.

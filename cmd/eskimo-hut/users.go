@@ -6,6 +6,7 @@ import (
 	"context"
 	"net"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
@@ -167,7 +168,6 @@ func (req *RequestModifyUser) Validate() *server.Response {
 	if req.ID == "" {
 		return server.RequiredStrings(map[string]string{"userId": req.ID})
 	}
-
 	if req.ID != req.AuthenticatedUser.ID {
 		err := errors.Errorf("update account not allowed for anyone except the owner. "+
 			"`%v` tried to update `%v`", req.AuthenticatedUser.ID, req.ID)
@@ -184,11 +184,22 @@ func (req *RequestModifyUser) Validate() *server.Response {
 		return &resp
 	}
 
+	if req.Country != "" {
+		req.Country = strings.ToLower(req.Country)
+		if !countries[req.Country] {
+			err := errors.New("country invalid")
+			resp := getServerErrorResponse(http.StatusBadRequest, err, userBadRequest)
+
+			return &resp
+		}
+	}
+
 	return nil
 }
 
+//nolint:gocognit // This is validator of fields
 func (req *RequestModifyUser) hasValues() bool {
-	if req.Email != "" || req.FullName != "" || req.PhoneNumber != "" || req.Username != "" || req.ProfilePicture.Filename != "" {
+	if req.Country != "" || req.Email != "" || req.FullName != "" || req.PhoneNumber != "" || req.Username != "" || req.ProfilePicture.Filename != "" {
 		return true
 	}
 
