@@ -12,6 +12,7 @@ import (
 	"github.com/gin-gonic/gin/binding"
 	"github.com/pkg/errors"
 
+	"github.com/ice-blockchain/eskimo/countries"
 	"github.com/ice-blockchain/eskimo/users"
 	"github.com/ice-blockchain/wintr/server"
 )
@@ -43,7 +44,7 @@ func (s *service) setupUserRoutes(router *gin.Engine) {
 func (s *service) CreateUser(ctx context.Context, r server.ParsedRequest) server.Response {
 	req := r.(*RequestCreateUser)
 	resp := req.user()
-	resp.Country = s.ip2locationRepository.GetCountry(ctx, req.ClientIP.String())
+	resp.Country = s.countriesRepository.Get(ctx, req.ClientIP.String())
 
 	if err := s.usersProcessor.AddUser(ctx, resp); err != nil {
 		if errors.Is(err, users.ErrDuplicate) {
@@ -186,8 +187,8 @@ func (req *RequestModifyUser) Validate() *server.Response {
 
 	if req.Country != "" {
 		req.Country = strings.ToLower(req.Country)
-		if !countries[req.Country] {
-			err := errors.New("country invalid")
+
+		if err := countries.Validate(req.Country); err != nil {
 			resp := getServerErrorResponse(http.StatusBadRequest, err, userBadRequest)
 
 			return &resp
