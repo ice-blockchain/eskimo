@@ -5,7 +5,6 @@ package users
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 
 	"github.com/framey-io/go-tarantool"
 	"github.com/pkg/errors"
@@ -24,8 +23,6 @@ func (mb *usersSource) Process(ctx context.Context, m *messagebroker.Message) er
 		return errors.Wrap(err, "error unmarshalling msg broker data")
 	}
 
-	fmt.Println("PROCESS MESSAGE: ", u.Country, m.Headers["countryBefore"])
-
 	switch {
 	case u.Country == "" || u.Country == m.Headers["countryBefore"]:
 		return nil
@@ -33,7 +30,7 @@ func (mb *usersSource) Process(ctx context.Context, m *messagebroker.Message) er
 		mb.changeCountryUserCount(ctx, m.Headers["countryBefore"], Substract)
 		mb.changeCountryUserCount(ctx, u.Country, Add)
 	case u.DeletedAt != nil:
-		mb.changeCountryUserCount(ctx, m.Headers["countryBefore"], Substract)
+		mb.changeCountryUserCount(ctx, u.Country, Substract)
 	default:
 		mb.changeCountryUserCount(ctx, u.Country, Add)
 	}
@@ -46,11 +43,12 @@ func (mb *usersSource) changeCountryUserCount(ctx context.Context, country strin
 		log.Panic(errors.Wrap(ctx.Err(), "context failed"))
 	}
 
-	err := errors.Wrapf(mb.db.UpdateTyped("USERS_PER_COUNTRY", "pk_unnamed_USERS_PER_COUNTRY_1",
-		tarantool.StringKey{S: country}, []tarantool.Op{{Op: string(operation), Field: 1, Arg: 1}}, &[]*user{}),
-		"error updating USERS_PER_COUNTRY")
+	var res []*usersPerCountry
+	key := tarantool.StringKey{S: country}
+	arOp := []tarantool.Op{{Op: string(operation), Field: 1, Arg: 1}}
 
+	err := mb.db.UpdateTyped("USERS_PER_COUNTRY", "pk_unnamed_USERS_PER_COUNTRY_1", key, arOp, &res)
 	if err != nil {
-		log.Panic(err, "error changing country count")
+		log.Error(err, errors.Wrap(err, "error changing country count"))
 	}
 }
