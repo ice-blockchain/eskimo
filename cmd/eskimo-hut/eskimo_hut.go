@@ -51,10 +51,6 @@ func (s *service) Close(ctx context.Context) error {
 		return errors.Wrap(ctx.Err(), "could not close usersProcessor because context ended")
 	}
 
-	if err := s.countriesRepository.Close(); err != nil {
-		log.Error(errors.Wrap(err, "error closing ip2locationRepository"))
-	}
-
 	return errors.Wrap(s.usersProcessor.Close(), "could not close usersProcessor")
 }
 

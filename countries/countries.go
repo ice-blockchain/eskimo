@@ -40,10 +40,6 @@ func New(ctx context.Context) Repository {
 	return &countriesRepository{db: db}
 }
 
-func (i *countriesRepository) Close() error {
-	return errors.Wrap(i.Close(), "error closing IP database")
-}
-
 func (i *countriesRepository) Get(ctx context.Context, ip IP) string {
 	if ctx.Err() != nil {
 		log.Error(errors.Wrap(ctx.Err(), "context error"))

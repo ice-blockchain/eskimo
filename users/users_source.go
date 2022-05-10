@@ -5,6 +5,7 @@ package users
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
 	"github.com/framey-io/go-tarantool"
 	"github.com/pkg/errors"
@@ -22,6 +23,8 @@ func (mb *usersSource) Process(ctx context.Context, m *messagebroker.Message) er
 	if err := json.Unmarshal(m.Value, &u); err != nil {
 		return errors.Wrap(err, "error unmarshalling msg broker data")
 	}
+
+	fmt.Println("PROCESS MESSAGE: ", u.Country, m.Headers["countryBefore"])
 
 	switch {
 	case u.Country == "" || u.Country == m.Headers["countryBefore"]:
