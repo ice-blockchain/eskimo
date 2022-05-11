@@ -24,18 +24,12 @@ func init() {
 }
 
 func New(ctx context.Context) Repository {
-	if ctx.Err() != nil {
-		log.Panic(errors.Wrap(ctx.Err(), "context error"))
-	}
+	log.Panic(errors.Wrap(ctx.Err(), "context error"))
 
 	appCfg.MustLoadFromKey(applicationYamlKey, &cfg)
 
 	db, err := ip2location.OpenDB(cfg.BinaryLocation)
-	if err != nil {
-		log.Panic(errors.Wrap(err, "unable to open IP database"))
-
-		return &countriesRepository{}
-	}
+	log.Panic(errors.Wrap(err, "unable to open IP database"))
 
 	return &countriesRepository{db: db}
 }

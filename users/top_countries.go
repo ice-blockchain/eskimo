@@ -5,6 +5,7 @@ package users
 import (
 	"context"
 
+	"github.com/framey-io/go-tarantool"
 	"github.com/pkg/errors"
 )
 
@@ -23,4 +24,19 @@ func (u *users) GetTopCountries(ctx context.Context, limit Limit, offset Offset)
 	}
 
 	return result, nil
+}
+
+func (mb *usersSource) incrementOrDecrementCountryUserCount(ctx context.Context, country string, operation arithmeticOperation) error {
+	if ctx.Err() != nil {
+		return errors.Wrap(ctx.Err(), "context failed")
+	}
+
+	var res []*usersPerCountry
+	key := tarantool.StringKey{S: country}
+	arOp := []tarantool.Op{{Op: string(operation), Field: 1, Arg: 1}}
+
+	// TODO deal with UpsertTyped here
+	err := mb.db.UpdateTyped("USERS_PER_COUNTRY", "pk_unnamed_USERS_PER_COUNTRY_1", key, arOp, &res)
+
+	return errors.Wrap(err, "error changing country count")
 }

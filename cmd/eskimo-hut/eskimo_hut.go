@@ -51,9 +51,7 @@ func (s *service) Close(ctx context.Context) error {
 		return errors.Wrap(ctx.Err(), "could not close usersProcessor because context ended")
 	}
 
-	if err := s.countriesRepository.Close(); err != nil {
-		log.Error(errors.Wrap(err, "Error closing country repository"))
-	}
+	log.Error(errors.Wrap(s.countriesRepository.Close(), "Error closing country repository"))
 
 	return errors.Wrap(s.usersProcessor.Close(), "could not close usersProcessor")
 }
