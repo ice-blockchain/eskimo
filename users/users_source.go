@@ -33,7 +33,7 @@ func (mb *usersSource) Process(ctx context.Context, m *messagebroker.Message) er
 
 		fallthrough
 	case u.Before.Country != "":
-		return errors.Wrap(mb.incrementOrDecrementCountryUserCount(ctx, u.User.Country, Substract), "error decrementing user country count")
+		return errors.Wrap(mb.incrementOrDecrementCountryUserCount(ctx, u.Before.Country, Substract), "error decrementing user country count")
 	}
 
 	return nil

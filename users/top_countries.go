@@ -32,11 +32,9 @@ func (mb *usersSource) incrementOrDecrementCountryUserCount(ctx context.Context,
 	}
 
 	var res []*usersPerCountry
-	key := tarantool.StringKey{S: country}
 	arOp := []tarantool.Op{{Op: string(operation), Field: 1, Arg: 1}}
 
-	// TODO deal with UpsertTyped here
-	err := mb.db.UpdateTyped("USERS_PER_COUNTRY", "pk_unnamed_USERS_PER_COUNTRY_1", key, arOp, &res)
+	err := mb.db.UpsertAsync("USERS_PER_COUNTRY", []interface{}{country, 1}, arOp).GetTyped(&res)
 
 	return errors.Wrap(err, "error changing country count")
 }
