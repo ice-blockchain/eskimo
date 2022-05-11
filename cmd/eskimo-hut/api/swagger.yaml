@@ -32,12 +32,6 @@ definitions:
         example: "232323232"
         type: string
     type: object
-  main.RequestValidateUsername:
-    properties:
-      username:
-        example: jdoe
-        type: string
-    type: object
   multipart.FileHeader:
     properties:
       filename:
@@ -144,55 +138,6 @@ paths:
             $ref: '#/definitions/server.ErrorResponse'
         "404":
           description: phone number is not in the process of validation
-          schema:
-            $ref: '#/definitions/server.ErrorResponse'
-        "422":
-          description: if syntax fails
-          schema:
-            $ref: '#/definitions/server.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/server.ErrorResponse'
-        "504":
-          description: if request times out
-          schema:
-            $ref: '#/definitions/server.ErrorResponse'
-      tags:
-      - Validations
-  /user-validations/username:
-    put:
-      consumes:
-      - application/json
-      description: Validates a provided username
-      parameters:
-      - default: Bearer <Add access token here>
-        description: Insert your access token
-        in: header
-        name: Authorization
-        required: true
-        type: string
-      - description: Request params
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/main.RequestValidateUsername'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: username is ok and can be used
-        "400":
-          description: if validations fail
-          schema:
-            $ref: '#/definitions/server.ErrorResponse'
-        "401":
-          description: if not authorized
-          schema:
-            $ref: '#/definitions/server.ErrorResponse'
-        "409":
-          description: user exists
           schema:
             $ref: '#/definitions/server.ErrorResponse'
         "422":

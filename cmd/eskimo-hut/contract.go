@@ -38,10 +38,6 @@ type (
 		AuthenticatedUser server.AuthenticatedUser `json:"authenticatedUser" swaggerignore:"true"`
 		ID                string                   `uri:"userId" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
 	}
-	RequestValidateUsername struct {
-		AuthenticatedUser server.AuthenticatedUser `json:"authenticatedUser" swaggerignore:"true"`
-		Username          string                   `json:"username" example:"jdoe"`
-	}
 	RequestValidatePhoneNumber struct {
 		AuthenticatedUser server.AuthenticatedUser `json:"authenticatedUser" swaggerignore:"true"`
 		ValidationCode    string                   `json:"validationCode" example:"232323232"`
@@ -56,7 +52,6 @@ const (
 	userNotFoundCode   = "USER_NOT_FOUND"
 	userDuplicateCode  = "USER_DUPLICATE"
 	userBadRequest     = "USER_BAD_REQUEST"
-	userIncorrect      = "USER_INCORRECT"
 	notAllowed         = "NOT_ALLOWED"
 	userInvalidCode    = "INVALID_VALIDATION_CODE"
 	userExpiredCode    = "EXPIRED_VALIDATION_CODE"

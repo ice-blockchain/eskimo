@@ -15,7 +15,7 @@ func (u *users) RemoveUser(ctx context.Context, userID UserID) error {
 	if ctx.Err() != nil {
 		return errors.Wrap(ctx.Err(), "remove user failed because context failed")
 	}
-	gUser, err := u.GetUser(ctx, userID)
+	gUser, err := u.GetUserByID(ctx, userID)
 	if err != nil {
 		return errors.Wrapf(err, "unable to get user %v", userID)
 	}

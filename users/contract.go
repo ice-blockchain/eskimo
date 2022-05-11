@@ -82,8 +82,8 @@ type (
 	}
 
 	ReadRepository interface {
-		GetUser(context.Context, UserID) (*User, error)
-		UsernameExists(context.Context, Username) (bool, error)
+		GetUserByUsername(context.Context, Username) (*User, error)
+		GetUserByID(context.Context, UserID) (*User, error)
 	}
 )
 
@@ -125,9 +125,9 @@ type (
 	// because it cannot deserialize time.Time or map/json structures properly.
 	// !! Order of fields is crucial, so do not change it !!
 	user struct {
+		//nolint:unused // Because it is used by the msgpack library for marshalling/unmarshalling.
 		_msgpack           struct{} `msgpack:",asArray"`
 		ID                 UserID
-		HashCode           uint64
 		ReferredBy         UserID
 		Username           Username
 		Email              string
@@ -135,11 +135,13 @@ type (
 		PhoneNumber        string
 		ProfilePictureName string
 		Country            string
+		HashCode           uint64
 		CreatedAt          uint64
 		UpdatedAt          uint64
 	}
 
 	phoneNumberValidationCode struct {
+		//nolint:unused // Because it is used by the msgpack library for marshalling/unmarshalling.
 		_msgpack       struct{} `msgpack:",asArray"`
 		ID             UserID
 		PhoneNumber    string

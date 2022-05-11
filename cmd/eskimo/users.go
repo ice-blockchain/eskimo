@@ -17,10 +17,11 @@ import (
 func (s *service) setupUserRoutes(router *gin.Engine) {
 	router.
 		Group("/v1").
-		GET("users/:userId", server.RootHandler(newRequestGetUser, s.GetUser))
+		GET("users/:userId", server.RootHandler(newRequestGetUserByID, s.GetUserByID)).
+		GET("user-views/username", server.RootHandler(newRequestGetByUsername, s.GetUserByUsername))
 }
 
-// GetUser godoc
+// GetUserByID godoc
 // @Schemes
 // @Description  Returns an user account
 // @Tags         Accounts
@@ -36,9 +37,9 @@ func (s *service) setupUserRoutes(router *gin.Engine) {
 // @Failure      500            {object}  server.ErrorResponse
 // @Failure      504            {object}  server.ErrorResponse  "if request times out"
 // @Router       /users/{userId} [GET].
-func (s *service) GetUser(ctx context.Context, r server.ParsedRequest) server.Response {
-	req := r.(*RequestGetUser)
-	resp, err := s.usersRepository.GetUser(ctx, req.ID)
+func (s *service) GetUserByID(ctx context.Context, r server.ParsedRequest) server.Response {
+	req := r.(*RequestGetUserByID)
+	resp, err := s.usersRepository.GetUserByID(ctx, req.ID)
 	if err != nil {
 		if errors.Is(err, users.ErrNotFound) {
 			m := fmt.Sprintf("user with id `%v` was not found.", req.ID)
@@ -69,24 +70,96 @@ func (s *service) GetUser(ctx context.Context, r server.ParsedRequest) server.Re
 	return server.OK(respShort)
 }
 
-func newRequestGetUser() server.ParsedRequest {
-	return new(RequestGetUser)
+func newRequestGetUserByID() server.ParsedRequest {
+	return new(RequestGetUserByID)
 }
 
-func (req *RequestGetUser) SetAuthenticatedUser(user server.AuthenticatedUser) {
+func (req *RequestGetUserByID) SetAuthenticatedUser(user server.AuthenticatedUser) {
 	if req.AuthenticatedUser.ID == "" {
 		req.AuthenticatedUser = user
 	}
 }
 
-func (req *RequestGetUser) GetAuthenticatedUser() server.AuthenticatedUser {
+func (req *RequestGetUserByID) GetAuthenticatedUser() server.AuthenticatedUser {
 	return req.AuthenticatedUser
 }
 
-func (req *RequestGetUser) Validate() *server.Response {
+func (req *RequestGetUserByID) Validate() *server.Response {
 	return server.RequiredStrings(map[string]string{"userId": req.ID})
 }
 
-func (req *RequestGetUser) Bindings(c *gin.Context) []func(obj interface{}) error {
+func (req *RequestGetUserByID) Bindings(c *gin.Context) []func(obj interface{}) error {
 	return []func(obj interface{}) error{c.ShouldBindUri, server.ShouldBindAuthenticatedUser(c)}
+}
+
+// GetUserByUsername godoc
+// @Schemes
+// @Description  Returns public information about an user account based on an username, making sure the username is valid first.
+// @Tags         Accounts
+// @Accept       json
+// @Produce      json
+// @Param        Authorization  header    string  true  "Insert your access token"  default(Bearer <Add access token here>)
+// @Param        username       query     string  true  "username of the user. It will validate it first"
+// @Success      200            {object}  users.User
+// @Failure      400            {object}  server.ErrorResponse  "if validations fail"
+// @Failure      401            {object}  server.ErrorResponse  "if not authorized"
+// @Failure      404            {object}  server.ErrorResponse  "if not found"
+// @Failure      422            {object}  server.ErrorResponse  "if syntax fails"
+// @Failure      500            {object}  server.ErrorResponse
+// @Failure      504            {object}  server.ErrorResponse  "if request times out"
+// @Router       /user-views/username [GET].
+func (s *service) GetUserByUsername(ctx context.Context, r server.ParsedRequest) server.Response {
+	req := r.(*RequestGetByUsername)
+	resp, err := s.usersRepository.GetUserByUsername(ctx, req.Username)
+	if err != nil {
+		if errors.Is(err, users.ErrNotFound) {
+			m := fmt.Sprintf("user with username `%v` was not found.", req.Username)
+
+			return server.Response{
+				Code: http.StatusNotFound,
+				Data: server.ErrorResponse{
+					Error: m,
+					Code:  userNotFoundCode,
+				}.Fail(errors.Wrapf(err, "failed to get user by username")),
+			}
+		}
+
+		return server.Unexpected(err)
+	}
+
+	return server.OK(resp)
+}
+
+func newRequestGetByUsername() server.ParsedRequest {
+	return new(RequestGetByUsername)
+}
+
+func (req *RequestGetByUsername) SetAuthenticatedUser(user server.AuthenticatedUser) {
+	if req.AuthenticatedUser.ID == "" {
+		req.AuthenticatedUser = user
+	}
+}
+
+func (req *RequestGetByUsername) GetAuthenticatedUser() server.AuthenticatedUser {
+	return req.AuthenticatedUser
+}
+
+func (req *RequestGetByUsername) Validate() *server.Response {
+	if !compiledUsernameRegex.MatchString(req.Username) {
+		err := errors.Errorf("username: %v is invalid, it should match regex: %v", req.Username, usernameRegex)
+
+		return &server.Response{
+			Data: server.ErrorResponse{
+				Error: err.Error(),
+				Code:  "INVALID_USERNAME",
+			}.Fail(err),
+			Code: http.StatusBadRequest,
+		}
+	}
+
+	return nil
+}
+
+func (req *RequestGetByUsername) Bindings(c *gin.Context) []func(obj interface{}) error {
+	return []func(obj interface{}) error{c.ShouldBindQuery, server.ShouldBindAuthenticatedUser(c)}
 }
