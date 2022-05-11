@@ -86,6 +86,8 @@ func (req *RequestGetReferralAcquisitionHistory) Bindings(c *gin.Context) []func
 // @Param        Authorization  header    string  true   "Insert your access token"  default(Bearer <Add access token here>)
 // @Param        userId         path      string  true   "ID of the user"
 // @Param        type           query     string  false  "Type of referrals: T1 or T2. Defaults to `T1`"
+// @Param        limit          query     uint64  false  "Limit of elements to return"
+// @Param        offset         query     uint64  false  "Number of elements to skip before collecting elements to return"
 // @Success      200            {array}   users.User
 // @Failure      400            {object}  server.ErrorResponse  "if validations fail"
 // @Failure      401            {object}  server.ErrorResponse  "if not authorized"
@@ -95,24 +97,27 @@ func (req *RequestGetReferralAcquisitionHistory) Bindings(c *gin.Context) []func
 // @Router       /users/{userId}/referrals [GET].
 func (s *service) GetReferrals(ctx context.Context, r server.ParsedRequest) server.Response {
 	req := r.(*RequestGetReferrals)
-
-	//nolint:nolintlint,godox // TODO implement me
-	if req.AuthenticatedUser.ID == req.ID { //nolint:nolintlint,gocritic,staticcheck
-		// User is trying to get their own referrals.
-	} else { //nolint:nolintlint,gocritic,staticcheck
-		// User is trying to get some other user's referrals.
+	var referrals []*users.User
+	var err error
+	if req.Type == tier1Referrals {
+		referrals, err = s.usersRepository.GetTier1Referrals(ctx, req.ID, req.Limit, req.Offset)
+		if err != nil {
+			return server.Unexpected(err)
+		}
+	} else if req.Type == tier2Referrals { //nolint:nolintlint,gocritic,staticcheck
+		// Fetch tier 2.
+	}
+	result := make([]*users.User, 0, len(referrals))
+	for _, referral := range referrals {
+		result = append(result, &users.User{
+			ID:                referral.ID,
+			PhoneNumber:       referral.PhoneNumber,
+			Username:          referral.Username,
+			ProfilePictureURL: referral.ProfilePictureURL,
+		})
 	}
 
-	return server.OK([]*users.User{{
-		// We implement only T1 ones for now.
-		// The order of the referrals is : referrals from mobile phone agenda, then the most recent ones (based on createdAt).
-		// Return only those fields:.
-		ID:                "did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2",
-		Username:          "jdoe",
-		PhoneNumber:       "+12099216581",
-		ProfilePictureURL: "a.jpg",
-		//nolint:nolintlint,godox // TODO we need to find out how to find out if someone is an agenda contact of another.
-	}})
+	return server.OK(result)
 }
 
 func newRequestGetReferrals() server.ParsedRequest {
@@ -131,9 +136,9 @@ func (req *RequestGetReferrals) GetAuthenticatedUser() server.AuthenticatedUser 
 
 func (req *RequestGetReferrals) Validate() *server.Response {
 	if req.Type == "" {
-		req.Type = "T1"
-	} else if strings.ToUpper(req.Type) != "T1" && strings.ToUpper(req.Type) != "T2" { //nolint:gocritic // later
-		err := errors.Errorf("type '%v' is invalid, valid types are [T1,T2]", req.Type)
+		req.Type = tier1Referrals
+	} else if !strings.EqualFold(req.Type, tier1Referrals) && !strings.EqualFold(req.Type, tier2Referrals) {
+		err := errors.Errorf("type '%v' is invalid, valid types are [%v,%v]", req.Type, tier1Referrals, tier2Referrals)
 
 		return &server.Response{
 			Data: server.ErrorResponse{
@@ -142,6 +147,9 @@ func (req *RequestGetReferrals) Validate() *server.Response {
 			}.Fail(err),
 			Code: http.StatusBadRequest,
 		}
+	}
+	if req.Limit == 0 {
+		req.Limit = 20
 	}
 
 	return server.RequiredStrings(map[string]string{"userId": req.ID})

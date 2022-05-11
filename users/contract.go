@@ -93,6 +93,7 @@ type (
 		GetUserByUsername(context.Context, Username) (*User, error)
 		GetUserByID(context.Context, UserID) (*User, error)
 		GetTopCountries(context.Context, Limit, Offset) ([]*CountryStatistics, error)
+		GetTier1Referrals(ctx context.Context, id UserID, limit Limit, offset Offset) ([]*User, error)
 	}
 )
 

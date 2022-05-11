@@ -399,8 +399,9 @@ const docTemplate = `{
                     "example": "Ef86A6021afCDe5673511376B2"
                 },
                 "referredBy": {
+                    "description": "User's ID, so client app requests user by user name and provides ID here.",
                     "type": "string",
-                    "example": "billy112"
+                    "example": "did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"
                 },
                 "username": {
                     "type": "string",

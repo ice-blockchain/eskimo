@@ -359,6 +359,18 @@ const docTemplate = `{
                         "description": "Type of referrals: T1 or T2. Defaults to ` + "`" + `T1` + "`" + `",
                         "name": "type",
                         "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Limit of elements to return",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Number of elements to skip before collecting elements to return",
+                        "name": "offset",
+                        "in": "query"
                     }
                 ],
                 "responses": {

@@ -34,6 +34,8 @@ type (
 		AuthenticatedUser server.AuthenticatedUser `json:"authenticatedUser" swaggerignore:"true"`
 		ID                string                   `uri:"userId" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
 		Type              string                   `form:"type" example:"T1"`
+		Limit             uint64                   `form:"limit" example:"20"` // 20 by default.
+		Offset            uint64                   `form:"offset" example:"5"`
 	}
 )
 
@@ -43,6 +45,8 @@ const (
 	applicationYamlKey = "cmd/eskimo"
 	userNotFoundCode   = "USER_NOT_FOUND"
 	usernameRegex      = `^[\w\-.]{4,20}$`
+	tier1Referrals     = "T1" // Values for RequestGetReferrals.Type
+	tier2Referrals     = "T2" // Values for RequestGetReferrals.Type
 )
 
 //nolint:gochecknoglobals // Because its loaded once, at runtime.
