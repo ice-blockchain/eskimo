@@ -60,6 +60,10 @@ func (i *countriesRepository) Get(ctx context.Context, ip IP) string {
 		return ""
 	}
 
+	if Validate(results.Country_short) != nil {
+		return ""
+	}
+
 	return results.Country_short
 }
 

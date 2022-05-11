@@ -44,11 +44,7 @@ func (s *service) setupUserRoutes(router *gin.Engine) {
 func (s *service) CreateUser(ctx context.Context, r server.ParsedRequest) server.Response {
 	req := r.(*RequestCreateUser)
 	resp := req.user()
-
-	country := s.countriesRepository.Get(ctx, req.ClientIP.String())
-	if err := countries.Validate(country); err == nil {
-		resp.Country = country
-	}
+	resp.Country = s.countriesRepository.Get(ctx, req.ClientIP.String())
 
 	if err := s.usersProcessor.AddUser(ctx, resp); err != nil {
 		if errors.Is(err, users.ErrDuplicate) {

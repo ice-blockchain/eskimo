@@ -91,14 +91,14 @@ func closeDB(db tarantool.Connector) func() error {
 	}
 }
 
-func (u *users) sendUsersMessage(ctx context.Context, user *User, countryBefore string) error {
+func (u *users) sendUsersMessage(ctx context.Context, user UserSnapshot) error {
 	valueBytes, err := json.Marshal(user)
 	if err != nil {
 		return errors.Wrapf(err, "failed to marshal user %#v", user)
 	}
 
 	m := &messagebroker.Message{
-		Headers: map[string]string{"producer": "eskimo", "countryBefore": countryBefore},
+		Headers: map[string]string{"producer": "eskimo"},
 		Key:     user.ID,
 		Topic:   cfg.MessageBroker.Topics[0].Name,
 		Value:   valueBytes,

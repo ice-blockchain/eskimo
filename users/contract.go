@@ -47,6 +47,10 @@ type (
 		Country  string `json:"country" example:"us"`
 		HashCode uint64 `json:"hashCode"`
 	}
+	UserSnapshot struct {
+		*User
+		Before *User
+	}
 	ReferralAcquisition struct {
 		Date time.Time `json:"date" example:"2022-01-03"`
 		T1   uint64    `json:"t1" example:"22"`

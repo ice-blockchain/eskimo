@@ -28,7 +28,7 @@ func (u *users) RemoveUser(ctx context.Context, userID UserID) error {
 		return errors.Wrapf(err, "failed to remove user with id %v", userID)
 	}
 
-	return errors.Wrap(u.sendUsersMessage(ctx, gUser.deleted(), ""), "failed to send deleted user message")
+	return errors.Wrap(u.sendUsersMessage(ctx, UserSnapshot{User: gUser.deleted(), Before: nil}), "failed to send deleted user message")
 }
 
 func (u *User) deleted() *User {
