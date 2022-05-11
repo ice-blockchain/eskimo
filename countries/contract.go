@@ -5,6 +5,7 @@ package countries
 import (
 	"context"
 	_ "embed"
+	"io"
 
 	"github.com/ip2location/ip2location-go"
 )
@@ -16,6 +17,7 @@ type (
 	IP      = string
 
 	Repository interface {
+		io.Closer
 		Get(context.Context, IP) string
 	}
 )
