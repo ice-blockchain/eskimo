@@ -108,9 +108,10 @@ func (s *service) GetReferrals(ctx context.Context, r server.ParsedRequest) serv
 			return server.Unexpected(err)
 		}
 	} else if req.Type == tier2Referrals {
+		err = errors.New("Fetching of Tier 2 referrals is not implemented yet")
 		return server.Response{
 			Data: server.ErrorResponse{
-				Error: "Fetching of Tier 2 referrals is not implemented yet",
+				Error: err.Error(),
 				Code:  "INVALID_PROPERTIES",
 			}.Fail(err),
 			Code: http.StatusBadRequest,
@@ -138,7 +139,7 @@ func (req *RequestGetReferrals) Validate() *server.Response {
 	if req.Type == "" {
 		req.Type = tier1Referrals
 	} else if !strings.EqualFold(req.Type, tier1Referrals) && !strings.EqualFold(req.Type, tier2Referrals) {
-		err := errors.Errorf("type '%v' is invalid, valid types are [%v,%v]", req.Type, tier2Referrals, tier2Referrals)
+		err := errors.Errorf("type '%v' is invalid, valid types are [%v,%v]", req.Type, tier1Referrals, tier2Referrals)
 
 		return &server.Response{
 			Data: server.ErrorResponse{
