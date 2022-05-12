@@ -29,18 +29,20 @@ type (
 	UserID   = string
 	Username = string
 	User     struct {
-		CreatedAt            time.Time            `json:"createdAt,omitempty" example:"2022-01-03T16:20:52.156534Z"`
-		UpdatedAt            time.Time            `json:"updatedAt,omitempty" example:"2022-01-03T16:20:52.156534Z"`
-		DeletedAt            *time.Time           `json:"deletedAt,omitempty" example:"2022-01-03T16:20:52.156534Z"`
-		ID                   UserID               `json:"id,omitempty" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
-		Email                string               `form:"email,omitempty" json:"email" example:"jdoe@gmail.com"`
-		FullName             string               `form:"fullName,omitempty" json:"fullName" example:"John Doe"`
-		PhoneNumber          string               `form:"phoneNumber,omitempty" json:"phoneNumber" example:"+12099216581"`
-		confirmedPhoneNumber string               `example:"+12099216581"`
-		Username             string               `form:"username,omitempty" json:"username" example:"jdoe"`
-		ReferredBy           UserID               `form:"referredBy,omitempty" json:"referredBy" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
-		ProfilePictureURL    string               `json:"profilePictureURL,omitempty" example:"https://somecdn.com/p1.jpg"`
-		ProfilePicture       multipart.FileHeader `json:"-"`
+		CreatedAt               time.Time            `json:"createdAt,omitempty" example:"2022-01-03T16:20:52.156534Z"`
+		UpdatedAt               time.Time            `json:"updatedAt,omitempty" example:"2022-01-03T16:20:52.156534Z"`
+		DeletedAt               *time.Time           `json:"deletedAt,omitempty" example:"2022-01-03T16:20:52.156534Z"`
+		ID                      UserID               `json:"id,omitempty" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
+		Email                   string               `form:"email,omitempty" json:"email" example:"jdoe@gmail.com"`
+		FullName                string               `form:"fullName,omitempty" json:"fullName" example:"John Doe"`
+		PhoneNumber             string               `form:"phoneNumber,omitempty" json:"phoneNumber" example:"+12099216581"`
+		PhoneNumberHash         string               `form:"phoneNumberHash,omitempty" json:"phoneNumberHash" example:"Ef86A6021afCDe5673511376B2"`
+		AgendaPhoneNumberHashes string               `form:"agendaPhoneNumberHashes,omitempty" json:"agendaPhoneNumberHashes" example:"Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2"`
+		confirmedPhoneNumber    string               `example:"+12099216581"`
+		Username                string               `form:"username,omitempty" json:"username" example:"jdoe"`
+		ReferredBy              UserID               `form:"referredBy,omitempty" json:"referredBy" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
+		ProfilePictureURL       string               `json:"profilePictureURL,omitempty" example:"https://somecdn.com/p1.jpg"`
+		ProfilePicture          multipart.FileHeader `json:"-"`
 		// ISO 3166 country code.
 		Country  string `json:"country" example:"us"`
 		HashCode uint64 `json:"hashCode"`
@@ -126,27 +128,30 @@ type (
 	// !! Order of fields is crucial, so do not change it !!
 	user struct {
 		//nolint:unused // Because it is used by the msgpack library for marshalling/unmarshalling.
-		_msgpack           struct{} `msgpack:",asArray"`
-		ID                 UserID
-		ReferredBy         UserID
-		Username           Username
-		Email              string
-		FullName           string
-		PhoneNumber        string
-		ProfilePictureName string
-		Country            string
-		HashCode           uint64
-		CreatedAt          uint64
-		UpdatedAt          uint64
+		_msgpack                struct{} `msgpack:",asArray"`
+		ID                      UserID
+		ReferredBy              UserID
+		Username                Username
+		Email                   string
+		FullName                string
+		PhoneNumber             string
+		PhoneNumberHash         string
+		AgendaPhoneNumberHashes string
+		ProfilePictureName      string
+		Country                 string
+		HashCode                uint64
+		CreatedAt               uint64
+		UpdatedAt               uint64
 	}
 
 	phoneNumberValidationCode struct {
 		//nolint:unused // Because it is used by the msgpack library for marshalling/unmarshalling.
-		_msgpack       struct{} `msgpack:",asArray"`
-		ID             UserID
-		PhoneNumber    string
-		ValidationCode string
-		CreatedAt      uint64
+		_msgpack        struct{} `msgpack:",asArray"`
+		ID              UserID
+		PhoneNumber     string
+		PhoneNumberHash string
+		ValidationCode  string
+		CreatedAt       uint64
 	}
 
 	// | config holds the configuration of this package mounted from `application.yaml`.

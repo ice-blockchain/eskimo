@@ -20,19 +20,22 @@ type (
 		FullName string `json:"fullName" example:"John Doe"`
 		// `phoneNumber` is optional.
 		PhoneNumber       string                   `json:"phoneNumber" example:"+12099216581"`
+		PhoneNumberHash   string                   `form:"phoneNumberHash" json:"phoneNumberHash" example:"Ef86A6021afCDe5673511376B2"`
 		Username          string                   `json:"username" example:"jdoe"`
 		ReferredBy        string                   `json:"referredBy" example:"billy112"`
 		AuthenticatedUser server.AuthenticatedUser `json:"authenticatedUser" swaggerignore:"true"`
 		ClientIP          net.IP                   `json:"clientIP" swaggerignore:"true"`
 	}
 	RequestModifyUser struct {
-		Email             string                   `form:"email" json:"email" example:"jdoe@gmail.com"`
-		FullName          string                   `form:"fullName" json:"fullName" example:"John Doe"`
-		PhoneNumber       string                   `form:"phoneNumber" json:"phoneNumber" example:"+12099216581"`
-		Username          string                   `form:"username" json:"username" example:"jdoe"`
-		ProfilePicture    multipart.FileHeader     `form:"profilePicture"`
-		AuthenticatedUser server.AuthenticatedUser `json:"authenticatedUser" swaggerignore:"true"`
-		ID                string                   `form:"-" json:"-" uri:"userId" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
+		Email                   string                   `form:"email" json:"email" example:"jdoe@gmail.com"`
+		FullName                string                   `form:"fullName" json:"fullName" example:"John Doe"`
+		PhoneNumber             string                   `form:"phoneNumber" json:"phoneNumber" example:"+12099216581"`
+		PhoneNumberHash         string                   `form:"phoneNumberHash" json:"phoneNumberHash" example:"Ef86A6021afCDe5673511376B2"`
+		AgendaPhoneNumberHashes string                   `form:"agendaPhoneNumberHashes" json:"agendaPhoneNumberHashes" example:"Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2"`
+		Username                string                   `form:"username" json:"username" example:"jdoe"`
+		ProfilePicture          multipart.FileHeader     `form:"profilePicture"`
+		AuthenticatedUser       server.AuthenticatedUser `json:"authenticatedUser" swaggerignore:"true"`
+		ID                      string                   `form:"-" json:"-" uri:"userId" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
 	}
 	RequestDeleteUser struct {
 		AuthenticatedUser server.AuthenticatedUser `json:"authenticatedUser" swaggerignore:"true"`
