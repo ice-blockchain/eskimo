@@ -7,6 +7,7 @@ import (
 	"mime/multipart"
 	"net"
 
+	"github.com/ice-blockchain/eskimo/countries"
 	"github.com/ice-blockchain/eskimo/users"
 	"github.com/ice-blockchain/wintr/server"
 )
@@ -37,6 +38,7 @@ type (
 		ProfilePicture          multipart.FileHeader     `form:"profilePicture"`
 		AuthenticatedUser       server.AuthenticatedUser `json:"authenticatedUser" swaggerignore:"true"`
 		ID                      string                   `form:"-" json:"-" uri:"userId" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
+		Country                 string                   `form:"country" json:"country" example:"us"`
 	}
 	RequestDeleteUser struct {
 		AuthenticatedUser server.AuthenticatedUser `json:"authenticatedUser" swaggerignore:"true"`
@@ -62,18 +64,13 @@ const (
 )
 
 //nolint:gochecknoglobals // Because its loaded once, at runtime.
-var (
-	cfg       config
-	countries map[string]bool
-)
-
-//go:embed countrycodes.map
-var countriesList string
+var cfg config
 
 type (
 	// | service implements server.State and is responsible for managing the state and lifecycle of the package.
 	service struct {
-		usersProcessor users.Processor
+		usersProcessor      users.Processor
+		countriesRepository countries.Repository
 	}
 	config struct {
 		Host    string `yaml:"host"`

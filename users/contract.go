@@ -28,6 +28,8 @@ var (
 type (
 	UserID   = string
 	Username = string
+	Offset   = uint64
+	Limit    = uint64
 	User     struct {
 		CreatedAt               time.Time            `json:"createdAt,omitempty" example:"2022-01-03T16:20:52.156534Z"`
 		UpdatedAt               time.Time            `json:"updatedAt,omitempty" example:"2022-01-03T16:20:52.156534Z"`
@@ -118,6 +120,10 @@ type (
 		db tarantool.Connector
 	}
 
+	usersSource struct {
+		db tarantool.Connector
+	}
+
 	// | repository implements the public API that this package exposes.
 	repository struct {
 		close func() error
@@ -159,6 +165,12 @@ type (
 		PhoneNumberHash string
 		ValidationCode  string
 		CreatedAt       uint64
+	}
+
+	usersPerCountry struct {
+		_msgpack  struct{} `msgpack:",asArray"` // nolint:unused // To insert we need asArray
+		Country   string
+		UserCount uint64
 	}
 
 	// | config holds the configuration of this package mounted from `application.yaml`.
