@@ -16,10 +16,12 @@ func (u *users) GetTier1Referrals(ctx context.Context, id UserID, limit, offset 
 	}
 
 	var queryResult []*Referral
-	// Adding cfg.PictureStorage.URLDownload to sql here, to get urls in one query (we dont need to iterate and calculate URL for each record now)
-	// another option is to create internal struct and iterate over query result and convert it to the public Referral.
-	sql := fmt.Sprintf(`SELECT id, username, phone_number, '%v/'||profile_picture_name FROM USERS `+
-		`WHERE referred_by = :user_id ORDER BY created_at DESC LIMIT :limit OFFSET :offset`, cfg.PictureStorage.URLDownload)
+	sql := fmt.Sprintf(`SELECT u.id, u.username, u.phone_number, '%v/'||profile_picture_name AS profile_picture_name,`+
+		`POSITION(u.PHONE_NUMBER_HASH_CODE ,(select AGENDA_PHONE_NUMBER_HASH_CODES from USERS where ID = :user_id")) > 0 as provided_in_agenda FROM USERS u`+
+		`WHERE u.referred_by = :user_id ORDER BY provided_in_agenda DESC, u.created_at DESC LIMIT :limit OFFSET :offset;`,
+		// Adding cfg.PictureStorage.URLDownload to sql here, to get urls in one query (we dont need to iterate and calculate URL for each record now)
+		// another option is to create internal struct and iterate over query result and convert it to the public Referral.
+		cfg.PictureStorage.URLDownload)
 	params := map[string]interface{}{
 		"user_id": id,
 		"limit":   limit,

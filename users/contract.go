@@ -57,6 +57,7 @@ type (
 		PhoneNumber       string `form:"phoneNumber,omitempty" json:"phoneNumber" example:"+12099216581"`
 		Username          string `form:"username,omitempty" json:"username" example:"jdoe"`
 		ProfilePictureURL string `json:"profilePictureURL,omitempty" example:"https://somecdn.com/p1.jpg"`
+		ExistsInAgenda    bool   `json:"existsInAgenda" example:"true"`
 	}
 
 	UserSnapshot struct {
