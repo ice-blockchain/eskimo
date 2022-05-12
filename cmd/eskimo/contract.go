@@ -16,7 +16,7 @@ type (
 		AuthenticatedUser server.AuthenticatedUser `json:"authenticatedUser" swaggerignore:"true"`
 		ID                string                   `uri:"userId" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
 	}
-	RequestGetByUsername struct {
+	RequestGetUserByUsername struct {
 		AuthenticatedUser server.AuthenticatedUser `json:"authenticatedUser" swaggerignore:"true"`
 		Username          string                   `form:"username" example:"jdoe"`
 	}

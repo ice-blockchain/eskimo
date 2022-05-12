@@ -18,7 +18,7 @@ func (s *service) setupUserRoutes(router *gin.Engine) {
 	router.
 		Group("/v1").
 		GET("users/:userId", server.RootHandler(newRequestGetUserByID, s.GetUserByID)).
-		GET("user-views/username", server.RootHandler(newRequestGetByUsername, s.GetUserByUsername))
+		GET("user-views/username", server.RootHandler(newRequestGetUserByUsername, s.GetUserByUsername))
 }
 
 // GetUserByID godoc
@@ -109,7 +109,7 @@ func (req *RequestGetUserByID) Bindings(c *gin.Context) []func(obj interface{}) 
 // @Failure      504            {object}  server.ErrorResponse  "if request times out"
 // @Router       /user-views/username [GET].
 func (s *service) GetUserByUsername(ctx context.Context, r server.ParsedRequest) server.Response {
-	req := r.(*RequestGetByUsername)
+	req := r.(*RequestGetUserByUsername)
 	resp, err := s.usersRepository.GetUserByUsername(ctx, req.Username)
 	if err != nil {
 		if errors.Is(err, users.ErrNotFound) {
@@ -130,21 +130,21 @@ func (s *service) GetUserByUsername(ctx context.Context, r server.ParsedRequest)
 	return server.OK(resp)
 }
 
-func newRequestGetByUsername() server.ParsedRequest {
-	return new(RequestGetByUsername)
+func newRequestGetUserByUsername() server.ParsedRequest {
+	return new(RequestGetUserByUsername)
 }
 
-func (req *RequestGetByUsername) SetAuthenticatedUser(user server.AuthenticatedUser) {
+func (req *RequestGetUserByUsername) SetAuthenticatedUser(user server.AuthenticatedUser) {
 	if req.AuthenticatedUser.ID == "" {
 		req.AuthenticatedUser = user
 	}
 }
 
-func (req *RequestGetByUsername) GetAuthenticatedUser() server.AuthenticatedUser {
+func (req *RequestGetUserByUsername) GetAuthenticatedUser() server.AuthenticatedUser {
 	return req.AuthenticatedUser
 }
 
-func (req *RequestGetByUsername) Validate() *server.Response {
+func (req *RequestGetUserByUsername) Validate() *server.Response {
 	if !compiledUsernameRegex.MatchString(req.Username) {
 		err := errors.Errorf("username: %v is invalid, it should match regex: %v", req.Username, usernameRegex)
 
@@ -160,6 +160,6 @@ func (req *RequestGetByUsername) Validate() *server.Response {
 	return nil
 }
 
-func (req *RequestGetByUsername) Bindings(c *gin.Context) []func(obj interface{}) error {
+func (req *RequestGetUserByUsername) Bindings(c *gin.Context) []func(obj interface{}) error {
 	return []func(obj interface{}) error{c.ShouldBindQuery, server.ShouldBindAuthenticatedUser(c)}
 }
