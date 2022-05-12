@@ -1,7 +1,6 @@
 -- SPDX-License-Identifier: BUSL-1.1
 box.execute([[CREATE TABLE IF NOT EXISTS users  (
                     id STRING primary key,
-                    hash_code UNSIGNED NOT NULL UNIQUE,
                     referred_by STRING REFERENCES users(id) ON DELETE SET NULL,
                     username STRING NOT NULL UNIQUE,
                     email STRING,
@@ -9,6 +8,7 @@ box.execute([[CREATE TABLE IF NOT EXISTS users  (
                     phone_number STRING,
                     profile_picture_name STRING NOT NULL,
                     country STRING NOT NULL,
+                    hash_code UNSIGNED NOT NULL UNIQUE,
                     created_at UNSIGNED NOT NULL,
                     updated_at UNSIGNED NOT NULL
                      ) WITH ENGINE = 'vinyl';]])

@@ -3,6 +3,8 @@
 package main
 
 import (
+	"regexp"
+
 	"github.com/ice-blockchain/eskimo/users"
 	"github.com/ice-blockchain/wintr/server"
 )
@@ -10,9 +12,13 @@ import (
 // Public API.
 
 type (
-	RequestGetUser struct {
+	RequestGetUserByID struct {
 		AuthenticatedUser server.AuthenticatedUser `json:"authenticatedUser" swaggerignore:"true"`
 		ID                string                   `uri:"userId" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
+	}
+	RequestGetUserByUsername struct {
+		AuthenticatedUser server.AuthenticatedUser `json:"authenticatedUser" swaggerignore:"true"`
+		Username          string                   `form:"username" example:"jdoe"`
 	}
 	RequestGetTopCountries struct {
 		AuthenticatedUser server.AuthenticatedUser `json:"authenticatedUser" swaggerignore:"true"`
@@ -36,10 +42,13 @@ type (
 const (
 	applicationYamlKey = "cmd/eskimo"
 	userNotFoundCode   = "USER_NOT_FOUND"
+	usernameRegex      = `^[\w\-.]{4,20}$`
 )
 
 //nolint:gochecknoglobals // Because its loaded once, at runtime.
 var cfg config
+
+var compiledUsernameRegex = regexp.MustCompile(usernameRegex)
 
 type (
 	// | service implements server.State and is responsible for managing the state and lifecycle of the package.

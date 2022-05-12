@@ -21,7 +21,7 @@ func (u *users) ModifyUser(ctx context.Context, user *User) error {
 	if ctx.Err() != nil {
 		return errors.Wrap(ctx.Err(), "update user failed because context failed")
 	}
-	gUser, err := u.GetUser(ctx, user.ID)
+	gUser, err := u.GetUserByID(ctx, user.ID)
 	if err != nil {
 		return errors.Wrapf(err, "get user failed")
 	}
@@ -67,7 +67,7 @@ func (u *User) genSQLUpdate() (sql string, params map[string]interface{}) {
 	params["id"] = u.ID
 	params["updatedAt"] = time.Now().UTC().UnixNano()
 
-	sql = fmt.Sprintf("UPDATE USERS set UPDATED_AT = :updatedAt")
+	sql = "UPDATE USERS set UPDATED_AT = :updatedAt"
 
 	if u.Email != "" {
 		params["email"] = u.Email
