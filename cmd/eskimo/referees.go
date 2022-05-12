@@ -18,7 +18,7 @@ import (
 func (s *service) setupUserReferralRoutes(router *gin.Engine) {
 	router.
 		Group("/v1").
-		GET("users/:userId/referrals", server.RootHandler(newRequestGetReferrals, s.GetReferrals)).
+		GET("users/:userId/referees", server.RootHandler(newRequestGetReferees, s.GetReferees)).
 		GET("users/:userId/referral-acquisition-history", server.RootHandler(newRequestGetReferralAcquisitionHistory, s.GetReferralAcquisitionHistory))
 }
 
@@ -77,9 +77,9 @@ func (req *RequestGetReferralAcquisitionHistory) Bindings(c *gin.Context) []func
 	return []func(obj interface{}) error{c.ShouldBindUri, c.ShouldBindQuery, server.ShouldBindAuthenticatedUser(c)}
 }
 
-// GetReferrals godoc
+// GetReferees godoc
 // @Schemes
-// @Description  Returns the referrals of an user.
+// @Description  Returns the referees of an user.
 // @Tags         Referrals
 // @Accept       json
 // @Produce      json
@@ -94,51 +94,51 @@ func (req *RequestGetReferralAcquisitionHistory) Bindings(c *gin.Context) []func
 // @Failure      422            {object}  server.ErrorResponse  "if syntax fails"
 // @Failure      500            {object}  server.ErrorResponse
 // @Failure      504            {object}  server.ErrorResponse  "if request times out"
-// @Router       /users/{userId}/referrals [GET].
-func (s *service) GetReferrals(ctx context.Context, r server.ParsedRequest) server.Response {
-	req := r.(*RequestGetReferrals)
-	var referrals []*users.User
+// @Router       /users/{userId}/referees [GET].
+func (s *service) GetReferees(ctx context.Context, r server.ParsedRequest) server.Response {
+	req := r.(*RequestGetReferees)
+	var referees []*users.Referee
 	var err error
-	if req.Type == tier1Referrals {
-		referrals, err = s.usersRepository.GetTier1Referrals(ctx, req.ID, req.Limit, req.Offset)
+	// We implement only T1 ones for now.
+	// The order of the referrals is : referrals from mobile phone agenda, then the most recent ones (based on createdAt).
+	// Referrals from mobile phone agenda will be implemented in the next PR, because it requires a lot of changes.
+	if req.Type == tier1Referees {
+		referees, err = s.usersRepository.GetTier1Referees(ctx, req.ID, req.Limit, req.Offset)
 		if err != nil {
 			return server.Unexpected(err)
 		}
-	} else if req.Type == tier2Referrals { //nolint:nolintlint,gocritic,staticcheck
-		// Fetch tier 2.
-	}
-	result := make([]*users.User, 0, len(referrals))
-	for _, referral := range referrals {
-		result = append(result, &users.User{
-			ID:                referral.ID,
-			PhoneNumber:       referral.PhoneNumber,
-			Username:          referral.Username,
-			ProfilePictureURL: referral.ProfilePictureURL,
-		})
+	} else if req.Type == tier2Referees {
+		return server.Response{
+			Data: server.ErrorResponse{
+				Error: "Fetching of Tier 2 referrals is not implemented yet",
+				Code:  "INVALID_PROPERTIES",
+			}.Fail(err),
+			Code: http.StatusBadRequest,
+		}
 	}
 
-	return server.OK(result)
+	return server.OK(referees)
 }
 
-func newRequestGetReferrals() server.ParsedRequest {
-	return new(RequestGetReferrals)
+func newRequestGetReferees() server.ParsedRequest {
+	return new(RequestGetReferees)
 }
 
-func (req *RequestGetReferrals) SetAuthenticatedUser(user server.AuthenticatedUser) {
+func (req *RequestGetReferees) SetAuthenticatedUser(user server.AuthenticatedUser) {
 	if req.AuthenticatedUser.ID == "" {
 		req.AuthenticatedUser = user
 	}
 }
 
-func (req *RequestGetReferrals) GetAuthenticatedUser() server.AuthenticatedUser {
+func (req *RequestGetReferees) GetAuthenticatedUser() server.AuthenticatedUser {
 	return req.AuthenticatedUser
 }
 
-func (req *RequestGetReferrals) Validate() *server.Response {
+func (req *RequestGetReferees) Validate() *server.Response {
 	if req.Type == "" {
-		req.Type = tier1Referrals
-	} else if !strings.EqualFold(req.Type, tier1Referrals) && !strings.EqualFold(req.Type, tier2Referrals) {
-		err := errors.Errorf("type '%v' is invalid, valid types are [%v,%v]", req.Type, tier1Referrals, tier2Referrals)
+		req.Type = tier1Referees
+	} else if !strings.EqualFold(req.Type, tier1Referees) && !strings.EqualFold(req.Type, tier2Referees) {
+		err := errors.Errorf("type '%v' is invalid, valid types are [%v,%v]", req.Type, tier2Referees, tier2Referees)
 
 		return &server.Response{
 			Data: server.ErrorResponse{
@@ -155,6 +155,6 @@ func (req *RequestGetReferrals) Validate() *server.Response {
 	return server.RequiredStrings(map[string]string{"userId": req.ID})
 }
 
-func (req *RequestGetReferrals) Bindings(c *gin.Context) []func(obj interface{}) error {
+func (req *RequestGetReferees) Bindings(c *gin.Context) []func(obj interface{}) error {
 	return []func(obj interface{}) error{c.ShouldBindUri, server.ShouldBindAuthenticatedUser(c)}
 }
