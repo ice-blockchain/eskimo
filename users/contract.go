@@ -50,9 +50,9 @@ type (
 		HashCode uint64 `json:"hashCode"`
 	}
 
-	// Referee is a user acquired by other user (limited fields comparing to the user struct)
+	// Referral is a user acquired by other user (limited fields comparing to the user struct)
 	// because of sql fetches only required fields too.
-	Referee struct {
+	Referral struct {
 		ID                UserID `json:"id,omitempty" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
 		PhoneNumber       string `form:"phoneNumber,omitempty" json:"phoneNumber" example:"+12099216581"`
 		Username          string `form:"username,omitempty" json:"username" example:"jdoe"`
@@ -103,7 +103,7 @@ type (
 		GetUserByUsername(context.Context, Username) (*User, error)
 		GetUserByID(context.Context, UserID) (*User, error)
 		GetTopCountries(context.Context, Limit, Offset) ([]*CountryStatistics, error)
-		GetTier1Referrals(ctx context.Context, id UserID, limit Limit, offset Offset) ([]*User, error)
+		GetTier1Referrals(ctx context.Context, id UserID, limit Limit, offset Offset) ([]*Referral, error)
 	}
 )
 
