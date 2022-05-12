@@ -53,7 +53,7 @@ func (i *countriesRepository) Get(ctx context.Context, ip IP) string {
 
 	results, err := i.db.Get_all(ip)
 	if err != nil {
-		log.Error(errors.Wrap(err, "unable to get country by ip"))
+		log.Error(errors.Wrapf(err, "unable to get country by ip: %v", ip))
 
 		return ""
 	}
@@ -67,7 +67,7 @@ func (i *countriesRepository) Get(ctx context.Context, ip IP) string {
 
 func Validate(country string) error {
 	if !countries[country] {
-		return errors.New("country invalid")
+		return errors.Errorf("country invalid: %v", country)
 	}
 
 	return nil
