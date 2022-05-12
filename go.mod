@@ -7,7 +7,7 @@ require (
 	github.com/gin-gonic/gin v1.7.7
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/ice-blockchain/wintr v1.4.0
-	github.com/imroc/req/v3 v3.11.1
+	github.com/imroc/req/v3 v3.11.2
 	github.com/ip2location/ip2location-go v8.3.0+incompatible
 	github.com/pkg/errors v0.9.1
 	github.com/swaggo/swag v1.8.1

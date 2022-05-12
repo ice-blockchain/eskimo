@@ -39,17 +39,14 @@ func (s *service) setupUserReferralRoutes(router *gin.Engine) {
 // @Failure      504            {object}  server.ErrorResponse  "if request times out"
 // @Router       /users/{userId}/referral-acquisition-history [GET].
 func (s *service) GetReferralAcquisitionHistory(ctx context.Context, r server.ParsedRequest) server.Response {
-	/*
-		req := r.(*RequestGetReferralAcquisitionHistory)
+	req := r.(*RequestGetReferralAcquisitionHistory)
 
-			//nolint:nolintlint,gocritic // TODO implement me.
-
-			if req.AuthenticatedUser.ID == req.ID { //nolint:nolintlint,gocritic
-				// User is trying to get their own referral acquisition history.
-			} else {
-				// User is trying to get some other user's referral acquisition history.
-			}
-	*/
+	//nolint:nolintlint,gocritic // TODO implement me.
+	if req.AuthenticatedUser.ID == req.ID { //nolint:nolintlint,staticcheck
+		// User is trying to get their own referral acquisition history.
+	} else { //nolint:nolintlint,staticcheck
+		// User is trying to get some other user's referral acquisition history.
+	}
 
 	return server.OK([]*users.ReferralAcquisition{{
 		Date: time.Time{},
@@ -97,17 +94,14 @@ func (req *RequestGetReferralAcquisitionHistory) Bindings(c *gin.Context) []func
 // @Failure      504            {object}  server.ErrorResponse  "if request times out"
 // @Router       /users/{userId}/referrals [GET].
 func (s *service) GetReferrals(ctx context.Context, r server.ParsedRequest) server.Response {
-	/*
-		req := r.(*RequestGetReferrals)
+	req := r.(*RequestGetReferrals)
 
-		//nolint:nolintlint,godox // TODO implement me
-
-		if req.AuthenticatedUser.ID == req.ID { //nolint:nolintlint,gocritic
-			// User is trying to get their own referrals.
-		} else {
-			// User is trying to get some other user's referrals.
-		}
-	*/
+	//nolint:nolintlint,godox // TODO implement me
+	if req.AuthenticatedUser.ID == req.ID { //nolint:nolintlint,gocritic,staticcheck
+		// User is trying to get their own referrals.
+	} else { //nolint:nolintlint,gocritic,staticcheck
+		// User is trying to get some other user's referrals.
+	}
 
 	return server.OK([]*users.User{{
 		// We implement only T1 ones for now.
