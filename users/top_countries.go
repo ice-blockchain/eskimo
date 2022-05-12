@@ -31,10 +31,10 @@ func (mb *usersSource) incrementOrDecrementCountryUserCount(ctx context.Context,
 		return errors.Wrap(ctx.Err(), "context failed")
 	}
 
-	var res []*usersPerCountry
 	arOp := []tarantool.Op{{Op: string(operation), Field: 1, Arg: 1}}
+	insertTuple := &usersPerCountry{Country: country, UserCount: 1}
 
-	err := mb.db.UpsertAsync("USERS_PER_COUNTRY", []interface{}{country, 1}, arOp).GetTyped(&res)
+	err := mb.db.UpsertAsync("USERS_PER_COUNTRY", insertTuple, arOp).GetTyped(&[]usersPerCountry{})
 
 	return errors.Wrap(err, "error changing country count")
 }
