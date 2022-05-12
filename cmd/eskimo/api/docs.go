@@ -453,6 +453,10 @@ const docTemplate = `{
         "users.User": {
             "type": "object",
             "properties": {
+                "agendaPhoneNumberHashes": {
+                    "type": "string",
+                    "example": "Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2"
+                },
                 "country": {
                     "description": "ISO 3166 country code.",
                     "type": "string",
@@ -484,6 +488,10 @@ const docTemplate = `{
                 "phoneNumber": {
                     "type": "string",
                     "example": "+12099216581"
+                },
+                "phoneNumberHash": {
+                    "type": "string",
+                    "example": "Ef86A6021afCDe5673511376B2"
                 },
                 "profilePictureURL": {
                     "type": "string",
