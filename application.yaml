@@ -52,4 +52,4 @@ users:
     expirationTime: 10m
     smsTemplate: '{{.code}} is your ice confirmation code. It expires in {{.expirationTime}} minutes. Don’t share this code with anyone.'
 countries:
-  binaryLocation: ./ip_db/IP2LOCATION-LITE-DB1.BIN 
+  ip2LocationBinaryPath: ./IP2LOCATION-LITE-DB1.BIN

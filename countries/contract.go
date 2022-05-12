@@ -41,5 +41,5 @@ type countriesRepository struct {
 
 // | config holds the configuration of this package mounted from `application.yaml`.
 type config struct {
-	BinaryLocation string `yaml:"binaryLocation"`
+	IP2LocationBinaryPath string `yaml:"ip2LocationBinaryPath"`
 }

@@ -16,6 +16,10 @@ import (
 //nolint:gochecknoinits // init
 func init() {
 	v := strings.Split(countriesList, "\n")
+	if len(v) != 240 { //nolint:gomnd // We have 240 countries in 2022
+		log.Panic("Empty or corrupted country list database")
+	}
+
 	countries = make(map[string]bool)
 
 	for _, a := range v {
@@ -28,7 +32,7 @@ func New(ctx context.Context) Repository {
 
 	appCfg.MustLoadFromKey(applicationYamlKey, &cfg)
 
-	db, err := ip2location.OpenDB(cfg.BinaryLocation)
+	db, err := ip2location.OpenDB(cfg.IP2LocationBinaryPath)
 	log.Panic(errors.Wrap(err, "unable to open IP database"))
 
 	return &countriesRepository{db: db}
