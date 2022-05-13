@@ -4,7 +4,6 @@ package users
 
 import (
 	"context"
-	"time"
 
 	"github.com/pkg/errors"
 
@@ -28,12 +27,5 @@ func (u *users) RemoveUser(ctx context.Context, userID UserID) error {
 		return errors.Wrapf(err, "failed to remove user with id %v", userID)
 	}
 
-	return errors.Wrap(u.sendUsersMessage(ctx, UserSnapshot{User: gUser.deleted(), Before: nil}), "failed to send deleted user message")
-}
-
-func (u *User) deleted() *User {
-	now := time.Now().UTC()
-	u.DeletedAt = &now
-
-	return u
+	return errors.Wrap(u.sendUsersMessage(ctx, UserSnapshot{User: nil, Before: gUser}), "failed to send deleted user message")
 }

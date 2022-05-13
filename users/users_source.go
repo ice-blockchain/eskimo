@@ -24,8 +24,8 @@ func (mb *usersSource) Process(ctx context.Context, m *messagebroker.Message) er
 	switch {
 	case u.User.Country == "" || u.User.Country == u.Before.Country:
 		return nil
-	case u.User.DeletedAt != nil:
-		return errors.Wrap(mb.incrementOrDecrementCountryUserCount(ctx, u.User.Country, Substract), "error decrementing user country count")
+	case u.User == nil:
+		return errors.Wrap(mb.incrementOrDecrementCountryUserCount(ctx, u.Before.Country, Substract), "error decrementing user country count")
 	case u.User.Country != u.Before.Country:
 		if err := mb.incrementOrDecrementCountryUserCount(ctx, u.User.Country, Add); err != nil {
 			return errors.Wrap(err, "error incrementing country user count")
