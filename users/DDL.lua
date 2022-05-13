@@ -6,8 +6,8 @@ box.execute([[CREATE TABLE IF NOT EXISTS users  (
                     email STRING,
                     full_name STRING,
                     phone_number STRING,
-                    phone_number_hash_code STRING,
-                    agenda_phone_number_hash_codes STRING,
+                    phone_number_hash STRING,
+                    agenda_phone_number_hashes STRING,
                     profile_picture_name STRING NOT NULL,
                     country STRING NOT NULL,
                     hash_code UNSIGNED NOT NULL UNIQUE,
@@ -17,7 +17,7 @@ box.execute([[CREATE TABLE IF NOT EXISTS users  (
 box.execute([[CREATE TABLE IF NOT EXISTS phone_number_validation_codes  (
                     user_id STRING primary key REFERENCES users(id) ON DELETE CASCADE,
                     phone_number STRING NOT NULL UNIQUE,
-                    phone_number_hash_code STRING NOT NULL UNIQUE,
+                    phone_number_hash STRING NOT NULL UNIQUE,
                     validation_code STRING NOT NULL UNIQUE,
                     created_at UNSIGNED NOT NULL
                      ) WITH ENGINE = 'vinyl';]])

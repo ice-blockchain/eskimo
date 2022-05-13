@@ -20,7 +20,9 @@ definitions:
         example: Ef86A6021afCDe5673511376B2
         type: string
       referredBy:
-        example: billy112
+        description: User's ID, so client app requests user by user name and provides
+          ID here.
+        example: did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2
         type: string
       username:
         example: jdoe
@@ -30,6 +32,9 @@ definitions:
     properties:
       phoneNumber:
         example: "+12099216581"
+        type: string
+      phoneNumberHash:
+        example: Ef86A6021afCDe5673511376B2
         type: string
       validationCode:
         example: "232323232"

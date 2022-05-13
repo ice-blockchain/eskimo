@@ -58,9 +58,10 @@ func (s *service) ValidatePhoneNumber(ctx context.Context, r server.ParsedReques
 
 func (req *RequestValidatePhoneNumber) confirm() *users.PhoneNumberConfirmation {
 	return &users.PhoneNumberConfirmation{
-		UserID:         req.AuthenticatedUser.ID,
-		PhoneNumber:    req.PhoneNumber,
-		ValidationCode: req.ValidationCode,
+		UserID:          req.AuthenticatedUser.ID,
+		PhoneNumber:     req.PhoneNumber,
+		ValidationCode:  req.ValidationCode,
+		PhoneNumberHash: req.PhoneNumberHash,
 	}
 }
 
@@ -79,7 +80,7 @@ func (req *RequestValidatePhoneNumber) GetAuthenticatedUser() server.Authenticat
 }
 
 func (req *RequestValidatePhoneNumber) Validate() *server.Response {
-	return server.RequiredStrings(map[string]string{"phoneNumber": req.PhoneNumber, "validationCode": req.ValidationCode})
+	return server.RequiredStrings(map[string]string{"phoneNumber": req.PhoneNumber, "phoneNumberHash": req.PhoneNumberHash, "validationCode": req.ValidationCode})
 }
 
 func (req *RequestValidatePhoneNumber) Bindings(c *gin.Context) []func(obj interface{}) error {

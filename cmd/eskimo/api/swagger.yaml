@@ -313,6 +313,14 @@ paths:
         in: query
         name: type
         type: string
+      - description: Limit of elements to return
+        in: query
+        name: limit
+        type: integer
+      - description: Number of elements to skip before collecting elements to return
+        in: query
+        name: offset
+        type: integer
       produces:
       - application/json
       responses:

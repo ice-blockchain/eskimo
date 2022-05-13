@@ -39,7 +39,7 @@ type (
 		FullName                string               `form:"fullName,omitempty" json:"fullName" example:"John Doe"`
 		PhoneNumber             string               `form:"phoneNumber,omitempty" json:"phoneNumber" example:"+12099216581"`
 		PhoneNumberHash         string               `form:"phoneNumberHash,omitempty" json:"phoneNumberHash" example:"Ef86A6021afCDe5673511376B2"`
-		AgendaPhoneNumberHashes string               `form:"agendaPhoneNumberHashes,omitempty" json:"agendaPhoneNumberHashes" example:"Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2"` //nolint:lll // hash
+		AgendaPhoneNumberHashes string               `form:"agendaPhoneNumberHashes,omitempty" json:"agendaPhoneNumberHashes" example:"Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2"` //nolint:lll // Just an example.
 		confirmedPhoneNumber    string               `example:"+12099216581"`
 		Username                string               `form:"username,omitempty" json:"username" example:"jdoe"`
 		ReferredBy              UserID               `form:"referredBy,omitempty" json:"referredBy" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
@@ -49,6 +49,19 @@ type (
 		Country  string `json:"country" example:"us"`
 		HashCode uint64 `json:"hashCode"`
 	}
+
+	// Referral is a user acquired by other user (limited fields comparing to the user struct)
+	// because of sql fetches only required fields too.
+	Referral struct {
+		// Top fields the same as in the User struct.
+		ID                UserID `json:"id,omitempty" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
+		PhoneNumber       string `form:"phoneNumber,omitempty" json:"phoneNumber" example:"+12099216581"`
+		Username          string `form:"username,omitempty" json:"username" example:"jdoe"`
+		ProfilePictureURL string `json:"profilePictureURL,omitempty" example:"https://somecdn.com/p1.jpg"`
+		// Shows if referral is presented in user's agenda (phonebook).
+		FromAgenda bool `json:"fromAgenda" example:"true"`
+	}
+
 	UserSnapshot struct {
 		*User
 		Before *User
@@ -64,9 +77,10 @@ type (
 		UserCount uint64 `json:"userCount" example:"12121212"`
 	}
 	PhoneNumberConfirmation struct {
-		UserID         UserID `json:"id" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
-		PhoneNumber    string `json:"phoneNumber" example:"+12345678"`
-		ValidationCode string `json:"code" example:"1234"`
+		UserID          UserID `json:"id" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
+		PhoneNumber     string `json:"phoneNumber" example:"+12345678"`
+		PhoneNumberHash string `json:"phoneNumberHash" example:"Ef86A6021afCDe5673511376B2"`
+		ValidationCode  string `json:"code" example:"1234"`
 	}
 
 	// Repository main API exposed that handles all the features(including internal/system ones) of this package.
@@ -93,6 +107,7 @@ type (
 		GetUserByUsername(context.Context, Username) (*User, error)
 		GetUserByID(context.Context, UserID) (*User, error)
 		GetTopCountries(context.Context, Limit, Offset) ([]*CountryStatistics, error)
+		GetTier1Referrals(ctx context.Context, id UserID, limit Limit, offset Offset) ([]*Referral, error)
 	}
 )
 

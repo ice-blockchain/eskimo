@@ -63,12 +63,13 @@ func newRequestCreateUser() server.ParsedRequest {
 
 func (req *RequestCreateUser) user() *users.User {
 	return &users.User{
-		ID:          req.AuthenticatedUser.ID,
-		Email:       req.Email,
-		FullName:    req.FullName,
-		PhoneNumber: req.PhoneNumber,
-		Username:    req.Username,
-		ReferredBy:  req.ReferredBy,
+		ID:              req.AuthenticatedUser.ID,
+		Email:           req.Email,
+		FullName:        req.FullName,
+		PhoneNumber:     req.PhoneNumber,
+		PhoneNumberHash: req.PhoneNumberHash,
+		Username:        req.Username,
+		ReferredBy:      req.ReferredBy,
 	}
 }
 
@@ -93,6 +94,13 @@ func (req *RequestCreateUser) GetClientIP() net.IP {
 }
 
 func (req *RequestCreateUser) Validate() *server.Response {
+	err := verifyIfPhoneNumberAndHashProvidedTogether(req.PhoneNumber, req.PhoneNumberHash)
+	if err != nil {
+		resp := server.BadRequest(err, userBadRequest)
+
+		return resp
+	}
+
 	return server.RequiredStrings(map[string]string{"username": req.Username})
 }
 
@@ -145,13 +153,15 @@ func newRequestModifyUser() server.ParsedRequest {
 
 func (req *RequestModifyUser) user() *users.User {
 	return &users.User{
-		ID:             req.ID,
-		Email:          req.Email,
-		FullName:       req.FullName,
-		PhoneNumber:    req.PhoneNumber,
-		Username:       req.Username,
-		ProfilePicture: req.ProfilePicture,
-		Country:        req.Country,
+		ID:                      req.ID,
+		Email:                   req.Email,
+		FullName:                req.FullName,
+		PhoneNumber:             req.PhoneNumber,
+		PhoneNumberHash:         req.PhoneNumberHash,
+		AgendaPhoneNumberHashes: req.AgendaPhoneNumberHashes,
+		Username:                req.Username,
+		ProfilePicture:          req.ProfilePicture,
+		Country:                 req.Country,
 	}
 }
 
@@ -165,6 +175,7 @@ func (req *RequestModifyUser) GetAuthenticatedUser() server.AuthenticatedUser {
 	return req.AuthenticatedUser
 }
 
+//nolint:funlen // different validations of the input data, they are moved into separated functions, but we have a lot of them
 func (req *RequestModifyUser) Validate() *server.Response {
 	if req.ID == "" {
 		return server.RequiredStrings(map[string]string{"userId": req.ID})
@@ -172,22 +183,24 @@ func (req *RequestModifyUser) Validate() *server.Response {
 	if req.ID != req.AuthenticatedUser.ID {
 		err := errors.Errorf("update account not allowed for anyone except the owner. "+
 			"`%v` tried to update `%v`", req.AuthenticatedUser.ID, req.ID)
-
 		resp := getServerErrorResponse(http.StatusForbidden, err, notAllowed)
 
 		return &resp
 	}
+	err := verifyIfPhoneNumberAndHashProvidedTogether(req.PhoneNumber, req.PhoneNumberHash)
+	if err != nil {
+		resp := server.BadRequest(err, userBadRequest)
 
+		return resp
+	}
 	if !req.hasValues() {
 		err := errors.New("modify request without values")
 		resp := getServerErrorResponse(http.StatusBadRequest, err, userBadRequest)
 
 		return &resp
 	}
-
 	if req.Country != "" {
 		req.Country = strings.ToLower(req.Country)
-
 		if err := countries.Validate(req.Country); err != nil {
 			resp := getServerErrorResponse(http.StatusBadRequest, err, userBadRequest)
 
@@ -200,7 +213,13 @@ func (req *RequestModifyUser) Validate() *server.Response {
 
 //nolint:gocognit // This is validator of fields
 func (req *RequestModifyUser) hasValues() bool {
-	if req.Country != "" || req.Email != "" || req.FullName != "" || req.PhoneNumber != "" || req.Username != "" || req.ProfilePicture.Filename != "" {
+	if req.Country != "" || req.Email != "" || req.FullName != "" || req.PhoneNumber != "" || req.Username != "" {
+		return true
+	}
+	if req.ProfilePicture.Filename != "" {
+		return true
+	}
+	if req.AgendaPhoneNumberHashes != "" {
 		return true
 	}
 
@@ -220,6 +239,17 @@ func (req *RequestModifyUser) Bindings(c *gin.Context) []func(obj interface{}) e
 		c.ShouldBindUri,
 		server.ShouldBindAuthenticatedUser(c),
 	}
+}
+
+func verifyIfPhoneNumberAndHashProvidedTogether(phoneNumber, phoneNumberHash string) error {
+	if phoneNumberHash == "" && phoneNumber != "" {
+		return errors.New("phoneNumber must be provided only together with phoneNumberHash")
+	}
+	if phoneNumber == "" && phoneNumberHash != "" {
+		return errors.New("phoneNumberHash must be provided only together with phoneNumber")
+	}
+
+	return nil
 }
 
 // DeleteUser godoc

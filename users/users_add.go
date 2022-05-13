@@ -28,9 +28,10 @@ func (u *users) AddUser(ctx context.Context, user *User) error {
 		referral = `(SELECT ID FROM users ORDER BY random() LIMIT 1)`
 	}
 
-	sql := fmt.Sprintf(`INSERT INTO users (ID, HASH_CODE, EMAIL, FULL_NAME, PHONE_NUMBER,
+	sql := fmt.Sprintf(`INSERT INTO users (ID, HASH_CODE, EMAIL, FULL_NAME, 
+    PHONE_NUMBER, PHONE_NUMBER_HASH,
 	USERNAME, REFERRED_BY, PROFILE_PICTURE_NAME, COUNTRY, CREATED_AT, UPDATED_AT)
-	VALUES(:id, :hashCode, :email, :fullName, :phoneNumber,
+	VALUES(:id, :hashCode, :email, :fullName, :phoneNumber, :phoneNumberHash,
 	:username, %v, :profilePictureName, :country, :createdAt, :updatedAt)`, referral)
 
 	params := map[string]interface{}{
@@ -39,6 +40,7 @@ func (u *users) AddUser(ctx context.Context, user *User) error {
 		"email":              user.Email,
 		"fullName":           user.FullName,
 		"phoneNumber":        user.PhoneNumber,
+		"phoneNumberHash":    user.PhoneNumberHash,
 		"username":           user.Username,
 		"profilePictureName": defaultUserImage,
 		"country":            strings.ToLower(user.Country),
