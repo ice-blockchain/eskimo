@@ -22,8 +22,9 @@ type (
 		FullName string `json:"fullName" example:"John Doe"`
 		// `phoneNumber` is optional.
 		PhoneNumber string `json:"phoneNumber" example:"+12099216581"`
-		PhoneNumberHash   string                   `form:"phoneNumberHash" json:"phoneNumberHash" example:"Ef86A6021afCDe5673511376B2"`
-		Username    string `json:"username" example:"jdoe"`
+		// `phoneNumberHash` is optional (because of phoneNumber is optional too).
+		PhoneNumberHash string `form:"phoneNumberHash" json:"phoneNumberHash" example:"Ef86A6021afCDe5673511376B2"`
+		Username        string `json:"username" example:"jdoe"`
 		// User's ID, so client app requests user by user name and provides ID here.
 		ReferredBy        string                   `json:"referredBy" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
 		AuthenticatedUser server.AuthenticatedUser `json:"authenticatedUser" swaggerignore:"true"`

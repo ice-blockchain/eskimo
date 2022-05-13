@@ -28,22 +28,24 @@ func (u *users) AddUser(ctx context.Context, user *User) error {
 		referral = `(SELECT ID FROM users ORDER BY random() LIMIT 1)`
 	}
 
-	sql := fmt.Sprintf(`INSERT INTO users (ID, HASH_CODE, EMAIL, FULL_NAME, PHONE_NUMBER,
+	sql := fmt.Sprintf(`INSERT INTO users (ID, HASH_CODE, EMAIL, FULL_NAME, 
+    PHONE_NUMBER, PHONE_NUMBER_HASH_CODE,
 	USERNAME, REFERRED_BY, PROFILE_PICTURE_NAME, COUNTRY, CREATED_AT, UPDATED_AT)
-	VALUES(:id, :hashCode, :email, :fullName, :phoneNumber,
+	VALUES(:id, :hashCode, :email, :fullName, :phoneNumber, :phoneNumberHashCode,
 	:username, %v, :profilePictureName, :country, :createdAt, :updatedAt)`, referral)
 
 	params := map[string]interface{}{
-		"id":                 user.ID,
-		"hashCode":           u.hash(user.ID),
-		"email":              user.Email,
-		"fullName":           user.FullName,
-		"phoneNumber":        user.PhoneNumber,
-		"username":           user.Username,
-		"profilePictureName": defaultUserImage,
-		"country":            strings.ToLower(user.Country),
-		"createdAt":          user.CreatedAt.UnixNano(),
-		"updatedAt":          user.UpdatedAt.UnixNano(),
+		"id":                  user.ID,
+		"hashCode":            u.hash(user.ID),
+		"email":               user.Email,
+		"fullName":            user.FullName,
+		"phoneNumber":         user.PhoneNumber,
+		"phoneNumberHashCode": user.PhoneNumberHash,
+		"username":            user.Username,
+		"profilePictureName":  defaultUserImage,
+		"country":             strings.ToLower(user.Country),
+		"createdAt":           user.CreatedAt.UnixNano(),
+		"updatedAt":           user.UpdatedAt.UnixNano(),
 	}
 
 	if user.ReferredBy != "" {

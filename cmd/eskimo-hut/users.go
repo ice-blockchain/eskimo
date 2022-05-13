@@ -63,12 +63,13 @@ func newRequestCreateUser() server.ParsedRequest {
 
 func (req *RequestCreateUser) user() *users.User {
 	return &users.User{
-		ID:          req.AuthenticatedUser.ID,
-		Email:       req.Email,
-		FullName:    req.FullName,
-		PhoneNumber: req.PhoneNumber,
-		Username:    req.Username,
-		ReferredBy:  req.ReferredBy,
+		ID:              req.AuthenticatedUser.ID,
+		Email:           req.Email,
+		FullName:        req.FullName,
+		PhoneNumber:     req.PhoneNumber,
+		PhoneNumberHash: req.PhoneNumberHash,
+		Username:        req.Username,
+		ReferredBy:      req.ReferredBy,
 	}
 }
 
@@ -145,13 +146,15 @@ func newRequestModifyUser() server.ParsedRequest {
 
 func (req *RequestModifyUser) user() *users.User {
 	return &users.User{
-		ID:             req.ID,
-		Email:          req.Email,
-		FullName:       req.FullName,
-		PhoneNumber:    req.PhoneNumber,
-		Username:       req.Username,
-		ProfilePicture: req.ProfilePicture,
-		Country:        req.Country,
+		ID:                      req.ID,
+		Email:                   req.Email,
+		FullName:                req.FullName,
+		PhoneNumber:             req.PhoneNumber,
+		PhoneNumberHash:         req.PhoneNumberHash,
+		AgendaPhoneNumberHashes: req.AgendaPhoneNumberHashes,
+		Username:                req.Username,
+		ProfilePicture:          req.ProfilePicture,
+		Country:                 req.Country,
 	}
 }
 
@@ -200,7 +203,7 @@ func (req *RequestModifyUser) Validate() *server.Response {
 
 //nolint:gocognit // This is validator of fields
 func (req *RequestModifyUser) hasValues() bool {
-	if req.Country != "" || req.Email != "" || req.FullName != "" || req.PhoneNumber != "" || req.Username != "" || req.ProfilePicture.Filename != "" {
+	if req.Country != "" || req.Email != "" || req.FullName != "" || req.PhoneNumber != "" || req.Username != "" || req.ProfilePicture.Filename != "" || req.AgendaPhoneNumberHashes != "" {
 		return true
 	}
 

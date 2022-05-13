@@ -68,11 +68,12 @@ func (u *users) sendValidationCodeSMS(number, code string) error {
 }
 
 func (u *users) updatePhoneValidationCode(ctx context.Context, conf *PhoneNumberConfirmation) error {
-	sql := fmt.Sprintf(`REPLACE INTO %v (USER_ID, PHONE_NUMBER, VALIDATION_CODE, CREATED_AT) VALUES (:id, :phoneNumber, :validationCode, :createdAt)`, tableCodes)
+	sql := fmt.Sprintf(`REPLACE INTO %v (USER_ID, PHONE_NUMBER, PHONE_NUMBER_HASH_CODE, VALIDATION_CODE, CREATED_AT) VALUES (:id, :phoneNumber, :phoneNumberHashCode, :validationCode, :createdAt)`, tableCodes)
 	params := map[string]interface{}{
-		"id":          conf.UserID,
-		"phoneNumber": conf.PhoneNumber,
-		"createdAt":   time.Now().UTC().UnixNano(),
+		"id":                  conf.UserID,
+		"phoneNumber":         conf.PhoneNumber,
+		"phoneNumberHashCode": conf.PhoneNumberHashCode,
+		"createdAt":           time.Now().UTC().UnixNano(),
 	}
 	needSms := false
 	for ctx.Err() == nil {
@@ -122,12 +123,17 @@ func (u *users) ConfirmPhoneNumber(ctx context.Context, conf *PhoneNumberConfirm
 	user := new(User)
 	user.ID = conf.UserID
 	user.confirmedPhoneNumber = conf.PhoneNumber
+	user.PhoneNumberHash = conf.PhoneNumberHashCode
 	if err = u.ModifyUser(ctx, user); err != nil {
 		return errors.Wrapf(err, "error updating users")
 	}
 	confirm := new(PhoneNumberConfirmation)
 	confirm.UserID = user.ID
 	confirm.PhoneNumber = conf.PhoneNumber
+	// In case of phone number mismatch we'll get an error earlier in this method,
+	// so if pnone number matches, we can reuse hash previously written on the database
+	confirm.PhoneNumberHashCode = result.PhoneNumberHashCode
+	// according to Fedor, we're deactivating used code this way, to keep unique values in database
 	confirm.ValidationCode = user.ID
 
 	return errors.Wrapf(u.updatePhoneValidationCode(ctx, confirm), "error updating validation code")
