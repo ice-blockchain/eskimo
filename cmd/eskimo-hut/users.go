@@ -94,18 +94,13 @@ func (req *RequestCreateUser) GetClientIP() net.IP {
 }
 
 func (req *RequestCreateUser) Validate() *server.Response {
-	if req.PhoneNumberHash == "" && req.PhoneNumber != "" {
-		err := errors.New("phoneNumber must be provided only together with phoneNumberHash")
-		resp := getServerErrorResponse(http.StatusBadRequest, err, userBadRequest)
+	err := verifyIfPhoneNumberAndHashProvidedTogether(req.PhoneNumber, req.PhoneNumberHash)
+	if err != nil {
+		resp := server.BadRequest(err, userBadRequest)
 
-		return &resp
+		return resp
 	}
-	if req.PhoneNumber == "" && req.PhoneNumberHash != "" {
-		err := errors.New("phoneNumberHash must be provided only together with phoneNumber")
-		resp := getServerErrorResponse(http.StatusBadRequest, err, userBadRequest)
 
-		return &resp
-	}
 	return server.RequiredStrings(map[string]string{"username": req.Username})
 }
 
@@ -193,17 +188,11 @@ func (req *RequestModifyUser) Validate() *server.Response {
 		return &resp
 	}
 
-	if req.PhoneNumberHash == "" && req.PhoneNumber != "" {
-		err := errors.New("phoneNumber must be modified only together with phoneNumberHash")
-		resp := getServerErrorResponse(http.StatusBadRequest, err, userBadRequest)
+	err := verifyIfPhoneNumberAndHashProvidedTogether(req.PhoneNumber, req.PhoneNumberHash)
+	if err != nil {
+		resp := server.BadRequest(err, userBadRequest)
 
-		return &resp
-	}
-	if req.PhoneNumber == "" && req.PhoneNumberHash != "" {
-		err := errors.New("phoneNumberHash must be modified only together with phoneNumber")
-		resp := getServerErrorResponse(http.StatusBadRequest, err, userBadRequest)
-
-		return &resp
+		return resp
 	}
 
 	if !req.hasValues() {
@@ -254,6 +243,17 @@ func (req *RequestModifyUser) Bindings(c *gin.Context) []func(obj interface{}) e
 		c.ShouldBindUri,
 		server.ShouldBindAuthenticatedUser(c),
 	}
+}
+
+func verifyIfPhoneNumberAndHashProvidedTogether(phoneNumber, phoneNumberHash string) error {
+	if phoneNumberHash == "" && phoneNumber != "" {
+		return errors.New("phoneNumber must be provided only together with phoneNumberHash")
+	}
+	if phoneNumber == "" && phoneNumberHash != "" {
+		return errors.New("phoneNumberHash must be provided only together with phoneNumber")
+	}
+
+	return nil
 }
 
 // DeleteUser godoc
