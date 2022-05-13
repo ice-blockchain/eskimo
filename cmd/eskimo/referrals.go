@@ -42,9 +42,9 @@ func (s *service) GetReferralAcquisitionHistory(ctx context.Context, r server.Pa
 	req := r.(*RequestGetReferralAcquisitionHistory)
 
 	//nolint:nolintlint,gocritic // TODO implement me.
-	if req.AuthenticatedUser.ID == req.ID { //nolint:nolintlint,gocritic
+	if req.AuthenticatedUser.ID == req.ID { //nolint:nolintlint,staticcheck
 		// User is trying to get their own referral acquisition history.
-	} else {
+	} else { //nolint:nolintlint,staticcheck
 		// User is trying to get some other user's referral acquisition history.
 	}
 
@@ -97,9 +97,9 @@ func (s *service) GetReferrals(ctx context.Context, r server.ParsedRequest) serv
 	req := r.(*RequestGetReferrals)
 
 	//nolint:nolintlint,godox // TODO implement me
-	if req.AuthenticatedUser.ID == req.ID { //nolint:nolintlint,gocritic
+	if req.AuthenticatedUser.ID == req.ID { //nolint:nolintlint,gocritic,staticcheck
 		// User is trying to get their own referrals.
-	} else {
+	} else { //nolint:nolintlint,gocritic,staticcheck
 		// User is trying to get some other user's referrals.
 	}
 

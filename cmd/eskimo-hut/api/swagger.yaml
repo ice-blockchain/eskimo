@@ -16,6 +16,9 @@ definitions:
         description: '`phoneNumber` is optional.'
         example: "+12099216581"
         type: string
+      phoneNumberHash:
+        example: Ef86A6021afCDe5673511376B2
+        type: string
       referredBy:
         example: billy112
         type: string
@@ -58,6 +61,9 @@ definitions:
     type: object
   users.User:
     properties:
+      agendaPhoneNumberHashes:
+        example: Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2
+        type: string
       country:
         description: ISO 3166 country code.
         example: us
@@ -81,6 +87,9 @@ definitions:
         type: string
       phoneNumber:
         example: "+12099216581"
+        type: string
+      phoneNumberHash:
+        example: Ef86A6021afCDe5673511376B2
         type: string
       profilePictureURL:
         example: https://somecdn.com/p1.jpg
@@ -271,6 +280,14 @@ paths:
         name: userId
         required: true
         type: string
+      - example: Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2
+        in: formData
+        name: agendaPhoneNumberHashes
+        type: string
+      - example: us
+        in: formData
+        name: country
+        type: string
       - example: jdoe@gmail.com
         in: formData
         name: email
@@ -282,6 +299,10 @@ paths:
       - example: "+12099216581"
         in: formData
         name: phoneNumber
+        type: string
+      - example: Ef86A6021afCDe5673511376B2
+        in: formData
+        name: phoneNumberHash
         type: string
       - example: jdoe
         in: formData

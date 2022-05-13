@@ -8,6 +8,7 @@ import (
 	"io"
 	"mime/multipart"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/imroc/req/v3"
@@ -44,7 +45,29 @@ func (u *users) ModifyUser(ctx context.Context, user *User) error {
 		return errors.Wrapf(err, "failed to update user with id %v", user.ID)
 	}
 
-	return errors.Wrap(u.sendUsersMessage(ctx, user), "failed to send updated user message")
+	return errors.Wrap(u.sendUsersMessage(ctx, UserSnapshot{User: gUser.override(user), Before: gUser}), "failed to send updated user message")
+}
+
+func (u *User) override(user *User) *User {
+	mergeField := func(oldData, newData string) string {
+		if newData != "" {
+			return newData
+		}
+
+		return oldData
+	}
+
+	n := new(User)
+	*n = *u
+	n.UpdatedAt = user.UpdatedAt
+	n.Email = mergeField(u.Email, user.Email)
+	n.FullName = mergeField(u.FullName, user.FullName)
+	n.Username = mergeField(u.Username, user.Username)
+	n.ProfilePicture.Filename = mergeField(u.ProfilePicture.Filename, user.ProfilePicture.Filename)
+	n.Country = mergeField(u.Country, user.Country)
+	n.PhoneNumber = mergeField(u.PhoneNumber, user.PhoneNumber)
+
+	return n
 }
 
 func (u *users) triggerNewPhoneNumberValidation(ctx context.Context, newUser, oldUser *User) error {
@@ -86,7 +109,7 @@ func (u *User) genSQLUpdate() (sql string, params map[string]interface{}) {
 		sql += ", PROFILE_PICTURE_NAME = :profilePictureName"
 	}
 	if u.Country != "" {
-		params["country"] = u.Country
+		params["country"] = strings.ToLower(u.Country)
 		sql += ", COUNTRY = :country"
 	}
 	if u.confirmedPhoneNumber != "" {

@@ -9,6 +9,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/ice-blockchain/eskimo/cmd/eskimo-hut/api"
+	"github.com/ice-blockchain/eskimo/countries"
 	"github.com/ice-blockchain/eskimo/users"
 	appCfg "github.com/ice-blockchain/wintr/config"
 	"github.com/ice-blockchain/wintr/log"
@@ -41,6 +42,7 @@ func (s *service) RegisterRoutes(engine *gin.Engine) {
 }
 
 func (s *service) Init(ctx context.Context, cancel context.CancelFunc) {
+	s.countriesRepository = countries.New(ctx)
 	s.usersProcessor = users.StartProcessor(ctx, cancel)
 }
 
@@ -48,6 +50,8 @@ func (s *service) Close(ctx context.Context) error {
 	if ctx.Err() != nil {
 		return errors.Wrap(ctx.Err(), "could not close usersProcessor because context ended")
 	}
+
+	log.Error(errors.Wrap(s.countriesRepository.Close(), "Error closing country repository"))
 
 	return errors.Wrap(s.usersProcessor.Close(), "could not close usersProcessor")
 }

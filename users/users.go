@@ -31,12 +31,21 @@ func StartProcessor(ctx context.Context, cancel context.CancelFunc) Processor {
 	appCfg.MustLoadFromKey(applicationYamlKey, &cfg)
 
 	db := storage.MustConnect(ctx, cancel, ddl, applicationYamlKey)
-	mb := messagebroker.MustConnect(ctx, applicationYamlKey)
+	mbProducer := messagebroker.MustConnect(ctx, applicationYamlKey)
+
+	mbProcessors := processors(context.Background(), db, mbProducer)
+	mbConsumer := messagebroker.MustConnectAndStartConsuming(context.Background(), cancel, applicationYamlKey, mbProcessors)
 
 	return &processor{
-		close:           closeAll(db, mb),
+		close:           closeAll(mbConsumer, mbProducer, db),
 		ReadRepository:  &users{db: db},
-		WriteRepository: &users{db: db, mb: mb},
+		WriteRepository: &users{db: db, mb: mbProducer},
+	}
+}
+
+func processors(ctx context.Context, db tarantool.Connector, mb messagebroker.Client) map[messagebroker.Topic]messagebroker.Processor {
+	return map[messagebroker.Topic]messagebroker.Processor{
+		cfg.MessageBroker.Topics[0].Name: &usersSource{db},
 	}
 }
 
@@ -48,22 +57,28 @@ func (r *repository) Close() error {
 	return errors.Wrap(r.close(), "closing users repository failed")
 }
 
-func closeAll(db tarantool.Connector, mb messagebroker.Client) func() error {
+func closeAll(mbConsumer, mbProducer messagebroker.Client, db tarantool.Connector) func() error {
 	return func() error {
-		err1 := errors.Wrap(db.Close(), "closing db connection failed")
-		err2 := errors.Wrap(mb.Close(), "closing message broker connection failed")
-		if err1 != nil && err2 != nil {
-			return multierror.Append(err1, err2)
-		}
-		var err error
+		err1 := errors.Wrap(mbConsumer.Close(), "closing message broker consumer connection failed")
+		err2 := errors.Wrap(mbProducer.Close(), "closing message broker producer connection failed")
+		err3 := errors.Wrap(db.Close(), "closing db connection failed")
+		errs := make([]error, 0, 1+1+1)
 		if err1 != nil {
-			err = err1
+			errs = append(errs, err1)
 		}
 		if err2 != nil {
-			err = err2
+			errs = append(errs, err2)
+		}
+		if err3 != nil {
+			errs = append(errs, err3)
+		}
+		if len(errs) > 1 {
+			return multierror.Append(nil, errs...)
+		} else if len(errs) == 1 {
+			return errors.Wrapf(errs[0], "failed to close all resources")
 		}
 
-		return errors.Wrapf(err, "failed to close all resources")
+		return nil
 	}
 }
 
@@ -76,7 +91,7 @@ func closeDB(db tarantool.Connector) func() error {
 	}
 }
 
-func (u *users) sendUsersMessage(ctx context.Context, user *User) error {
+func (u *users) sendUsersMessage(ctx context.Context, user UserSnapshot) error {
 	valueBytes, err := json.Marshal(user)
 	if err != nil {
 		return errors.Wrapf(err, "failed to marshal user %#v", user)

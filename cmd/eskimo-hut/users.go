@@ -6,11 +6,13 @@ import (
 	"context"
 	"net"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
 	"github.com/pkg/errors"
 
+	"github.com/ice-blockchain/eskimo/countries"
 	"github.com/ice-blockchain/eskimo/users"
 	"github.com/ice-blockchain/wintr/server"
 )
@@ -41,8 +43,9 @@ func (s *service) setupUserRoutes(router *gin.Engine) {
 // @Router       /users [POST].
 func (s *service) CreateUser(ctx context.Context, r server.ParsedRequest) server.Response {
 	req := r.(*RequestCreateUser)
-
 	resp := req.user()
+	resp.Country = s.countriesRepository.Get(ctx, req.ClientIP.String())
+
 	if err := s.usersProcessor.AddUser(ctx, resp); err != nil {
 		if errors.Is(err, users.ErrDuplicate) {
 			return getServerErrorResponse(http.StatusConflict, err, userDuplicateCode)
@@ -66,7 +69,6 @@ func (req *RequestCreateUser) user() *users.User {
 		PhoneNumber: req.PhoneNumber,
 		Username:    req.Username,
 		ReferredBy:  req.ReferredBy,
-		Country:     "TODO: get me based on req.ClientIP using https://www.ip2location.com/development-libraries/ip2location/go",
 	}
 }
 
@@ -119,8 +121,8 @@ func (req *RequestCreateUser) Bindings(c *gin.Context) []func(obj interface{}) e
 // @Router       /users/{userId} [PATCH].
 func (s *service) ModifyUser(ctx context.Context, r server.ParsedRequest) server.Response {
 	req := r.(*RequestModifyUser)
-
 	user := req.user()
+
 	err := s.usersProcessor.ModifyUser(ctx, user)
 	if err != nil {
 		err = errors.Wrap(err, "modify user failed")
@@ -149,7 +151,7 @@ func (req *RequestModifyUser) user() *users.User {
 		PhoneNumber:    req.PhoneNumber,
 		Username:       req.Username,
 		ProfilePicture: req.ProfilePicture,
-		Country:        "TODO by clients IP",
+		Country:        req.Country,
 	}
 }
 
@@ -167,7 +169,6 @@ func (req *RequestModifyUser) Validate() *server.Response {
 	if req.ID == "" {
 		return server.RequiredStrings(map[string]string{"userId": req.ID})
 	}
-
 	if req.ID != req.AuthenticatedUser.ID {
 		err := errors.Errorf("update account not allowed for anyone except the owner. "+
 			"`%v` tried to update `%v`", req.AuthenticatedUser.ID, req.ID)
@@ -184,11 +185,22 @@ func (req *RequestModifyUser) Validate() *server.Response {
 		return &resp
 	}
 
+	if req.Country != "" {
+		req.Country = strings.ToLower(req.Country)
+
+		if err := countries.Validate(req.Country); err != nil {
+			resp := getServerErrorResponse(http.StatusBadRequest, err, userBadRequest)
+
+			return &resp
+		}
+	}
+
 	return nil
 }
 
+//nolint:gocognit // This is validator of fields
 func (req *RequestModifyUser) hasValues() bool {
-	if req.Email != "" || req.FullName != "" || req.PhoneNumber != "" || req.Username != "" || req.ProfilePicture.Filename != "" {
+	if req.Country != "" || req.Email != "" || req.FullName != "" || req.PhoneNumber != "" || req.Username != "" || req.ProfilePicture.Filename != "" {
 		return true
 	}
 

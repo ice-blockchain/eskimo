@@ -5,6 +5,7 @@ package users
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -40,7 +41,7 @@ func (u *users) AddUser(ctx context.Context, user *User) error {
 		"phoneNumber":        user.PhoneNumber,
 		"username":           user.Username,
 		"profilePictureName": defaultUserImage,
-		"country":            user.Country,
+		"country":            strings.ToLower(user.Country),
 		"createdAt":          user.CreatedAt.UnixNano(),
 		"updatedAt":          user.UpdatedAt.UnixNano(),
 	}
@@ -54,7 +55,7 @@ func (u *users) AddUser(ctx context.Context, user *User) error {
 		return errors.Wrapf(err, "failed to add user %#v", user)
 	}
 
-	return errors.Wrap(u.sendUsersMessage(ctx, user), "failed to send user created message")
+	return errors.Wrap(u.sendUsersMessage(ctx, UserSnapshot{User: user, Before: nil}), "failed to send user created message")
 }
 
 func (u *users) hash(data string) uint64 {

@@ -6,8 +6,9 @@ require (
 	github.com/framey-io/go-tarantool v0.0.0-20220317175443-747a509561d8
 	github.com/gin-gonic/gin v1.7.7
 	github.com/hashicorp/go-multierror v1.1.1
-	github.com/ice-blockchain/wintr v1.4.0
-	github.com/imroc/req/v3 v3.11.1
+	github.com/ice-blockchain/wintr v1.6.0
+	github.com/imroc/req/v3 v3.11.2
+	github.com/ip2location/ip2location-go v8.3.0+incompatible
 	github.com/pkg/errors v0.9.1
 	github.com/swaggo/swag v1.8.1
 	github.com/twilio/twilio-go v0.25.0
@@ -25,7 +26,7 @@ require (
 	github.com/containerd/containerd v1.6.4 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.0.1 // indirect
 	github.com/docker/distribution v2.8.1+incompatible // indirect
-	github.com/docker/docker v20.10.15+incompatible // indirect
+	github.com/docker/docker v20.10.16+incompatible // indirect
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/docker/go-units v0.4.0 // indirect
 	github.com/ethereum/go-ethereum v1.10.17 // indirect
@@ -96,5 +97,5 @@ require (
 	google.golang.org/protobuf v1.28.0 // indirect
 	gopkg.in/ini.v1 v1.66.4 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
+	gopkg.in/yaml.v3 v3.0.0-20220512140231-539c8e751b99 // indirect
 )

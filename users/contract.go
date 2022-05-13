@@ -28,6 +28,8 @@ var (
 type (
 	UserID   = string
 	Username = string
+	Offset   = uint64
+	Limit    = uint64
 	User     struct {
 		CreatedAt               time.Time            `json:"createdAt,omitempty" example:"2022-01-03T16:20:52.156534Z"`
 		UpdatedAt               time.Time            `json:"updatedAt,omitempty" example:"2022-01-03T16:20:52.156534Z"`
@@ -37,7 +39,7 @@ type (
 		FullName                string               `form:"fullName,omitempty" json:"fullName" example:"John Doe"`
 		PhoneNumber             string               `form:"phoneNumber,omitempty" json:"phoneNumber" example:"+12099216581"`
 		PhoneNumberHash         string               `form:"phoneNumberHash,omitempty" json:"phoneNumberHash" example:"Ef86A6021afCDe5673511376B2"`
-		AgendaPhoneNumberHashes string               `form:"agendaPhoneNumberHashes,omitempty" json:"agendaPhoneNumberHashes" example:"Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2"`
+		AgendaPhoneNumberHashes string               `form:"agendaPhoneNumberHashes,omitempty" json:"agendaPhoneNumberHashes" example:"Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2"` //nolint:lll // hash
 		confirmedPhoneNumber    string               `example:"+12099216581"`
 		Username                string               `form:"username,omitempty" json:"username" example:"jdoe"`
 		ReferredBy              UserID               `form:"referredBy,omitempty" json:"referredBy" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
@@ -46,6 +48,10 @@ type (
 		// ISO 3166 country code.
 		Country  string `json:"country" example:"us"`
 		HashCode uint64 `json:"hashCode"`
+	}
+	UserSnapshot struct {
+		*User
+		Before *User
 	}
 	ReferralAcquisition struct {
 		Date time.Time `json:"date" example:"2022-01-03"`
@@ -86,15 +92,18 @@ type (
 	ReadRepository interface {
 		GetUserByUsername(context.Context, Username) (*User, error)
 		GetUserByID(context.Context, UserID) (*User, error)
+		GetTopCountries(context.Context, Limit, Offset) ([]*CountryStatistics, error)
 	}
 )
 
 // Private API.
 
 const (
-	applicationYamlKey = "users"
-	defaultUserImage   = "default-user-image.jpg"
-	tableCodes         = "PHONE_NUMBER_VALIDATION_CODES"
+	applicationYamlKey                     = "users"
+	defaultUserImage                       = "default-user-image.jpg"
+	tableCodes                             = "PHONE_NUMBER_VALIDATION_CODES"
+	Add                arithmeticOperation = "+"
+	Substract          arithmeticOperation = "-"
 )
 
 var (
@@ -105,9 +114,14 @@ var (
 )
 
 type (
+	arithmeticOperation string
 	// | users implements the UserRepository and only handles everything related to `users`.
 	users struct {
 		mb messagebroker.Client
+		db tarantool.Connector
+	}
+
+	usersSource struct {
 		db tarantool.Connector
 	}
 
@@ -152,6 +166,12 @@ type (
 		PhoneNumberHash string
 		ValidationCode  string
 		CreatedAt       uint64
+	}
+
+	usersPerCountry struct {
+		_msgpack  struct{} `msgpack:",asArray"` // nolint:unused // To insert we need asArray
+		Country   string
+		UserCount uint64
 	}
 
 	// | config holds the configuration of this package mounted from `application.yaml`.
