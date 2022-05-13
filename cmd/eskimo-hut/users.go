@@ -94,6 +94,18 @@ func (req *RequestCreateUser) GetClientIP() net.IP {
 }
 
 func (req *RequestCreateUser) Validate() *server.Response {
+	if req.PhoneNumberHash == "" && req.PhoneNumber != "" {
+		err := errors.New("phoneNumber must be provided only together with phoneNumberHash")
+		resp := getServerErrorResponse(http.StatusBadRequest, err, userBadRequest)
+
+		return &resp
+	}
+	if req.PhoneNumber == "" && req.PhoneNumberHash != "" {
+		err := errors.New("phoneNumberHash must be provided only together with phoneNumber")
+		resp := getServerErrorResponse(http.StatusBadRequest, err, userBadRequest)
+
+		return &resp
+	}
 	return server.RequiredStrings(map[string]string{"username": req.Username})
 }
 
@@ -177,6 +189,19 @@ func (req *RequestModifyUser) Validate() *server.Response {
 			"`%v` tried to update `%v`", req.AuthenticatedUser.ID, req.ID)
 
 		resp := getServerErrorResponse(http.StatusForbidden, err, notAllowed)
+
+		return &resp
+	}
+
+	if req.PhoneNumberHash == "" && req.PhoneNumber != "" {
+		err := errors.New("phoneNumber must be modified only together with phoneNumberHash")
+		resp := getServerErrorResponse(http.StatusBadRequest, err, userBadRequest)
+
+		return &resp
+	}
+	if req.PhoneNumber == "" && req.PhoneNumberHash != "" {
+		err := errors.New("phoneNumberHash must be modified only together with phoneNumber")
+		resp := getServerErrorResponse(http.StatusBadRequest, err, userBadRequest)
 
 		return &resp
 	}
