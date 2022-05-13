@@ -53,11 +53,13 @@ type (
 	// Referral is a user acquired by other user (limited fields comparing to the user struct)
 	// because of sql fetches only required fields too.
 	Referral struct {
+		// Top fields the same as in the User struct.
 		ID                UserID `json:"id,omitempty" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
 		PhoneNumber       string `form:"phoneNumber,omitempty" json:"phoneNumber" example:"+12099216581"`
 		Username          string `form:"username,omitempty" json:"username" example:"jdoe"`
 		ProfilePictureURL string `json:"profilePictureURL,omitempty" example:"https://somecdn.com/p1.jpg"`
-		ExistsInAgenda    bool   `json:"existsInAgenda" example:"true"`
+		// Shows if referral is presented in user's agenda (phonebook).
+		FromAgenda bool `json:"fromAgenda" example:"true"`
 	}
 
 	UserSnapshot struct {
