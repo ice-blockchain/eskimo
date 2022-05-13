@@ -114,8 +114,6 @@ func (u *users) ConfirmPhoneNumber(ctx context.Context, conf *PhoneNumberConfirm
 		return errors.Wrapf(ErrNotFound, "no user found with id %v", conf.UserID)
 	case result.PhoneNumber != conf.PhoneNumber:
 		return errors.Wrapf(ErrNotFound, "no phone %v waiting for confirmation", conf.PhoneNumber)
-	case result.PhoneNumberHash != conf.PhoneNumber:
-		return errors.Wrapf(ErrNotFound, "no phone %v waiting for confirmation", conf.PhoneNumber)
 	case result.ValidationCode != conf.ValidationCode:
 		return ErrInvalidPhoneValidationCode
 	case time.Since(time.Unix(int64(result.CreatedAt), 0)) > cfg.PhoneNumberValidation.ExpirationTime:
@@ -132,10 +130,9 @@ func (u *users) ConfirmPhoneNumber(ctx context.Context, conf *PhoneNumberConfirm
 	confirm := new(PhoneNumberConfirmation)
 	confirm.UserID = user.ID
 	confirm.PhoneNumber = conf.PhoneNumber
-	// In case of phone number mismatch we'll get an error earlier in this method,
-	// so if pnone number matches, we can reuse hash previously written on the database
-	confirm.PhoneNumberHash = result.PhoneNumberHash
-	// according to Fedor, we're deactivating used code this way, to keep unique values in database
+	// Just update the hash provided with the phone number
+	confirm.PhoneNumberHash = conf.PhoneNumberHash
+	// According to Fedor, we're deactivating used code this way, to keep unique values in database.
 	confirm.ValidationCode = user.ID
 
 	return errors.Wrapf(u.updatePhoneValidationCode(ctx, confirm), "error updating validation code")

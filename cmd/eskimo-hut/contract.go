@@ -49,6 +49,7 @@ type (
 		AuthenticatedUser server.AuthenticatedUser `json:"authenticatedUser" swaggerignore:"true"`
 		ValidationCode    string                   `json:"validationCode" example:"232323232"`
 		PhoneNumber       string                   `json:"phoneNumber" example:"+12099216581"`
+		PhoneNumberHash   string                   `json:"phoneNumberHash" example:"Ef86A6021afCDe5673511376B2"`
 	}
 )
 

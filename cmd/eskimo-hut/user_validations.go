@@ -58,9 +58,10 @@ func (s *service) ValidatePhoneNumber(ctx context.Context, r server.ParsedReques
 
 func (req *RequestValidatePhoneNumber) confirm() *users.PhoneNumberConfirmation {
 	return &users.PhoneNumberConfirmation{
-		UserID:         req.AuthenticatedUser.ID,
-		PhoneNumber:    req.PhoneNumber,
-		ValidationCode: req.ValidationCode,
+		UserID:          req.AuthenticatedUser.ID,
+		PhoneNumber:     req.PhoneNumber,
+		ValidationCode:  req.ValidationCode,
+		PhoneNumberHash: req.PhoneNumberHash,
 	}
 }
 
