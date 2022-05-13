@@ -21,19 +21,16 @@ func (mb *usersSource) Process(ctx context.Context, m *messagebroker.Message) er
 		return errors.Wrapf(err, "Process: cannot unmarshall %v into %#v", string(m.Value), u)
 	}
 
-	switch {
-	case u.User.Country == "" || u.User.Country == u.Before.Country:
-		return nil
-	case u.User == nil:
-		return errors.Wrap(mb.incrementOrDecrementCountryUserCount(ctx, u.Before.Country, Substract), "error decrementing user country count")
-	case u.User.Country != u.Before.Country:
+	if u.User != nil {
 		if err := mb.incrementOrDecrementCountryUserCount(ctx, u.User.Country, Add); err != nil {
 			return errors.Wrap(err, "error incrementing country user count")
 		}
+	}
 
-		fallthrough
-	case u.Before.Country != "":
-		return errors.Wrap(mb.incrementOrDecrementCountryUserCount(ctx, u.Before.Country, Substract), "error decrementing user country count")
+	if u.Before != nil {
+		if err := mb.incrementOrDecrementCountryUserCount(ctx, u.Before.Country, Substract); err != nil {
+			return errors.Wrap(err, "error incrementing country user count")
+		}
 	}
 
 	return nil
