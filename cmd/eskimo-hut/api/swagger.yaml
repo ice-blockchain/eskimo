@@ -33,6 +33,9 @@ definitions:
       phoneNumber:
         example: "+12099216581"
         type: string
+      phoneNumberHash:
+        example: Ef86A6021afCDe5673511376B2
+        type: string
       validationCode:
         example: "232323232"
         type: string

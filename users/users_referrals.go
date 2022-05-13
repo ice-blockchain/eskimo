@@ -16,7 +16,7 @@ func (u *users) GetTier1Referrals(ctx context.Context, id UserID, limit, offset 
 	}
 
 	var queryResult []*Referral
-	// referral = subject, referee = actor ( main user)
+	// Referral = subject, referee = actor (main user).
 	sql := fmt.Sprintf(`SELECT referrals.ID, referrals.username, referrals.phone_number, '%v/'||referrals.profile_picture_name AS profile_picture_url,
 POSITION(referrals.phone_number_hash,referees.agenda_phone_number_hashes) > 0 as from_agenda FROM USERS referrals
 INNER JOIN USERS referees ON referrals.referred_by = referees.ID

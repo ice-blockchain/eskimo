@@ -68,7 +68,8 @@ func (u *users) sendValidationCodeSMS(number, code string) error {
 }
 
 func (u *users) updatePhoneValidationCode(ctx context.Context, conf *PhoneNumberConfirmation) error {
-	sql := fmt.Sprintf(`REPLACE INTO %v (USER_ID, PHONE_NUMBER, PHONE_NUMBER_HASH, VALIDATION_CODE, CREATED_AT) VALUES (:id, :phoneNumber, :phoneNumberHash, :validationCode, :createdAt)`, tableCodes)
+	sql := fmt.Sprintf(`REPLACE INTO %v (USER_ID, PHONE_NUMBER, PHONE_NUMBER_HASH, VALIDATION_CODE, CREATED_AT) VALUES
+                                               (:id,     :phoneNumber, :phoneNumberHash,  :validationCode, :createdAt)`, tableCodes)
 	params := map[string]interface{}{
 		"id":              conf.UserID,
 		"phoneNumber":     conf.PhoneNumber,
@@ -83,17 +84,14 @@ func (u *users) updatePhoneValidationCode(ctx context.Context, conf *PhoneNumber
 		}
 		params["validationCode"] = conf.ValidationCode
 		query, err := u.db.PrepareExecute(sql, params)
-
 		err = storage.CheckSQLDMLErr(query, err)
 		if err != nil && !errors.Is(err, ErrDuplicate) {
 			return errors.Wrapf(err, "failed updating validation code")
 		}
-
 		if err == nil {
 			break
 		}
 	}
-
 	if !needSms {
 		return nil
 	}
@@ -120,17 +118,21 @@ func (u *users) ConfirmPhoneNumber(ctx context.Context, conf *PhoneNumberConfirm
 		return ErrExpiredPhoneValidationCode
 	}
 
+	return errors.Wrapf(u.updateUserWithValidatedPhoneNumber(ctx, conf), "error updating user phone info")
+}
+
+func (u *users) updateUserWithValidatedPhoneNumber(ctx context.Context, conf *PhoneNumberConfirmation) error {
 	user := new(User)
 	user.ID = conf.UserID
 	user.confirmedPhoneNumber = conf.PhoneNumber
 	user.PhoneNumberHash = conf.PhoneNumberHash
-	if err = u.ModifyUser(ctx, user); err != nil {
+	if err := u.ModifyUser(ctx, user); err != nil {
 		return errors.Wrapf(err, "error updating users")
 	}
 	confirm := new(PhoneNumberConfirmation)
 	confirm.UserID = user.ID
 	confirm.PhoneNumber = conf.PhoneNumber
-	// Just update the hash provided with the phone number
+	// Just update the hash provided with the phone number.
 	confirm.PhoneNumberHash = conf.PhoneNumberHash
 	// According to Fedor, we're deactivating used code this way, to keep unique values in database.
 	confirm.ValidationCode = user.ID

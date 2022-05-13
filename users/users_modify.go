@@ -114,14 +114,14 @@ func (u *User) genSQLUpdate() (sql string, params map[string]interface{}) {
 		sql += ", COUNTRY = :country"
 	}
 	if u.confirmedPhoneNumber != "" {
-		// updating phone number
+		// Updating phone number.
 		params["phoneNumber"] = u.confirmedPhoneNumber
 		sql += ", PHONE_NUMBER = :phoneNumber"
-		// and its hash, we need hashes to know if users are in agenda for each other
+		// And its hash, we need hashes to know if users are in agenda for each other.
 		params["phoneNumberHash"] = u.PhoneNumberHash
 		sql += ", PHONE_NUMBER_HASH = :phoneNumberHash"
 	}
-	// Agenda can be updated after user creation (in case if user granted permssion to access contacts on the team screen after initial user created)
+	// Agenda can be updated after user creation (in case if user granted permission to access contacts on the team screen after initial user created).
 	if u.AgendaPhoneNumberHashes != "" {
 		params["agendaPhoneNumberHashes"] = u.AgendaPhoneNumberHashes
 		sql += ", AGENDA_PHONE_NUMBER_HASHES = :agendaPhoneNumberHashes"

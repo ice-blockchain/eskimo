@@ -39,7 +39,7 @@ type (
 		FullName                string               `form:"fullName,omitempty" json:"fullName" example:"John Doe"`
 		PhoneNumber             string               `form:"phoneNumber,omitempty" json:"phoneNumber" example:"+12099216581"`
 		PhoneNumberHash         string               `form:"phoneNumberHash,omitempty" json:"phoneNumberHash" example:"Ef86A6021afCDe5673511376B2"`
-		AgendaPhoneNumberHashes string               `form:"agendaPhoneNumberHashes,omitempty" json:"agendaPhoneNumberHashes" example:"Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2"` //nolint:lll // hash
+		AgendaPhoneNumberHashes string               `form:"agendaPhoneNumberHashes,omitempty" json:"agendaPhoneNumberHashes" example:"Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2"` //nolint:lll // Just an example.
 		confirmedPhoneNumber    string               `example:"+12099216581"`
 		Username                string               `form:"username,omitempty" json:"username" example:"jdoe"`
 		ReferredBy              UserID               `form:"referredBy,omitempty" json:"referredBy" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`

@@ -109,6 +109,7 @@ func (s *service) GetReferrals(ctx context.Context, r server.ParsedRequest) serv
 		}
 	} else if req.Type == tier2Referrals {
 		err = errors.New("Fetching of Tier 2 referrals is not implemented yet")
+
 		return server.Response{
 			Data: server.ErrorResponse{
 				Error: err.Error(),

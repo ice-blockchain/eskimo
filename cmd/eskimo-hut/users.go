@@ -203,7 +203,13 @@ func (req *RequestModifyUser) Validate() *server.Response {
 
 //nolint:gocognit // This is validator of fields
 func (req *RequestModifyUser) hasValues() bool {
-	if req.Country != "" || req.Email != "" || req.FullName != "" || req.PhoneNumber != "" || req.Username != "" || req.ProfilePicture.Filename != "" || req.AgendaPhoneNumberHashes != "" {
+	if req.Country != "" || req.Email != "" || req.FullName != "" || req.PhoneNumber != "" || req.Username != "" {
+		return true
+	}
+	if req.ProfilePicture.Filename != "" {
+		return true
+	}
+	if req.AgendaPhoneNumberHashes != "" {
 		return true
 	}
 

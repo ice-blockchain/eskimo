@@ -416,6 +416,10 @@ const docTemplate = `{
                     "type": "string",
                     "example": "+12099216581"
                 },
+                "phoneNumberHash": {
+                    "type": "string",
+                    "example": "Ef86A6021afCDe5673511376B2"
+                },
                 "validationCode": {
                     "type": "string",
                     "example": "232323232"
