@@ -31,6 +31,10 @@ func (mb *usersSource) incrementOrDecrementCountryUserCount(ctx context.Context,
 		return errors.Wrap(ctx.Err(), "context failed")
 	}
 
+	if country == "" {
+		return nil
+	}
+
 	arOp := []tarantool.Op{{Op: string(operation), Field: 1, Arg: 1}}
 	insertTuple := &usersPerCountry{Country: country, UserCount: 1}
 

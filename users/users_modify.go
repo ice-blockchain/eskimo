@@ -57,15 +57,17 @@ func (u *User) override(user *User) *User {
 		return oldData
 	}
 
-	u.UpdatedAt = user.UpdatedAt
-	u.Email = mergeField(u.Email, user.Email)
-	u.FullName = mergeField(u.FullName, user.FullName)
-	u.Username = mergeField(u.Username, user.Username)
-	u.ProfilePicture.Filename = mergeField(u.ProfilePicture.Filename, user.ProfilePicture.Filename)
-	u.Country = mergeField(u.Country, user.Country)
-	u.PhoneNumber = mergeField(u.PhoneNumber, user.PhoneNumber)
+	n := new(User)
+	*n = *u
+	n.UpdatedAt = user.UpdatedAt
+	n.Email = mergeField(u.Email, user.Email)
+	n.FullName = mergeField(u.FullName, user.FullName)
+	n.Username = mergeField(u.Username, user.Username)
+	n.ProfilePicture.Filename = mergeField(u.ProfilePicture.Filename, user.ProfilePicture.Filename)
+	n.Country = mergeField(u.Country, user.Country)
+	n.PhoneNumber = mergeField(u.PhoneNumber, user.PhoneNumber)
 
-	return u
+	return n
 }
 
 func (u *users) triggerNewPhoneNumberValidation(ctx context.Context, newUser, oldUser *User) error {
