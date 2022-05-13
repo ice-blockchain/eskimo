@@ -45,7 +45,27 @@ func (u *users) ModifyUser(ctx context.Context, user *User) error {
 		return errors.Wrapf(err, "failed to update user with id %v", user.ID)
 	}
 
-	return errors.Wrap(u.sendUsersMessage(ctx, UserSnapshot{User: user, Before: gUser}), "failed to send updated user message")
+	return errors.Wrap(u.sendUsersMessage(ctx, UserSnapshot{User: gUser.merge(user), Before: gUser}), "failed to send updated user message")
+}
+
+func (u *User) merge(user *User) *User {
+	mergeField := func(oldData, newData string) string {
+		if newData != "" {
+			return newData
+		}
+
+		return oldData
+	}
+
+	u.UpdatedAt = user.UpdatedAt
+	u.Email = mergeField(u.Email, user.Email)
+	u.FullName = mergeField(u.FullName, user.FullName)
+	u.Username = mergeField(u.Username, user.Username)
+	u.ProfilePicture.Filename = mergeField(u.ProfilePicture.Filename, user.ProfilePicture.Filename)
+	u.Country = mergeField(u.Country, user.Country)
+	u.PhoneNumber = mergeField(u.PhoneNumber, user.PhoneNumber)
+
+	return u
 }
 
 func (u *users) triggerNewPhoneNumberValidation(ctx context.Context, newUser, oldUser *User) error {
