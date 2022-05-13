@@ -78,7 +78,7 @@ func (u *users) triggerNewPhoneNumberValidation(ctx context.Context, newUser, ol
 	confirm := new(PhoneNumberConfirmation)
 	confirm.UserID = newUser.ID
 	confirm.PhoneNumber = newUser.PhoneNumber
-	confirm.PhoneNumberHashCode = newUser.PhoneNumberHash
+	confirm.PhoneNumberHash = newUser.PhoneNumberHash
 
 	err := u.updatePhoneValidationCode(ctx, confirm)
 
@@ -118,13 +118,13 @@ func (u *User) genSQLUpdate() (sql string, params map[string]interface{}) {
 		params["phoneNumber"] = u.confirmedPhoneNumber
 		sql += ", PHONE_NUMBER = :phoneNumber"
 		// and its hash, we need hashes to know if users are in agenda for each other
-		params["phoneNumberHashCode"] = u.PhoneNumberHash
-		sql += ", PHONE_NUMBER_HASH_CODE = :phoneNumberHashCode"
+		params["phoneNumberHash"] = u.PhoneNumberHash
+		sql += ", PHONE_NUMBER_HASH = :phoneNumberHash"
 	}
 	// Agenda can be updated after user creation (in case if user granted permssion to access contacts on the team screen after initial user created)
 	if u.AgendaPhoneNumberHashes != "" {
 		params["agendaPhoneNumberHashes"] = u.AgendaPhoneNumberHashes
-		sql += ", AGENDA_PHONE_NUMBER_HASH_CODES = :agendaPhoneNumberHashes"
+		sql += ", AGENDA_PHONE_NUMBER_HASHES = :agendaPhoneNumberHashes"
 	}
 	sql += " WHERE ID = :id"
 

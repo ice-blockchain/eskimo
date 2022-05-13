@@ -68,12 +68,12 @@ func (u *users) sendValidationCodeSMS(number, code string) error {
 }
 
 func (u *users) updatePhoneValidationCode(ctx context.Context, conf *PhoneNumberConfirmation) error {
-	sql := fmt.Sprintf(`REPLACE INTO %v (USER_ID, PHONE_NUMBER, PHONE_NUMBER_HASH_CODE, VALIDATION_CODE, CREATED_AT) VALUES (:id, :phoneNumber, :phoneNumberHashCode, :validationCode, :createdAt)`, tableCodes)
+	sql := fmt.Sprintf(`REPLACE INTO %v (USER_ID, PHONE_NUMBER, PHONE_NUMBER_HASH, VALIDATION_CODE, CREATED_AT) VALUES (:id, :phoneNumber, :phoneNumberHash, :validationCode, :createdAt)`, tableCodes)
 	params := map[string]interface{}{
-		"id":                  conf.UserID,
-		"phoneNumber":         conf.PhoneNumber,
-		"phoneNumberHashCode": conf.PhoneNumberHashCode,
-		"createdAt":           time.Now().UTC().UnixNano(),
+		"id":              conf.UserID,
+		"phoneNumber":     conf.PhoneNumber,
+		"phoneNumberHash": conf.PhoneNumberHash,
+		"createdAt":       time.Now().UTC().UnixNano(),
 	}
 	needSms := false
 	for ctx.Err() == nil {
@@ -114,6 +114,8 @@ func (u *users) ConfirmPhoneNumber(ctx context.Context, conf *PhoneNumberConfirm
 		return errors.Wrapf(ErrNotFound, "no user found with id %v", conf.UserID)
 	case result.PhoneNumber != conf.PhoneNumber:
 		return errors.Wrapf(ErrNotFound, "no phone %v waiting for confirmation", conf.PhoneNumber)
+	case result.PhoneNumberHash != conf.PhoneNumber:
+		return errors.Wrapf(ErrNotFound, "no phone %v waiting for confirmation", conf.PhoneNumber)
 	case result.ValidationCode != conf.ValidationCode:
 		return ErrInvalidPhoneValidationCode
 	case time.Since(time.Unix(int64(result.CreatedAt), 0)) > cfg.PhoneNumberValidation.ExpirationTime:
@@ -123,7 +125,7 @@ func (u *users) ConfirmPhoneNumber(ctx context.Context, conf *PhoneNumberConfirm
 	user := new(User)
 	user.ID = conf.UserID
 	user.confirmedPhoneNumber = conf.PhoneNumber
-	user.PhoneNumberHash = conf.PhoneNumberHashCode
+	user.PhoneNumberHash = conf.PhoneNumberHash
 	if err = u.ModifyUser(ctx, user); err != nil {
 		return errors.Wrapf(err, "error updating users")
 	}
@@ -132,7 +134,7 @@ func (u *users) ConfirmPhoneNumber(ctx context.Context, conf *PhoneNumberConfirm
 	confirm.PhoneNumber = conf.PhoneNumber
 	// In case of phone number mismatch we'll get an error earlier in this method,
 	// so if pnone number matches, we can reuse hash previously written on the database
-	confirm.PhoneNumberHashCode = result.PhoneNumberHashCode
+	confirm.PhoneNumberHash = result.PhoneNumberHash
 	// according to Fedor, we're deactivating used code this way, to keep unique values in database
 	confirm.ValidationCode = user.ID
 

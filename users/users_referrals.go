@@ -18,7 +18,7 @@ func (u *users) GetTier1Referrals(ctx context.Context, id UserID, limit, offset 
 	var queryResult []*Referral
 	// referral = subject, referee = actor ( main user)
 	sql := fmt.Sprintf(`SELECT referrals.ID, referrals.username, referrals.phone_number, '%v/'||referrals.profile_picture_name AS profile_picture_url,
-POSITION(referrals.phone_number_hash_code,referees.agenda_phone_number_hash_codes) > 0 as from_agenda FROM USERS referrals
+POSITION(referrals.phone_number_hash,referees.agenda_phone_number_hashes) > 0 as from_agenda FROM USERS referrals
 INNER JOIN USERS referees ON referrals.referred_by = referees.ID
 WHERE referrals.referred_by = :user_id ORDER BY from_agenda DESC, referrals.created_at DESC LIMIT :limit OFFSET :offset`,
 		// Adding cfg.PictureStorage.URLDownload to sql here, to get urls in one query (we dont need to iterate and calculate URL for each record now)

@@ -77,10 +77,10 @@ type (
 		UserCount uint64 `json:"userCount" example:"12121212"`
 	}
 	PhoneNumberConfirmation struct {
-		UserID              UserID `json:"id" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
-		PhoneNumber         string `json:"phoneNumber" example:"+12345678"`
-		PhoneNumberHashCode string `json:"phoneNumberHashCode" example:"Ef86A6021afCDe5673511376B2"`
-		ValidationCode      string `json:"code" example:"1234"`
+		UserID          UserID `json:"id" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
+		PhoneNumber     string `json:"phoneNumber" example:"+12345678"`
+		PhoneNumberHash string `json:"phoneNumberHash" example:"Ef86A6021afCDe5673511376B2"`
+		ValidationCode  string `json:"code" example:"1234"`
 	}
 
 	// Repository main API exposed that handles all the features(including internal/system ones) of this package.
@@ -175,12 +175,12 @@ type (
 
 	phoneNumberValidationCode struct {
 		//nolint:unused // Because it is used by the msgpack library for marshalling/unmarshalling.
-		_msgpack            struct{} `msgpack:",asArray"`
-		ID                  UserID
-		PhoneNumber         string
-		PhoneNumberHashCode string
-		ValidationCode      string
-		CreatedAt           uint64
+		_msgpack        struct{} `msgpack:",asArray"`
+		ID              UserID
+		PhoneNumber     string
+		PhoneNumberHash string
+		ValidationCode  string
+		CreatedAt       uint64
 	}
 
 	usersPerCountry struct {
