@@ -45,10 +45,10 @@ func (u *users) ModifyUser(ctx context.Context, user *User) error {
 		return errors.Wrapf(err, "failed to update user with id %v", user.ID)
 	}
 
-	return errors.Wrap(u.sendUsersMessage(ctx, UserSnapshot{User: gUser.merge(user), Before: gUser}), "failed to send updated user message")
+	return errors.Wrap(u.sendUsersMessage(ctx, UserSnapshot{User: gUser.override(user), Before: gUser}), "failed to send updated user message")
 }
 
-func (u *User) merge(user *User) *User {
+func (u *User) override(user *User) *User {
 	mergeField := func(oldData, newData string) string {
 		if newData != "" {
 			return newData
