@@ -175,6 +175,7 @@ func (req *RequestModifyUser) GetAuthenticatedUser() server.AuthenticatedUser {
 	return req.AuthenticatedUser
 }
 
+//nolint:funlen // different validations of the input data, they are moved into separated functions, but we have a lot of them
 func (req *RequestModifyUser) Validate() *server.Response {
 	if req.ID == "" {
 		return server.RequiredStrings(map[string]string{"userId": req.ID})
@@ -182,29 +183,24 @@ func (req *RequestModifyUser) Validate() *server.Response {
 	if req.ID != req.AuthenticatedUser.ID {
 		err := errors.Errorf("update account not allowed for anyone except the owner. "+
 			"`%v` tried to update `%v`", req.AuthenticatedUser.ID, req.ID)
-
 		resp := getServerErrorResponse(http.StatusForbidden, err, notAllowed)
 
 		return &resp
 	}
-
 	err := verifyIfPhoneNumberAndHashProvidedTogether(req.PhoneNumber, req.PhoneNumberHash)
 	if err != nil {
 		resp := server.BadRequest(err, userBadRequest)
 
 		return resp
 	}
-
 	if !req.hasValues() {
 		err := errors.New("modify request without values")
 		resp := getServerErrorResponse(http.StatusBadRequest, err, userBadRequest)
 
 		return &resp
 	}
-
 	if req.Country != "" {
 		req.Country = strings.ToLower(req.Country)
-
 		if err := countries.Validate(req.Country); err != nil {
 			resp := getServerErrorResponse(http.StatusBadRequest, err, userBadRequest)
 
