@@ -40,7 +40,7 @@ func (s *service) GetUserByID(ctx context.Context, r server.ParsedRequest) serve
 	resp, err := s.usersRepository.GetUserByID(ctx, req.ID)
 	if err != nil {
 		if errors.Is(err, users.ErrNotFound) {
-			return *server.NotFound(err, userNotFoundCode)
+			return *server.NotFound(errors.Wrapf(err, "user with id `%v` was not found", req.ID), userNotFoundCode)
 		}
 
 		return server.Unexpected(err)
@@ -103,7 +103,7 @@ func (s *service) GetUserByUsername(ctx context.Context, r server.ParsedRequest)
 	resp, err := s.usersRepository.GetUserByUsername(ctx, req.Username)
 	if err != nil {
 		if errors.Is(err, users.ErrNotFound) {
-			return *server.NotFound(err, userNotFoundCode)
+			return *server.NotFound(errors.Wrapf(err, "user with username `%v` was not found", req.Username), userNotFoundCode)
 		}
 
 		return server.Unexpected(err)
