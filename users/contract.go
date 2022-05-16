@@ -107,7 +107,8 @@ type (
 		GetUserByUsername(context.Context, Username) (*User, error)
 		GetUserByID(context.Context, UserID) (*User, error)
 		GetTopCountries(context.Context, Limit, Offset) ([]*CountryStatistics, error)
-		GetTier1Referrals(ctx context.Context, id UserID, limit Limit, offset Offset) ([]*Referral, error)
+		GetTier1Referrals(context.Context, UserID, Limit, Offset) ([]*Referral, error)
+		GetReferredByUserCount(context.Context, UserID, uint64, referralsLevel) (uint64, error)
 	}
 )
 
@@ -118,7 +119,9 @@ const (
 	defaultUserImage                       = "default-user-image.jpg"
 	tableCodes                             = "PHONE_NUMBER_VALIDATION_CODES"
 	Add                arithmeticOperation = "+"
-	Substract          arithmeticOperation = "-"
+	Subtract           arithmeticOperation = "-"
+	Tier1              referralsLevel      = "T1"
+	Tier2              referralsLevel      = "T2"
 )
 
 var (
@@ -129,6 +132,7 @@ var (
 )
 
 type (
+	referralsLevel      string
 	arithmeticOperation string
 	// | users implements the UserRepository and only handles everything related to `users`.
 	users struct {
