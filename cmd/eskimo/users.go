@@ -4,8 +4,6 @@ package main
 
 import (
 	"context"
-	"fmt"
-	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/pkg/errors"
@@ -42,15 +40,7 @@ func (s *service) GetUserByID(ctx context.Context, r server.ParsedRequest) serve
 	resp, err := s.usersRepository.GetUserByID(ctx, req.ID)
 	if err != nil {
 		if errors.Is(err, users.ErrNotFound) {
-			m := fmt.Sprintf("user with id `%v` was not found.", req.ID)
-
-			return server.Response{
-				Code: http.StatusNotFound,
-				Data: server.ErrorResponse{
-					Error: m,
-					Code:  userNotFoundCode,
-				}.Fail(errors.Wrapf(err, m)),
-			}
+			return *server.NotFound(err, userNotFoundCode)
 		}
 
 		return server.Unexpected(err)
@@ -113,15 +103,7 @@ func (s *service) GetUserByUsername(ctx context.Context, r server.ParsedRequest)
 	resp, err := s.usersRepository.GetUserByUsername(ctx, req.Username)
 	if err != nil {
 		if errors.Is(err, users.ErrNotFound) {
-			m := fmt.Sprintf("user with username `%v` was not found.", req.Username)
-
-			return server.Response{
-				Code: http.StatusNotFound,
-				Data: server.ErrorResponse{
-					Error: m,
-					Code:  userNotFoundCode,
-				}.Fail(errors.Wrapf(err, "failed to get user by username")),
-			}
+			return *server.NotFound(err, userNotFoundCode)
 		}
 
 		return server.Unexpected(err)
@@ -148,13 +130,7 @@ func (req *RequestGetUserByUsername) Validate() *server.Response {
 	if !compiledUsernameRegex.MatchString(req.Username) {
 		err := errors.Errorf("username: %v is invalid, it should match regex: %v", req.Username, usernameRegex)
 
-		return &server.Response{
-			Data: server.ErrorResponse{
-				Error: err.Error(),
-				Code:  "INVALID_USERNAME",
-			}.Fail(err),
-			Code: http.StatusBadRequest,
-		}
+		return server.BadRequest(err, userInvalidCode)
 	}
 
 	return nil

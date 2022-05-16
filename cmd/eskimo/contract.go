@@ -44,6 +44,7 @@ type (
 const (
 	applicationYamlKey = "cmd/eskimo"
 	userNotFoundCode   = "USER_NOT_FOUND"
+	userInvalidCode    = "INVALID_USERNAME"
 	usernameRegex      = `^[\w\-.]{4,20}$`
 	tier1Referrals     = "T1" // Values for RequestGetReferrals.Type.
 	tier2Referrals     = "T2" // Values for RequestGetReferrals.Type.
