@@ -108,7 +108,7 @@ type (
 		GetUserByID(context.Context, UserID) (*User, error)
 		GetTopCountries(context.Context, Limit, Offset) ([]*CountryStatistics, error)
 		GetTier1Referrals(context.Context, UserID, Limit, Offset) ([]*Referral, error)
-		GetReferredByUserCount(context.Context, UserID, uint64, referralsLevel) (uint64, error)
+		GetReferralAcquisitionHistory(ctx context.Context, id UserID, days uint64) ([]*ReferralAcquisition, error)
 	}
 )
 
@@ -120,8 +120,6 @@ const (
 	tableCodes                             = "PHONE_NUMBER_VALIDATION_CODES"
 	Add                arithmeticOperation = "+"
 	Subtract           arithmeticOperation = "-"
-	Tier1              referralsLevel      = "T1"
-	Tier2              referralsLevel      = "T2"
 )
 
 var (
@@ -132,7 +130,6 @@ var (
 )
 
 type (
-	referralsLevel      string
 	arithmeticOperation string
 	// | users implements the UserRepository and only handles everything related to `users`.
 	users struct {
@@ -191,6 +188,13 @@ type (
 		_msgpack  struct{} `msgpack:",asArray"` // nolint:unused // To insert we need asArray
 		Country   string
 		UserCount uint64
+	}
+
+	referralAcquisition struct {
+		//nolint:unused // Because it is used by the msgpack library for marshalling/unmarshalling.
+		_msgpack struct{} `msgpack:",asArray"`
+		Count    uint64
+		Date     int64
 	}
 
 	// | config holds the configuration of this package mounted from `application.yaml`.

@@ -37,32 +37,89 @@ WHERE referrals.referred_by = :user_id ORDER BY from_agenda DESC, referrals.crea
 	return queryResult, nil
 }
 
-func (u *users) GetReferredByUserCount(ctx context.Context, id UserID, days uint64, tier referralsLevel) (uint64, error) {
+func (u *users) GetReferralAcquisitionHistory(ctx context.Context, id UserID, days uint64) ([]*ReferralAcquisition, error) {
 	if ctx.Err() != nil {
-		return 0, errors.Wrapf(ctx.Err(), "failed to get tier %v user count because context failed", tier)
+		return nil, errors.Wrap(ctx.Err(), "failed to get acquisition history because context failed")
 	}
 
-	var sql string
+	nSecToDays := time.Hour.Nanoseconds() * 24 //nolint:gomnd //Nanoseconds in day
+	today := time.Now().UTC().Unix() / 86400   //nolint:gomnd //This is number of seconds in day
+	daysRange := u.getDaysRange(days)
 
-	switch {
-	case tier == "T1":
-		sql = `SELECT COUNT(*) FROM users WHERE referred_by = :user_id AND created_at < :date`
-	case tier == "T2":
-		sql = `SELECT COUNT(*) FROM users WHERE referred_by IN (SELECT id FROM USERS WHERE referred_by = :user_id AND created_at < :date)`
-	default:
-		return 0, errors.Errorf("unknown tier level %v", tier)
+	resT1, err := u.getT1Stats(id, nSecToDays, today, daysRange)
+	if err != nil {
+		return nil, errors.Wrap(err, "error getting t1 referral acquisition history")
 	}
 
-	timeLimit := time.Now().AddDate(0, 0, int(days)*-1).UTC().UnixNano()
-	params := map[string]interface{}{"user_id": id, "date": timeLimit}
-
-	var results []struct {
-		Count uint64
+	resT2, err := u.getT2Stats(id, nSecToDays, today, daysRange)
+	if err != nil {
+		return nil, errors.Wrap(err, "error getting t2 referral acquisition history")
 	}
+
+	var result []*ReferralAcquisition
+
+	for i := 0; i < len(resT1); i++ {
+		tmp := new(ReferralAcquisition)
+		tmp.T1 = resT1[i].Count
+		tmp.T2 = resT2[i].Count
+		tmp.Date = time.Unix(resT1[i].Date/time.Second.Nanoseconds(), 0)
+
+		result = append(result, tmp)
+	}
+
+	return result, nil
+}
+
+func (u *users) getT1Stats(id UserID, nSecToDays, today int64, daysRange string) ([]referralAcquisition, error) {
+	sql := fmt.Sprintf("SELECT COUNT(*), created_at FROM USERS WHERE referred_by = :user_id "+
+		"AND -1*(created_at/:nsec_to_days-:today) IN (%v) "+
+		"GROUP BY created_at ORDER BY created_at DESC", daysRange)
+
+	params := map[string]interface{}{
+		"user_id":      id,
+		"nsec_to_days": nSecToDays,
+		"today":        today,
+	}
+
+	var results []referralAcquisition
 
 	if err := u.db.PrepareExecuteTyped(sql, params, &results); err != nil {
-		return 0, errors.Wrap(err, "failed to get referred_by user count")
+		return nil, errors.Wrap(err, "failed to get referred_by user count")
 	}
 
-	return results[0].Count, nil
+	return results, nil
+}
+
+func (u *users) getT2Stats(id UserID, nSecToDays, today int64, daysRange string) ([]referralAcquisition, error) {
+	sql1 := fmt.Sprintf("SELECT id FROM USERS WHERE REFERRED_BY = :user_id AND -1*(created_at/:nsec_to_days-:today) IN (%v)", daysRange)
+
+	sql := fmt.Sprintf("SELECT COUNT(*), created_at FROM users WHERE referred_by IN (%v) "+
+		"AND -1*(created_at/:nsec_to_days-:today) IN (%v) "+
+		"GROUP BY created_at ORDER BY created_at DESC", sql1, daysRange)
+
+	params := map[string]interface{}{
+		"user_id":      id,
+		"nsec_to_days": nSecToDays,
+		"today":        today,
+	}
+
+	var results []referralAcquisition
+
+	if err := u.db.PrepareExecuteTyped(sql, params, &results); err != nil {
+		return nil, errors.Wrap(err, "failed to get referred_by user count")
+	}
+
+	return results, nil
+}
+
+func (u *users) getDaysRange(days uint64) string {
+	var out string
+	for i := 0; i < int(days); i++ {
+		out += fmt.Sprintf("%v", i)
+		if i != int(days)-1 {
+			out += ","
+		}
+	}
+
+	return out
 }

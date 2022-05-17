@@ -6,7 +6,6 @@ import (
 	"context"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/pkg/errors"
@@ -48,21 +47,12 @@ func (s *service) GetReferralAcquisitionHistory(ctx context.Context, r server.Pa
 		// User is trying to get some other user's referral acquisition history.
 	}
 
-	tier1count, err := s.usersRepository.GetReferredByUserCount(ctx, req.ID, req.Days, users.Tier1)
+	res, err := s.usersRepository.GetReferralAcquisitionHistory(ctx, req.ID, req.Days)
 	if err != nil {
 		return server.Unexpected(errors.Wrap(err, "error getting referral acquisition history"))
 	}
 
-	tier2count, err := s.usersRepository.GetReferredByUserCount(ctx, req.ID, req.Days, users.Tier2)
-	if err != nil {
-		return server.Unexpected(errors.Wrap(err, "error getting referral acquisition history"))
-	}
-
-	return server.OK([]*users.ReferralAcquisition{{
-		Date: time.Time{},
-		T1:   tier1count, // The number of users where referred_by = :user_id.
-		T2:   tier2count, // The number of users where referred_by in (t1).
-	}})
+	return server.OK(res)
 }
 
 func newRequestGetReferralAcquisitionHistory() server.ParsedRequest {
