@@ -5,7 +5,6 @@ package main
 import (
 	"context"
 	"net"
-	"net/http"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -48,7 +47,7 @@ func (s *service) CreateUser(ctx context.Context, r server.ParsedRequest) server
 
 	if err := s.usersProcessor.AddUser(ctx, resp); err != nil {
 		if errors.Is(err, users.ErrDuplicate) {
-			return getServerErrorResponse(http.StatusConflict, err, userDuplicateCode)
+			return *server.Conflict(err, userDuplicateCode)
 		}
 
 		return server.Unexpected(err)
@@ -96,9 +95,7 @@ func (req *RequestCreateUser) GetClientIP() net.IP {
 func (req *RequestCreateUser) Validate() *server.Response {
 	err := verifyIfPhoneNumberAndHashProvidedTogether(req.PhoneNumber, req.PhoneNumberHash)
 	if err != nil {
-		resp := server.BadRequest(err, userBadRequest)
-
-		return resp
+		return server.BadRequest(err, userBadRequest)
 	}
 
 	return server.RequiredStrings(map[string]string{"username": req.Username})
@@ -136,9 +133,9 @@ func (s *service) ModifyUser(ctx context.Context, r server.ParsedRequest) server
 		err = errors.Wrap(err, "modify user failed")
 		switch {
 		case errors.Is(err, users.ErrNotFound):
-			return getServerErrorResponse(http.StatusNotFound, err, userNotFoundCode)
+			return *server.NotFound(err, userNotFoundCode)
 		case errors.Is(err, users.ErrDuplicate):
-			return getServerErrorResponse(http.StatusConflict, err, userDuplicateCode)
+			return *server.Conflict(err, userDuplicateCode)
 		default:
 			return server.Unexpected(err)
 		}
@@ -175,7 +172,6 @@ func (req *RequestModifyUser) GetAuthenticatedUser() server.AuthenticatedUser {
 	return req.AuthenticatedUser
 }
 
-//nolint:funlen // different validations of the input data, they are moved into separated functions, but we have a lot of them
 func (req *RequestModifyUser) Validate() *server.Response {
 	if req.ID == "" {
 		return server.RequiredStrings(map[string]string{"userId": req.ID})
@@ -183,9 +179,8 @@ func (req *RequestModifyUser) Validate() *server.Response {
 	if req.ID != req.AuthenticatedUser.ID {
 		err := errors.Errorf("update account not allowed for anyone except the owner. "+
 			"`%v` tried to update `%v`", req.AuthenticatedUser.ID, req.ID)
-		resp := getServerErrorResponse(http.StatusForbidden, err, notAllowed)
 
-		return &resp
+		return server.Forbidden(err)
 	}
 	err := verifyIfPhoneNumberAndHashProvidedTogether(req.PhoneNumber, req.PhoneNumberHash)
 	if err != nil {
@@ -195,16 +190,13 @@ func (req *RequestModifyUser) Validate() *server.Response {
 	}
 	if !req.hasValues() {
 		err := errors.New("modify request without values")
-		resp := getServerErrorResponse(http.StatusBadRequest, err, userBadRequest)
 
-		return &resp
+		return server.BadRequest(err, userBadRequest)
 	}
 	if req.Country != "" {
 		req.Country = strings.ToLower(req.Country)
 		if err := countries.Validate(req.Country); err != nil {
-			resp := getServerErrorResponse(http.StatusBadRequest, err, userBadRequest)
-
-			return &resp
+			return server.BadRequest(err, userBadRequest)
 		}
 	}
 
@@ -305,9 +297,7 @@ func (req *RequestDeleteUser) Validate() *server.Response {
 		err := errors.Errorf("delete account not allowed for anyone except the owner. "+
 			"`%v` tried to delete `%v`", req.AuthenticatedUser.ID, req.ID)
 
-		resp := getServerErrorResponse(http.StatusForbidden, err, notAllowed)
-
-		return &resp
+		return server.Forbidden(err)
 	}
 
 	return nil

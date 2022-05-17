@@ -60,7 +60,6 @@ const (
 	userNotFoundCode   = "USER_NOT_FOUND"
 	userDuplicateCode  = "USER_DUPLICATE"
 	userBadRequest     = "USER_BAD_REQUEST"
-	notAllowed         = "NOT_ALLOWED"
 	userInvalidCode    = "INVALID_VALIDATION_CODE"
 	userExpiredCode    = "EXPIRED_VALIDATION_CODE"
 )
