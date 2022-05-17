@@ -4,7 +4,6 @@ package main
 
 import (
 	"context"
-	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/pkg/errors"
@@ -43,11 +42,11 @@ func (s *service) ValidatePhoneNumber(ctx context.Context, r server.ParsedReques
 		err = errors.Wrap(err, "confirm phone number failed")
 		switch {
 		case errors.Is(err, users.ErrNotFound):
-			return getServerErrorResponse(http.StatusNotFound, err, userNotFoundCode)
+			return *server.NotFound(err, userNotFoundCode)
 		case errors.Is(err, users.ErrInvalidPhoneValidationCode):
-			return getServerErrorResponse(http.StatusBadRequest, err, userInvalidCode)
+			return *server.BadRequest(err, userInvalidCode)
 		case errors.Is(err, users.ErrExpiredPhoneValidationCode):
-			return getServerErrorResponse(http.StatusBadRequest, err, userExpiredCode)
+			return *server.BadRequest(err, userExpiredCode)
 		}
 
 		return server.Unexpected(err)
