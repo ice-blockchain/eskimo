@@ -62,7 +62,7 @@ func (u *users) GetReferralAcquisitionHistory(ctx context.Context, id UserID, da
 		tmp := new(ReferralAcquisition)
 		tmp.T1 = resT1[i].Count
 		tmp.T2 = resT2[i].Count
-		tmp.Date = time.Unix(resT1[i].Date/time.Second.Nanoseconds(), 0)
+		tmp.Date = time.Unix(resT1[i].Date/time.Second.Nanoseconds(), 0).Round(time.Hour * 24) //nolint:gomnd //Round by day
 
 		result = append(result, tmp)
 	}
@@ -73,7 +73,7 @@ func (u *users) GetReferralAcquisitionHistory(ctx context.Context, id UserID, da
 func (u *users) getT1Stats(id UserID, nSecToDays, today int64, daysRange string) ([]referralAcquisition, error) {
 	sql := fmt.Sprintf("SELECT COUNT(*), created_at FROM USERS WHERE referred_by = :user_id "+
 		"AND -1*(created_at/:nsec_to_days-:today) IN (%v) "+
-		"GROUP BY created_at ORDER BY created_at DESC", daysRange)
+		"GROUP BY (created_at/:nsec_to_days-:today) ORDER BY created_at DESC", daysRange)
 
 	params := map[string]interface{}{
 		"user_id":      id,
@@ -95,7 +95,7 @@ func (u *users) getT2Stats(id UserID, nSecToDays, today int64, daysRange string)
 
 	sql := fmt.Sprintf("SELECT COUNT(*), created_at FROM users WHERE referred_by IN (%v) "+
 		"AND -1*(created_at/:nsec_to_days-:today) IN (%v) "+
-		"GROUP BY created_at ORDER BY created_at DESC", sql1, daysRange)
+		"GROUP BY (created_at/:nsec_to_days-:today) ORDER BY created_at DESC", sql1, daysRange)
 
 	params := map[string]interface{}{
 		"user_id":      id,
