@@ -72,12 +72,6 @@ func (u *users) GetReferralAcquisitionHistory(ctx context.Context, id UserID, da
 }
 
 func (u *users) getT1Stats(id UserID, nSecToDays, today int64, daysRange string) ([]*referralAcquisition, error) {
-	/*
-		sql := fmt.Sprintf("SELECT COUNT(*), created_at FROM USERS WHERE referred_by = :user_id "+
-			"AND -1*(created_at/:nsec_to_days-:today) IN (%v) "+
-			"GROUP BY (created_at/:nsec_to_days-:today) ORDER BY created_at DESC", daysRange)
-	*/
-
 	sql := fmt.Sprintf("SELECT COUNT(*), created_at FROM USERS WHERE referred_by = :user_id "+
 		"AND -1*((created_at-:today)/:nsec_to_days) IN (%v) "+
 		"GROUP BY (created_at-:today)/:nsec_to_days ORDER BY created_at DESC", daysRange)
@@ -98,14 +92,6 @@ func (u *users) getT1Stats(id UserID, nSecToDays, today int64, daysRange string)
 }
 
 func (u *users) getT2Stats(id UserID, nSecToDays, today int64, daysRange string) ([]*referralAcquisition, error) {
-	/*
-		sql1 := fmt.Sprintf("SELECT id FROM USERS WHERE REFERRED_BY = :user_id AND -1*(created_at/:nsec_to_days-:today) IN (%v)", daysRange)
-
-		sql := fmt.Sprintf("SELECT COUNT(*), created_at FROM users WHERE referred_by IN (%v) "+
-			"AND -1*(created_at/:nsec_to_days-:today) IN (%v) "+
-			"GROUP BY (created_at/:nsec_to_days-:today) ORDER BY created_at DESC", sql1, daysRange)
-	*/
-
 	sql := fmt.Sprintf("SELECT COUNT(*), created_at FROM users WHERE referred_by IN "+
 		"(SELECT id FROM USERS WHERE REFERRED_BY = :user_id AND -1*((created_at-:today)/:nsec_to_days) IN (%v)) "+
 		"AND -1*((created_at-:today)/:nsec_to_days) IN (%v) "+
@@ -125,6 +111,58 @@ func (u *users) getT2Stats(id UserID, nSecToDays, today int64, daysRange string)
 
 	return results, nil
 }
+
+/*
+func (u *users) GetReferralAcquisitionHistory(ctx context.Context, id UserID, days uint64) ([]*ReferralAcquisition, error) {
+	if ctx.Err() != nil {
+		return nil, errors.Wrap(ctx.Err(), "failed to get acquisition history because context failed")
+	}
+
+	nSecToDays := time.Hour.Nanoseconds() * 24 //nolint:gomnd //Nanoseconds in day
+	//today := time.Now().UTC().Unix() / 86400   //nolint:gomnd //This is number of seconds in day
+	today := time.Now().UTC().UnixNano()
+	daysRange := u.getDaysRange(days)
+
+	sql := "SELECT " +
+		"(SELECT COUNT(*) WHERE referred_by = :user_id AND -1*((created_at-:today)/:nsec_to_days) IN (daysRange))," +
+		"(SELECT COUNT(*) WHERE referred_by IN " +
+		"(SELECT id FROM USERS " +
+		"WHERE REFERRED_BY = :user_id AND -1*((created_at-:today)/:nsec_to_days) IN (daysRange)) AND -1*((created_at-:today)/:nsec_to_days) IN (daysRange) )," +
+		"(created_at-:today)/:nsec_to_days " +
+		"FROM USERS " +
+		"GROUP BY (created_at-:today)/:nsec_to_days " +
+		"ORDER BY created_at DESC"
+
+	sql = strings.ReplaceAll(sql, "daysRange", daysRange)
+
+	params := map[string]interface{}{
+		"user_id":      id,
+		"nsec_to_days": nSecToDays,
+		"today":        today,
+	}
+
+
+//eferralAcquisition struct {
+////nolint:unused // Because it is used by the msgpack library for marshalling/unmarshalling.
+//_msgpack struct{} `msgpack:",asArray"`
+//CountT1  uint64
+//CountT2  uint64
+//Date     int64
+//
+
+	var results []*referralAcquisition
+
+	if err := u.db.PrepareExecuteTyped(sql, params, &results); err != nil {
+		return nil, errors.Wrap(err, "failed to get referred_by user count")
+	}
+
+	for i, v := range results {
+		fmt.Println(i, v)
+	}
+
+	return nil, nil
+}
+*/
 
 func (u *users) getDaysRange(days uint64) string {
 	var out string

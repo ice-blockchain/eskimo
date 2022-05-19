@@ -4,10 +4,8 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"net"
 	"strings"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
@@ -47,23 +45,12 @@ func (s *service) CreateUser(ctx context.Context, r server.ParsedRequest) server
 	resp := req.user()
 	resp.Country = s.countriesRepository.Get(ctx, req.ClientIP.String())
 
-	for j := 0; j < 3; j++ {
-		for i := 0; i < 10; i++ {
-			resp.ID = fmt.Sprintf("id %v%v", i, j)
-			resp.ReferredBy = "id 00"
-			resp.Username = fmt.Sprintf("user %v%v", i, j)
-			resp.HashCode = uint64(i + j)
-			resp.CreatedAt = time.Now().AddDate(0, 0, i*-1).UTC()
-			resp.UpdatedAt = resp.CreatedAt
-
-			if err := s.usersProcessor.AddUser(ctx, resp); err != nil {
-				if errors.Is(err, users.ErrDuplicate) {
-					return *server.Conflict(err, userDuplicateCode)
-				}
-
-				return server.Unexpected(err)
-			}
+	if err := s.usersProcessor.AddUser(ctx, resp); err != nil {
+		if errors.Is(err, users.ErrDuplicate) {
+			return *server.Conflict(err, userDuplicateCode)
 		}
+
+		return server.Unexpected(err)
 	}
 
 	return server.Created(resp)
