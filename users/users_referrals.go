@@ -79,8 +79,8 @@ func (u *users) GetReferralAcquisitionHistory(ctx context.Context, id UserID, re
 	WHERE tier < 3
 	)
 	SELECT
-		TOTAL(referrals.t1) AS t1_referrals_acquired,
-		TOTAL(referrals.t2) AS t2_referrals_acquired,
+		CAST(TOTAL(referrals.t1) AS INT),
+		CAST(TOTAL(referrals.t2) AS INT),
 		days.day AS past_day
 	FROM days
 		LEFT JOIN referrals
@@ -115,8 +115,8 @@ func (u *users) GetReferralAcquisitionHistory(ctx context.Context, id UserID, re
 		}
 
 		tmp.Date = date
-		tmp.T1 = uint64(row.CountT1)
-		tmp.T2 = uint64(row.CountT2)
+		tmp.T1 = row.CountT1
+		tmp.T2 = row.CountT2
 
 		result = append(result, tmp)
 	}

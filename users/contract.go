@@ -193,8 +193,8 @@ type (
 	referralAcquisition struct {
 		//nolint:unused // Because it is used by the msgpack library for marshalling/unmarshalling.
 		_msgpack struct{} `msgpack:",asArray"`
-		CountT1  float64
-		CountT2  float64
+		CountT1  uint64
+		CountT2  uint64
 		PastDay  uint64
 	}
 
