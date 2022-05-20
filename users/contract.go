@@ -193,8 +193,9 @@ type (
 	referralAcquisition struct {
 		//nolint:unused // Because it is used by the msgpack library for marshalling/unmarshalling.
 		_msgpack struct{} `msgpack:",asArray"`
-		Count    uint64
-		Date     int64
+		CountT1  float64
+		CountT2  float64
+		PastDay  uint64
 	}
 
 	// | config holds the configuration of this package mounted from `application.yaml`.

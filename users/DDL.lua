@@ -26,4 +26,8 @@ box.execute([[CREATE TABLE IF NOT EXISTS users_per_country  (
                     user_count UNSIGNED NOT NULL DEFAULT 0
                      ) WITH ENGINE = 'vinyl';]])
 box.execute([[CREATE INDEX IF NOT EXISTS users_per_country_user_count_ix ON users_per_country (user_count);]])
+box.execute([[CREATE INDEX IF NOT EXISTS users_referral_acquisition_history_ix ON users (referred_by, created_at);]])
+box.execute([[CREATE TABLE IF NOT EXISTS days (day UNSIGNED primary key) WITH ENGINE = 'vinyl';]])
+box.execute([[INSERT INTO DAYS (DAY) VALUES (0),(1),(2),(3),(4),(5),(6),(7),(8),(9),(10),(11),(12),(13),(14),(15),
+                                           (16),(17),(18),(19),(20),(21),(22),(23),(24),(25),(26),(27),(28),(29),(30)]])
 -- TODO will add indexes later on

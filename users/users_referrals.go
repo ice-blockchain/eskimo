@@ -37,141 +37,91 @@ WHERE referrals.referred_by = :user_id ORDER BY from_agenda DESC, referrals.crea
 	return queryResult, nil
 }
 
-func (u *users) GetReferralAcquisitionHistory(ctx context.Context, id UserID, days uint64) ([]*ReferralAcquisition, error) {
+//nolint:funlen // Long SQL
+func (u *users) GetReferralAcquisitionHistory(ctx context.Context, id UserID, reqDays uint64) ([]*ReferralAcquisition, error) {
 	if ctx.Err() != nil {
 		return nil, errors.Wrap(ctx.Err(), "failed to get acquisition history because context failed")
 	}
 
-	nSecToDays := time.Hour.Nanoseconds() * 24 //nolint:gomnd //Nanoseconds in day
-	//today := time.Now().UTC().Unix() / 86400   //nolint:gomnd //This is number of seconds in day
-	today := time.Now().UTC().UnixNano()
-	daysRange := u.getDaysRange(days)
+	days := time.Duration(reqDays)
+	now := time.Now().UTC()
+	nowNanos := now.UnixNano()
+	nanosSinceMidnight := time.Duration(now.Nanosecond()) +
+		time.Duration(now.Second())*time.Second +
+		time.Duration(now.Minute())*time.Minute +
+		time.Duration(now.Hour())*time.Hour
+	pastNanos := now.Add(-days * 24 * time.Hour).Add(-nanosSinceMidnight).UnixNano()
 
-	resT1, err := u.getT1Stats(id, nSecToDays, today, daysRange)
-	if err != nil {
-		return nil, errors.Wrap(err, "error getting t1 referral acquisition history")
+	sql := `SELECT * FROM (WITH RECURSIVE referrals AS (
+		SELECT  id,
+		(:nowNanos - created_at) / 86400000000000 AS past_day,
+		1                                                   AS t1,
+		0                                                   AS t2,
+		1                                                   AS tier
+	FROM users
+	WHERE 1 = 1
+	AND referred_by = :userID
+	AND created_at >= :pastNanos
+	AND created_at <= :nowNanos
+
+	UNION ALL
+
+	SELECT i.id,
+		(:nowNanos - i.created_at) / 86400000000000 AS past_day,
+		0                                                     AS t1,
+		1                                                     AS t2,
+		tier + 1                                              AS tier
+	FROM referrals
+	JOIN users i
+	ON referrals.id = i.referred_by
+	AND i.created_at >= :pastNanos
+	AND i.created_at <= :nowNanos
+	WHERE tier < 3
+	)
+	SELECT
+		TOTAL(referrals.t1) AS t1_referrals_acquired,
+		TOTAL(referrals.t2) AS t2_referrals_acquired,
+		days.day AS past_day
+	FROM days
+		LEFT JOIN referrals
+			ON days.day = referrals.past_day
+	GROUP BY days.day
+	ORDER BY days.day)`
+
+	params := map[string]interface{}{
+		"userID":    id,
+		"nowNanos":  nowNanos,
+		"pastNanos": pastNanos,
 	}
 
-	resT2, err := u.getT2Stats(id, nSecToDays, today, daysRange)
-	if err != nil {
-		return nil, errors.Wrap(err, "error getting t2 referral acquisition history")
+	var resultFromQuery []*referralAcquisition
+
+	if err := u.db.PrepareExecuteTyped(sql, params, &resultFromQuery); err != nil {
+		return nil, errors.Wrap(err, "failed to get referred_by user count")
 	}
 
-	var result []*ReferralAcquisition
+	result := make([]*ReferralAcquisition, 0, reqDays)
 
-	for i := 0; i < len(resT1); i++ {
+	for i, row := range resultFromQuery {
+		if i == int(reqDays) {
+			break
+		}
+
 		tmp := new(ReferralAcquisition)
-		tmp.T1 = resT1[i].Count
-		tmp.T2 = resT2[i].Count
-		tmp.Date = time.Unix(resT1[i].Date/time.Second.Nanoseconds(), 0).Round(time.Hour * 24) //nolint:gomnd //Round by day
+		var date time.Time
+
+		if i != 0 {
+			date = now.AddDate(0, 0, int(-row.PastDay+1)).Add(-nanosSinceMidnight - 1)
+		} else {
+			date = now
+		}
+
+		tmp.Date = date
+		tmp.T1 = uint64(row.CountT1)
+		tmp.T2 = uint64(row.CountT2)
 
 		result = append(result, tmp)
 	}
 
 	return result, nil
-}
-
-func (u *users) getT1Stats(id UserID, nSecToDays, today int64, daysRange string) ([]*referralAcquisition, error) {
-	sql := fmt.Sprintf("SELECT COUNT(*), created_at FROM USERS WHERE referred_by = :user_id "+
-		"AND -1*((created_at-:today)/:nsec_to_days) IN (%v) "+
-		"GROUP BY (created_at-:today)/:nsec_to_days ORDER BY created_at DESC", daysRange)
-
-	params := map[string]interface{}{
-		"user_id":      id,
-		"nsec_to_days": nSecToDays,
-		"today":        today,
-	}
-
-	var results []*referralAcquisition
-
-	if err := u.db.PrepareExecuteTyped(sql, params, &results); err != nil {
-		return nil, errors.Wrap(err, "failed to get referred_by user count")
-	}
-
-	return results, nil
-}
-
-func (u *users) getT2Stats(id UserID, nSecToDays, today int64, daysRange string) ([]*referralAcquisition, error) {
-	sql := fmt.Sprintf("SELECT COUNT(*), created_at FROM users WHERE referred_by IN "+
-		"(SELECT id FROM USERS WHERE REFERRED_BY = :user_id AND -1*((created_at-:today)/:nsec_to_days) IN (%v)) "+
-		"AND -1*((created_at-:today)/:nsec_to_days) IN (%v) "+
-		"GROUP BY (created_at-:today)/:nsec_to_days ORDER BY created_at DESC", daysRange, daysRange)
-
-	params := map[string]interface{}{
-		"user_id":      id,
-		"nsec_to_days": nSecToDays,
-		"today":        today,
-	}
-
-	var results []*referralAcquisition
-
-	if err := u.db.PrepareExecuteTyped(sql, params, &results); err != nil {
-		return nil, errors.Wrap(err, "failed to get referred_by user count")
-	}
-
-	return results, nil
-}
-
-/*
-func (u *users) GetReferralAcquisitionHistory(ctx context.Context, id UserID, days uint64) ([]*ReferralAcquisition, error) {
-	if ctx.Err() != nil {
-		return nil, errors.Wrap(ctx.Err(), "failed to get acquisition history because context failed")
-	}
-
-	nSecToDays := time.Hour.Nanoseconds() * 24 //nolint:gomnd //Nanoseconds in day
-	//today := time.Now().UTC().Unix() / 86400   //nolint:gomnd //This is number of seconds in day
-	today := time.Now().UTC().UnixNano()
-	daysRange := u.getDaysRange(days)
-
-	sql := "SELECT " +
-		"(SELECT COUNT(*) WHERE referred_by = :user_id AND -1*((created_at-:today)/:nsec_to_days) IN (daysRange))," +
-		"(SELECT COUNT(*) WHERE referred_by IN " +
-		"(SELECT id FROM USERS " +
-		"WHERE REFERRED_BY = :user_id AND -1*((created_at-:today)/:nsec_to_days) IN (daysRange)) AND -1*((created_at-:today)/:nsec_to_days) IN (daysRange) )," +
-		"(created_at-:today)/:nsec_to_days " +
-		"FROM USERS " +
-		"GROUP BY (created_at-:today)/:nsec_to_days " +
-		"ORDER BY created_at DESC"
-
-	sql = strings.ReplaceAll(sql, "daysRange", daysRange)
-
-	params := map[string]interface{}{
-		"user_id":      id,
-		"nsec_to_days": nSecToDays,
-		"today":        today,
-	}
-
-
-//eferralAcquisition struct {
-////nolint:unused // Because it is used by the msgpack library for marshalling/unmarshalling.
-//_msgpack struct{} `msgpack:",asArray"`
-//CountT1  uint64
-//CountT2  uint64
-//Date     int64
-//
-
-	var results []*referralAcquisition
-
-	if err := u.db.PrepareExecuteTyped(sql, params, &results); err != nil {
-		return nil, errors.Wrap(err, "failed to get referred_by user count")
-	}
-
-	for i, v := range results {
-		fmt.Println(i, v)
-	}
-
-	return nil, nil
-}
-*/
-
-func (u *users) getDaysRange(days uint64) string {
-	var out string
-	for i := 0; i < int(days); i++ {
-		out += fmt.Sprintf("%v", i)
-		if i != int(days)-1 {
-			out += ","
-		}
-	}
-
-	return out
 }
