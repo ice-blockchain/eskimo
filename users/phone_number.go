@@ -59,7 +59,7 @@ func (u *users) sendValidationCodeSMS(number, code string) error {
 	params.SetFrom(cfg.PhoneNumberValidation.FromPhoneNumber)
 	params.SetBody(msg)
 
-	_, err = client.ApiV2010.CreateMessage(params)
+	_, err = client.Api.CreateMessage(params)
 	if err != nil {
 		return errors.Wrapf(err, "twilio error")
 	}
