@@ -23,6 +23,7 @@ var (
 	ErrDuplicate                  = storage.ErrDuplicate
 	ErrInvalidPhoneValidationCode = errors.New("invalid phone validation code")
 	ErrExpiredPhoneValidationCode = errors.New("expired phone validation code")
+	ErrInvalidPhoneNumber         = errors.New("phone number invalid")
 )
 
 type (

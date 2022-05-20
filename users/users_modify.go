@@ -75,6 +75,10 @@ func (u *users) triggerNewPhoneNumberValidation(ctx context.Context, newUser, ol
 		return nil
 	}
 
+	if err := u.validatePhoneNumber(newUser.PhoneNumber); err != nil {
+		return errors.Wrapf(err, "invalid phone number")
+	}
+
 	confirm := new(PhoneNumberConfirmation)
 	confirm.UserID = newUser.ID
 	confirm.PhoneNumber = newUser.PhoneNumber

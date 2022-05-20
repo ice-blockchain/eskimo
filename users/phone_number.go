@@ -13,6 +13,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/twilio/twilio-go"
+	client2 "github.com/twilio/twilio-go/client"
 	openapi "github.com/twilio/twilio-go/rest/api/v2010"
 
 	"github.com/ice-blockchain/wintr/connectors/storage"
@@ -149,4 +150,23 @@ func (u *users) getPhoneNumberValidationUser(_ context.Context, id UserID) (*pho
 	}
 
 	return result, nil
+}
+
+func (u *users) validatePhoneNumber(number string) error {
+	client := twilio.NewRestClientWithParams(twilio.ClientParams{
+		Username: cfg.PhoneNumberValidation.TwilioCredentials.User,
+		Password: cfg.PhoneNumberValidation.TwilioCredentials.Password,
+	})
+
+	_, err := client.LookupsV1.FetchPhoneNumber(number, nil)
+	if err != nil {
+		tErr := new(client2.TwilioRestError)
+		if ok := errors.As(err, tErr); !ok || tErr.Code != 20404 || tErr.Status != 404 {
+			return errors.Wrapf(err, "failed to validate and lookup phone number %v", number)
+		}
+
+		return ErrInvalidPhoneNumber
+	}
+
+	return nil
 }
