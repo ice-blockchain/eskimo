@@ -84,7 +84,8 @@ func (u *users) GetReferralAcquisitionHistory(ctx context.Context, id UserID, re
 		days.day AS past_day
 	FROM days
 		LEFT JOIN referrals
-			ON days.day = referrals.past_day
+			ON days.day = referrals.past_day	
+    WHERE days.day <= :days
 	GROUP BY days.day
 	ORDER BY days.day)`
 
@@ -92,6 +93,7 @@ func (u *users) GetReferralAcquisitionHistory(ctx context.Context, id UserID, re
 		"userID":    id,
 		"nowNanos":  nowNanos,
 		"pastNanos": pastNanos,
+		"days":      reqDays,
 	}
 
 	var resultFromQuery []*referralAcquisition
@@ -100,13 +102,9 @@ func (u *users) GetReferralAcquisitionHistory(ctx context.Context, id UserID, re
 		return nil, errors.Wrap(err, "failed to get referred_by user count")
 	}
 
-	result := make([]*ReferralAcquisition, 0, reqDays)
+	result := make([]*ReferralAcquisition, 0, reqDays+1)
 
 	for i, row := range resultFromQuery {
-		if i == int(reqDays) {
-			break
-		}
-
 		tmp := new(ReferralAcquisition)
 		var date time.Time
 
