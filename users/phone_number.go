@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/twilio/twilio-go"
 	client2 "github.com/twilio/twilio-go/client"
 	openapi "github.com/twilio/twilio-go/rest/api/v2010"
 
@@ -44,7 +43,7 @@ func (u *users) generateSMSMessage(code string) (string, error) {
 	return b.String(), nil
 }
 
-func (u *users) sendValidationCodeSMS(number, code string, client *twilio.RestClient) error {
+func (u *users) sendValidationCodeSMS(number, code string) error {
 	msg, err := u.generateSMSMessage(code)
 	if err != nil {
 		return errors.Wrapf(err, "unable to generate validation SMS")
@@ -55,7 +54,7 @@ func (u *users) sendValidationCodeSMS(number, code string, client *twilio.RestCl
 	params.SetFrom(cfg.PhoneNumberValidation.FromPhoneNumber)
 	params.SetBody(msg)
 
-	_, err = client.Api.CreateMessage(params)
+	_, err = u.twilioClient.Api.CreateMessage(params)
 	if err != nil {
 		return errors.Wrapf(err, "twilio error")
 	}
@@ -92,7 +91,7 @@ func (u *users) updatePhoneValidationCode(ctx context.Context, conf *PhoneNumber
 		return nil
 	}
 
-	return errors.Wrapf(u.sendValidationCodeSMS(conf.PhoneNumber, conf.ValidationCode, u.twilioClient), "failed to send validation SMS")
+	return errors.Wrapf(u.sendValidationCodeSMS(conf.PhoneNumber, conf.ValidationCode), "failed to send validation SMS")
 }
 
 func (u *users) ConfirmPhoneNumber(ctx context.Context, conf *PhoneNumberConfirmation) error {
@@ -147,8 +146,8 @@ func (u *users) getPhoneNumberValidationUser(_ context.Context, id UserID) (*pho
 	return result, nil
 }
 
-func (u *users) validatePhoneNumber(number string, client *twilio.RestClient) (string, error) {
-	lookupResponse, err := client.LookupsV1.FetchPhoneNumber(number, nil)
+func (u *users) validatePhoneNumber(number string) (string, error) {
+	lookupResponse, err := u.twilioClient.LookupsV1.FetchPhoneNumber(number, nil)
 	if err != nil {
 		tErr := new(client2.TwilioRestError)
 		if ok := errors.As(err, tErr); !ok || tErr.Code != 20404 || tErr.Status != 404 {

@@ -75,7 +75,7 @@ func (u *users) triggerNewPhoneNumberValidation(ctx context.Context, newUser, ol
 		return nil
 	}
 
-	pn, err := u.validatePhoneNumber(newUser.PhoneNumber, u.twilioClient)
+	pn, err := u.validatePhoneNumber(newUser.PhoneNumber)
 	if err != nil {
 		return errors.Wrapf(err, "invalid phone number")
 	}
