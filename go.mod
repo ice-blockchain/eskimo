@@ -19,7 +19,7 @@ require (
 	github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1 // indirect
 	github.com/KyleBanks/depth v1.2.1 // indirect
 	github.com/Microsoft/go-winio v0.5.2 // indirect
-	github.com/Microsoft/hcsshim v0.9.2 // indirect
+	github.com/Microsoft/hcsshim v0.9.3 // indirect
 	github.com/btcsuite/btcd/btcec/v2 v2.2.0 // indirect
 	github.com/cenkalti/backoff/v4 v4.1.3 // indirect
 	github.com/containerd/cgroups v1.0.3 // indirect
@@ -79,10 +79,9 @@ require (
 	github.com/subosito/gotenv v1.2.0 // indirect
 	github.com/swaggo/gin-swagger v1.4.3 // indirect
 	github.com/testcontainers/testcontainers-go v0.13.0 // indirect
-	github.com/twmb/franz-go v1.5.2 // indirect
-	github.com/twmb/franz-go/pkg/kadm v0.0.0-20220516022626-27880b497e94 // indirect
-	github.com/twmb/franz-go/pkg/kmsg v1.0.0 // indirect
-	github.com/twmb/go-rbtree v1.0.0 // indirect
+	github.com/twmb/franz-go v1.5.3 // indirect
+	github.com/twmb/franz-go/pkg/kadm v0.0.0-20220523041415-0bca3b86595e // indirect
+	github.com/twmb/franz-go/pkg/kmsg v1.1.0 // indirect
 	github.com/ugorji/go/codec v1.2.7 // indirect
 	github.com/vmihailenco/msgpack/v5 v5.3.5 // indirect
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
@@ -97,5 +96,5 @@ require (
 	google.golang.org/protobuf v1.28.0 // indirect
 	gopkg.in/ini.v1 v1.66.4 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	gopkg.in/yaml.v3 v3.0.0-20220512140231-539c8e751b99 // indirect
+	gopkg.in/yaml.v3 v3.0.0 // indirect
 )

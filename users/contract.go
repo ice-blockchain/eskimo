@@ -11,6 +11,7 @@ import (
 
 	"github.com/framey-io/go-tarantool"
 	"github.com/pkg/errors"
+	"github.com/twilio/twilio-go"
 
 	messagebroker "github.com/ice-blockchain/wintr/connectors/message_broker"
 	"github.com/ice-blockchain/wintr/connectors/storage"
@@ -134,8 +135,9 @@ type (
 	arithmeticOperation string
 	// | users implements the UserRepository and only handles everything related to `users`.
 	users struct {
-		mb messagebroker.Client
-		db tarantool.Connector
+		mb           messagebroker.Client
+		db           tarantool.Connector
+		twilioClient *twilio.RestClient
 	}
 
 	usersSource struct {

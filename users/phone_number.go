@@ -44,16 +44,11 @@ func (u *users) generateSMSMessage(code string) (string, error) {
 	return b.String(), nil
 }
 
-func (u *users) sendValidationCodeSMS(number, code string) error {
+func (u *users) sendValidationCodeSMS(number, code string, client *twilio.RestClient) error {
 	msg, err := u.generateSMSMessage(code)
 	if err != nil {
 		return errors.Wrapf(err, "unable to generate validation SMS")
 	}
-
-	client := twilio.NewRestClientWithParams(twilio.ClientParams{
-		Username: cfg.PhoneNumberValidation.TwilioCredentials.User,
-		Password: cfg.PhoneNumberValidation.TwilioCredentials.Password,
-	})
 
 	params := &openapi.CreateMessageParams{}
 	params.SetTo(number)
@@ -97,7 +92,7 @@ func (u *users) updatePhoneValidationCode(ctx context.Context, conf *PhoneNumber
 		return nil
 	}
 
-	return errors.Wrapf(u.sendValidationCodeSMS(conf.PhoneNumber, conf.ValidationCode), "failed to send validation SMS")
+	return errors.Wrapf(u.sendValidationCodeSMS(conf.PhoneNumber, conf.ValidationCode, u.twilioClient), "failed to send validation SMS")
 }
 
 func (u *users) ConfirmPhoneNumber(ctx context.Context, conf *PhoneNumberConfirmation) error {
@@ -152,21 +147,19 @@ func (u *users) getPhoneNumberValidationUser(_ context.Context, id UserID) (*pho
 	return result, nil
 }
 
-func (u *users) validatePhoneNumber(number string) error {
-	client := twilio.NewRestClientWithParams(twilio.ClientParams{
-		Username: cfg.PhoneNumberValidation.TwilioCredentials.User,
-		Password: cfg.PhoneNumberValidation.TwilioCredentials.Password,
-	})
-
-	_, err := client.LookupsV1.FetchPhoneNumber(number, nil)
+func (u *users) validatePhoneNumber(number string, client *twilio.RestClient) (string, error) {
+	lookupResponse, err := client.LookupsV1.FetchPhoneNumber(number, nil)
 	if err != nil {
 		tErr := new(client2.TwilioRestError)
 		if ok := errors.As(err, tErr); !ok || tErr.Code != 20404 || tErr.Status != 404 {
-			return errors.Wrapf(err, "failed to validate and lookup phone number %v", number)
+			return "", errors.Wrapf(err, "failed to validate and lookup phone number %v", number)
 		}
 
-		return ErrInvalidPhoneNumber
+		return "", ErrInvalidPhoneNumber
+	}
+	if lookupResponse.PhoneNumber != nil {
+		return *lookupResponse.PhoneNumber, nil
 	}
 
-	return nil
+	return number, nil
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/framey-io/go-tarantool"
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
+	"github.com/twilio/twilio-go"
 
 	appCfg "github.com/ice-blockchain/wintr/config"
 	messagebroker "github.com/ice-blockchain/wintr/connectors/message_broker"
@@ -36,10 +37,12 @@ func StartProcessor(ctx context.Context, cancel context.CancelFunc) Processor {
 	mbProcessors := processors(context.Background(), db, mbProducer)
 	mbConsumer := messagebroker.MustConnectAndStartConsuming(context.Background(), cancel, applicationYamlKey, mbProcessors)
 
+	tc := initTwilioClient()
+
 	return &processor{
 		close:           closeAll(mbConsumer, mbProducer, db),
 		ReadRepository:  &users{db: db},
-		WriteRepository: &users{db: db, mb: mbProducer},
+		WriteRepository: &users{db: db, mb: mbProducer, twilioClient: tc},
 	}
 }
 
@@ -114,4 +117,12 @@ func (u *users) sendUsersMessage(ctx context.Context, user UserSnapshot) error {
 func (p *processor) CheckHealth(_ context.Context) error {
 	//nolint:nolintlint    // TODO implement me.
 	return nil
+}
+
+func initTwilioClient() *twilio.RestClient {
+	// No option twilio can fail with creating new client.
+	return twilio.NewRestClientWithParams(twilio.ClientParams{
+		Username: cfg.PhoneNumberValidation.TwilioCredentials.User,
+		Password: cfg.PhoneNumberValidation.TwilioCredentials.Password,
+	})
 }
