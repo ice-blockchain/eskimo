@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/twilio/twilio-go"
+	client2 "github.com/twilio/twilio-go/client"
 	openapi "github.com/twilio/twilio-go/rest/api/v2010"
 
 	"github.com/ice-blockchain/wintr/connectors/storage"
@@ -49,17 +49,12 @@ func (u *users) sendValidationCodeSMS(number, code string) error {
 		return errors.Wrapf(err, "unable to generate validation SMS")
 	}
 
-	client := twilio.NewRestClientWithParams(twilio.ClientParams{
-		Username: cfg.PhoneNumberValidation.TwilioCredentials.User,
-		Password: cfg.PhoneNumberValidation.TwilioCredentials.Password,
-	})
-
 	params := &openapi.CreateMessageParams{}
 	params.SetTo(number)
 	params.SetFrom(cfg.PhoneNumberValidation.FromPhoneNumber)
 	params.SetBody(msg)
 
-	_, err = client.ApiV2010.CreateMessage(params)
+	_, err = u.twilioClient.Api.CreateMessage(params)
 	if err != nil {
 		return errors.Wrapf(err, "twilio error")
 	}
@@ -149,4 +144,21 @@ func (u *users) getPhoneNumberValidationUser(_ context.Context, id UserID) (*pho
 	}
 
 	return result, nil
+}
+
+func (u *users) validatePhoneNumber(number string) (string, error) {
+	lookupResponse, err := u.twilioClient.LookupsV1.FetchPhoneNumber(number, nil)
+	if err != nil {
+		tErr := new(client2.TwilioRestError)
+		if ok := errors.As(err, tErr); !ok || tErr.Code != 20404 || tErr.Status != 404 {
+			return "", errors.Wrapf(err, "failed to validate and lookup phone number %v", number)
+		}
+
+		return "", ErrInvalidPhoneNumber
+	}
+	if lookupResponse.PhoneNumber != nil {
+		return *lookupResponse.PhoneNumber, nil
+	}
+
+	return number, nil
 }

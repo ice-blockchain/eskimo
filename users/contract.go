@@ -11,6 +11,7 @@ import (
 
 	"github.com/framey-io/go-tarantool"
 	"github.com/pkg/errors"
+	"github.com/twilio/twilio-go"
 
 	messagebroker "github.com/ice-blockchain/wintr/connectors/message_broker"
 	"github.com/ice-blockchain/wintr/connectors/storage"
@@ -23,6 +24,7 @@ var (
 	ErrDuplicate                  = storage.ErrDuplicate
 	ErrInvalidPhoneValidationCode = errors.New("invalid phone validation code")
 	ErrExpiredPhoneValidationCode = errors.New("expired phone validation code")
+	ErrInvalidPhoneNumber         = errors.New("phone number invalid")
 )
 
 type (
@@ -107,7 +109,8 @@ type (
 		GetUserByUsername(context.Context, Username) (*User, error)
 		GetUserByID(context.Context, UserID) (*User, error)
 		GetTopCountries(context.Context, Limit, Offset) ([]*CountryStatistics, error)
-		GetTier1Referrals(ctx context.Context, id UserID, limit Limit, offset Offset) ([]*Referral, error)
+		GetTier1Referrals(context.Context, UserID, Limit, Offset) ([]*Referral, error)
+		GetReferralAcquisitionHistory(ctx context.Context, id UserID, days uint64) ([]*ReferralAcquisition, error)
 	}
 )
 
@@ -118,7 +121,7 @@ const (
 	defaultUserImage                       = "default-user-image.jpg"
 	tableCodes                             = "PHONE_NUMBER_VALIDATION_CODES"
 	Add                arithmeticOperation = "+"
-	Substract          arithmeticOperation = "-"
+	Subtract           arithmeticOperation = "-"
 )
 
 var (
@@ -132,8 +135,9 @@ type (
 	arithmeticOperation string
 	// | users implements the UserRepository and only handles everything related to `users`.
 	users struct {
-		mb messagebroker.Client
-		db tarantool.Connector
+		mb           messagebroker.Client
+		db           tarantool.Connector
+		twilioClient *twilio.RestClient
 	}
 
 	usersSource struct {
@@ -187,6 +191,14 @@ type (
 		_msgpack  struct{} `msgpack:",asArray"` // nolint:unused // To insert we need asArray
 		Country   string
 		UserCount uint64
+	}
+
+	referralAcquisition struct {
+		//nolint:unused // Because it is used by the msgpack library for marshalling/unmarshalling.
+		_msgpack struct{} `msgpack:",asArray"`
+		CountT1  uint64
+		CountT2  uint64
+		PastDay  uint64
 	}
 
 	// | config holds the configuration of this package mounted from `application.yaml`.

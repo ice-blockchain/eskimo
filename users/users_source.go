@@ -28,7 +28,7 @@ func (mb *usersSource) Process(ctx context.Context, m *messagebroker.Message) er
 	}
 
 	if u.Before != nil {
-		if err := mb.incrementOrDecrementCountryUserCount(ctx, u.Before.Country, Substract); err != nil {
+		if err := mb.incrementOrDecrementCountryUserCount(ctx, u.Before.Country, Subtract); err != nil {
 			return errors.Wrap(err, "error incrementing country user count")
 		}
 	}

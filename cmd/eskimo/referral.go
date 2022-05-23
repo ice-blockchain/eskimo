@@ -6,7 +6,6 @@ import (
 	"context"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/pkg/errors"
@@ -41,18 +40,19 @@ func (s *service) setupUserReferralRoutes(router *gin.Engine) {
 func (s *service) GetReferralAcquisitionHistory(ctx context.Context, r server.ParsedRequest) server.Response {
 	req := r.(*RequestGetReferralAcquisitionHistory)
 
-	//nolint:nolintlint,gocritic // TODO implement me.
+	//nolint:nolintlint,gocritic // TODO implement or remove me.
 	if req.AuthenticatedUser.ID == req.ID { //nolint:nolintlint,staticcheck
 		// User is trying to get their own referral acquisition history.
 	} else { //nolint:nolintlint,staticcheck
 		// User is trying to get some other user's referral acquisition history.
 	}
 
-	return server.OK([]*users.ReferralAcquisition{{
-		Date: time.Time{},
-		T1:   12, //nolint:gomnd    // The number of users where referred_by = :user_id.
-		T2:   11, //nolint:gomnd    // The number of users where referred_by in (t1).
-	}})
+	res, err := s.usersRepository.GetReferralAcquisitionHistory(ctx, req.ID, req.Days)
+	if err != nil {
+		return server.Unexpected(errors.Wrap(err, "error getting referral acquisition history"))
+	}
+
+	return server.OK(res)
 }
 
 func newRequestGetReferralAcquisitionHistory() server.ParsedRequest {
@@ -70,6 +70,10 @@ func (req *RequestGetReferralAcquisitionHistory) GetAuthenticatedUser() server.A
 }
 
 func (req *RequestGetReferralAcquisitionHistory) Validate() *server.Response {
+	if req.Days == 0 {
+		req.Days = 5
+	}
+
 	return server.RequiredStrings(map[string]string{"userId": req.ID})
 }
 
