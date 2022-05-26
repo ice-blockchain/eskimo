@@ -100,9 +100,16 @@ func (u *users) sendUsersMessage(ctx context.Context, user UserSnapshot) error {
 		return errors.Wrapf(err, "failed to marshal user %#v", user)
 	}
 
+	var key string
+	if user.User == nil {
+		key = user.Before.ID
+	} else {
+		key = user.ID
+	}
+
 	m := &messagebroker.Message{
 		Headers: map[string]string{"producer": "eskimo"},
-		Key:     user.ID,
+		Key:     key,
 		Topic:   cfg.MessageBroker.Topics[0].Name,
 		Value:   valueBytes,
 	}
