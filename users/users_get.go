@@ -59,5 +59,6 @@ func (u *user) toUser() *User {
 		PhoneNumber:       u.PhoneNumber,
 		ProfilePictureURL: profilePictureURL,
 		Country:           u.Country,
+		PhoneNumberHash:   u.PhoneNumberHash,
 	}
 }
