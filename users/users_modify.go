@@ -66,6 +66,8 @@ func (u *User) override(user *User) *User {
 	n.ProfilePicture.Filename = mergeField(u.ProfilePicture.Filename, user.ProfilePicture.Filename)
 	n.Country = mergeField(u.Country, user.Country)
 	n.PhoneNumber = mergeField(u.PhoneNumber, user.PhoneNumber)
+	n.PhoneNumberHash = mergeField(u.PhoneNumberHash, user.PhoneNumberHash)
+	n.AgendaPhoneNumberHashes = mergeField(u.AgendaPhoneNumberHashes, user.AgendaPhoneNumberHashes)
 
 	return n
 }
