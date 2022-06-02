@@ -9,20 +9,19 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/ice-blockchain/eskimo/cmd/eskimo-hut/api"
-	"github.com/ice-blockchain/eskimo/countries"
 	"github.com/ice-blockchain/eskimo/users"
 	appCfg "github.com/ice-blockchain/wintr/config"
 	"github.com/ice-blockchain/wintr/log"
 	"github.com/ice-blockchain/wintr/server"
 )
 
-//nolint:godot // Because those are comments parsed by swagger
-// @title                    User Account API
+//nolint:godot,lll // Because those are comments parsed by swagger
+// @title                    User Accounts, User Devices, User Statistics API
 // @version                  latest
-// @description              API that handles everything related to write only operations for user's account.
+// @description              API that handles everything related to write only operations for user's account, user's devices and statistics about those accounts and devices.
 // @query.collection.format  multi
 // @schemes                  https
-// @contact.name             ICE
+// @contact.name             ice.io
 // @contact.url              https://ice.io
 // @BasePath                 /v1
 func main() {
@@ -39,10 +38,10 @@ func main() {
 func (s *service) RegisterRoutes(engine *gin.Engine) {
 	s.setupUserRoutes(engine)
 	s.setupUserValidationRoutes(engine)
+	s.setupDevicesRoutes(engine)
 }
 
 func (s *service) Init(ctx context.Context, cancel context.CancelFunc) {
-	s.countriesRepository = countries.New(ctx)
 	s.usersProcessor = users.StartProcessor(ctx, cancel)
 }
 
@@ -50,8 +49,6 @@ func (s *service) Close(ctx context.Context) error {
 	if ctx.Err() != nil {
 		return errors.Wrap(ctx.Err(), "could not close usersProcessor because context ended")
 	}
-
-	log.Error(errors.Wrap(s.countriesRepository.Close(), "Error closing country repository"))
 
 	return errors.Wrap(s.usersProcessor.Close(), "could not close usersProcessor")
 }

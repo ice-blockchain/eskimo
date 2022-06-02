@@ -1,4 +1,5 @@
 *.exe
+*.BIN
 *.exe~
 *.dll
 *.so

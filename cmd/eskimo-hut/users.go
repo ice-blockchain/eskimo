@@ -11,14 +11,13 @@ import (
 	"github.com/gin-gonic/gin/binding"
 	"github.com/pkg/errors"
 
-	"github.com/ice-blockchain/eskimo/countries"
 	"github.com/ice-blockchain/eskimo/users"
 	"github.com/ice-blockchain/wintr/server"
 )
 
 func (s *service) setupUserRoutes(router *gin.Engine) {
 	router.
-		Group("/v1").
+		Group("v1").
 		POST("users", server.RootHandler(newRequestCreateUser, s.CreateUser)).
 		PATCH("users/:userId", server.RootHandler(newRequestModifyUser, s.ModifyUser)).
 		DELETE("users/:userId", server.RootHandler(newRequestDeleteUser, s.DeleteUser))
@@ -30,46 +29,31 @@ func (s *service) setupUserRoutes(router *gin.Engine) {
 // @Tags         Accounts
 // @Accept       json
 // @Produce      json
-// @Param        Authorization  header    string             true  "Insert your access token"  default(Bearer <Add access token here>)
-// @Param        request        body      RequestCreateUser  true  "Request params"
+// @Param        Authorization  header    string               true  "Insert your access token"  default(Bearer <Add access token here>)
+// @Param        request        body      users.CreateUserArg  true  "Request params"
 // @Success      201            {object}  users.User
-// @Failure      400                {object}  server.ErrorResponse  "if validations fail"
-// @Failure      401                {object}  server.ErrorResponse  "if not authorized"
+// @Failure      400            {object}  server.ErrorResponse  "if validations fail"
+// @Failure      401            {object}  server.ErrorResponse  "if not authorized"
 // @Failure      409            {object}  server.ErrorResponse  "user already exists with that ID or with that username"
-// @Failure      422                {object}  server.ErrorResponse  "if syntax fails"
-// @Failure      500                {object}  server.ErrorResponse
-// @Failure      504                {object}  server.ErrorResponse  "if request times out"
+// @Failure      422            {object}  server.ErrorResponse  "if syntax fails"
+// @Failure      500            {object}  server.ErrorResponse
+// @Failure      504            {object}  server.ErrorResponse  "if request times out"
 // @Router       /users [POST].
 func (s *service) CreateUser(ctx context.Context, r server.ParsedRequest) server.Response {
-	req := r.(*RequestCreateUser)
-	resp := req.user()
-	resp.Country = s.countriesRepository.Get(ctx, req.ClientIP.String())
-
-	if err := s.usersProcessor.AddUser(ctx, resp); err != nil {
+	if err := s.usersProcessor.CreateUser(ctx, &r.(*RequestCreateUser).CreateUserArg); err != nil {
+		err = errors.Wrapf(err, "failed to create user %#v", r.(*RequestCreateUser).User)
 		if errors.Is(err, users.ErrDuplicate) {
-			return *server.Conflict(err, userDuplicateCode)
+			return *server.Conflict(err, duplicateUserErrorCode)
 		}
 
 		return server.Unexpected(err)
 	}
 
-	return server.Created(resp)
+	return server.Created(r.(*RequestCreateUser).User)
 }
 
 func newRequestCreateUser() server.ParsedRequest {
 	return new(RequestCreateUser)
-}
-
-func (req *RequestCreateUser) user() *users.User {
-	return &users.User{
-		ID:              req.AuthenticatedUser.ID,
-		Email:           req.Email,
-		FullName:        req.FullName,
-		PhoneNumber:     req.PhoneNumber,
-		PhoneNumberHash: req.PhoneNumberHash,
-		Username:        req.Username,
-		ReferredBy:      req.ReferredBy,
-	}
 }
 
 func (req *RequestCreateUser) SetAuthenticatedUser(user server.AuthenticatedUser) {
@@ -93,12 +77,21 @@ func (req *RequestCreateUser) GetClientIP() net.IP {
 }
 
 func (req *RequestCreateUser) Validate() *server.Response {
-	err := verifyIfPhoneNumberAndHashProvidedTogether(req.PhoneNumber, req.PhoneNumberHash)
-	if err != nil {
-		return server.BadRequest(err, userBadRequest)
+	if err := verifyIfPhoneNumberAndHashProvidedTogether(req.PhoneNumber, req.PhoneNumberHash); err != nil {
+		return server.BadRequest(err, invalidPropertiesErrorCode)
 	}
 
-	return server.RequiredStrings(map[string]string{"username": req.Username})
+	if err := server.RequiredStrings(map[string]string{"username": req.Username}); err != nil {
+		return err
+	}
+	req.User.ID = req.AuthenticatedUser.ID
+	req.User.ReferredBy = req.ReferredBy
+	req.User.Username = req.Username
+	req.User.PhoneNumber = req.PhoneNumber
+	req.User.PhoneNumberHash = req.PhoneNumberHash
+	req.User.Email = req.Email
+
+	return nil
 }
 
 func (req *RequestCreateUser) Bindings(c *gin.Context) []func(obj interface{}) error {
@@ -111,55 +104,45 @@ func (req *RequestCreateUser) Bindings(c *gin.Context) []func(obj interface{}) e
 // @Tags         Accounts
 // @Accept       multipart/form-data
 // @Produce      json
-// @Param        Authorization      header    string             true   "Insert your access token"  default(Bearer <Add access token here>)
-// @Param        userId             path      string             true   "ID of the user"
-// @Param        multiPartFormData  formData  RequestModifyUser  true   "Request params"
-// @Param        profilePicture     formData  file               false  "The new profile picture for the user"
+// @Param        Authorization      header    string               true   "Insert your access token"  default(Bearer <Add access token here>)
+// @Param        userId             path      string               true   "ID of the user"
+// @Param        multiPartFormData  formData  users.ModifyUserArg  true   "Request params"
+// @Param        profilePicture     formData  file                 false  "The new profile picture for the user"
 // @Success      200                {object}  users.User
-// @Failure      400            {object}  server.ErrorResponse  "if validations fail"
-// @Failure      401            {object}  server.ErrorResponse  "if not authorized"
+// @Failure      400                {object}  server.ErrorResponse  "if validations fail"
+// @Failure      401                {object}  server.ErrorResponse  "if not authorized"
 // @Failure      403                {object}  server.ErrorResponse  "not allowed"
 // @Failure      404                {object}  server.ErrorResponse  "user is not found"
-// @Failure      422            {object}  server.ErrorResponse  "if syntax fails"
-// @Failure      500            {object}  server.ErrorResponse
-// @Failure      504            {object}  server.ErrorResponse  "if request times out"
+// @Failure      409                {object}  server.ErrorResponse  "if username conflicts with another other user's"
+// @Failure      422                {object}  server.ErrorResponse  "if syntax fails"
+// @Failure      500                {object}  server.ErrorResponse
+// @Failure      504                {object}  server.ErrorResponse  "if request times out"
 // @Router       /users/{userId} [PATCH].
 func (s *service) ModifyUser(ctx context.Context, r server.ParsedRequest) server.Response {
-	req := r.(*RequestModifyUser)
-	user := req.user()
-
-	err := s.usersProcessor.ModifyUser(ctx, user)
-	if err != nil {
-		err = errors.Wrap(err, "modify user failed")
+	if err := s.usersProcessor.ModifyUser(ctx, &r.(*RequestModifyUser).ModifyUserArg); err != nil {
+		err = errors.Wrapf(err, "failed to modify user for %#v", r.(*RequestModifyUser).User)
 		switch {
 		case errors.Is(err, users.ErrNotFound):
-			return *server.NotFound(err, userNotFoundCode)
+			return *server.NotFound(err, userNotFoundErrorCode)
 		case errors.Is(err, users.ErrDuplicate):
-			return *server.Conflict(err, userDuplicateCode)
+			return *server.Conflict(err, duplicateUserErrorCode)
+		case errors.Is(err, users.ErrInvalidCountry):
+			return *server.BadRequest(errors.Errorf("invalid country %v", r.(*RequestModifyUser).Country), invalidPropertiesErrorCode)
+		case errors.Is(err, users.ErrInvalidPhoneNumber):
+			return *server.BadRequest(err, phoneNumberInvalidErrorCode)
+		case errors.Is(err, users.ErrInvalidPhoneNumberFormat):
+			//nolint:errorlint // We know for sure it is that.
+			return *server.BadRequest(err, phoneNumberFormatInvalidErrorCode, err.(*users.Err).Data)
 		default:
 			return server.Unexpected(err)
 		}
 	}
 
-	return server.OK()
+	return server.OK(&r.(*RequestModifyUser).User)
 }
 
 func newRequestModifyUser() server.ParsedRequest {
 	return new(RequestModifyUser)
-}
-
-func (req *RequestModifyUser) user() *users.User {
-	return &users.User{
-		ID:                      req.ID,
-		Email:                   req.Email,
-		FullName:                req.FullName,
-		PhoneNumber:             req.PhoneNumber,
-		PhoneNumberHash:         req.PhoneNumberHash,
-		AgendaPhoneNumberHashes: req.AgendaPhoneNumberHashes,
-		Username:                req.Username,
-		ProfilePicture:          req.ProfilePicture,
-		Country:                 req.Country,
-	}
 }
 
 func (req *RequestModifyUser) SetAuthenticatedUser(user server.AuthenticatedUser) {
@@ -173,64 +156,48 @@ func (req *RequestModifyUser) GetAuthenticatedUser() server.AuthenticatedUser {
 }
 
 func (req *RequestModifyUser) Validate() *server.Response {
-	if req.ID == "" {
-		return server.RequiredStrings(map[string]string{"userId": req.ID})
+	if req.UserID == "" {
+		return server.RequiredStrings(map[string]string{"userId": req.UserID})
 	}
-	if req.ID != req.AuthenticatedUser.ID {
-		err := errors.Errorf("update account not allowed for anyone except the owner. "+
-			"`%v` tried to update `%v`", req.AuthenticatedUser.ID, req.ID)
-
-		return server.Forbidden(err)
+	if req.UserID != req.AuthenticatedUser.ID {
+		return server.Forbidden(errors.Errorf("update account not allowed for anyone except the owner. `%v` tried to update `%v`",
+			req.AuthenticatedUser.ID, req.UserID))
 	}
-	err := verifyIfPhoneNumberAndHashProvidedTogether(req.PhoneNumber, req.PhoneNumberHash)
-	if err != nil {
-		resp := server.BadRequest(err, userBadRequest)
-
-		return resp
+	if err := verifyIfPhoneNumberAndHashProvidedTogether(req.PhoneNumber, req.PhoneNumberHash); err != nil {
+		return server.BadRequest(err, invalidPropertiesErrorCode)
 	}
 	if !req.hasValues() {
-		err := errors.New("modify request without values")
-
-		return server.BadRequest(err, userBadRequest)
+		return server.BadRequest(errors.New("modify request without values"), invalidPropertiesErrorCode)
 	}
-	if req.Country != "" {
-		req.Country = strings.ToLower(req.Country)
-		if err := countries.Validate(req.Country); err != nil {
-			return server.BadRequest(err, userBadRequest)
-		}
-	}
+	req.User.ID = req.UserID
+	req.User.Username = req.Username
+	req.User.FullName = req.FullName
+	req.User.PhoneNumber = req.PhoneNumber
+	req.User.PhoneNumberHash = req.PhoneNumberHash
+	req.User.Country = strings.ToUpper(req.Country)
+	req.User.Email = req.Email
+	req.User.AgendaPhoneNumberHashes = req.AgendaPhoneNumberHashes
 
 	return nil
 }
 
-//nolint:gocognit // This is validator of fields
+//nolint:gocognit // Highly doubt it.
 func (req *RequestModifyUser) hasValues() bool {
-	if req.Country != "" || req.Email != "" || req.FullName != "" || req.PhoneNumber != "" || req.Username != "" {
-		return true
-	}
-	if req.ProfilePicture.Filename != "" {
-		return true
-	}
-	if req.AgendaPhoneNumberHashes != "" {
-		return true
-	}
-
-	return false
+	return req.Country != "" ||
+		req.Email != "" ||
+		req.FullName != "" ||
+		req.PhoneNumber != "" ||
+		req.Username != "" ||
+		req.AgendaPhoneNumberHashes != "" ||
+		req.ProfilePicture != nil
 }
 
 func (req *RequestModifyUser) Bindings(c *gin.Context) []func(obj interface{}) error {
-	return []func(obj interface{}) error{
-		func(obj interface{}) error {
-			err := c.ShouldBindWith(obj, binding.FormMultipart)
-			if err != nil {
-				return errors.Wrap(err, "FormMultipart binding failed")
-			}
-
-			return nil
-		},
-		c.ShouldBindUri,
-		server.ShouldBindAuthenticatedUser(c),
+	multipart := func(obj interface{}) error {
+		return errors.Wrap(c.ShouldBindWith(obj, binding.FormMultipart), "FormMultipart binding failed")
 	}
+
+	return []func(obj interface{}) error{multipart, c.ShouldBindUri, server.ShouldBindAuthenticatedUser(c)}
 }
 
 func verifyIfPhoneNumberAndHashProvidedTogether(phoneNumber, phoneNumberHash string) error {
@@ -262,14 +229,12 @@ func verifyIfPhoneNumberAndHashProvidedTogether(phoneNumber, phoneNumberHash str
 // @Failure      504            {object}  server.ErrorResponse  "if request times out"
 // @Router       /users/{userId} [DELETE].
 func (s *service) DeleteUser(ctx context.Context, r server.ParsedRequest) server.Response {
-	req := r.(*RequestDeleteUser)
-
-	if err := s.usersProcessor.RemoveUser(ctx, req.ID); err != nil {
+	if err := s.usersProcessor.DeleteUser(ctx, r.(*RequestDeleteUser).UserID); err != nil {
 		if errors.Is(err, users.ErrNotFound) {
 			return server.NoContent()
 		}
 
-		return server.Unexpected(err)
+		return server.Unexpected(errors.Wrapf(err, "failed to delete user with id: %v", r.(*RequestDeleteUser).UserID))
 	}
 
 	return server.OK()
@@ -290,14 +255,12 @@ func (req *RequestDeleteUser) GetAuthenticatedUser() server.AuthenticatedUser {
 }
 
 func (req *RequestDeleteUser) Validate() *server.Response {
-	if req.ID == "" {
-		return server.RequiredStrings(map[string]string{"userId": req.ID})
+	if req.UserID == "" {
+		return server.RequiredStrings(map[string]string{"userId": req.UserID})
 	}
-	if req.ID != req.AuthenticatedUser.ID {
-		err := errors.Errorf("delete account not allowed for anyone except the owner. "+
-			"`%v` tried to delete `%v`", req.AuthenticatedUser.ID, req.ID)
-
-		return server.Forbidden(err)
+	if req.UserID != req.AuthenticatedUser.ID {
+		return server.Forbidden(errors.Errorf("delete account not allowed for anyone except the owner. `%v` tried to delete `%v`",
+			req.AuthenticatedUser.ID, req.UserID))
 	}
 
 	return nil

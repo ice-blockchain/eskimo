@@ -192,6 +192,18 @@ addLicense: getAddLicense
 checkLicense: getAddLicense
 	`go env GOPATH`/bin/addlicense -f LICENSE.header -check * .github/*
 
-all: checkLicense checkModVersion checkIfAllDependenciesAreUpToDate checkGenerated build buildAllSupportedPlatforms test coverage benchmark clean
+fix-field-alignment:
+	go install golang.org/x/tools/go/analysis/passes/fieldalignment/cmd/fieldalignment@latest
+	fieldalignment -fix ./...
+
+download-ip2location-sample:
+	rm ./users/.testdata/IP-COUNTRY-REGION-CITY-LATITUDE-LONGITUDE-ZIPCODE-TIMEZONE-ISP-DOMAIN-NETSPEED-AREACODE-WEATHER-MOBILE-ELEVATION-USAGETYPE-SAMPLE.BIN
+	wget https://cdn.ip2location.com/downloads/sample.bin.db24.zip
+	unzip sample.bin.db24.zip -d tmp
+	mv ./tmp/IP-COUNTRY-REGION-CITY-LATITUDE-LONGITUDE-ZIPCODE-TIMEZONE-ISP-DOMAIN-NETSPEED-AREACODE-WEATHER-MOBILE-ELEVATION-USAGETYPE-SAMPLE.BIN ./users/.testdata/IP-COUNTRY-REGION-CITY-LATITUDE-LONGITUDE-ZIPCODE-TIMEZONE-ISP-DOMAIN-NETSPEED-AREACODE-WEATHER-MOBILE-ELEVATION-USAGETYPE-SAMPLE.BIN
+	rm -R tmp
+	rm sample.bin.db24.zip
+
+all: checkLicense checkModVersion checkIfAllDependenciesAreUpToDate checkGenerated build buildAllSupportedPlatforms download-ip2location-sample test coverage benchmark clean
 local: addLicense checkLicense updateGoModVersion updateAllDependencies generate build buildMultiPlatformDockerImage test coverage benchmark lint clean
 dockerfile: binary-specific-service

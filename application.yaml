@@ -29,8 +29,6 @@ users:
     user: admin
     password: pass
   messageBroker:
-    #It's not used, because we`re not consuming anything in the production code.
-    #So, its configured here just for testing or other local purposes.
     consumerGroup: eskimo-users-testing
     createTopics: true
     urls:
@@ -40,6 +38,23 @@ users:
         partitions: 10
         replicationFactor: 1
         retention: 1000h
+      - name: user-device-metadata-events
+        partitions: 10
+        replicationFactor: 1
+        retention: 1000h
+      - name: user-device-settings-events
+        partitions: 10
+        replicationFactor: 1
+        retention: 1000h
+      ### The next topics are not owned by this service, but are needed to be created for the local/test environment.
+      - name: mining-started-events
+        partitions: 10
+        replicationFactor: 1
+        retention: 1000h
+    consumingTopics:
+      - users-events
+      - mining-started-events
+  ip2LocationBinaryPath: ./users/.testdata/IP-COUNTRY-REGION-CITY-LATITUDE-LONGITUDE-ZIPCODE-TIMEZONE-ISP-DOMAIN-NETSPEED-AREACODE-WEATHER-MOBILE-ELEVATION-USAGETYPE-SAMPLE.BIN
   pictureStorage:
     urlUpload: https://storage.bunnycdn.com/ice-staging/profile
     urlDownload: https://ice-staging.b-cdn.net/profile
@@ -49,7 +64,5 @@ users:
       user: user_hidden
       password: password_hidden
     fromPhoneNumber: +12345678
-    expirationTime: 10m
-    smsTemplate: '{{.code}} is your ice confirmation code. It expires in {{.expirationTime}} minutes. Don’t share this code with anyone.'
-countries:
-  ip2LocationBinaryPath: ./IP2LOCATION-LITE-DB1.BIN
+    expirationTime: 3m
+    smsTemplate: '{{.code}} is your ice verification code. This code expires in {{.expirationTime}} minutes.'

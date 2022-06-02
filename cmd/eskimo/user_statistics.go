@@ -6,13 +6,14 @@ import (
 	"context"
 
 	"github.com/gin-gonic/gin"
+	"github.com/pkg/errors"
 
 	"github.com/ice-blockchain/wintr/server"
 )
 
 func (s *service) setupUserStatisticsRoutes(router *gin.Engine) {
 	router.
-		Group("/v1").
+		Group("v1").
 		GET("user-statistics/top-countries", server.RootHandler(newRequestGetTopCountries, s.GetTopCountries))
 }
 
@@ -23,7 +24,8 @@ func (s *service) setupUserStatisticsRoutes(router *gin.Engine) {
 // @Accept       json
 // @Produce      json
 // @Param        Authorization  header    string  true   "Insert your access token"  default(Bearer <Add access token here>)
-// @Param        limit          query     uint64  false  "Limit of elements to return. Defaults to 20"
+// @Param        keyword        query     string  false  "a keyword to look for in all country codes or names"
+// @Param        limit          query     uint64  false  "Limit of elements to return. Defaults to 10"
 // @Param        offset         query     uint64  false  "Number of elements to skip before collecting elements to return"
 // @Success      200            {array}   users.CountryStatistics
 // @Failure      400            {object}  server.ErrorResponse  "if validations fail"
@@ -33,10 +35,9 @@ func (s *service) setupUserStatisticsRoutes(router *gin.Engine) {
 // @Failure      504            {object}  server.ErrorResponse  "if request times out"
 // @Router       /user-statistics/top-countries [GET].
 func (s *service) GetTopCountries(ctx context.Context, r server.ParsedRequest) server.Response {
-	req := r.(*RequestGetTopCountries)
-	result, err := s.usersRepository.GetTopCountries(ctx, req.Limit, req.Offset)
+	result, err := s.usersRepository.GetTopCountries(ctx, &r.(*RequestGetTopCountries).GetTopCountriesArg)
 	if err != nil {
-		return server.Unexpected(err)
+		return server.Unexpected(errors.Wrapf(err, "failed to get top countries for: %#v", &r.(*RequestGetTopCountries).GetTopCountriesArg))
 	}
 
 	return server.OK(result)
@@ -58,12 +59,12 @@ func (req *RequestGetTopCountries) GetAuthenticatedUser() server.AuthenticatedUs
 
 func (req *RequestGetTopCountries) Validate() *server.Response {
 	if req.Limit == 0 {
-		req.Limit = 20
+		req.Limit = 10
 	}
 
 	return nil
 }
 
 func (req *RequestGetTopCountries) Bindings(c *gin.Context) []func(obj interface{}) error {
-	return []func(obj interface{}) error{server.ShouldBindAuthenticatedUser(c)}
+	return []func(obj interface{}) error{c.ShouldBindQuery, server.ShouldBindAuthenticatedUser(c)}
 }

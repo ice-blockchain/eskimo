@@ -10,22 +10,18 @@ import (
 	"github.com/ice-blockchain/wintr/connectors/storage"
 )
 
-func (u *users) RemoveUser(ctx context.Context, userID UserID) error {
+func (r *repository) DeleteUser(ctx context.Context, userID UserID) error {
 	if ctx.Err() != nil {
-		return errors.Wrap(ctx.Err(), "remove user failed because context failed")
+		return errors.Wrap(ctx.Err(), "delete user failed because context failed")
 	}
-	gUser, err := u.GetUserByID(ctx, userID)
+	gUser, err := r.getUserByID(ctx, userID)
 	if err != nil {
 		return errors.Wrapf(err, "unable to get user %v", userID)
 	}
-
-	sql := `DELETE FROM users WHERE id = :id`
-	params := map[string]interface{}{"id": userID}
-
-	query, err := u.db.PrepareExecute(sql, params)
-	if err = storage.CheckSQLDMLErr(query, err); err != nil {
-		return errors.Wrapf(err, "failed to remove user with id %v", userID)
+	if err = storage.CheckSQLDMLErr(r.db.PrepareExecute(`DELETE FROM users WHERE id = :id`, map[string]interface{}{"id": userID})); err != nil {
+		return errors.Wrapf(err, "failed to delete user with id %v", userID)
 	}
+	u := &UserSnapshot{User: nil, Before: gUser}
 
-	return errors.Wrap(u.sendUsersMessage(ctx, UserSnapshot{User: nil, Before: gUser}), "failed to send deleted user message")
+	return errors.Wrapf(r.sendUserSnapshotMessage(ctx, u), "failed to send deleted user message for %#v", u)
 }

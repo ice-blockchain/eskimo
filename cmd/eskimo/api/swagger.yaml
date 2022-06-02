@@ -2,11 +2,27 @@
 
 basePath: /v1
 definitions:
+  devicesettings.NotificationChannels:
+    properties:
+      email:
+        example: false
+        type: boolean
+      push:
+        example: true
+        type: boolean
+    type: object
+  devicesettings.NotificationSettings:
+    additionalProperties:
+      $ref: '#/definitions/devicesettings.NotificationChannels'
+    type: object
   server.ErrorResponse:
     properties:
       code:
         example: SOMETHING_NOT_FOUND
         type: string
+      data:
+        additionalProperties: true
+        type: object
       error:
         example: something is missing
         type: string
@@ -15,11 +31,58 @@ definitions:
     properties:
       country:
         description: ISO 3166 country code.
-        example: us
+        example: US
         type: string
       userCount:
         example: 12121212
         type: integer
+    type: object
+  users.DeviceSettings:
+    properties:
+      deviceUniqueId:
+        example: FCDBD8EF-62FC-4ECB-B2F5-92C9E79AC7F9
+        type: string
+      language:
+        description: Optional.
+        example: en
+        type: string
+      notificationSettings:
+        $ref: '#/definitions/devicesettings.NotificationSettings'
+        description: Optional.
+      updatedAt:
+        description: '`Read Only`.'
+        example: "2022-01-03T16:20:52.156534Z"
+        type: string
+      userId:
+        example: did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2
+        type: string
+    type: object
+  users.Referral:
+    properties:
+      active:
+        example: true
+        type: boolean
+      country:
+        example: US
+        type: string
+      fullName:
+        example: John Doe
+        type: string
+      id:
+        example: did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2
+        type: string
+      phoneNumber:
+        example: "+12099216581"
+        type: string
+      pingAllowed:
+        example: false
+        type: boolean
+      profilePictureURL:
+        example: https://somecdn.com/p1.jpg
+        type: string
+      username:
+        example: jdoe
+        type: string
     type: object
   users.ReferralAcquisition:
     properties:
@@ -33,58 +96,83 @@ definitions:
         example: 13
         type: integer
     type: object
-  users.User:
+  users.Referrals:
     properties:
-      agendaPhoneNumberHashes:
-        example: Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2
-        type: string
+      active:
+        example: 11
+        type: integer
+      referrals:
+        items:
+          $ref: '#/definitions/users.Referral'
+        type: array
+      total:
+        example: 11
+        type: integer
+    type: object
+  users.RelatableUserProfile:
+    properties:
+      active:
+        example: true
+        type: boolean
       country:
-        description: ISO 3166 country code.
-        example: us
-        type: string
-      createdAt:
-        example: "2022-01-03T16:20:52.156534Z"
-        type: string
-      deletedAt:
-        example: "2022-01-03T16:20:52.156534Z"
-        type: string
-      email:
-        example: jdoe@gmail.com
+        example: US
         type: string
       fullName:
         example: John Doe
         type: string
-      hashCode:
-        type: integer
       id:
         example: did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2
         type: string
       phoneNumber:
         example: "+12099216581"
         type: string
-      phoneNumberHash:
-        example: Ef86A6021afCDe5673511376B2
+      pingAllowed:
+        example: false
+        type: boolean
+      profilePictureURL:
+        example: https://somecdn.com/p1.jpg
+        type: string
+      referralType:
+        enum:
+        - T1
+        - T2
+        example: T1
+        type: string
+      username:
+        example: jdoe
+        type: string
+    type: object
+  users.UserProfile:
+    properties:
+      country:
+        example: US
+        type: string
+      fullName:
+        example: John Doe
+        type: string
+      id:
+        example: did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2
+        type: string
+      phoneNumber:
+        example: "+12099216581"
         type: string
       profilePictureURL:
         example: https://somecdn.com/p1.jpg
         type: string
-      referredBy:
-        example: did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2
-        type: string
-      updatedAt:
-        example: "2022-01-03T16:20:52.156534Z"
-        type: string
+      referralCount:
+        example: 100
+        type: integer
       username:
         example: jdoe
         type: string
     type: object
 info:
   contact:
-    name: ICE
+    name: ice.io
     url: https://ice.io
   description: API that handles everything related to read only operations for user's
-    account.
-  title: User Account API
+    account, user's devices and statistics about those accounts and devices.
+  title: User Accounts, User Devices, User Statistics API
   version: latest
 paths:
   /user-statistics/top-countries:
@@ -99,7 +187,11 @@ paths:
         name: Authorization
         required: true
         type: string
-      - description: Limit of elements to return. Defaults to 20
+      - description: a keyword to look for in all country codes or names
+        in: query
+        name: keyword
+        type: string
+      - description: Limit of elements to return. Defaults to 10
         in: query
         name: limit
         type: integer
@@ -162,7 +254,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/users.User'
+            $ref: '#/definitions/users.UserProfile'
         "400":
           description: if validations fail
           schema:
@@ -173,6 +265,62 @@ paths:
             $ref: '#/definitions/server.ErrorResponse'
         "404":
           description: if not found
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "422":
+          description: if syntax fails
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "504":
+          description: if request times out
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+      tags:
+      - Accounts
+  /users:
+    get:
+      consumes:
+      - application/json
+      description: Returns a list of user account based on the provided query parameters.
+      parameters:
+      - default: Bearer <Add access token here>
+        description: Insert your access token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: A keyword to look for in the usernames and full names of users
+        in: query
+        name: keyword
+        required: true
+        type: string
+      - description: Limit of elements to return. Defaults to 10
+        in: query
+        name: limit
+        type: integer
+      - description: Elements to skip before starting to look for
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/users.RelatableUserProfile'
+            type: array
+        "400":
+          description: if validations fail
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "401":
+          description: if not authorized
           schema:
             $ref: '#/definitions/server.ErrorResponse'
         "422":
@@ -193,7 +341,7 @@ paths:
     get:
       consumes:
       - application/json
-      description: Returns an user account
+      description: Returns an user's account.
       parameters:
       - default: Bearer <Add access token here>
         description: Insert your access token
@@ -212,7 +360,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/users.User'
+            $ref: '#/definitions/users.UserProfile'
         "400":
           description: if validations fail
           schema:
@@ -239,6 +387,65 @@ paths:
             $ref: '#/definitions/server.ErrorResponse'
       tags:
       - Accounts
+  /users/{userId}/devices/{deviceUniqueId}/settings:
+    get:
+      consumes:
+      - application/json
+      description: Returns the settings of an user's device
+      parameters:
+      - default: Bearer <Add access token here>
+        description: Insert your access token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: ID of the user
+        in: path
+        name: userId
+        required: true
+        type: string
+      - description: ID of the device
+        in: path
+        name: deviceUniqueId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/users.DeviceSettings'
+        "400":
+          description: if validations fail
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "401":
+          description: if not authorized
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "403":
+          description: if not allowed
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "404":
+          description: if not found
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "422":
+          description: if syntax fails
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "504":
+          description: if request times out
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+      tags:
+      - Devices
   /users/{userId}/referral-acquisition-history:
     get:
       consumes:
@@ -278,6 +485,10 @@ paths:
           description: if not authorized
           schema:
             $ref: '#/definitions/server.ErrorResponse'
+        "403":
+          description: if not allowed
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
         "422":
           description: if syntax fails
           schema:
@@ -309,11 +520,12 @@ paths:
         name: userId
         required: true
         type: string
-      - description: 'Type of referrals: T1 or T2. Defaults to `T1`'
+      - description: 'Type of referrals: `CONTACTS` or `T1` or `T2`'
         in: query
         name: type
+        required: true
         type: string
-      - description: Limit of elements to return
+      - description: Limit of elements to return. Defaults to 10
         in: query
         name: limit
         type: integer
@@ -327,15 +539,17 @@ paths:
         "200":
           description: OK
           schema:
-            items:
-              $ref: '#/definitions/users.User'
-            type: array
+            $ref: '#/definitions/users.Referrals'
         "400":
           description: if validations fail
           schema:
             $ref: '#/definitions/server.ErrorResponse'
         "401":
           description: if not authorized
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "403":
+          description: if not allowed
           schema:
             $ref: '#/definitions/server.ErrorResponse'
         "422":

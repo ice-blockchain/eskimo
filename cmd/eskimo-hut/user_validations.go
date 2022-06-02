@@ -14,8 +14,8 @@ import (
 
 func (s *service) setupUserValidationRoutes(router *gin.Engine) {
 	router.
-		Group("/v1").
-		PUT("user-validations/phone-number", server.RootHandler(newRequestValidatePhoneNumber, s.ValidatePhoneNumber))
+		Group("v1").
+		PUT("user-validations/:userId/phone-number", server.RootHandler(newRequestValidatePhoneNumber, s.ValidatePhoneNumber))
 }
 
 // ValidatePhoneNumber godoc
@@ -24,44 +24,36 @@ func (s *service) setupUserValidationRoutes(router *gin.Engine) {
 // @Tags         Validations
 // @Accept       json
 // @Produce      json
-// @Param        Authorization  header  string                      true  "Insert your access token"  default(Bearer <Add access token here>)
-// @Param        request        body    RequestValidatePhoneNumber  true  "Request params"
+// @Param        Authorization  header  string                       true  "Insert your access token"  default(Bearer <Add access token here>)
+// @Param        userId         path    string                       true  "ID of the user"
+// @Param        request        body    users.PhoneNumberValidation  true  "Request params"
 // @Success      200            "ok"
 // @Failure      400            {object}  server.ErrorResponse  "if validations fail"
 // @Failure      401            {object}  server.ErrorResponse  "if not authorized"
-// @Failure      404            {object}  server.ErrorResponse  "phone number is not in the process of validation"
+// @Failure      403            {object}  server.ErrorResponse  "if not allowed"
+// @Failure      404            {object}  server.ErrorResponse  "phone number is not in the process of validation or user not found"
 // @Failure      422            {object}  server.ErrorResponse  "if syntax fails"
 // @Failure      500            {object}  server.ErrorResponse
 // @Failure      504            {object}  server.ErrorResponse  "if request times out"
-// @Router       /user-validations/phone-number [PUT].
+// @Router       /user-validations/{userId}/phone-number [PUT].
 func (s *service) ValidatePhoneNumber(ctx context.Context, r server.ParsedRequest) server.Response {
-	req := r.(*RequestValidatePhoneNumber)
-
-	err := s.usersProcessor.ConfirmPhoneNumber(ctx, req.confirm())
-	if err != nil {
-		err = errors.Wrap(err, "confirm phone number failed")
+	if err := s.usersProcessor.ValidatePhoneNumber(ctx, &r.(*RequestValidatePhoneNumber).PhoneNumberValidation); err != nil {
+		err = errors.Wrapf(err, "validate phone number failed for %#v", &r.(*RequestValidatePhoneNumber).PhoneNumberValidation)
 		switch {
+		case errors.Is(err, users.ErrRelationNotFound):
+			return *server.NotFound(err, userNotFoundErrorCode)
 		case errors.Is(err, users.ErrNotFound):
-			return *server.NotFound(err, userNotFoundCode)
+			return *server.NotFound(err, phoneValidationNotFoundErrorCode)
 		case errors.Is(err, users.ErrInvalidPhoneValidationCode):
-			return *server.BadRequest(err, userInvalidCode)
+			return *server.BadRequest(err, invalidValidationCodeErrorCode)
 		case errors.Is(err, users.ErrExpiredPhoneValidationCode):
-			return *server.BadRequest(err, userExpiredCode)
+			return *server.BadRequest(err, phoneValidationCodeExpiredErrorCode)
 		}
 
 		return server.Unexpected(err)
 	}
 
 	return server.OK()
-}
-
-func (req *RequestValidatePhoneNumber) confirm() *users.PhoneNumberConfirmation {
-	return &users.PhoneNumberConfirmation{
-		UserID:          req.AuthenticatedUser.ID,
-		PhoneNumber:     req.PhoneNumber,
-		ValidationCode:  req.ValidationCode,
-		PhoneNumberHash: req.PhoneNumberHash,
-	}
 }
 
 func newRequestValidatePhoneNumber() server.ParsedRequest {
@@ -79,9 +71,18 @@ func (req *RequestValidatePhoneNumber) GetAuthenticatedUser() server.Authenticat
 }
 
 func (req *RequestValidatePhoneNumber) Validate() *server.Response {
-	return server.RequiredStrings(map[string]string{"phoneNumber": req.PhoneNumber, "phoneNumberHash": req.PhoneNumberHash, "validationCode": req.ValidationCode})
+	if req.AuthenticatedUser.ID != req.UserID {
+		return server.Forbidden(errors.Errorf("you can only validate your phone numbers. u>%#v!=a>%v", req.UserID, req.AuthenticatedUser.ID))
+	}
+
+	return server.RequiredStrings(map[string]string{
+		"userId":          req.UserID,
+		"phoneNumber":     req.PhoneNumber,
+		"phoneNumberHash": req.PhoneNumberHash,
+		"validationCode":  req.ValidationCode,
+	})
 }
 
 func (req *RequestValidatePhoneNumber) Bindings(c *gin.Context) []func(obj interface{}) error {
-	return []func(obj interface{}) error{c.ShouldBindJSON, server.ShouldBindAuthenticatedUser(c)}
+	return []func(obj interface{}) error{c.ShouldBindJSON, c.ShouldBindUri, server.ShouldBindAuthenticatedUser(c)}
 }

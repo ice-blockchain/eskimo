@@ -2,67 +2,160 @@
 
 basePath: /v1
 definitions:
-  main.RequestCreateUser:
+  CreateUserRequestBody:
     properties:
       email:
-        description: '`email` is optional.'
         example: jdoe@gmail.com
         type: string
-      fullName:
-        description: '`fullName` is optional.'
-        example: John Doe
-        type: string
       phoneNumber:
-        description: '`phoneNumber` is optional.'
         example: "+12099216581"
         type: string
       phoneNumberHash:
         example: Ef86A6021afCDe5673511376B2
         type: string
       referredBy:
-        description: User's ID, so client app requests user by user name and provides
-          ID here.
         example: did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2
         type: string
       username:
         example: jdoe
         type: string
     type: object
-  main.RequestValidatePhoneNumber:
+  ValidatePhoneNumberRequestBody:
     properties:
+      createdAt:
+        description: '`Read Only`.'
+        example: "2022-01-03T16:20:52.156534Z"
+        type: string
       phoneNumber:
-        example: "+12099216581"
+        example: "+12345678"
         type: string
       phoneNumberHash:
         example: Ef86A6021afCDe5673511376B2
         type: string
+      userId:
+        example: did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2
+        type: string
       validationCode:
-        example: "232323232"
+        example: "1234"
         type: string
     type: object
-  multipart.FileHeader:
+  devicesettings.NotificationChannels:
     properties:
-      filename:
-        type: string
-      header:
-        $ref: '#/definitions/textproto.MIMEHeader'
-      size:
-        type: integer
+      email:
+        example: false
+        type: boolean
+      push:
+        example: true
+        type: boolean
+    type: object
+  devicesettings.NotificationSettings:
+    additionalProperties:
+      $ref: '#/definitions/devicesettings.NotificationChannels'
     type: object
   server.ErrorResponse:
     properties:
       code:
         example: SOMETHING_NOT_FOUND
         type: string
+      data:
+        additionalProperties: true
+        type: object
       error:
         example: something is missing
         type: string
     type: object
-  textproto.MIMEHeader:
-    additionalProperties:
-      items:
+  users.DeviceLocation:
+    properties:
+      country:
+        example: US
         type: string
-      type: array
+    type: object
+  users.DeviceMetadata:
+    properties:
+      apiLevel:
+        type: integer
+      baseOS:
+        type: string
+      bootloader:
+        type: string
+      brand:
+        type: string
+      buildId:
+        type: string
+      carrier:
+        type: string
+      codename:
+        type: string
+      device:
+        type: string
+      deviceId:
+        type: string
+      deviceName:
+        type: string
+      deviceType:
+        type: string
+      deviceUniqueId:
+        example: FCDBD8EF-62FC-4ECB-B2F5-92C9E79AC7F9
+        type: string
+      emulator:
+        type: boolean
+      fingerprint:
+        type: string
+      firstInstallTime:
+        type: string
+      hardware:
+        type: string
+      installerPackageName:
+        type: string
+      instanceId:
+        type: string
+      lastUpdateTime:
+        type: string
+      manufacturer:
+        type: string
+      pinOrFingerprintSet:
+        type: boolean
+      product:
+        type: string
+      pushNotificationToken:
+        type: string
+      readableVersion:
+        type: string
+      systemName:
+        type: string
+      systemVersion:
+        type: string
+      tablet:
+        type: boolean
+      tags:
+        type: string
+      type:
+        type: string
+      userAgent:
+        type: string
+      userId:
+        example: did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2
+        type: string
+    type: object
+  users.DeviceSettings:
+    properties:
+      deviceUniqueId:
+        example: FCDBD8EF-62FC-4ECB-B2F5-92C9E79AC7F9
+        type: string
+      language:
+        description: Optional.
+        example: en
+        type: string
+      notificationSettings:
+        $ref: '#/definitions/devicesettings.NotificationSettings'
+        description: Optional.
+      updatedAt:
+        description: '`Read Only`.'
+        example: "2022-01-03T16:20:52.156534Z"
+        type: string
+      userId:
+        example: did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2
+        type: string
     type: object
   users.User:
     properties:
@@ -70,13 +163,9 @@ definitions:
         example: Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2
         type: string
       country:
-        description: ISO 3166 country code.
-        example: us
+        example: US
         type: string
       createdAt:
-        example: "2022-01-03T16:20:52.156534Z"
-        type: string
-      deletedAt:
         example: "2022-01-03T16:20:52.156534Z"
         type: string
       email:
@@ -85,10 +174,14 @@ definitions:
       fullName:
         example: John Doe
         type: string
-      hashCode:
-        type: integer
       id:
         example: did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2
+        type: string
+      lastMiningStartedAt:
+        example: "2022-01-03T16:20:52.156534Z"
+        type: string
+      lastPingAt:
+        example: "2022-01-03T16:20:52.156534Z"
         type: string
       phoneNumber:
         example: "+12099216581"
@@ -111,14 +204,14 @@ definitions:
     type: object
 info:
   contact:
-    name: ICE
+    name: ice.io
     url: https://ice.io
   description: API that handles everything related to write only operations for user's
-    account.
-  title: User Account API
+    account, user's devices and statistics about those accounts and devices.
+  title: User Accounts, User Devices, User Statistics API
   version: latest
 paths:
-  /user-validations/phone-number:
+  /user-validations/{userId}/phone-number:
     put:
       consumes:
       - application/json
@@ -131,12 +224,17 @@ paths:
         name: Authorization
         required: true
         type: string
+      - description: ID of the user
+        in: path
+        name: userId
+        required: true
+        type: string
       - description: Request params
         in: body
         name: request
         required: true
         schema:
-          $ref: '#/definitions/main.RequestValidatePhoneNumber'
+          $ref: '#/definitions/ValidatePhoneNumberRequestBody'
       produces:
       - application/json
       responses:
@@ -150,8 +248,13 @@ paths:
           description: if not authorized
           schema:
             $ref: '#/definitions/server.ErrorResponse'
+        "403":
+          description: if not allowed
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
         "404":
-          description: phone number is not in the process of validation
+          description: phone number is not in the process of validation or user not
+            found
           schema:
             $ref: '#/definitions/server.ErrorResponse'
         "422":
@@ -185,7 +288,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/main.RequestCreateUser'
+          $ref: '#/definitions/CreateUserRequestBody'
       produces:
       - application/json
       responses:
@@ -285,31 +388,31 @@ paths:
         name: userId
         required: true
         type: string
-      - example: Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2
+      - description: Optional. Example:"Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2".
         in: formData
         name: agendaPhoneNumberHashes
         type: string
-      - example: us
+      - description: Optional. Example:"US".
         in: formData
         name: country
         type: string
-      - example: jdoe@gmail.com
+      - description: Optional. Example:"jdoe@gmail.com".
         in: formData
         name: email
         type: string
-      - example: John Doe
+      - description: Optional. Example:"John Doe".
         in: formData
         name: fullName
         type: string
-      - example: "+12099216581"
+      - description: Optional. Example:"+12099216581".
         in: formData
         name: phoneNumber
         type: string
-      - example: Ef86A6021afCDe5673511376B2
+      - description: Optional. Required only if `phoneNumber` is set. Example:"Ef86A6021afCDe5673511376B2".
         in: formData
         name: phoneNumberHash
         type: string
-      - example: jdoe
+      - description: Example:"jdoe".
         in: formData
         name: username
         type: string
@@ -340,6 +443,10 @@ paths:
           description: user is not found
           schema:
             $ref: '#/definitions/server.ErrorResponse'
+        "409":
+          description: if username conflicts with another other user's
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
         "422":
           description: if syntax fails
           schema:
@@ -354,6 +461,180 @@ paths:
             $ref: '#/definitions/server.ErrorResponse'
       tags:
       - Accounts
+  /users/{userId}/devices/{deviceUniqueId}/metadata:
+    put:
+      consumes:
+      - application/json
+      description: Replaces existing device metadata with the provided one.
+      parameters:
+      - default: Bearer <Add access token here>
+        description: Insert your access token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: ID of the user
+        in: path
+        name: userId
+        required: true
+        type: string
+      - description: ID of the device
+        in: path
+        name: deviceUniqueId
+        required: true
+        type: string
+      - description: Request params
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/users.DeviceMetadata'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: if validations fail
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "401":
+          description: if not authorized
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "403":
+          description: if not allowed
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "422":
+          description: if syntax fails
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "504":
+          description: if request times out
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+      tags:
+      - Devices
+  /users/{userId}/devices/{deviceUniqueId}/metadata/location:
+    get:
+      consumes:
+      - application/json
+      description: Returns the device's geolocation based on its IP or based on account
+        information if userId is also provided.
+      parameters:
+      - default: Bearer <Add access token here>
+        description: Insert your access token. Required only if userId is set
+        in: header
+        name: Authorization
+        type: string
+      - description: ID of the user. Is optional, set an `-` if none.
+        in: path
+        name: userId
+        required: true
+        type: string
+      - description: ID of the device
+        in: path
+        name: deviceUniqueId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/users.DeviceLocation'
+        "400":
+          description: if validations fail
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "401":
+          description: if not authenticated
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "403":
+          description: if not allowed
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "422":
+          description: if syntax fails
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "504":
+          description: if request times out
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+      tags:
+      - Devices
+  /users/{userId}/devices/{deviceUniqueId}/settings:
+    patch:
+      consumes:
+      - application/json
+      description: Modifies only specific device settings provided in the request
+        body.
+      parameters:
+      - default: Bearer <Add access token here>
+        description: Insert your access token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: ID of the user
+        in: path
+        name: userId
+        required: true
+        type: string
+      - description: ID of the device
+        in: path
+        name: deviceUniqueId
+        required: true
+        type: string
+      - description: Request params
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/users.DeviceSettings'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: if validations fail
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "401":
+          description: if not authorized
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "403":
+          description: if not allowed
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "422":
+          description: if syntax fails
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "504":
+          description: if request times out
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+      tags:
+      - Devices
 schemes:
 - https
 swagger: "2.0"

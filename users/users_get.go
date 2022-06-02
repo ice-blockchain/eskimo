@@ -6,59 +6,160 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/cenkalti/backoff/v4"
 	"github.com/framey-io/go-tarantool"
 	"github.com/pkg/errors"
+	"github.com/vmihailenco/msgpack/v5"
+
+	"github.com/ice-blockchain/wintr/time"
 )
 
-func (u *users) GetUserByID(ctx context.Context, id UserID) (*User, error) {
+func (r *repository) mustGetUserByID(ctx context.Context, userID UserID) (u *User, err error) {
+	if u, err = r.getUserByID(ctx, userID); err == nil {
+		return
+	}
+
+	if !errors.Is(err, ErrNotFound) {
+		return nil, errors.Wrapf(err, "failed to get current user for userID:%v", userID)
+	}
+
+	err = retry(ctx, func() error {
+		if u, err = r.getUserByID(ctx, userID); err != nil {
+			if errors.Is(err, ErrNotFound) {
+				return err
+			}
+
+			//nolint:wrapcheck // It's a proxy.
+			return backoff.Permanent(err)
+		}
+
+		return nil
+	})
+
+	return
+}
+
+func (r *repository) getUserByID(ctx context.Context, id UserID) (*User, error) {
 	if ctx.Err() != nil {
 		return nil, errors.Wrap(ctx.Err(), "get user failed because context failed")
 	}
-	result := new(user)
-
-	if err := u.db.GetTyped("USERS", "pk_unnamed_USERS_1", []interface{}{id}, result); err != nil {
+	result := new(User)
+	if err := r.db.GetTyped("USERS", "pk_unnamed_USERS_1", tarantool.StringKey{S: id}, result); err != nil {
 		return nil, errors.Wrapf(err, "failed to get user by id %v", id)
 	}
-
 	if result.ID == "" {
+		return nil, ErrNotFound
+	}
+
+	return result, nil
+}
+
+func (r *repository) GetUserByID(ctx context.Context, id UserID) (*UserProfile, error) {
+	if ctx.Err() != nil {
+		return nil, errors.Wrap(ctx.Err(), "get user failed because context failed")
+	}
+	sql := fmt.Sprintf(`
+	SELECT  u.id 									AS id,
+			u.username 								AS username,
+			u.full_name 							AS full_name,
+			u.phone_number 							AS phone_number_,
+			'%v/' || u.profile_picture_name 		AS profile_picture_url,
+			u.country 								AS country,
+			count(distinct t1.id) + count(t2.id) 	AS total_referral_count
+	FROM users u 
+			LEFT JOIN USERS t1
+                	ON t1.referred_by = u.id
+						LEFT JOIN USERS t2
+								ON t2.referred_by = t1.id
+	WHERE u.id = :user_id`, cfg.PictureStorage.URLDownload)
+	var result []*UserProfile
+	if err := r.db.PrepareExecuteTyped(sql, map[string]interface{}{"user_id": id}, &result); err != nil {
+		return nil, errors.Wrapf(err, "failed to select user by id %v", id)
+	}
+	if len(result) == 0 || result[0].ID == "" {
 		return nil, errors.Wrapf(ErrNotFound, "no user found with id %v", id)
 	}
 
-	return result.toUser(), nil
+	return result[0], nil
 }
 
-func (u *users) GetUserByUsername(ctx context.Context, name Username) (*User, error) {
+func (r *repository) GetUserByUsername(ctx context.Context, name Username) (*UserProfile, error) {
 	if ctx.Err() != nil {
 		return nil, errors.Wrap(ctx.Err(), "get user failed because context failed")
 	}
-	result := new(user)
-
-	if err := u.db.GetTyped("USERS", "unique_unnamed_USERS_2", tarantool.StringKey{S: name}, result); err != nil {
+	result := new(User)
+	if err := r.db.GetTyped("USERS", "unique_unnamed_USERS_2", tarantool.StringKey{S: name}, result); err != nil {
 		return nil, errors.Wrapf(err, "failed to get user by username %v", name)
 	}
 	if result.ID == "" {
 		return nil, errors.Wrapf(ErrNotFound, "no user found with username %v", name)
 	}
+	result.ProfilePictureURL = fmt.Sprintf("%s/%s", cfg.PictureStorage.URLDownload, result.ProfilePictureURL)
+	result.PhoneNumber = ""
 
-	return &User{
-		ID:       result.ID,
-		Username: result.Username,
-	}, nil
+	return &UserProfile{PublicUserInformation: result.PublicUserInformation}, nil
 }
 
-func (u *user) toUser() *User {
-	profilePictureURL := fmt.Sprintf("%s/%s", cfg.PictureStorage.URLDownload, u.ProfilePictureName)
-
-	return &User{
-		ID:                u.ID,
-		HashCode:          u.HashCode,
-		ReferredBy:        u.ReferredBy,
-		Username:          u.Username,
-		Email:             u.Email,
-		FullName:          u.FullName,
-		PhoneNumber:       u.PhoneNumber,
-		ProfilePictureURL: profilePictureURL,
-		Country:           u.Country,
-		PhoneNumberHash:   u.PhoneNumberHash,
+//nolint:funlen // Big sql.
+func (r *repository) GetUsers(ctx context.Context, arg *GetUsersArg) (result []*RelatableUserProfile, err error) {
+	if ctx.Err() != nil {
+		return nil, errors.Wrap(ctx.Err(), "get users failed because context failed")
 	}
+	sql := fmt.Sprintf(`
+			SELECT u.last_mining_started_at                                                                          AS last_mining_started_at,
+				   (CASE
+						WHEN t0.id = :user_id
+							THEN u.last_ping_at
+						ELSE :nowNanos
+					END)                                                                                             AS last_ping_at,	
+				   u.id                                                                                              AS id,
+				   u.username                                                                                        AS username,
+				   u.full_name                                                                                       AS full_name,
+				   (SELECT u.phone_number
+					FROM users user_requesting_this
+					WHERE 1=1
+						AND id = :user_id
+						AND POSITION(u.phone_number_hash, user_requesting_this.agenda_phone_number_hashes) > 0)      AS phone_number_,
+				   '%v/' || u.profile_picture_name                                                                   AS profile_picture_url,
+				   u.country                                                                                         AS country,
+				   (CASE
+						WHEN t0.id = :user_id
+							THEN 'T1'
+						WHEN t0.referred_by = :user_id
+							THEN 'T2'
+						ELSE ''
+					END)                                                                                             AS referral_type	
+			FROM users u
+					 JOIN USERS t0
+						  ON t0.id = u.referred_by
+			WHERE (
+					POSITION(LOWER(:keyword),LOWER(u.username)) = 1
+					OR
+					POSITION(LOWER(:keyword),LOWER(u.full_name)) = 1
+				  )
+			ORDER BY
+				(phone_number_ != '' AND phone_number_ != null) DESC,
+				t0.id = :user_id DESC,
+				t0.referred_by = :user_id DESC,
+				u.username DESC
+			LIMIT %v OFFSET :offset`, cfg.PictureStorage.URLDownload, arg.Limit)
+	params := map[string]interface{}{
+		"keyword":  arg.Keyword,
+		"offset":   arg.Offset,
+		"userId":   arg.UserID,
+		"nowNanos": time.Now(),
+	}
+	err = r.db.PrepareExecuteTyped(sql, params, &result)
+
+	return result, errors.Wrapf(err, "failed to select for users by %#v", arg)
+}
+
+func (n *NotExpired) DecodeMsgpack(dec *msgpack.Decoder) error {
+	v := new(time.Time)
+	if err := v.DecodeMsgpack(dec); err != nil {
+		return errors.Wrap(err, "failed to decode time based struct for NotExpired")
+	}
+	*n = time.Now().Sub(*v.Time) <= expirationDeadline
+
+	return nil
 }

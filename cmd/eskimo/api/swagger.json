@@ -4,10 +4,10 @@
     ],
     "swagger": "2.0",
     "info": {
-        "description": "API that handles everything related to read only operations for user's account.",
-        "title": "User Account API",
+        "description": "API that handles everything related to read only operations for user's account, user's devices and statistics about those accounts and devices.",
+        "title": "User Accounts, User Devices, User Statistics API",
         "contact": {
-            "name": "ICE",
+            "name": "ice.io",
             "url": "https://ice.io"
         },
         "version": "latest"
@@ -36,8 +36,14 @@
                         "required": true
                     },
                     {
+                        "type": "string",
+                        "description": "a keyword to look for in all country codes or names",
+                        "name": "keyword",
+                        "in": "query"
+                    },
+                    {
                         "type": "integer",
-                        "description": "Limit of elements to return. Defaults to 20",
+                        "description": "Limit of elements to return. Defaults to 10",
                         "name": "limit",
                         "in": "query"
                     },
@@ -124,7 +130,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/users.User"
+                            "$ref": "#/definitions/users.UserProfile"
                         }
                     },
                     "400": {
@@ -166,9 +172,93 @@
                 }
             }
         },
+        "/users": {
+            "get": {
+                "description": "Returns a list of user account based on the provided query parameters.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Accounts"
+                ],
+                "parameters": [
+                    {
+                        "type": "string",
+                        "default": "Bearer \u003cAdd access token here\u003e",
+                        "description": "Insert your access token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "A keyword to look for in the usernames and full names of users",
+                        "name": "keyword",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Limit of elements to return. Defaults to 10",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Elements to skip before starting to look for",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/users.RelatableUserProfile"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "if validations fail",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "if not authorized",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    },
+                    "422": {
+                        "description": "if syntax fails",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    },
+                    "504": {
+                        "description": "if request times out",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/users/{userId}": {
             "get": {
-                "description": "Returns an user account",
+                "description": "Returns an user's account.",
                 "consumes": [
                     "application/json"
                 ],
@@ -199,7 +289,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/users.User"
+                            "$ref": "#/definitions/users.UserProfile"
                         }
                     },
                     "400": {
@@ -210,6 +300,94 @@
                     },
                     "401": {
                         "description": "if not authorized",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "if not found",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    },
+                    "422": {
+                        "description": "if syntax fails",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    },
+                    "504": {
+                        "description": "if request times out",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/users/{userId}/devices/{deviceUniqueId}/settings": {
+            "get": {
+                "description": "Returns the settings of an user's device",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Devices"
+                ],
+                "parameters": [
+                    {
+                        "type": "string",
+                        "default": "Bearer \u003cAdd access token here\u003e",
+                        "description": "Insert your access token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "ID of the user",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "ID of the device",
+                        "name": "deviceUniqueId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/users.DeviceSettings"
+                        }
+                    },
+                    "400": {
+                        "description": "if validations fail",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "if not authorized",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "if not allowed",
                         "schema": {
                             "$ref": "#/definitions/server.ErrorResponse"
                         }
@@ -298,6 +476,12 @@
                             "$ref": "#/definitions/server.ErrorResponse"
                         }
                     },
+                    "403": {
+                        "description": "if not allowed",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    },
                     "422": {
                         "description": "if syntax fails",
                         "schema": {
@@ -349,13 +533,14 @@
                     },
                     {
                         "type": "string",
-                        "description": "Type of referrals: T1 or T2. Defaults to `T1`",
+                        "description": "Type of referrals: `CONTACTS` or `T1` or `T2`",
                         "name": "type",
-                        "in": "query"
+                        "in": "query",
+                        "required": true
                     },
                     {
                         "type": "integer",
-                        "description": "Limit of elements to return",
+                        "description": "Limit of elements to return. Defaults to 10",
                         "name": "limit",
                         "in": "query"
                     },
@@ -370,10 +555,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/users.User"
-                            }
+                            "$ref": "#/definitions/users.Referrals"
                         }
                     },
                     "400": {
@@ -384,6 +566,12 @@
                     },
                     "401": {
                         "description": "if not authorized",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "if not allowed",
                         "schema": {
                             "$ref": "#/definitions/server.ErrorResponse"
                         }
@@ -411,12 +599,35 @@
         }
     },
     "definitions": {
+        "devicesettings.NotificationChannels": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "boolean",
+                    "example": false
+                },
+                "push": {
+                    "type": "boolean",
+                    "example": true
+                }
+            }
+        },
+        "devicesettings.NotificationSettings": {
+            "type": "object",
+            "additionalProperties": {
+                "$ref": "#/definitions/devicesettings.NotificationChannels"
+            }
+        },
         "server.ErrorResponse": {
             "type": "object",
             "properties": {
                 "code": {
                     "type": "string",
                     "example": "SOMETHING_NOT_FOUND"
+                },
+                "data": {
+                    "type": "object",
+                    "additionalProperties": true
                 },
                 "error": {
                     "type": "string",
@@ -430,11 +641,75 @@
                 "country": {
                     "description": "ISO 3166 country code.",
                     "type": "string",
-                    "example": "us"
+                    "example": "US"
                 },
                 "userCount": {
                     "type": "integer",
                     "example": 12121212
+                }
+            }
+        },
+        "users.DeviceSettings": {
+            "type": "object",
+            "properties": {
+                "deviceUniqueId": {
+                    "type": "string",
+                    "example": "FCDBD8EF-62FC-4ECB-B2F5-92C9E79AC7F9"
+                },
+                "language": {
+                    "description": "Optional.",
+                    "type": "string",
+                    "example": "en"
+                },
+                "notificationSettings": {
+                    "description": "Optional.",
+                    "$ref": "#/definitions/devicesettings.NotificationSettings"
+                },
+                "updatedAt": {
+                    "description": "`Read Only`.",
+                    "type": "string",
+                    "example": "2022-01-03T16:20:52.156534Z"
+                },
+                "userId": {
+                    "type": "string",
+                    "example": "did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"
+                }
+            }
+        },
+        "users.Referral": {
+            "type": "object",
+            "properties": {
+                "active": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "country": {
+                    "type": "string",
+                    "example": "US"
+                },
+                "fullName": {
+                    "type": "string",
+                    "example": "John Doe"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"
+                },
+                "phoneNumber": {
+                    "type": "string",
+                    "example": "+12099216581"
+                },
+                "pingAllowed": {
+                    "type": "boolean",
+                    "example": false
+                },
+                "profilePictureURL": {
+                    "type": "string",
+                    "example": "https://somecdn.com/p1.jpg"
+                },
+                "username": {
+                    "type": "string",
+                    "example": "jdoe"
                 }
             }
         },
@@ -455,36 +730,39 @@
                 }
             }
         },
-        "users.User": {
+        "users.Referrals": {
             "type": "object",
             "properties": {
-                "agendaPhoneNumberHashes": {
-                    "type": "string",
-                    "example": "Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2"
+                "active": {
+                    "type": "integer",
+                    "example": 11
+                },
+                "referrals": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/users.Referral"
+                    }
+                },
+                "total": {
+                    "type": "integer",
+                    "example": 11
+                }
+            }
+        },
+        "users.RelatableUserProfile": {
+            "type": "object",
+            "properties": {
+                "active": {
+                    "type": "boolean",
+                    "example": true
                 },
                 "country": {
-                    "description": "ISO 3166 country code.",
                     "type": "string",
-                    "example": "us"
-                },
-                "createdAt": {
-                    "type": "string",
-                    "example": "2022-01-03T16:20:52.156534Z"
-                },
-                "deletedAt": {
-                    "type": "string",
-                    "example": "2022-01-03T16:20:52.156534Z"
-                },
-                "email": {
-                    "type": "string",
-                    "example": "jdoe@gmail.com"
+                    "example": "US"
                 },
                 "fullName": {
                     "type": "string",
                     "example": "John Doe"
-                },
-                "hashCode": {
-                    "type": "integer"
                 },
                 "id": {
                     "type": "string",
@@ -494,21 +772,54 @@
                     "type": "string",
                     "example": "+12099216581"
                 },
-                "phoneNumberHash": {
-                    "type": "string",
-                    "example": "Ef86A6021afCDe5673511376B2"
+                "pingAllowed": {
+                    "type": "boolean",
+                    "example": false
                 },
                 "profilePictureURL": {
                     "type": "string",
                     "example": "https://somecdn.com/p1.jpg"
                 },
-                "referredBy": {
+                "referralType": {
+                    "type": "string",
+                    "enum": [
+                        "T1",
+                        "T2"
+                    ],
+                    "example": "T1"
+                },
+                "username": {
+                    "type": "string",
+                    "example": "jdoe"
+                }
+            }
+        },
+        "users.UserProfile": {
+            "type": "object",
+            "properties": {
+                "country": {
+                    "type": "string",
+                    "example": "US"
+                },
+                "fullName": {
+                    "type": "string",
+                    "example": "John Doe"
+                },
+                "id": {
                     "type": "string",
                     "example": "did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"
                 },
-                "updatedAt": {
+                "phoneNumber": {
                     "type": "string",
-                    "example": "2022-01-03T16:20:52.156534Z"
+                    "example": "+12099216581"
+                },
+                "profilePictureURL": {
+                    "type": "string",
+                    "example": "https://somecdn.com/p1.jpg"
+                },
+                "referralCount": {
+                    "type": "integer",
+                    "example": 100
                 },
                 "username": {
                     "type": "string",
