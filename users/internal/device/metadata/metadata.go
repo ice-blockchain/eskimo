@@ -101,17 +101,39 @@ func (r *repository) ReplaceDeviceMetadata(ctx context.Context, arg *ReplaceDevi
 	if metadata.IP2Locationrecord, err = r.ip2LocationDB.Get_all(ip.String()); err != nil {
 		return errors.Wrapf(err, "failed to get location information based on IP %v to replace device metadata", ip.String())
 	}
+	before, err := r.GetDeviceMetadata(ctx, arg.ID)
+	if err != nil && !errors.Is(err, storage.ErrNotFound) {
+		return errors.Wrapf(err, "failed to get current device metadata for %#v", arg.ID)
+	}
 	var result []*DeviceMetadata
 	if err = r.db.ReplaceTyped("DEVICE_METADATA", metadata, &result); err != nil {
 		return errors.Wrapf(err, "failed to replace device's %#v metadata", metadata.ID)
 	}
-	// Because we don't care about the other fields, for now.
-	dm := &DeviceMetadata{ID: metadata.ID, PushNotificationToken: metadata.PushNotificationToken}
+	dm := deviceMetadataSnapshot(before, result[0])
 
-	return errors.Wrap(r.sendDeviceMetadataMessage(ctx, dm), "failed to send device metadata message")
+	return errors.Wrapf(r.sendDeviceMetadataSnapshotMessage(ctx, dm), "failed to send device metadata snapshot message %#v", dm)
 }
 
-func (r *repository) sendDeviceMetadataMessage(ctx context.Context, dm *DeviceMetadata) error {
+func deviceMetadataSnapshot(before, after *DeviceMetadata) *DeviceMetadataSnapshot {
+	// Because we don't care about the other fields, for now.
+	var b *DeviceMetadata
+	if before != nil {
+		b = &DeviceMetadata{
+			ID:                    before.ID,
+			PushNotificationToken: before.PushNotificationToken,
+		}
+	}
+
+	return &DeviceMetadataSnapshot{
+		DeviceMetadata: &DeviceMetadata{
+			ID:                    after.ID,
+			PushNotificationToken: after.PushNotificationToken,
+		},
+		Before: b,
+	}
+}
+
+func (r *repository) sendDeviceMetadataSnapshotMessage(ctx context.Context, dm *DeviceMetadataSnapshot) error {
 	valueBytes, err := json.Marshal(dm)
 	if err != nil {
 		return errors.Wrapf(err, "failed to marshal DeviceMetadata %#v", dm)

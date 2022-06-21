@@ -35,6 +35,11 @@ type (
 		Country Country `json:"country,omitempty" example:"US"`
 		City    City    `json:"city,omitempty" example:"New York"`
 	}
+	//nolint:revive // We don't have a choice if we want to embed it, cuz it will clash with others named "snapshot".
+	DeviceMetadataSnapshot struct {
+		*DeviceMetadata
+		Before *DeviceMetadata `json:"before"`
+	}
 	DeviceMetadata struct {
 		FirstInstallTime *time.Time `json:"firstInstallTime"`
 		LastUpdateTime   *time.Time `json:"lastUpdateTime"`

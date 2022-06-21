@@ -53,11 +53,13 @@ type (
 	UserID                       = string
 	Username                     = string
 	DeviceID                     = device.ID
+	DeviceMetadataSnapshot       = devicemetadata.DeviceMetadataSnapshot
 	DeviceMetadata               = devicemetadata.DeviceMetadata
 	ReplaceDeviceMetadataArg     = devicemetadata.ReplaceDeviceMetadataArg
 	GetDeviceMetadataLocationArg = devicemetadata.GetDeviceMetadataLocationArg
 	DeviceLocation               = devicemetadata.DeviceLocation
 	DeviceSettings               = devicesettings.DeviceSettings
+	DeviceSettingsSnapshot       = devicesettings.DeviceSettingsSnapshot
 	MinimalUserProfile           struct {
 		Active      *NotExpired `json:"active,omitempty" example:"true"`
 		PingAllowed *NotExpired `json:"pingAllowed,omitempty" example:"false"`

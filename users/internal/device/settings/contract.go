@@ -22,6 +22,11 @@ type (
 		Push  bool `json:"push" example:"true"`
 		Email bool `json:"email" example:"false"`
 	}
+	//nolint:revive // We don't have a choice if we want to embed it, cuz it will clash with others named "snapshot".
+	DeviceSettingsSnapshot struct {
+		*DeviceSettings
+		Before *DeviceSettings `json:"before"`
+	}
 	DeviceSettings struct {
 		//nolint:unused // Because it is used by the msgpack library for marshalling/unmarshalling.
 		_msgpack struct{} `msgpack:",asArray"`
