@@ -683,17 +683,25 @@
                     "type": "boolean",
                     "example": true
                 },
+                "city": {
+                    "type": "string",
+                    "example": "New York"
+                },
                 "country": {
                     "type": "string",
                     "example": "US"
                 },
-                "fullName": {
+                "firstName": {
                     "type": "string",
-                    "example": "John Doe"
+                    "example": "John"
                 },
                 "id": {
                     "type": "string",
                     "example": "did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"
+                },
+                "lastName": {
+                    "type": "string",
+                    "example": "Doe"
                 },
                 "phoneNumber": {
                     "type": "string",
@@ -756,17 +764,25 @@
                     "type": "boolean",
                     "example": true
                 },
+                "city": {
+                    "type": "string",
+                    "example": "New York"
+                },
                 "country": {
                     "type": "string",
                     "example": "US"
                 },
-                "fullName": {
+                "firstName": {
                     "type": "string",
-                    "example": "John Doe"
+                    "example": "John"
                 },
                 "id": {
                     "type": "string",
                     "example": "did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"
+                },
+                "lastName": {
+                    "type": "string",
+                    "example": "Doe"
                 },
                 "phoneNumber": {
                     "type": "string",
@@ -797,17 +813,25 @@
         "users.UserProfile": {
             "type": "object",
             "properties": {
+                "city": {
+                    "type": "string",
+                    "example": "New York"
+                },
                 "country": {
                     "type": "string",
                     "example": "US"
                 },
-                "fullName": {
+                "firstName": {
                     "type": "string",
-                    "example": "John Doe"
+                    "example": "John"
                 },
                 "id": {
                     "type": "string",
                     "example": "did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"
+                },
+                "lastName": {
+                    "type": "string",
+                    "example": "Doe"
                 },
                 "phoneNumber": {
                     "type": "string",

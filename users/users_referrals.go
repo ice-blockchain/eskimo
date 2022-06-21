@@ -47,13 +47,15 @@ func (r *repository) GetReferrals(ctx context.Context, arg *GetReferralsArg) (*R
 								THEN 1 
 							ELSE 0 
 				         END) AS STRING) 	 														   AS active,	 
-				'' 																					   AS full_name, 
+				'' 																					   AS first_name, 
+				'' 																					   AS last_name, 
 				'' 																					   AS phone_number_, 
 				''																					   AS profile_picture_url, 
-				'' 																					   AS country
+				'' 																					   AS country,
+				'' 																					   AS city
 		FROM USERS u
 				%[2]v
-		WHERE u.id = :user_id
+		WHERE u.id = :userId
 
 		UNION ALL
 
@@ -65,22 +67,24 @@ func (r *repository) GetReferrals(ctx context.Context, arg *GetReferralsArg) (*R
 				 END)                                                                                  AS last_ping_at,
 				referrals.ID                                                                           AS id,
 				referrals.username                                                                     AS username,
-				referrals.full_name                                                                    AS full_name,
+				referrals.first_name                                                                   AS first_name,
+				referrals.last_name                                                                    AS last_name,
 				(CASE
 					WHEN POSITION(referrals.phone_number_hash, u.agenda_phone_number_hashes) > 0
 						THEN referrals.phone_number
 					ELSE ''
 				 END)                                                                                   AS phone_number_,
 				'%[1]v/' || referrals.profile_picture_name                                              AS profile_picture_url,
-				referrals.country                                                                       AS country
+				referrals.country                                                                       AS country,
+				referrals.city                                                                       	AS city
 		FROM USERS u
 				%[2]v
-		WHERE u.id = :user_id
+		WHERE u.id = :userId
 		ORDER BY (phone_number_ != '' AND phone_number_ != null) DESC,
 				 referrals.created_at DESC
 		LIMIT %[3]v OFFSET :offset`, cfg.PictureStorage.URLDownload, referralTypeJoin, arg.Limit)
 	params := map[string]interface{}{
-		"user_id":  arg.UserID,
+		"userId":   arg.UserID,
 		"nowNanos": time.Now(),
 		"offset":   arg.Offset,
 	}
@@ -129,7 +133,7 @@ FROM (
 					1                                         AS tier
 			FROM users
 			WHERE 1 = 1
-				AND referred_by = :userID
+				AND referred_by = :userId
 				AND created_at >= :pastNanos
 				AND created_at <= :nowNanos
 		
@@ -159,7 +163,7 @@ FROM (
 		ORDER BY days.day
      )`
 	params := map[string]interface{}{
-		"userID":    arg.UserID,
+		"userId":    arg.UserID,
 		"nowNanos":  nowNanos,
 		"pastNanos": pastNanos,
 		"days":      arg.Days,

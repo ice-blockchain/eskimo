@@ -21,18 +21,19 @@ import (
 type (
 	Keyword = string
 	Country = string
+	City    = string
 	//nolint:revive // We don't have a choice if we want to embed it, cuz it will clash with others named "Repository".
 	DeviceMetadataRepository interface {
 		io.Closer
 		IsValid(Country) bool
 		LookupCountries(Keyword) []Country
-		GetDeviceCountry(context.Context, net.IP) Country
 		GetDeviceMetadataLocation(context.Context, *GetDeviceMetadataLocationArg) *DeviceLocation
 		GetDeviceMetadata(context.Context, device.ID) (*DeviceMetadata, error)
 		ReplaceDeviceMetadata(context.Context, *ReplaceDeviceMetadataArg) error
 	}
 	DeviceLocation struct {
-		Country Country `json:"country" example:"US"`
+		Country Country `json:"country,omitempty" example:"US"`
+		City    City    `json:"city,omitempty" example:"New York"`
 	}
 	DeviceMetadata struct {
 		FirstInstallTime *time.Time `json:"firstInstallTime"`

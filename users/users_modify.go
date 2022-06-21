@@ -58,10 +58,12 @@ func (u *User) override(user *User) *User {
 	*n = *u
 	n.UpdatedAt = user.UpdatedAt
 	n.Email = mergeField(u.Email, user.Email)
-	n.FullName = mergeField(u.FullName, user.FullName)
+	n.FirstName = mergeField(u.FirstName, user.FirstName)
+	n.LastName = mergeField(u.LastName, user.LastName)
 	n.Username = mergeField(u.Username, user.Username)
 	n.ProfilePictureURL = mergeField(u.ProfilePictureURL, user.ProfilePictureURL)
 	n.Country = mergeField(u.Country, user.Country)
+	n.City = mergeField(u.City, user.City)
 	n.PhoneNumber = mergeField(u.PhoneNumber, user.PhoneNumber)
 	n.PhoneNumberHash = mergeField(u.PhoneNumberHash, user.PhoneNumberHash)
 	n.AgendaPhoneNumberHashes = mergeField(u.AgendaPhoneNumberHashes, user.AgendaPhoneNumberHashes)
@@ -82,9 +84,13 @@ func (arg *ModifyUserArg) genSQLUpdate() (sql string, params map[string]interfac
 		params["email"] = u.Email
 		sql += ", EMAIL = :email"
 	}
-	if u.FullName != "" {
-		params["fullName"] = u.FullName
-		sql += ", FULL_NAME = :fullName"
+	if u.FirstName != "" {
+		params["firstName"] = u.FirstName
+		sql += ", FIRST_NAME = :firstName"
+	}
+	if u.LastName != "" {
+		params["lastName"] = u.LastName
+		sql += ", LAST_NAME = :lastName"
 	}
 	if u.Username != "" {
 		params["username"] = u.Username
@@ -97,6 +103,10 @@ func (arg *ModifyUserArg) genSQLUpdate() (sql string, params map[string]interfac
 	if u.Country != "" {
 		params["country"] = u.Country
 		sql += ", COUNTRY = :country"
+	}
+	if u.City != "" {
+		params["city"] = u.City
+		sql += ", CITY = :city"
 	}
 	if arg.confirmedPhoneNumber != "" {
 		// Updating phone number.

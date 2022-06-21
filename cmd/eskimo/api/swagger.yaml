@@ -1,5 +1,3 @@
-# SPDX-License-Identifier: BUSL-1.1
-
 basePath: /v1
 definitions:
   devicesettings.NotificationChannels:
@@ -62,14 +60,20 @@ definitions:
       active:
         example: true
         type: boolean
+      city:
+        example: New York
+        type: string
       country:
         example: US
         type: string
-      fullName:
-        example: John Doe
+      firstName:
+        example: John
         type: string
       id:
         example: did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2
+        type: string
+      lastName:
+        example: Doe
         type: string
       phoneNumber:
         example: "+12099216581"
@@ -114,14 +118,20 @@ definitions:
       active:
         example: true
         type: boolean
+      city:
+        example: New York
+        type: string
       country:
         example: US
         type: string
-      fullName:
-        example: John Doe
+      firstName:
+        example: John
         type: string
       id:
         example: did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2
+        type: string
+      lastName:
+        example: Doe
         type: string
       phoneNumber:
         example: "+12099216581"
@@ -144,14 +154,20 @@ definitions:
     type: object
   users.UserProfile:
     properties:
+      city:
+        example: New York
+        type: string
       country:
         example: US
         type: string
-      fullName:
-        example: John Doe
+      firstName:
+        example: John
         type: string
       id:
         example: did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2
+        type: string
+      lastName:
+        example: Doe
         type: string
       phoneNumber:
         example: "+12099216581"

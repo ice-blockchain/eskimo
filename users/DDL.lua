@@ -6,10 +6,12 @@ box.execute([[CREATE TABLE IF NOT EXISTS users  (
                     last_ping_at UNSIGNED DEFAULT 0,
                     id STRING primary key,
                     username STRING NOT NULL UNIQUE,
-                    full_name STRING,
+                    first_name STRING,
+                    last_name STRING,
                     phone_number STRING,
                     profile_picture_name STRING NOT NULL,
                     country STRING NOT NULL,
+                    city STRING NOT NULL,
                     email STRING,
                     referred_by STRING REFERENCES users(id) ON DELETE SET NULL,
                     phone_number_hash STRING,
@@ -18,7 +20,7 @@ box.execute([[CREATE TABLE IF NOT EXISTS users  (
                      ) WITH ENGINE = 'vinyl';]])
 box.execute([[CREATE INDEX IF NOT EXISTS users_referred_by_ix ON users (referred_by);]])
 box.execute([[CREATE INDEX IF NOT EXISTS users_phone_number_hash_ix ON users (phone_number_hash);]])
-box.execute([[CREATE INDEX IF NOT EXISTS users_lookup_ix ON users (username,full_name);]])
+box.execute([[CREATE INDEX IF NOT EXISTS users_lookup_ix ON users (username,first_name,last_name);]])
 box.execute([[CREATE TABLE IF NOT EXISTS phone_number_validations  (
                     created_at UNSIGNED NOT NULL,
                     user_id STRING primary key REFERENCES users(id) ON DELETE CASCADE,

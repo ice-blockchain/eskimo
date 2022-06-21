@@ -171,10 +171,12 @@ func (req *RequestModifyUser) Validate() *server.Response {
 	}
 	req.User.ID = req.UserID
 	req.User.Username = req.Username
-	req.User.FullName = req.FullName
+	req.User.FirstName = req.FirstName
+	req.User.LastName = req.LastName
 	req.User.PhoneNumber = req.PhoneNumber
 	req.User.PhoneNumberHash = req.PhoneNumberHash
 	req.User.Country = strings.ToUpper(req.Country)
+	req.User.City = req.City
 	req.User.Email = req.Email
 	req.User.AgendaPhoneNumberHashes = req.AgendaPhoneNumberHashes
 
@@ -184,8 +186,10 @@ func (req *RequestModifyUser) Validate() *server.Response {
 //nolint:gocognit // Highly doubt it.
 func (req *RequestModifyUser) hasValues() bool {
 	return req.Country != "" ||
+		req.City != "" ||
 		req.Email != "" ||
-		req.FullName != "" ||
+		req.FirstName != "" ||
+		req.LastName != "" ||
 		req.PhoneNumber != "" ||
 		req.Username != "" ||
 		req.AgendaPhoneNumberHashes != "" ||

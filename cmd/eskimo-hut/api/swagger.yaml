@@ -1,5 +1,3 @@
-# SPDX-License-Identifier: BUSL-1.1
-
 basePath: /v1
 definitions:
   CreateUserRequestBody:
@@ -66,6 +64,9 @@ definitions:
     type: object
   users.DeviceLocation:
     properties:
+      city:
+        example: New York
+        type: string
       country:
         example: US
         type: string
@@ -162,6 +163,9 @@ definitions:
       agendaPhoneNumberHashes:
         example: Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2
         type: string
+      city:
+        example: New York
+        type: string
       country:
         example: US
         type: string
@@ -171,14 +175,17 @@ definitions:
       email:
         example: jdoe@gmail.com
         type: string
-      fullName:
-        example: John Doe
+      firstName:
+        example: John
         type: string
       id:
         example: did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2
         type: string
       lastMiningStartedAt:
         example: "2022-01-03T16:20:52.156534Z"
+        type: string
+      lastName:
+        example: Doe
         type: string
       lastPingAt:
         example: "2022-01-03T16:20:52.156534Z"
@@ -392,6 +399,10 @@ paths:
         in: formData
         name: agendaPhoneNumberHashes
         type: string
+      - description: Optional. Example:"New York".
+        in: formData
+        name: city
+        type: string
       - description: Optional. Example:"US".
         in: formData
         name: country
@@ -400,9 +411,13 @@ paths:
         in: formData
         name: email
         type: string
-      - description: Optional. Example:"John Doe".
+      - description: Optional. Required only if `lastName` is set. Example:"John".
         in: formData
-        name: fullName
+        name: firstName
+        type: string
+      - description: Optional. Required only if `firstName` is set.  Example:"Doe".
+        in: formData
+        name: lastName
         type: string
       - description: Optional. Example:"+12099216581".
         in: formData
@@ -521,7 +536,7 @@ paths:
       tags:
       - Devices
   /users/{userId}/devices/{deviceUniqueId}/metadata/location:
-    get:
+    put:
       consumes:
       - application/json
       description: Returns the device's geolocation based on its IP or based on account

@@ -18,7 +18,7 @@ func (s *service) setupDevicesRoutes(router *gin.Engine) {
 		Group("v1").
 		PUT("users/:userId/devices/:deviceUniqueId/metadata", server.RootHandler(newRequestReplaceDeviceMetadata, s.ReplaceDeviceMetadata)).
 		PATCH("users/:userId/devices/:deviceUniqueId/settings", server.RootHandler(newRequestModifyDeviceSettings, s.ModifyDeviceSettings)).
-		GET("users/:userId/devices/:deviceUniqueId/metadata/location", server.RootHandler(newRequestGetDeviceLocation, s.GetDeviceLocation))
+		PUT("users/:userId/devices/:deviceUniqueId/metadata/location", server.RootHandler(newRequestGetDeviceLocation, s.GetDeviceLocation))
 }
 
 // ReplaceDeviceMetadata godoc
@@ -154,7 +154,7 @@ func (req *RequestModifyDeviceSettings) Bindings(c *gin.Context) []func(obj inte
 // @Failure      422             {object}  server.ErrorResponse  "if syntax fails"
 // @Failure      500             {object}  server.ErrorResponse
 // @Failure      504             {object}  server.ErrorResponse  "if request times out"
-// @Router       /users/{userId}/devices/{deviceUniqueId}/metadata/location [GET].
+// @Router       /users/{userId}/devices/{deviceUniqueId}/metadata/location [PUT].
 func (s *service) GetDeviceLocation(ctx context.Context, r server.ParsedRequest) server.Response {
 	return server.OK(s.usersProcessor.GetDeviceMetadataLocation(ctx, &r.(*RequestGetDeviceLocation).GetDeviceMetadataLocationArg))
 }

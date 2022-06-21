@@ -287,6 +287,12 @@
                     },
                     {
                         "type": "string",
+                        "description": "Optional. Example:\"New York\".",
+                        "name": "city",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "string",
                         "description": "Optional. Example:\"US\".",
                         "name": "country",
                         "in": "formData"
@@ -299,8 +305,14 @@
                     },
                     {
                         "type": "string",
-                        "description": "Optional. Example:\"John Doe\".",
-                        "name": "fullName",
+                        "description": "Optional. Required only if `lastName` is set. Example:\"John\".",
+                        "name": "firstName",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Optional. Required only if `firstName` is set.  Example:\"Doe\".",
+                        "name": "lastName",
                         "in": "formData"
                     },
                     {
@@ -475,7 +487,7 @@
             }
         },
         "/users/{userId}/devices/{deviceUniqueId}/metadata/location": {
-            "get": {
+            "put": {
                 "description": "Returns the device's geolocation based on its IP or based on account information if userId is also provided.",
                 "consumes": [
                     "application/json"
@@ -735,6 +747,10 @@
         "users.DeviceLocation": {
             "type": "object",
             "properties": {
+                "city": {
+                    "type": "string",
+                    "example": "New York"
+                },
                 "country": {
                     "type": "string",
                     "example": "US"
@@ -875,6 +891,10 @@
                     "type": "string",
                     "example": "Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2"
                 },
+                "city": {
+                    "type": "string",
+                    "example": "New York"
+                },
                 "country": {
                     "type": "string",
                     "example": "US"
@@ -887,9 +907,9 @@
                     "type": "string",
                     "example": "jdoe@gmail.com"
                 },
-                "fullName": {
+                "firstName": {
                     "type": "string",
-                    "example": "John Doe"
+                    "example": "John"
                 },
                 "id": {
                     "type": "string",
@@ -898,6 +918,10 @@
                 "lastMiningStartedAt": {
                     "type": "string",
                     "example": "2022-01-03T16:20:52.156534Z"
+                },
+                "lastName": {
+                    "type": "string",
+                    "example": "Doe"
                 },
                 "lastPingAt": {
                     "type": "string",

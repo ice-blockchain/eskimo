@@ -66,10 +66,11 @@ type (
 	PublicUserInformation struct {
 		ID                UserID   `uri:"userId" json:"id,omitempty" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
 		Username          Username `json:"username,omitempty" example:"jdoe"`
-		FullName          string   `json:"fullName,omitempty" example:"John Doe"`
+		FirstName         string   `json:"firstName,omitempty" example:"John"`
+		LastName          string   `json:"lastName,omitempty" example:"Doe"`
 		PhoneNumber       string   `json:"phoneNumber,omitempty" example:"+12099216581"`
 		ProfilePictureURL string   `json:"profilePictureURL,omitempty" example:"https://somecdn.com/p1.jpg"`
-		Country           string   `json:"country,omitempty" example:"US"`
+		DeviceLocation
 	}
 	User struct {
 		_msgpack            struct{}   `msgpack:",asArray"` // nolint:unused // To insert we need asArray
@@ -167,10 +168,14 @@ type (
 		ProfilePicture *multipart.FileHeader `form:"profilePicture" json:"-"`
 		// Optional. Example:"US".
 		Country string `form:"country" json:"country,omitempty"`
+		// Optional. Example:"New York".
+		City string `form:"city" json:"city,omitempty"`
 		// Example:"jdoe".
 		Username Username `form:"username" json:"username,omitempty"`
-		// Optional. Example:"John Doe".
-		FullName string `form:"fullName" json:"fullName,omitempty"`
+		// Optional. Required only if `lastName` is set. Example:"John".
+		FirstName string `form:"firstName" json:"firstName,omitempty"`
+		// Optional. Required only if `firstName` is set.  Example:"Doe".
+		LastName string `form:"lastName" json:"lastName,omitempty"`
 		// Optional. Example:"+12099216581".
 		PhoneNumber string `form:"phoneNumber" json:"phoneNumber,omitempty" `
 		// Optional. Required only if `phoneNumber` is set. Example:"Ef86A6021afCDe5673511376B2".

@@ -61,19 +61,21 @@ func (r *repository) GetUserByID(ctx context.Context, id UserID) (*UserProfile, 
 	sql := fmt.Sprintf(`
 	SELECT  u.id 									AS id,
 			u.username 								AS username,
-			u.full_name 							AS full_name,
+			u.first_name 							AS first_name,
+			u.last_name 							AS last_name,
 			u.phone_number 							AS phone_number_,
 			'%v/' || u.profile_picture_name 		AS profile_picture_url,
 			u.country 								AS country,
+			u.city 									AS city,
 			count(distinct t1.id) + count(t2.id) 	AS total_referral_count
 	FROM users u 
 			LEFT JOIN USERS t1
                 	ON t1.referred_by = u.id
 						LEFT JOIN USERS t2
 								ON t2.referred_by = t1.id
-	WHERE u.id = :user_id`, cfg.PictureStorage.URLDownload)
+	WHERE u.id = :userId`, cfg.PictureStorage.URLDownload)
 	var result []*UserProfile
-	if err := r.db.PrepareExecuteTyped(sql, map[string]interface{}{"user_id": id}, &result); err != nil {
+	if err := r.db.PrepareExecuteTyped(sql, map[string]interface{}{"userId": id}, &result); err != nil {
 		return nil, errors.Wrapf(err, "failed to select user by id %v", id)
 	}
 	if len(result) == 0 || result[0].ID == "" {
@@ -108,24 +110,26 @@ func (r *repository) GetUsers(ctx context.Context, arg *GetUsersArg) (result []*
 	sql := fmt.Sprintf(`
 			SELECT u.last_mining_started_at                                                                          AS last_mining_started_at,
 				   (CASE
-						WHEN t0.id = :user_id
+						WHEN t0.id = :userId
 							THEN u.last_ping_at
 						ELSE :nowNanos
 					END)                                                                                             AS last_ping_at,	
 				   u.id                                                                                              AS id,
 				   u.username                                                                                        AS username,
-				   u.full_name                                                                                       AS full_name,
+				   u.first_name                                                                                      AS first_name,
+				   u.last_name                                                                                       AS last_name,
 				   (SELECT u.phone_number
 					FROM users user_requesting_this
 					WHERE 1=1
-						AND id = :user_id
+						AND id = :userId
 						AND POSITION(u.phone_number_hash, user_requesting_this.agenda_phone_number_hashes) > 0)      AS phone_number_,
 				   '%v/' || u.profile_picture_name                                                                   AS profile_picture_url,
 				   u.country                                                                                         AS country,
+				   u.city                                                                                            AS city,
 				   (CASE
-						WHEN t0.id = :user_id
+						WHEN t0.id = :userId
 							THEN 'T1'
-						WHEN t0.referred_by = :user_id
+						WHEN t0.referred_by = :userId
 							THEN 'T2'
 						ELSE ''
 					END)                                                                                             AS referral_type	
@@ -135,12 +139,14 @@ func (r *repository) GetUsers(ctx context.Context, arg *GetUsersArg) (result []*
 			WHERE (
 					POSITION(LOWER(:keyword),LOWER(u.username)) = 1
 					OR
-					POSITION(LOWER(:keyword),LOWER(u.full_name)) = 1
+					POSITION(LOWER(:keyword),LOWER(u.first_name)) = 1
+					OR
+					POSITION(LOWER(:keyword),LOWER(u.last_name)) = 1
 				  )
 			ORDER BY
 				(phone_number_ != '' AND phone_number_ != null) DESC,
-				t0.id = :user_id DESC,
-				t0.referred_by = :user_id DESC,
+				t0.id = :userId DESC,
+				t0.referred_by = :userId DESC,
 				u.username DESC
 			LIMIT %v OFFSET :offset`, cfg.PictureStorage.URLDownload, arg.Limit)
 	params := map[string]interface{}{

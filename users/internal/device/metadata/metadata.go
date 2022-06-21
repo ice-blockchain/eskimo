@@ -5,7 +5,6 @@ package devicemetadata
 import (
 	"context"
 	"encoding/json"
-	"net"
 	"strings"
 
 	"github.com/framey-io/go-tarantool"
@@ -54,21 +53,26 @@ func (r *repository) Close() error {
 	return nil
 }
 
-func (r *repository) GetDeviceCountry(ctx context.Context, ip net.IP) Country {
+func (r *repository) GetDeviceMetadataLocation(ctx context.Context, arg *GetDeviceMetadataLocationArg) *DeviceLocation {
 	if ctx.Err() != nil {
-		log.Error(errors.Wrap(ctx.Err(), "context error"))
+		log.Error(errors.Wrapf(ctx.Err(), "context error for GetDeviceMetadataLocation for %#v", arg))
 
-		return ""
+		return new(DeviceLocation)
 	}
+	//nolint:godox // .
+	//TODO: TBD if we need to use arg.DeviceUniqueID and/or arg.UserID to find some default/preferred value for the user.
 
-	result, err := r.ip2LocationDB.Get_country_short(ip.String())
+	result, err := r.ip2LocationDB.Get_all(arg.ClientIP.String())
 	if err != nil {
-		log.Error(errors.Wrapf(err, "unable to get country by ip: %v", ip.String()))
+		log.Error(errors.Wrapf(err, "unable to get country&city for %#v", arg))
 
-		return ""
+		return new(DeviceLocation)
 	}
 
-	return strings.ToUpper(result.Country_short)
+	return &DeviceLocation{
+		Country: strings.ToUpper(result.Country_short),
+		City:    result.City,
+	}
 }
 
 func (r *repository) GetDeviceMetadata(ctx context.Context, id device.ID) (*DeviceMetadata, error) {
@@ -142,16 +146,4 @@ func (r *repository) IsValid(c Country) bool {
 	_, found := countries[strings.ToUpper(c)]
 
 	return found
-}
-
-func (r *repository) GetDeviceMetadataLocation(ctx context.Context, arg *GetDeviceMetadataLocationArg) *DeviceLocation {
-	if arg.UserID != "" {
-		//nolint:godox // .
-		//TODO: TBD if we need to implement this.
-		return &DeviceLocation{Country: "UNKNOWN"}
-	}
-	//nolint:godox // .
-	//TODO: TBD if we need to use arg.DeviceUniqueID to find some default/preferred value for the user.
-
-	return &DeviceLocation{Country: r.GetDeviceCountry(ctx, arg.ClientIP)}
 }

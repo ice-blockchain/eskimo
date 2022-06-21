@@ -24,6 +24,11 @@ users:
   db:
     spaces:
       - USERS
+      - PHONE_NUMBER_VALIDATIONS
+      - DAYS
+      - USERS_PER_COUNTRY
+      - DEVICE_SETTINGS
+      - DEVICE_METADATA
     urls:
       - localhost:3301
     user: admin

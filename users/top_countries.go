@@ -59,5 +59,5 @@ func (r *repository) incrementOrDecrementCountryUserCount(ctx context.Context, c
 	insertTuple := &CountryStatistics{Country: country, UserCount: 1}
 
 	return errors.Wrapf(r.db.UpsertAsync("USERS_PER_COUNTRY", insertTuple, arOp).GetTyped(&[]*CountryStatistics{}),
-		"error changing country count for country%v & operation:%v", country, operation)
+		"error changing country count for country:%v & operation:%v", country, operation)
 }
