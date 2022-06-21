@@ -59,8 +59,9 @@ generate:
 	swag fmt -d cmd/eskimo-hut -g eskimo_hut.go
 #	go install github.com/golang/mock/mockgen@latest
 #	mockgen -source=CHANGE_ME.go -destination=CHANGE_ME.go -package=CHANGE_ME
+	make addLicense
 
-checkGenerated: generate addLicense
+checkGenerated: generate
 	@if git status --porcelain | grep -e [.]go -e [.]json -e [.]yaml; then \
 		echo "Please commit generated files, using 'make generate'."; \
 		git --no-pager diff; \
