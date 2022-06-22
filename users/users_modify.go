@@ -5,8 +5,8 @@ package users
 import (
 	"context"
 	"fmt"
-	"time"
 
+	"github.com/ice-blockchain/wintr/time"
 	"github.com/pkg/errors"
 
 	"github.com/ice-blockchain/wintr/connectors/storage"
