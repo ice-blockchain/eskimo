@@ -118,43 +118,41 @@ jobs:
       - name: Setting ENV variables for deployment
         run: |
           echo "APP_TAG=${{steps.check_tag.outputs.next_tag}}" >> $GITHUB_ENV
-      - name: Checkout the target `deploy` branch of `secret-infrastructure`
+      - name: Checkout the target `master` branch of `secret-infrastructure`
         uses: actions/checkout@v3
         with:
           repository: ice-blockchain/secret-infrastructure
-          ref: deploy
+          ref: master
           token: ${{ secrets.ICE_CI_CD_BOT_GH_PAT }}
           path: secret-infrastructure
           fetch-depth: 0
-      - name: Rebase to secret-infrastructure master
-        run: git rebase origin/master
-      - name: Update [staging] application tag version in .deploy/helm/eskimo-hut/staging/common-values.yaml
+      - name: Update [staging] application tag version in helm/eskimo-hut/staging/common-values.yaml
         uses: mikefarah/yq@master
         with:
-          cmd: yq e -i '.generic-service-chart.applicationImage.tag = strenv(APP_TAG)' .deploy/helm/eskimo-hut/staging/common-values.yaml
-      - name: Update [production] application tag version in .deploy/helm/eskimo-hut/production/common-values.yaml
+          cmd: yq e -i '.generic-service-chart.applicationImage.tag = strenv(APP_TAG)' helm/eskimo-hut/staging/common-values.yaml
+      - name: Update [production] application tag version in helm/eskimo-hut/production/common-values.yaml
         uses: mikefarah/yq@master
         with:
-          cmd: yq e -i '.generic-service-chart.applicationImage.tag = strenv(APP_TAG)' .deploy/helm/eskimo-hut/production/common-values.yaml
-      - name: Update [staging] application tag version in .deploy/helm/eskimo/staging/common-values.yaml
+          cmd: yq e -i '.generic-service-chart.applicationImage.tag = strenv(APP_TAG)' helm/eskimo-hut/production/common-values.yaml
+      - name: Update [staging] application tag version in helm/eskimo/staging/common-values.yaml
         uses: mikefarah/yq@master
         with:
-          cmd: yq e -i '.generic-service-chart.applicationImage.tag = strenv(APP_TAG)' .deploy/helm/eskimo/staging/common-values.yaml
-      - name: Update [production] application tag version in .deploy/helm/eskimo/production/common-values.yaml
+          cmd: yq e -i '.generic-service-chart.applicationImage.tag = strenv(APP_TAG)' helm/eskimo/staging/common-values.yaml
+      - name: Update [production] application tag version in helm/eskimo/production/common-values.yaml
         uses: mikefarah/yq@master
         with:
-          cmd: yq e -i '.generic-service-chart.applicationImage.tag = strenv(APP_TAG)' .deploy/helm/eskimo/production/common-values.yaml
+          cmd: yq e -i '.generic-service-chart.applicationImage.tag = strenv(APP_TAG)' helm/eskimo/production/common-values.yaml
       - name: Commit and Push Changes to Application Tag Version
         run: |
           git config user.name "ice CI/CD Bot"
           git config user.email ice-cicd-bot@ice.vip
           git status
-          git add .deploy/helm/eskimo-hut/staging/common-values.yaml 
-          git add .deploy/helm/eskimo-hut/production/common-values.yaml
-          git add .deploy/helm/eskimo/staging/common-values.yaml 
-          git add .deploy/helm/eskimo/production/common-values.yaml
+          git add helm/eskimo-hut/staging/common-values.yaml 
+          git add helm/eskimo-hut/production/common-values.yaml
+          git add helm/eskimo/staging/common-values.yaml 
+          git add helm/eskimo/production/common-values.yaml
           git commit -m "Updated `eskimo` & `eskimo-hut` tag version (${{env.APP_TAG}}) in application helm chart deployment manifests"
-          git push --set-upstream origin deploy
+          git push --set-upstream origin master
       - name: Slack Notification For Success
         if: ${{ success() }}
         uses: rtCamp/action-slack-notify@v2
@@ -165,7 +163,9 @@ jobs:
           SLACK_ICON: https://avatars.githubusercontent.com/u/102382658?s=400&u=62e73f4cb845c48a07a19e03c6f84b721e40c0a6&v=4
           SLACK_ICON_EMOJI: ':rocket:'
           SLACK_COLOR: ${{ job.status }}
-          SLACK_FOOTER: ${{env.SERVICE_NAME}} >> TODO replace this with API URL
+          SLACK_FOOTER: |
+            https://staging.r.api.ice.io/users
+            https://staging.w.api.ice.io/users
       - name: Slack Notification For Failure
         if: ${{ failure() }}
         uses: rtCamp/action-slack-notify@v2
@@ -176,7 +176,9 @@ jobs:
           SLACK_ICON: https://avatars.githubusercontent.com/u/102382658?s=400&u=62e73f4cb845c48a07a19e03c6f84b721e40c0a6&v=4
           SLACK_ICON_EMOJI: ':sob:'
           SLACK_COLOR: ${{ job.status }}
-          SLACK_FOOTER: ${{env.SERVICE_NAME}} >> TODO replace this with API URL
+          SLACK_FOOTER: |
+            https://staging.r.api.ice.io/users
+            https://staging.w.api.ice.io/users
       - name: Slack Notification For Cancellation
         if: ${{ cancelled() }}
         uses: rtCamp/action-slack-notify@v2
@@ -187,4 +189,6 @@ jobs:
           SLACK_ICON: https://avatars.githubusercontent.com/u/102382658?s=400&u=62e73f4cb845c48a07a19e03c6f84b721e40c0a6&v=4
           SLACK_ICON_EMOJI: ':X:'
           SLACK_COLOR: ${{ job.status }}
-          SLACK_FOOTER: ${{env.SERVICE_NAME}} >> TODO replace this with API URL
+          SLACK_FOOTER: |
+            https://staging.r.api.ice.io/users
+            https://staging.w.api.ice.io/users

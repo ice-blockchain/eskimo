@@ -8,7 +8,7 @@ import (
 	"io"
 	"mime/multipart"
 	"net/http"
-	"time"
+	stdlibtime "time"
 
 	"github.com/imroc/req/v3"
 	"github.com/pkg/errors"
@@ -41,7 +41,7 @@ func (r *repository) uploadProfilePicture(ctx context.Context, data *multipart.F
 func doUploadProfilePicture(ctx context.Context, data *multipart.FileHeader, fileData []byte) error {
 	_, err := req.
 		SetContext(ctx).
-		SetRetryBackoffInterval(10*time.Millisecond, 1*time.Second).
+		SetRetryBackoffInterval(10*stdlibtime.Millisecond, 1*stdlibtime.Second).
 		SetRetryHook(func(resp *req.Response, err error) {
 			if err != nil {
 				log.Error(errors.Wrapf(err, "failed to uploadProfilePicture, retrying... "))

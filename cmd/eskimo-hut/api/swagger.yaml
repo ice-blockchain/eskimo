@@ -105,7 +105,7 @@ definitions:
       fingerprint:
         type: string
       firstInstallTime:
-        type: string
+        type: integer
       hardware:
         type: string
       installerPackageName:
@@ -113,7 +113,7 @@ definitions:
       instanceId:
         type: string
       lastUpdateTime:
-        type: string
+        type: integer
       manufacturer:
         type: string
       pinOrFingerprintSet:

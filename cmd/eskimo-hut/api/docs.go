@@ -811,7 +811,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "firstInstallTime": {
-                    "type": "string"
+                    "type": "integer"
                 },
                 "hardware": {
                     "type": "string"
@@ -823,7 +823,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "lastUpdateTime": {
-                    "type": "string"
+                    "type": "integer"
                 },
                 "manufacturer": {
                     "type": "string"

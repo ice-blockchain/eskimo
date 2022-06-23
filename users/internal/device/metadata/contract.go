@@ -41,8 +41,8 @@ type (
 		Before *DeviceMetadata `json:"before"`
 	}
 	DeviceMetadata struct {
-		FirstInstallTime *time.Time `json:"firstInstallTime"`
-		LastUpdateTime   *time.Time `json:"lastUpdateTime"`
+		FirstInstallTime *time.Time `json:"firstInstallTime" swaggertype:"integer"`
+		LastUpdateTime   *time.Time `json:"lastUpdateTime" swaggertype:"integer"`
 		device.ID
 		ReadableVersion       string `json:"readableVersion"`
 		Fingerprint           string `json:"fingerprint"`

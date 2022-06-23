@@ -804,7 +804,7 @@
                     "type": "string"
                 },
                 "firstInstallTime": {
-                    "type": "string"
+                    "type": "integer"
                 },
                 "hardware": {
                     "type": "string"
@@ -816,7 +816,7 @@
                     "type": "string"
                 },
                 "lastUpdateTime": {
-                    "type": "string"
+                    "type": "integer"
                 },
                 "manufacturer": {
                     "type": "string"
