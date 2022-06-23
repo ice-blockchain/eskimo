@@ -6,10 +6,10 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/ice-blockchain/wintr/time"
 	"github.com/pkg/errors"
 
 	"github.com/ice-blockchain/wintr/connectors/storage"
+	"github.com/ice-blockchain/wintr/time"
 )
 
 func (r *repository) ModifyUser(ctx context.Context, arg *ModifyUserArg) error {

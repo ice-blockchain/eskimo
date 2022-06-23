@@ -105,11 +105,11 @@ func (r *repository) ReplaceDeviceMetadata(ctx context.Context, arg *ReplaceDevi
 	if err != nil && !errors.Is(err, storage.ErrNotFound) {
 		return errors.Wrapf(err, "failed to get current device metadata for %#v", arg.ID)
 	}
-	var result []*DeviceMetadata
+	var result []*deviceMetadata
 	if err = r.db.ReplaceTyped("DEVICE_METADATA", metadata, &result); err != nil {
 		return errors.Wrapf(err, "failed to replace device's %#v metadata", metadata.ID)
 	}
-	dm := deviceMetadataSnapshot(before, result[0])
+	dm := deviceMetadataSnapshot(before, &result[0].DeviceMetadata)
 
 	return errors.Wrapf(r.sendDeviceMetadataSnapshotMessage(ctx, dm), "failed to send device metadata snapshot message %#v", dm)
 }
