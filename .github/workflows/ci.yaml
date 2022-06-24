@@ -129,24 +129,32 @@ jobs:
       - name: Update [staging] application tag version in helm/eskimo-hut/staging/common-values.yaml
         uses: mikefarah/yq@master
         with:
-          cmd: yq e -i '.generic-service-chart.applicationImage.tag = strenv(APP_TAG)' helm/eskimo-hut/staging/common-values.yaml
+          cmd: |
+            cd secret-infrastructure
+            yq e -i '.generic-service-chart.applicationImage.tag = strenv(APP_TAG)' helm/eskimo-hut/staging/common-values.yaml
       - name: Update [production] application tag version in helm/eskimo-hut/production/common-values.yaml
         uses: mikefarah/yq@master
         with:
-          cmd: yq e -i '.generic-service-chart.applicationImage.tag = strenv(APP_TAG)' helm/eskimo-hut/production/common-values.yaml
+          cmd: |
+            cd secret-infrastructure
+            yq e -i '.generic-service-chart.applicationImage.tag = strenv(APP_TAG)' helm/eskimo-hut/production/common-values.yaml
       - name: Update [staging] application tag version in helm/eskimo/staging/common-values.yaml
         uses: mikefarah/yq@master
         with:
-          cmd: yq e -i '.generic-service-chart.applicationImage.tag = strenv(APP_TAG)' helm/eskimo/staging/common-values.yaml
+          cmd: |
+            cd secret-infrastructure
+            yq e -i '.generic-service-chart.applicationImage.tag = strenv(APP_TAG)' helm/eskimo/staging/common-values.yaml
       - name: Update [production] application tag version in helm/eskimo/production/common-values.yaml
         uses: mikefarah/yq@master
         with:
-          cmd: yq e -i '.generic-service-chart.applicationImage.tag = strenv(APP_TAG)' helm/eskimo/production/common-values.yaml
+          cmd: |
+            cd secret-infrastructure
+            yq e -i '.generic-service-chart.applicationImage.tag = strenv(APP_TAG)' helm/eskimo/production/common-values.yaml
       - name: Commit and Push Changes to Application Tag Version
         run: |
+          cd secret-infrastructure
           git config user.name "ice CI/CD Bot"
           git config user.email ice-cicd-bot@ice.vip
-          git status
           git add helm/eskimo-hut/staging/common-values.yaml 
           git add helm/eskimo-hut/production/common-values.yaml
           git add helm/eskimo/staging/common-values.yaml 
