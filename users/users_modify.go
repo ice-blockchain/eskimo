@@ -5,47 +5,44 @@ package users
 import (
 	"context"
 	"fmt"
-	"io"
-	"mime/multipart"
-	"net/http"
-	"strings"
-	"time"
 
-	"github.com/imroc/req/v3"
 	"github.com/pkg/errors"
 
 	"github.com/ice-blockchain/wintr/connectors/storage"
-	"github.com/ice-blockchain/wintr/log"
+	"github.com/ice-blockchain/wintr/time"
 )
 
-func (u *users) ModifyUser(ctx context.Context, user *User) error {
+func (r *repository) ModifyUser(ctx context.Context, arg *ModifyUserArg) error {
 	if ctx.Err() != nil {
 		return errors.Wrap(ctx.Err(), "update user failed because context failed")
 	}
-	gUser, err := u.GetUserByID(ctx, user.ID)
+	if arg.User.Country != "" && !r.IsValid(arg.User.Country) {
+		return ErrInvalidCountry
+	}
+	gUser, err := r.getUserByID(ctx, arg.User.ID)
 	if err != nil {
-		return errors.Wrapf(err, "get user failed")
+		return errors.Wrapf(err, "get user %v failed", arg.User.ID)
 	}
-	if err = u.triggerNewPhoneNumberValidation(ctx, user, gUser); err != nil {
-		return errors.Wrap(err, "failed to trigger new phone number validation")
+	if err = r.triggerNewPhoneNumberValidation(ctx, &arg.User, gUser); err != nil {
+		return errors.Wrapf(err, "failed to trigger new phone number validation for %#v", arg)
 	}
-
-	user.ProfilePicture.Filename = fmt.Sprintf("%v", gUser.HashCode)
-	if err = u.uploadProfilePicture(ctx, &user.ProfilePicture); err != nil {
-		return errors.Wrapf(err, "failed to upload profile picture")
+	if arg.ProfilePicture != nil {
+		arg.ProfilePicture.Filename = fmt.Sprintf("%v", gUser.HashCode)
 	}
-
-	sql, params := user.genSQLUpdate()
+	if err = r.uploadProfilePicture(ctx, arg.ProfilePicture); err != nil {
+		return errors.Wrapf(err, "failed to upload profile picture for userID:%v", arg.User.ID)
+	}
+	sql, params := arg.genSQLUpdate()
 	if len(params) == 1+1 {
 		return nil
 	}
-	query, err := u.db.PrepareExecute(sql, params)
-
-	if err = storage.CheckSQLDMLErr(query, err); err != nil {
-		return errors.Wrapf(err, "failed to update user with id %v", user.ID)
+	if err = storage.CheckSQLDMLErr(r.db.PrepareExecute(sql, params)); err != nil {
+		return errors.Wrapf(err, "failed to update user %#v", arg)
 	}
+	us := &UserSnapshot{User: gUser.override(&arg.User), Before: gUser}
+	arg.User = *us.User
 
-	return errors.Wrap(u.sendUsersMessage(ctx, UserSnapshot{User: gUser.override(user), Before: gUser}), "failed to send updated user message")
+	return errors.Wrapf(r.sendUserSnapshotMessage(ctx, us), "failed to send updated user snapshot message %#v", us)
 }
 
 func (u *User) override(user *User) *User {
@@ -61,10 +58,12 @@ func (u *User) override(user *User) *User {
 	*n = *u
 	n.UpdatedAt = user.UpdatedAt
 	n.Email = mergeField(u.Email, user.Email)
-	n.FullName = mergeField(u.FullName, user.FullName)
+	n.FirstName = mergeField(u.FirstName, user.FirstName)
+	n.LastName = mergeField(u.LastName, user.LastName)
 	n.Username = mergeField(u.Username, user.Username)
-	n.ProfilePicture.Filename = mergeField(u.ProfilePicture.Filename, user.ProfilePicture.Filename)
+	n.ProfilePictureURL = mergeField(u.ProfilePictureURL, user.ProfilePictureURL)
 	n.Country = mergeField(u.Country, user.Country)
+	n.City = mergeField(u.City, user.City)
 	n.PhoneNumber = mergeField(u.PhoneNumber, user.PhoneNumber)
 	n.PhoneNumberHash = mergeField(u.PhoneNumberHash, user.PhoneNumberHash)
 	n.AgendaPhoneNumberHashes = mergeField(u.AgendaPhoneNumberHashes, user.AgendaPhoneNumberHashes)
@@ -72,31 +71,12 @@ func (u *User) override(user *User) *User {
 	return n
 }
 
-func (u *users) triggerNewPhoneNumberValidation(ctx context.Context, newUser, oldUser *User) error {
-	if newUser.PhoneNumber == "" || newUser.PhoneNumber == oldUser.PhoneNumber {
-		return nil
-	}
-
-	pn, err := u.validatePhoneNumber(newUser.PhoneNumber)
-	if err != nil {
-		return errors.Wrapf(err, "invalid phone number")
-	}
-
-	confirm := new(PhoneNumberConfirmation)
-	confirm.UserID = newUser.ID
-	confirm.PhoneNumber = pn
-	confirm.PhoneNumberHash = newUser.PhoneNumberHash
-
-	err = u.updatePhoneValidationCode(ctx, confirm)
-
-	return errors.Wrapf(err, "update phone validation code failed")
-}
-
-//nolint:funlen // SQL large again
-func (u *User) genSQLUpdate() (sql string, params map[string]interface{}) {
+//nolint:funlen // Because it's a big unitary SQL processing logic.
+func (arg *ModifyUserArg) genSQLUpdate() (sql string, params map[string]interface{}) {
 	params = make(map[string]interface{})
+	u := arg.User
 	params["id"] = u.ID
-	params["updatedAt"] = time.Now().UTC().UnixNano()
+	params["updatedAt"] = time.Now()
 
 	sql = "UPDATE USERS set UPDATED_AT = :updatedAt"
 
@@ -104,25 +84,33 @@ func (u *User) genSQLUpdate() (sql string, params map[string]interface{}) {
 		params["email"] = u.Email
 		sql += ", EMAIL = :email"
 	}
-	if u.FullName != "" {
-		params["fullName"] = u.FullName
-		sql += ", FULL_NAME = :fullName"
+	if u.FirstName != "" {
+		params["firstName"] = u.FirstName
+		sql += ", FIRST_NAME = :firstName"
+	}
+	if u.LastName != "" {
+		params["lastName"] = u.LastName
+		sql += ", LAST_NAME = :lastName"
 	}
 	if u.Username != "" {
 		params["username"] = u.Username
 		sql += ", USERNAME = :username"
 	}
-	if u.ProfilePicture.Filename != "" {
-		params["profilePictureName"] = u.ProfilePicture.Filename
+	if arg.ProfilePicture != nil {
+		params["profilePictureName"] = arg.ProfilePicture.Filename
 		sql += ", PROFILE_PICTURE_NAME = :profilePictureName"
 	}
 	if u.Country != "" {
-		params["country"] = strings.ToLower(u.Country)
+		params["country"] = u.Country
 		sql += ", COUNTRY = :country"
 	}
-	if u.confirmedPhoneNumber != "" {
+	if u.City != "" {
+		params["city"] = u.City
+		sql += ", CITY = :city"
+	}
+	if arg.confirmedPhoneNumber != "" {
 		// Updating phone number.
-		params["phoneNumber"] = u.confirmedPhoneNumber
+		params["phoneNumber"] = arg.confirmedPhoneNumber
 		sql += ", PHONE_NUMBER = :phoneNumber"
 		// And its hash, we need hashes to know if users are in agenda for each other.
 		params["phoneNumberHash"] = u.PhoneNumberHash
@@ -136,37 +124,4 @@ func (u *User) genSQLUpdate() (sql string, params map[string]interface{}) {
 	sql += " WHERE ID = :id"
 
 	return sql, params
-}
-
-func (u *users) uploadProfilePicture(ctx context.Context, data *multipart.FileHeader) error {
-	if data.Size == 0 {
-		return nil
-	}
-	file, err := data.Open()
-	defer func(file multipart.File) {
-		err = file.Close()
-		if err != nil {
-			log.Error(err, "error closing file")
-		}
-	}(file)
-	if err != nil {
-		return errors.Wrap(err, "error opening file")
-	}
-	fileData, err := io.ReadAll(file)
-	if err != nil {
-		return errors.Wrap(err, "error reading file")
-	}
-
-	url := fmt.Sprintf("%s/%s", cfg.PictureStorage.URLUpload, data.Filename)
-	_, err = req.
-		SetContext(ctx).
-		SetRetryCount(3). //nolint:gomnd // Static config
-		SetRetryCondition(func(resp *req.Response, err error) bool {
-			return (err != nil) || (resp.StatusCode == http.StatusTooManyRequests)
-		}).
-		SetHeader("AccessKey", cfg.PictureStorage.AccessKey).
-		SetHeader("Content-Type", data.Header.Get("Content-Type")).
-		SetBodyBytes(fileData).Put(url)
-
-	return errors.Wrap(err, "error uploading file")
 }

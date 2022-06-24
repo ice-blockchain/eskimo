@@ -12,30 +12,33 @@ import (
 // Public API.
 
 type (
+	RequestGetDeviceSettings struct {
+		AuthenticatedUser server.AuthenticatedUser `json:"-" swaggerignore:"true"`
+		users.DeviceID
+	}
+	RequestGetUsers struct {
+		AuthenticatedUser server.AuthenticatedUser `json:"-" swaggerignore:"true"`
+		users.GetUsersArg
+	}
 	RequestGetUserByID struct {
-		AuthenticatedUser server.AuthenticatedUser `json:"authenticatedUser" swaggerignore:"true"`
-		ID                string                   `uri:"userId" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
+		AuthenticatedUser server.AuthenticatedUser `json:"-" swaggerignore:"true"`
+		UserID            string                   `uri:"userId" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
 	}
 	RequestGetUserByUsername struct {
-		AuthenticatedUser server.AuthenticatedUser `json:"authenticatedUser" swaggerignore:"true"`
+		AuthenticatedUser server.AuthenticatedUser `json:"-" swaggerignore:"true"`
 		Username          string                   `form:"username" example:"jdoe"`
 	}
 	RequestGetTopCountries struct {
-		AuthenticatedUser server.AuthenticatedUser `json:"authenticatedUser" swaggerignore:"true"`
-		Limit             uint64                   `form:"limit" example:"20"`
-		Offset            uint64                   `form:"offset" example:"5"`
+		AuthenticatedUser server.AuthenticatedUser `json:"-" swaggerignore:"true"`
+		users.GetTopCountriesArg
 	}
 	RequestGetReferralAcquisitionHistory struct {
-		AuthenticatedUser server.AuthenticatedUser `json:"authenticatedUser" swaggerignore:"true"`
-		ID                string                   `uri:"userId" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
-		Days              uint64                   `form:"days" example:"5"`
+		AuthenticatedUser server.AuthenticatedUser `json:"-" swaggerignore:"true"`
+		users.GetReferralAcquisitionHistoryArg
 	}
 	RequestGetReferrals struct {
-		AuthenticatedUser server.AuthenticatedUser `json:"authenticatedUser" swaggerignore:"true"`
-		ID                string                   `uri:"userId" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
-		Type              string                   `form:"type" example:"T1"`
-		Limit             uint64                   `form:"limit" example:"20"` // 20 by default.
-		Offset            uint64                   `form:"offset" example:"5"`
+		AuthenticatedUser server.AuthenticatedUser `json:"-" swaggerignore:"true"`
+		users.GetReferralsArg
 	}
 )
 
@@ -43,17 +46,22 @@ type (
 
 const (
 	applicationYamlKey = "cmd/eskimo"
-	userNotFoundCode   = "USER_NOT_FOUND"
-	userInvalidCode    = "INVALID_USERNAME"
 	usernameRegex      = `^[\w\-.]{4,20}$`
-	tier1Referrals     = "T1" // Values for RequestGetReferrals.Type.
-	tier2Referrals     = "T2" // Values for RequestGetReferrals.Type.
 )
 
-//nolint:gochecknoglobals // Because its loaded once, at runtime.
-var cfg config
+// Values for server.ErrorResponse#Code.
+const (
+	userNotFoundErrorCode           = "USER_NOT_FOUND"
+	invalidUsernameErrorCode        = "INVALID_USERNAME"
+	deviceSettingsNotFoundErrorCode = "DEVICE_SETTINGS_NOT_FOUND"
+	invalidPropertiesErrorCode      = "INVALID_PROPERTIES"
+)
 
-var compiledUsernameRegex = regexp.MustCompile(usernameRegex)
+var (
+	compiledUsernameRegex = regexp.MustCompile(usernameRegex)
+	//nolint:gochecknoglobals // Because its loaded once, at runtime.
+	cfg config
+)
 
 type (
 	// | service implements server.State and is responsible for managing the state and lifecycle of the package.

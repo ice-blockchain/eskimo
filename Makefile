@@ -59,8 +59,9 @@ generate:
 	swag fmt -d cmd/eskimo-hut -g eskimo_hut.go
 #	go install github.com/golang/mock/mockgen@latest
 #	mockgen -source=CHANGE_ME.go -destination=CHANGE_ME.go -package=CHANGE_ME
+	make addLicense
 
-checkGenerated: generate addLicense
+checkGenerated: generate
 	@if git status --porcelain | grep -e [.]go -e [.]json -e [.]yaml; then \
 		echo "Please commit generated files, using 'make generate'."; \
 		git --no-pager diff; \
@@ -192,6 +193,20 @@ addLicense: getAddLicense
 checkLicense: getAddLicense
 	`go env GOPATH`/bin/addlicense -f LICENSE.header -check * .github/*
 
-all: checkLicense checkModVersion checkIfAllDependenciesAreUpToDate checkGenerated build buildAllSupportedPlatforms test coverage benchmark clean
+fix-field-alignment:
+	go install golang.org/x/tools/go/analysis/passes/fieldalignment/cmd/fieldalignment@latest
+	fieldalignment -fix ./...
+
+download-ip2location-sample:
+	rm -f -R tmp
+	rm -f sample.bin.db24.zip
+	rm -f ./users/.testdata/IP-COUNTRY-REGION-CITY-LATITUDE-LONGITUDE-ZIPCODE-TIMEZONE-ISP-DOMAIN-NETSPEED-AREACODE-WEATHER-MOBILE-ELEVATION-USAGETYPE-SAMPLE.BIN
+	wget https://cdn.ip2location.com/downloads/sample.bin.db24.zip
+	unzip sample.bin.db24.zip -d tmp
+	mkdir -p ./users/.testdata/; mv ./tmp/IP-COUNTRY-REGION-CITY-LATITUDE-LONGITUDE-ZIPCODE-TIMEZONE-ISP-DOMAIN-NETSPEED-AREACODE-WEATHER-MOBILE-ELEVATION-USAGETYPE-SAMPLE.BIN ./users/.testdata/IP-COUNTRY-REGION-CITY-LATITUDE-LONGITUDE-ZIPCODE-TIMEZONE-ISP-DOMAIN-NETSPEED-AREACODE-WEATHER-MOBILE-ELEVATION-USAGETYPE-SAMPLE.BIN
+	rm -f -R tmp
+	rm -f sample.bin.db24.zip
+
+all: checkLicense checkModVersion checkIfAllDependenciesAreUpToDate checkGenerated build buildAllSupportedPlatforms download-ip2location-sample test coverage benchmark clean
 local: addLicense checkLicense updateGoModVersion updateAllDependencies generate build buildMultiPlatformDockerImage test coverage benchmark lint clean
 dockerfile: binary-specific-service

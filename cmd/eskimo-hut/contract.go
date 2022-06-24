@@ -4,10 +4,7 @@ package main
 
 import (
 	_ "embed"
-	"mime/multipart"
-	"net"
 
-	"github.com/ice-blockchain/eskimo/countries"
 	"github.com/ice-blockchain/eskimo/users"
 	"github.com/ice-blockchain/wintr/server"
 )
@@ -16,40 +13,33 @@ import (
 
 type (
 	RequestCreateUser struct {
-		// `email` is optional.
-		Email string `json:"email" example:"jdoe@gmail.com"`
-		// `fullName` is optional.
-		FullName string `json:"fullName" example:"John Doe"`
-		// `phoneNumber` is optional.
-		PhoneNumber     string `json:"phoneNumber" example:"+12099216581"`
-		PhoneNumberHash string `form:"phoneNumberHash" json:"phoneNumberHash" example:"Ef86A6021afCDe5673511376B2"`
-		Username        string `json:"username" example:"jdoe"`
-		// User's ID, so client app requests user by user name and provides ID here.
-		ReferredBy        string                   `json:"referredBy" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
-		AuthenticatedUser server.AuthenticatedUser `json:"authenticatedUser" swaggerignore:"true"`
-		ClientIP          net.IP                   `json:"clientIP" swaggerignore:"true"`
+		AuthenticatedUser server.AuthenticatedUser `json:"-" swaggerignore:"true"`
+		users.CreateUserArg
 	}
 	RequestModifyUser struct {
-		Email                   string                   `form:"email" json:"email" example:"jdoe@gmail.com"`
-		FullName                string                   `form:"fullName" json:"fullName" example:"John Doe"`
-		PhoneNumber             string                   `form:"phoneNumber" json:"phoneNumber" example:"+12099216581"`
-		PhoneNumberHash         string                   `form:"phoneNumberHash" json:"phoneNumberHash" example:"Ef86A6021afCDe5673511376B2"`
-		AgendaPhoneNumberHashes string                   `form:"agendaPhoneNumberHashes" json:"agendaPhoneNumberHashes" example:"Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2"` //nolint:lll // Just an example.
-		Username                string                   `form:"username" json:"username" example:"jdoe"`
-		ProfilePicture          multipart.FileHeader     `form:"profilePicture"`
-		AuthenticatedUser       server.AuthenticatedUser `json:"authenticatedUser" swaggerignore:"true"`
-		ID                      string                   `form:"-" json:"-" uri:"userId" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
-		Country                 string                   `form:"country" json:"country" example:"us"`
+		AuthenticatedUser server.AuthenticatedUser `json:"-" swaggerignore:"true"`
+		UserID            users.UserID             `uri:"userId" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
+		users.ModifyUserArg
 	}
 	RequestDeleteUser struct {
-		AuthenticatedUser server.AuthenticatedUser `json:"authenticatedUser" swaggerignore:"true"`
-		ID                string                   `uri:"userId" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
+		AuthenticatedUser server.AuthenticatedUser `json:"-" swaggerignore:"true"`
+		UserID            string                   `uri:"userId" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
 	}
 	RequestValidatePhoneNumber struct {
-		AuthenticatedUser server.AuthenticatedUser `json:"authenticatedUser" swaggerignore:"true"`
-		ValidationCode    string                   `json:"validationCode" example:"232323232"`
-		PhoneNumber       string                   `json:"phoneNumber" example:"+12099216581"`
-		PhoneNumberHash   string                   `json:"phoneNumberHash" example:"Ef86A6021afCDe5673511376B2"`
+		AuthenticatedUser server.AuthenticatedUser `json:"-" swaggerignore:"true"`
+		users.PhoneNumberValidation
+	}
+	RequestGetDeviceLocation struct {
+		AuthenticatedUser server.AuthenticatedUser `json:"-" swaggerignore:"true"`
+		users.GetDeviceMetadataLocationArg
+	}
+	RequestModifyDeviceSettings struct {
+		AuthenticatedUser server.AuthenticatedUser `json:"-" swaggerignore:"true"`
+		users.DeviceSettings
+	}
+	RequestReplaceDeviceMetadata struct {
+		AuthenticatedUser server.AuthenticatedUser `json:"-" swaggerignore:"true"`
+		users.ReplaceDeviceMetadataArg
 	}
 )
 
@@ -57,11 +47,18 @@ type (
 
 const (
 	applicationYamlKey = "cmd/eskimo-hut"
-	userNotFoundCode   = "USER_NOT_FOUND"
-	userDuplicateCode  = "USER_DUPLICATE"
-	userBadRequest     = "USER_BAD_REQUEST"
-	userInvalidCode    = "INVALID_VALIDATION_CODE"
-	userExpiredCode    = "EXPIRED_VALIDATION_CODE"
+)
+
+// Values for server.ErrorResponse#Code.
+const (
+	userNotFoundErrorCode               = "USER_NOT_FOUND"
+	duplicateUserErrorCode              = "CONFLICT_WITH_ANOTHER_USER"
+	invalidValidationCodeErrorCode      = "INVALID_VALIDATION_CODE"
+	phoneValidationCodeExpiredErrorCode = "PHONE_VALIDATION_EXPIRED"
+	phoneValidationNotFoundErrorCode    = "PHONE_VALIDATION_NOT_FOUND"
+	phoneNumberFormatInvalidErrorCode   = "INVALID_PHONE_NUMBER_FORMAT"
+	phoneNumberInvalidErrorCode         = "INVALID_PHONE_NUMBER"
+	invalidPropertiesErrorCode          = "INVALID_PROPERTIES"
 )
 
 //nolint:gochecknoglobals // Because its loaded once, at runtime.
@@ -70,8 +67,7 @@ var cfg config
 type (
 	// | service implements server.State and is responsible for managing the state and lifecycle of the package.
 	service struct {
-		usersProcessor      users.Processor
-		countriesRepository countries.Repository
+		usersProcessor users.Processor
 	}
 	config struct {
 		Host    string `yaml:"host"`
