@@ -32,9 +32,7 @@ func initTwilioClient() *twilio.RestClient {
 
 func (*repository) generatePhoneNumberValidationCode() string {
 	n, err := rand.Int(rand.Reader, big.NewInt(999999)) //nolint:gomnd // static value
-	if err != nil {
-		log.Panic(errors.Wrapf(err, "crypto random generator failed"))
-	}
+	log.Panic(errors.Wrapf(err, "crypto random generator failed"))
 
 	return fmt.Sprintf("%06d", n.Uint64())
 }
