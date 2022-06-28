@@ -14,7 +14,7 @@ import (
 
 func (s *service) setupUserRoutes(router *gin.Engine) {
 	router.
-		Group("v1").
+		Group("v1r").
 		GET("users", server.RootHandler(newRequestGetUsers, s.GetUsers)).
 		GET("users/:userId", server.RootHandler(newRequestGetUserByID, s.GetUserByID)).
 		GET("user-views/username", server.RootHandler(newRequestGetUserByUsername, s.GetUserByUsername))

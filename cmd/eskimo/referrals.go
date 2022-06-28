@@ -15,7 +15,7 @@ import (
 
 func (s *service) setupUserReferralRoutes(router *gin.Engine) {
 	router.
-		Group("v1").
+		Group("v1r").
 		GET("users/:userId/referral-acquisition-history", server.RootHandler(newRequestGetReferralAcquisitionHistory, s.GetReferralAcquisitionHistory)).
 		GET("users/:userId/referrals", server.RootHandler(newRequestGetReferrals, s.GetReferrals))
 }

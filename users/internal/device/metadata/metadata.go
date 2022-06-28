@@ -4,10 +4,10 @@ package devicemetadata
 
 import (
 	"context"
-	"encoding/json"
 	"strings"
 
 	"github.com/framey-io/go-tarantool"
+	"github.com/goccy/go-json"
 	"github.com/ip2location/ip2location-go"
 	"github.com/pkg/errors"
 

@@ -14,7 +14,7 @@ import (
 
 func (s *service) setupUserValidationRoutes(router *gin.Engine) {
 	router.
-		Group("v1").
+		Group("v1w").
 		PUT("user-validations/:userId/phone-number", server.RootHandler(newRequestValidatePhoneNumber, s.ValidatePhoneNumber))
 }
 

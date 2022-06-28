@@ -14,7 +14,7 @@ import (
 
 func (s *service) setupDevicesRoutes(router *gin.Engine) {
 	router.
-		Group("v1").
+		Group("v1r").
 		GET("users/:userId/devices/:deviceUniqueId/settings", server.RootHandler(newRequestGetDeviceSettings, s.GetDeviceSettings))
 }
 

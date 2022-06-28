@@ -23,7 +23,7 @@ import (
 // @schemes                  https
 // @contact.name             ice.io
 // @contact.url              https://ice.io
-// @BasePath                 /v1
+// @BasePath                 /v1w
 func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -31,7 +31,7 @@ func main() {
 	appCfg.MustLoadFromKey(applicationYamlKey, &cfg)
 	api.SwaggerInfo.Host = cfg.Host
 	api.SwaggerInfo.Version = cfg.Version
-	srv := server.New(new(service), applicationYamlKey, "/users")
+	srv := server.New(new(service), applicationYamlKey, "/users/w")
 	srv.ListenAndServe(ctx, cancel)
 }
 

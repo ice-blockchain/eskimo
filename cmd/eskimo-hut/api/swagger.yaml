@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: BUSL-1.1
 
-basePath: /v1
+basePath: /v1w
 definitions:
   CreateUserRequestBody:
     properties:

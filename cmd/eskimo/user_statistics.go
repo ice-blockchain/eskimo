@@ -13,7 +13,7 @@ import (
 
 func (s *service) setupUserStatisticsRoutes(router *gin.Engine) {
 	router.
-		Group("v1").
+		Group("v1r").
 		GET("user-statistics/top-countries", server.RootHandler(newRequestGetTopCountries, s.GetTopCountries))
 }
 

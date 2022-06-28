@@ -15,7 +15,7 @@ import (
 
 func (s *service) setupDevicesRoutes(router *gin.Engine) {
 	router.
-		Group("v1").
+		Group("v1w").
 		PUT("users/:userId/devices/:deviceUniqueId/metadata", server.RootHandler(newRequestReplaceDeviceMetadata, s.ReplaceDeviceMetadata)).
 		PATCH("users/:userId/devices/:deviceUniqueId/settings", server.RootHandler(newRequestModifyDeviceSettings, s.ModifyDeviceSettings)).
 		PUT("users/:userId/devices/:deviceUniqueId/metadata/location", server.RootHandler(newRequestGetDeviceLocation, s.GetDeviceLocation))

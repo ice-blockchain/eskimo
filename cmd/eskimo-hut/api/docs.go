@@ -967,7 +967,7 @@ const docTemplate = `{
 var SwaggerInfo = &swag.Spec{
 	Version:          "latest",
 	Host:             "",
-	BasePath:         "/v1",
+	BasePath:         "/v1w",
 	Schemes:          []string{"https"},
 	Title:            "User Accounts, User Devices, User Statistics API",
 	Description:      "API that handles everything related to write only operations for user's account, user's devices and statistics about those accounts and devices.",

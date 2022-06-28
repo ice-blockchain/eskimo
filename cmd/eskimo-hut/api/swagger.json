@@ -12,7 +12,7 @@
         },
         "version": "latest"
     },
-    "basePath": "/v1",
+    "basePath": "/v1w",
     "paths": {
         "/user-validations/{userId}/phone-number": {
             "put": {

@@ -4,8 +4,8 @@ package users
 
 import (
 	"context"
-	"encoding/json"
 
+	"github.com/goccy/go-json"
 	"github.com/pkg/errors"
 
 	messagebroker "github.com/ice-blockchain/wintr/connectors/message_broker"

@@ -17,7 +17,7 @@ import (
 
 func (s *service) setupUserRoutes(router *gin.Engine) {
 	router.
-		Group("v1").
+		Group("v1w").
 		POST("users", server.RootHandler(newRequestCreateUser, s.CreateUser)).
 		PATCH("users/:userId", server.RootHandler(newRequestModifyUser, s.ModifyUser)).
 		DELETE("users/:userId", server.RootHandler(newRequestDeleteUser, s.DeleteUser))
