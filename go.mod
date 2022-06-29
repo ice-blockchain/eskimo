@@ -4,11 +4,11 @@ go 1.18
 
 require (
 	github.com/cenkalti/backoff/v4 v4.1.3
-	github.com/framey-io/go-tarantool v0.0.0-20220629145139-5ef2578460f6
+	github.com/framey-io/go-tarantool v0.0.0-20220629171134-7bc21bab4dd0
 	github.com/gin-gonic/gin v1.8.1
 	github.com/goccy/go-json v0.9.7
 	github.com/hashicorp/go-multierror v1.1.1
-	github.com/ice-blockchain/wintr v1.16.0
+	github.com/ice-blockchain/wintr v1.17.0
 	github.com/imroc/req/v3 v3.13.2
 	github.com/ip2location/ip2location-go v8.3.0+incompatible
 	github.com/pkg/errors v0.9.1

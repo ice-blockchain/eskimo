@@ -58,6 +58,6 @@ func (r *repository) incrementOrDecrementCountryUserCount(ctx context.Context, c
 	arOp := []tarantool.Op{{Op: string(operation), Field: 1, Arg: 1}}
 	insertTuple := &CountryStatistics{Country: country, UserCount: 1}
 
-	return errors.Wrapf(r.db.UpsertAsync("USERS_PER_COUNTRY", insertTuple, arOp).GetTyped(&[]*CountryStatistics{}),
+	return errors.Wrapf(r.db.UpsertTyped("USERS_PER_COUNTRY", insertTuple, arOp, &[]*CountryStatistics{}),
 		"error changing country count for country:%v & operation:%v", country, operation)
 }
