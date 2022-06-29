@@ -24,17 +24,21 @@ func (r *repository) GetReferrals(ctx context.Context, arg *GetReferralsArg) (*R
 	case Tier1Referrals:
 		referralTypeJoin = `
 			 JOIN USERS referrals
-					ON referrals.referred_by = u.ID`
+					ON referrals.referred_by = u.ID
+					and referrals.id != u.id`
 	case Tier2Referrals:
 		referralTypeJoin = `
 			 JOIN USERS t1
                 	ON t1.referred_by = u.ID
-						INNER JOIN USERS referrals
-								ON referrals.referred_by = t1.ID`
+					and t1.id != u.id
+						JOIN USERS referrals
+							ON referrals.referred_by = t1.ID
+							and referrals.id != t1.id`
 	case ContactsReferrals:
 		referralTypeJoin = `
 			JOIN USERS referrals
-					ON POSITION(referrals.phone_number_hash, u.agenda_phone_number_hashes) > 0`
+					ON POSITION(referrals.phone_number_hash, u.agenda_phone_number_hashes) > 0
+					and referrals.id != u.id`
 	default:
 		log.Panic(errors.Errorf("referral type: '%v' not supported", arg.Type))
 	}
@@ -134,6 +138,7 @@ FROM (
 			FROM users
 			WHERE 1 = 1
 				AND referred_by = :userId
+				AND id != :userId
 				AND created_at >= :pastNanos
 				AND created_at <= :nowNanos
 		
@@ -147,6 +152,7 @@ FROM (
 			FROM referrals
 					JOIN users i
 						ON referrals.id = i.referred_by
+						AND referrals.id != i.id
 						AND i.created_at >= :pastNanos
 						AND i.created_at <= :nowNanos
 			WHERE tier < 3

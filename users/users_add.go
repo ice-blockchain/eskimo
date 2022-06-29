@@ -25,7 +25,7 @@ func (r *repository) CreateUser(ctx context.Context, arg *CreateUserArg) error {
 	if u.ReferredBy != "" {
 		referral = ":referredBy"
 	} else {
-		referral = `(SELECT ID FROM users ORDER BY random() LIMIT 1)`
+		referral = `(SELECT X.ID FROM (SELECT ID FROM users WHERE ID != :id ORDER BY random() LIMIT 1 UNION ALL SELECT :id as ID) X LIMIT 1)`
 	}
 	sql := fmt.Sprintf(`
 	INSERT INTO users 

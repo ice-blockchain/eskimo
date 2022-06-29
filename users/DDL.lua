@@ -13,7 +13,7 @@ box.execute([[CREATE TABLE IF NOT EXISTS users  (
                     country STRING NOT NULL,
                     city STRING NOT NULL,
                     email STRING,
-                    referred_by STRING REFERENCES users(id) ON DELETE SET NULL,
+                    referred_by STRING NOT NULL REFERENCES users(id),
                     phone_number_hash STRING,
                     agenda_phone_number_hashes STRING,
                     hash_code UNSIGNED NOT NULL UNIQUE

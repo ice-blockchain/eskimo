@@ -121,15 +121,17 @@ func (r *repository) GetUsers(ctx context.Context, arg *GetUsersArg) (result []*
 				   (SELECT u.phone_number
 					FROM users user_requesting_this
 					WHERE 1=1
-						AND id = :userId
-						AND POSITION(u.phone_number_hash, user_requesting_this.agenda_phone_number_hashes) > 0)      AS phone_number_,
+						AND user_requesting_this.id = :userId
+						AND (POSITION(u.phone_number_hash, user_requesting_this.agenda_phone_number_hashes) > 0
+								OR
+							 user_requesting_this.id == u.id))      												 AS phone_number_,
 				   '%v/' || u.profile_picture_name                                                                   AS profile_picture_url,
 				   u.country                                                                                         AS country,
 				   u.city                                                                                            AS city,
 				   (CASE
-						WHEN t0.id = :userId
+						WHEN t0.id = :userId and t0.id != u.id
 							THEN 'T1'
-						WHEN t0.referred_by = :userId
+						WHEN t0.referred_by = :userId and t0.id != t0.referred_by
 							THEN 'T2'
 						ELSE ''
 					END)                                                                                             AS referral_type	
