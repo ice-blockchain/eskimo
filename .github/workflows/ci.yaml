@@ -172,8 +172,8 @@ jobs:
           SLACK_ICON_EMOJI: ':rocket:'
           SLACK_COLOR: ${{ job.status }}
           SLACK_FOOTER: |
-            https://staging.r.api.ice.io/users
-            https://staging.w.api.ice.io/users
+            https://staging.r.api.ice.io/users/r
+            https://staging.w.api.ice.io/users/w
       - name: Slack Notification For Failure
         if: ${{ failure() }}
         uses: rtCamp/action-slack-notify@v2
@@ -185,8 +185,8 @@ jobs:
           SLACK_ICON_EMOJI: ':sob:'
           SLACK_COLOR: ${{ job.status }}
           SLACK_FOOTER: |
-            https://staging.r.api.ice.io/users
-            https://staging.w.api.ice.io/users
+            https://staging.r.api.ice.io/users/r
+            https://staging.w.api.ice.io/users/w
       - name: Slack Notification For Cancellation
         if: ${{ cancelled() }}
         uses: rtCamp/action-slack-notify@v2
@@ -198,5 +198,5 @@ jobs:
           SLACK_ICON_EMOJI: ':X:'
           SLACK_COLOR: ${{ job.status }}
           SLACK_FOOTER: |
-            https://staging.r.api.ice.io/users
-            https://staging.w.api.ice.io/users
+            https://staging.r.api.ice.io/users/r
+            https://staging.w.api.ice.io/users/w
