@@ -56,6 +56,10 @@ users:
         partitions: 10
         replicationFactor: 1
         retention: 1000h
+      - name: eskimo-health-check
+        partitions: 1
+        replicationFactor: 1
+        retention: 1000h
     consumingTopics:
       - users-events
       - mining-started-events

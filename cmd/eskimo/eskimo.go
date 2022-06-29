@@ -54,9 +54,11 @@ func (s *service) Close(ctx context.Context) error {
 	return errors.Wrap(s.usersRepository.Close(), "could not close repository")
 }
 
-func (s *service) CheckHealth(_ context.Context, r *server.RequestCheckHealth) server.Response {
+func (s *service) CheckHealth(ctx context.Context, r *server.RequestCheckHealth) server.Response {
 	log.Debug("checking health...", "package", "users")
-	//nolint:nolintlint,godox // TODO to be implemented. // Not yet
+	if _, err := s.usersRepository.GetTopCountries(ctx, &users.GetTopCountriesArg{Limit: 1}); err != nil {
+		return server.Unexpected(err)
+	}
 
 	return server.OK(r)
 }

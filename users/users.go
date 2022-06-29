@@ -8,6 +8,7 @@ import (
 
 	"github.com/cenkalti/backoff/v4"
 	"github.com/framey-io/go-tarantool"
+	"github.com/goccy/go-json"
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 
@@ -17,6 +18,7 @@ import (
 	messagebroker "github.com/ice-blockchain/wintr/connectors/message_broker"
 	"github.com/ice-blockchain/wintr/connectors/storage"
 	"github.com/ice-blockchain/wintr/log"
+	"github.com/ice-blockchain/wintr/time"
 )
 
 func New(ctx context.Context, cancel context.CancelFunc) Repository {
@@ -78,9 +80,27 @@ func closeAll(mbConsumer, mbProducer messagebroker.Client, db tarantool.Connecto
 	}
 }
 
-func (p *processor) CheckHealth(_ context.Context) error {
-	//nolint:nolintlint    // TODO implement me.
-	return nil
+func (p *processor) CheckHealth(ctx context.Context) error {
+	if _, err := p.db.Ping(); err != nil {
+		return errors.Wrap(err, "[health-check] failed to ping DB")
+	}
+	type ts struct {
+		TS *time.Time `json:"ts"`
+	}
+	now := ts{TS: time.Now()}
+	b, err := json.Marshal(now)
+	if err != nil {
+		return errors.Wrapf(err, "[health-check] failed to marshal %#v", now)
+	}
+	responder := make(chan error, 1)
+	p.mb.SendMessage(ctx, &messagebroker.Message{
+		Headers: map[string]string{"producer": "eskimo"},
+		Key:     cfg.MessageBroker.Topics[len(cfg.MessageBroker.Topics)-1].Name,
+		Topic:   cfg.MessageBroker.Topics[len(cfg.MessageBroker.Topics)-1].Name,
+		Value:   b,
+	}, responder)
+
+	return errors.Wrapf(<-responder, "[health-check] failed to send health check message to broker")
 }
 
 func retry(ctx context.Context, op func() error) error {
