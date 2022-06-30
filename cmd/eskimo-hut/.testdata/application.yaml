@@ -7,8 +7,65 @@ logger:
 cmd/eskimo-hut:
   host: localhost
   version: latest
-  defaultEndpointTimeout: 5s
+  defaultEndpointTimeout: 30s
   httpServer:
     port: 45443
     certPath: .testdata/localhost.crt
     keyPath: .testdata/localhost.key
+users: &users
+  db: &usersDatabase
+    spaces:
+      - USERS
+      - PHONE_NUMBER_VALIDATIONS
+      - DAYS
+      - USERS_PER_COUNTRY
+      - DEVICE_SETTINGS
+      - DEVICE_METADATA
+    urls:
+      - localhost:3303
+    user: admin
+    password: pass
+  messageBroker: &usersMessageBroker
+    consumerGroup: eskimo-cmd-eskimo-hut-testing
+    createTopics: true
+    urls:
+      - localhost:9094
+    topics:
+      - name: users-events
+        partitions: 10
+        replicationFactor: 1
+        retention: 1000h
+      - name: user-device-metadata-events
+        partitions: 10
+        replicationFactor: 1
+        retention: 1000h
+      - name: user-device-settings-events
+        partitions: 10
+        replicationFactor: 1
+        retention: 1000h
+      ### The next topics are not owned by this service, but are needed to be created for the local/test environment.
+      - name: mining-started-events
+        partitions: 10
+        replicationFactor: 1
+        retention: 1000h
+      - name: eskimo-health-check
+        partitions: 1
+        replicationFactor: 1
+        retention: 1000h
+    consumingTopics:
+      - users-events
+      - mining-started-events
+  ip2LocationBinaryPath: ./users/internal/device/metadata/.testdata/IP-COUNTRY-REGION-CITY-LATITUDE-LONGITUDE-ZIPCODE-TIMEZONE-ISP-DOMAIN-NETSPEED-AREACODE-WEATHER-MOBILE-ELEVATION-USAGETYPE-SAMPLE.BIN
+  pictureStorage:
+    urlUpload: https://storage.bunnycdn.com/ice-staging/profile
+    urlDownload: https://ice-staging.b-cdn.net/profile
+  phoneNumberValidation:
+    expirationTime: 3m
+    smsTemplate: '{{.code}} is your ice verification code. This code expires in {{.expirationTime}} minutes.'
+users_test:
+  <<: *users
+  messageBroker:
+    <<: *usersMessageBroker
+    consumerGroup: eskimo-cmd-eskimo-hut-testing-runner
+  db:
+    <<: *usersDatabase

@@ -1,20 +1,9 @@
 # SPDX-License-Identifier: BUSL-1.1
 
-development: false
+development: true
 logger:
   encoder: console
-  level: info
-cmd/eskimo:
-  host: localhost
-  version: latest
-  defaultEndpointTimeout: 30s
-  httpServer:
-    port: 44443
-    certPath: .testdata/localhost.crt
-    keyPath: .testdata/localhost.key
-  defaultPagination:
-    limit: 20
-    maxLimit: 1000
+  level: debug
 users: &users
   db: &usersDatabase
     spaces:
@@ -25,14 +14,14 @@ users: &users
       - DEVICE_SETTINGS
       - DEVICE_METADATA
     urls:
-      - localhost:3302
+      - localhost:3304
     user: admin
     password: pass
   messageBroker: &usersMessageBroker
-    consumerGroup: eskimo-cmd-eskimo-testing
+    consumerGroup: eskimo-users-testing
     createTopics: true
     urls:
-      - localhost:9093
+      - localhost:9095
     topics:
       - name: users-events
         partitions: 10
@@ -58,12 +47,18 @@ users: &users
     consumingTopics:
       - users-events
       - mining-started-events
+  ip2LocationBinaryPath: internal/device/metadata/.testdata/IP-COUNTRY-REGION-CITY-LATITUDE-LONGITUDE-ZIPCODE-TIMEZONE-ISP-DOMAIN-NETSPEED-AREACODE-WEATHER-MOBILE-ELEVATION-USAGETYPE-SAMPLE.BIN
   pictureStorage:
+    urlUpload: https://storage.bunnycdn.com/ice-staging/profile
     urlDownload: https://ice-staging.b-cdn.net/profile
+  phoneNumberValidation:
+    expirationTime: 3m
+    smsTemplate: '{{.code}} is your ice verification code. This code expires in {{.expirationTime}} minutes.'
 users_test:
   <<: *users
   messageBroker:
     <<: *usersMessageBroker
-    consumerGroup: eskimo-cmd-eskimo-testing-runner
+    consumerGroup: eskimo-users-testing-runner
   db:
     <<: *usersDatabase
+    schemaPath: DDL.lua

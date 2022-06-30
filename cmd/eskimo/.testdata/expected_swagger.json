@@ -1,0 +1,869 @@
+{
+    "schemes": [
+        "https"
+    ],
+    "swagger": "2.0",
+    "info": {
+        "description": "API that handles everything related to read only operations for user's account, user's devices and statistics about those accounts and devices.",
+        "title": "User Accounts, User Devices, User Statistics API",
+        "contact": {
+            "name": "ice.io",
+            "url": "https://ice.io"
+        },
+        "version": "latest"
+    },
+    "host": "localhost",
+    "basePath": "/v1r",
+    "paths": {
+        "/user-statistics/top-countries": {
+            "get": {
+                "description": "Returns the paginated view of users per country.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Statistics"
+                ],
+                "parameters": [
+                    {
+                        "type": "string",
+                        "default": "Bearer \u003cAdd access token here\u003e",
+                        "description": "Insert your access token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "a keyword to look for in all country codes or names",
+                        "name": "keyword",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Limit of elements to return. Defaults to 10",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Number of elements to skip before collecting elements to return",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/users.CountryStatistics"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "if validations fail",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "if not authorized",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    },
+                    "422": {
+                        "description": "if syntax fails",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    },
+                    "504": {
+                        "description": "if request times out",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/user-views/username": {
+            "get": {
+                "description": "Returns public information about an user account based on an username, making sure the username is valid first.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Accounts"
+                ],
+                "parameters": [
+                    {
+                        "type": "string",
+                        "default": "Bearer \u003cAdd access token here\u003e",
+                        "description": "Insert your access token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "username of the user. It will validate it first",
+                        "name": "username",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/users.UserProfile"
+                        }
+                    },
+                    "400": {
+                        "description": "if validations fail",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "if not authorized",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "if not found",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    },
+                    "422": {
+                        "description": "if syntax fails",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    },
+                    "504": {
+                        "description": "if request times out",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/users": {
+            "get": {
+                "description": "Returns a list of user account based on the provided query parameters.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Accounts"
+                ],
+                "parameters": [
+                    {
+                        "type": "string",
+                        "default": "Bearer \u003cAdd access token here\u003e",
+                        "description": "Insert your access token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "A keyword to look for in the usernames and full names of users",
+                        "name": "keyword",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Limit of elements to return. Defaults to 10",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Elements to skip before starting to look for",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/users.RelatableUserProfile"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "if validations fail",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "if not authorized",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    },
+                    "422": {
+                        "description": "if syntax fails",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    },
+                    "504": {
+                        "description": "if request times out",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/users/{userId}": {
+            "get": {
+                "description": "Returns an user's account.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Accounts"
+                ],
+                "parameters": [
+                    {
+                        "type": "string",
+                        "default": "Bearer \u003cAdd access token here\u003e",
+                        "description": "Insert your access token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "ID of the user",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/users.UserProfile"
+                        }
+                    },
+                    "400": {
+                        "description": "if validations fail",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "if not authorized",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "if not found",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    },
+                    "422": {
+                        "description": "if syntax fails",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    },
+                    "504": {
+                        "description": "if request times out",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/users/{userId}/devices/{deviceUniqueId}/settings": {
+            "get": {
+                "description": "Returns the settings of an user's device",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Devices"
+                ],
+                "parameters": [
+                    {
+                        "type": "string",
+                        "default": "Bearer \u003cAdd access token here\u003e",
+                        "description": "Insert your access token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "ID of the user",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "ID of the device",
+                        "name": "deviceUniqueId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/users.DeviceSettings"
+                        }
+                    },
+                    "400": {
+                        "description": "if validations fail",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "if not authorized",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "if not allowed",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "if not found",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    },
+                    "422": {
+                        "description": "if syntax fails",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    },
+                    "504": {
+                        "description": "if request times out",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/users/{userId}/referral-acquisition-history": {
+            "get": {
+                "description": "Returns the history of referral acquisition for the provided user id.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Referrals"
+                ],
+                "parameters": [
+                    {
+                        "type": "string",
+                        "default": "Bearer \u003cAdd access token here\u003e",
+                        "description": "Insert your access token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "ID of the user",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "The number of days to look in the past. Defaults to 5.",
+                        "name": "days",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/users.ReferralAcquisition"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "if validations fail",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "if not authorized",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "if not allowed",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    },
+                    "422": {
+                        "description": "if syntax fails",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    },
+                    "504": {
+                        "description": "if request times out",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/users/{userId}/referrals": {
+            "get": {
+                "description": "Returns the referrals of an user.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Referrals"
+                ],
+                "parameters": [
+                    {
+                        "type": "string",
+                        "default": "Bearer \u003cAdd access token here\u003e",
+                        "description": "Insert your access token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "ID of the user",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Type of referrals: `CONTACTS` or `T1` or `T2`",
+                        "name": "type",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Limit of elements to return. Defaults to 10",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Number of elements to skip before collecting elements to return",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/users.Referrals"
+                        }
+                    },
+                    "400": {
+                        "description": "if validations fail",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "if not authorized",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "if not allowed",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    },
+                    "422": {
+                        "description": "if syntax fails",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    },
+                    "504": {
+                        "description": "if request times out",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "devicesettings.NotificationChannels": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "boolean",
+                    "example": false
+                },
+                "inApp": {
+                    "type": "boolean",
+                    "example": false
+                },
+                "push": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "sms": {
+                    "type": "boolean",
+                    "example": false
+                }
+            }
+        },
+        "devicesettings.NotificationSettings": {
+            "type": "object",
+            "additionalProperties": {
+                "$ref": "#/definitions/devicesettings.NotificationChannels"
+            }
+        },
+        "server.ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string",
+                    "example": "SOMETHING_NOT_FOUND"
+                },
+                "data": {
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "error": {
+                    "type": "string",
+                    "example": "something is missing"
+                }
+            }
+        },
+        "users.CountryStatistics": {
+            "type": "object",
+            "properties": {
+                "country": {
+                    "description": "ISO 3166 country code.",
+                    "type": "string",
+                    "example": "US"
+                },
+                "userCount": {
+                    "type": "integer",
+                    "example": 12121212
+                }
+            }
+        },
+        "users.DeviceSettings": {
+            "type": "object",
+            "properties": {
+                "deviceUniqueId": {
+                    "type": "string",
+                    "example": "FCDBD8EF-62FC-4ECB-B2F5-92C9E79AC7F9"
+                },
+                "disableAllNotifications": {
+                    "description": "Optional. Default is `false`.",
+                    "type": "boolean",
+                    "example": true
+                },
+                "language": {
+                    "description": "Optional.",
+                    "type": "string",
+                    "example": "en"
+                },
+                "notificationSettings": {
+                    "description": "Optional.",
+                    "$ref": "#/definitions/devicesettings.NotificationSettings"
+                },
+                "updatedAt": {
+                    "description": "`Read Only`.",
+                    "type": "string",
+                    "example": "2022-01-03T16:20:52.156534Z"
+                },
+                "userId": {
+                    "type": "string",
+                    "example": "did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"
+                }
+            }
+        },
+        "users.Referral": {
+            "type": "object",
+            "properties": {
+                "active": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "city": {
+                    "type": "string",
+                    "example": "New York"
+                },
+                "country": {
+                    "type": "string",
+                    "example": "US"
+                },
+                "firstName": {
+                    "type": "string",
+                    "example": "John"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"
+                },
+                "lastName": {
+                    "type": "string",
+                    "example": "Doe"
+                },
+                "phoneNumber": {
+                    "type": "string",
+                    "example": "+12099216581"
+                },
+                "pinged": {
+                    "type": "boolean",
+                    "example": false
+                },
+                "profilePictureURL": {
+                    "type": "string",
+                    "example": "https://somecdn.com/p1.jpg"
+                },
+                "username": {
+                    "type": "string",
+                    "example": "jdoe"
+                }
+            }
+        },
+        "users.ReferralAcquisition": {
+            "type": "object",
+            "properties": {
+                "date": {
+                    "type": "string",
+                    "example": "2022-01-03"
+                },
+                "t1": {
+                    "type": "integer",
+                    "example": 22
+                },
+                "t2": {
+                    "type": "integer",
+                    "example": 13
+                }
+            }
+        },
+        "users.Referrals": {
+            "type": "object",
+            "properties": {
+                "active": {
+                    "type": "integer",
+                    "example": 11
+                },
+                "referrals": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/users.Referral"
+                    }
+                },
+                "total": {
+                    "type": "integer",
+                    "example": 11
+                }
+            }
+        },
+        "users.RelatableUserProfile": {
+            "type": "object",
+            "properties": {
+                "active": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "city": {
+                    "type": "string",
+                    "example": "New York"
+                },
+                "country": {
+                    "type": "string",
+                    "example": "US"
+                },
+                "firstName": {
+                    "type": "string",
+                    "example": "John"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"
+                },
+                "lastName": {
+                    "type": "string",
+                    "example": "Doe"
+                },
+                "phoneNumber": {
+                    "type": "string",
+                    "example": "+12099216581"
+                },
+                "pinged": {
+                    "type": "boolean",
+                    "example": false
+                },
+                "profilePictureURL": {
+                    "type": "string",
+                    "example": "https://somecdn.com/p1.jpg"
+                },
+                "referralType": {
+                    "type": "string",
+                    "enum": [
+                        "T1",
+                        "T2"
+                    ],
+                    "example": "T1"
+                },
+                "username": {
+                    "type": "string",
+                    "example": "jdoe"
+                }
+            }
+        },
+        "users.UserProfile": {
+            "type": "object",
+            "properties": {
+                "city": {
+                    "type": "string",
+                    "example": "New York"
+                },
+                "country": {
+                    "type": "string",
+                    "example": "US"
+                },
+                "firstName": {
+                    "type": "string",
+                    "example": "John"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"
+                },
+                "lastName": {
+                    "type": "string",
+                    "example": "Doe"
+                },
+                "phoneNumber": {
+                    "type": "string",
+                    "example": "+12099216581"
+                },
+                "profilePictureURL": {
+                    "type": "string",
+                    "example": "https://somecdn.com/p1.jpg"
+                },
+                "referralCount": {
+                    "type": "integer",
+                    "example": 100
+                },
+                "username": {
+                    "type": "string",
+                    "example": "jdoe"
+                }
+            }
+        }
+    }
+}

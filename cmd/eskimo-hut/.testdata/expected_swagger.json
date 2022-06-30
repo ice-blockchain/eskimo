@@ -1,0 +1,1081 @@
+{
+  "schemes": [
+    "https"
+  ],
+  "swagger": "2.0",
+  "info": {
+    "description": "API that handles everything related to write only operations for user's account, user's devices and statistics about those accounts and devices.",
+    "title": "User Accounts, User Devices, User Statistics API",
+    "contact": {
+      "name": "ice.io",
+      "url": "https://ice.io"
+    },
+    "version": "latest"
+  },
+  "host": "localhost",
+  "basePath": "/v1w",
+  "paths": {
+    "/user-validations/{userId}/phone-number": {
+      "put": {
+        "description": "Validates a provided phone number by a one time code previously provided to the user via SMS.",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Validations"
+        ],
+        "parameters": [
+          {
+            "type": "string",
+            "default": "Bearer \u003cAdd access token here\u003e",
+            "description": "Insert your access token",
+            "name": "Authorization",
+            "in": "header",
+            "required": true
+          },
+          {
+            "type": "string",
+            "description": "ID of the user",
+            "name": "userId",
+            "in": "path",
+            "required": true
+          },
+          {
+            "description": "Request params",
+            "name": "request",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/ValidatePhoneNumberRequestBody"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "400": {
+            "description": "if validations fail",
+            "schema": {
+              "$ref": "#/definitions/server.ErrorResponse"
+            }
+          },
+          "401": {
+            "description": "if not authorized",
+            "schema": {
+              "$ref": "#/definitions/server.ErrorResponse"
+            }
+          },
+          "403": {
+            "description": "if not allowed",
+            "schema": {
+              "$ref": "#/definitions/server.ErrorResponse"
+            }
+          },
+          "404": {
+            "description": "phone number is not in the process of validation or user not found",
+            "schema": {
+              "$ref": "#/definitions/server.ErrorResponse"
+            }
+          },
+          "422": {
+            "description": "if syntax fails",
+            "schema": {
+              "$ref": "#/definitions/server.ErrorResponse"
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "$ref": "#/definitions/server.ErrorResponse"
+            }
+          },
+          "504": {
+            "description": "if request times out",
+            "schema": {
+              "$ref": "#/definitions/server.ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/users": {
+      "post": {
+        "description": "Creates an user account",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Accounts"
+        ],
+        "parameters": [
+          {
+            "type": "string",
+            "default": "Bearer \u003cAdd access token here\u003e",
+            "description": "Insert your access token",
+            "name": "Authorization",
+            "in": "header",
+            "required": true
+          },
+          {
+            "description": "Request params",
+            "name": "request",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/CreateUserRequestBody"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "schema": {
+              "$ref": "#/definitions/users.User"
+            }
+          },
+          "400": {
+            "description": "if validations fail",
+            "schema": {
+              "$ref": "#/definitions/server.ErrorResponse"
+            }
+          },
+          "401": {
+            "description": "if not authorized",
+            "schema": {
+              "$ref": "#/definitions/server.ErrorResponse"
+            }
+          },
+          "409": {
+            "description": "user already exists with that ID or with that username",
+            "schema": {
+              "$ref": "#/definitions/server.ErrorResponse"
+            }
+          },
+          "422": {
+            "description": "if syntax fails",
+            "schema": {
+              "$ref": "#/definitions/server.ErrorResponse"
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "$ref": "#/definitions/server.ErrorResponse"
+            }
+          },
+          "504": {
+            "description": "if request times out",
+            "schema": {
+              "$ref": "#/definitions/server.ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/users/{userId}": {
+      "delete": {
+        "description": "Deletes an user account",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Accounts"
+        ],
+        "parameters": [
+          {
+            "type": "string",
+            "default": "Bearer \u003cAdd access token here\u003e",
+            "description": "Insert your access token",
+            "name": "Authorization",
+            "in": "header",
+            "required": true
+          },
+          {
+            "type": "string",
+            "description": "ID of the User",
+            "name": "userId",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK - found and deleted"
+          },
+          "204": {
+            "description": "No Content - already deleted"
+          },
+          "400": {
+            "description": "if validations fail",
+            "schema": {
+              "$ref": "#/definitions/server.ErrorResponse"
+            }
+          },
+          "401": {
+            "description": "if not authorized",
+            "schema": {
+              "$ref": "#/definitions/server.ErrorResponse"
+            }
+          },
+          "403": {
+            "description": "not allowed",
+            "schema": {
+              "$ref": "#/definitions/server.ErrorResponse"
+            }
+          },
+          "422": {
+            "description": "if syntax fails",
+            "schema": {
+              "$ref": "#/definitions/server.ErrorResponse"
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "$ref": "#/definitions/server.ErrorResponse"
+            }
+          },
+          "504": {
+            "description": "if request times out",
+            "schema": {
+              "$ref": "#/definitions/server.ErrorResponse"
+            }
+          }
+        }
+      },
+      "patch": {
+        "description": "Modifies an user account",
+        "consumes": [
+          "multipart/form-data"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Accounts"
+        ],
+        "parameters": [
+          {
+            "type": "string",
+            "default": "Bearer \u003cAdd access token here\u003e",
+            "description": "Insert your access token",
+            "name": "Authorization",
+            "in": "header",
+            "required": true
+          },
+          {
+            "type": "string",
+            "description": "ID of the user",
+            "name": "userId",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "string",
+            "description": "Optional. Example:\"Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2\".",
+            "name": "agendaPhoneNumberHashes",
+            "in": "formData"
+          },
+          {
+            "type": "string",
+            "description": "Optional. Example:\"New York\".",
+            "name": "city",
+            "in": "formData"
+          },
+          {
+            "type": "string",
+            "description": "Optional. Example:\"US\".",
+            "name": "country",
+            "in": "formData"
+          },
+          {
+            "type": "string",
+            "description": "Optional. Example:\"jdoe@gmail.com\".",
+            "name": "email",
+            "in": "formData"
+          },
+          {
+            "type": "string",
+            "description": "Optional. Required only if `lastName` is set. Example:\"John\".",
+            "name": "firstName",
+            "in": "formData"
+          },
+          {
+            "type": "string",
+            "description": "Optional. Required only if `firstName` is set.  Example:\"Doe\".",
+            "name": "lastName",
+            "in": "formData"
+          },
+          {
+            "type": "string",
+            "description": "Optional. Example:\"+12099216581\".",
+            "name": "phoneNumber",
+            "in": "formData"
+          },
+          {
+            "type": "string",
+            "description": "Optional. Required only if `phoneNumber` is set. Example:\"Ef86A6021afCDe5673511376B2\".",
+            "name": "phoneNumberHash",
+            "in": "formData"
+          },
+          {
+            "type": "string",
+            "description": "Example:\"jdoe\".",
+            "name": "username",
+            "in": "formData"
+          },
+          {
+            "type": "file",
+            "description": "The new profile picture for the user",
+            "name": "profilePicture",
+            "in": "formData"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/users.User"
+            }
+          },
+          "400": {
+            "description": "if validations fail",
+            "schema": {
+              "$ref": "#/definitions/server.ErrorResponse"
+            }
+          },
+          "401": {
+            "description": "if not authorized",
+            "schema": {
+              "$ref": "#/definitions/server.ErrorResponse"
+            }
+          },
+          "403": {
+            "description": "not allowed",
+            "schema": {
+              "$ref": "#/definitions/server.ErrorResponse"
+            }
+          },
+          "404": {
+            "description": "user is not found",
+            "schema": {
+              "$ref": "#/definitions/server.ErrorResponse"
+            }
+          },
+          "409": {
+            "description": "if username conflicts with another other user's",
+            "schema": {
+              "$ref": "#/definitions/server.ErrorResponse"
+            }
+          },
+          "422": {
+            "description": "if syntax fails",
+            "schema": {
+              "$ref": "#/definitions/server.ErrorResponse"
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "$ref": "#/definitions/server.ErrorResponse"
+            }
+          },
+          "504": {
+            "description": "if request times out",
+            "schema": {
+              "$ref": "#/definitions/server.ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/users/{userId}/devices/{deviceUniqueId}/metadata": {
+      "put": {
+        "description": "Replaces existing device metadata with the provided one.",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Devices"
+        ],
+        "parameters": [
+          {
+            "type": "string",
+            "default": "Bearer \u003cAdd access token here\u003e",
+            "description": "Insert your access token",
+            "name": "Authorization",
+            "in": "header",
+            "required": true
+          },
+          {
+            "type": "string",
+            "description": "ID of the user",
+            "name": "userId",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "string",
+            "description": "ID of the device",
+            "name": "deviceUniqueId",
+            "in": "path",
+            "required": true
+          },
+          {
+            "description": "Request params",
+            "name": "request",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/users.DeviceMetadata"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "if validations fail",
+            "schema": {
+              "$ref": "#/definitions/server.ErrorResponse"
+            }
+          },
+          "401": {
+            "description": "if not authorized",
+            "schema": {
+              "$ref": "#/definitions/server.ErrorResponse"
+            }
+          },
+          "403": {
+            "description": "if not allowed",
+            "schema": {
+              "$ref": "#/definitions/server.ErrorResponse"
+            }
+          },
+          "422": {
+            "description": "if syntax fails",
+            "schema": {
+              "$ref": "#/definitions/server.ErrorResponse"
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "$ref": "#/definitions/server.ErrorResponse"
+            }
+          },
+          "504": {
+            "description": "if request times out",
+            "schema": {
+              "$ref": "#/definitions/server.ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/users/{userId}/devices/{deviceUniqueId}/metadata/location": {
+      "put": {
+        "description": "Returns the device's geolocation based on its IP or based on account information if userId is also provided.",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Devices"
+        ],
+        "parameters": [
+          {
+            "type": "string",
+            "default": "Bearer \u003cAdd access token here\u003e",
+            "description": "Insert your access token. Required only if userId is set",
+            "name": "Authorization",
+            "in": "header"
+          },
+          {
+            "type": "string",
+            "description": "ID of the user. Is optional, set an `-` if none.",
+            "name": "userId",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "string",
+            "description": "ID of the device",
+            "name": "deviceUniqueId",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/users.DeviceLocation"
+            }
+          },
+          "400": {
+            "description": "if validations fail",
+            "schema": {
+              "$ref": "#/definitions/server.ErrorResponse"
+            }
+          },
+          "401": {
+            "description": "if not authenticated",
+            "schema": {
+              "$ref": "#/definitions/server.ErrorResponse"
+            }
+          },
+          "403": {
+            "description": "if not allowed",
+            "schema": {
+              "$ref": "#/definitions/server.ErrorResponse"
+            }
+          },
+          "422": {
+            "description": "if syntax fails",
+            "schema": {
+              "$ref": "#/definitions/server.ErrorResponse"
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "$ref": "#/definitions/server.ErrorResponse"
+            }
+          },
+          "504": {
+            "description": "if request times out",
+            "schema": {
+              "$ref": "#/definitions/server.ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/users/{userId}/devices/{deviceUniqueId}/settings": {
+      "post": {
+        "description": "Creates initial device settings provided in the request body.",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Devices"
+        ],
+        "parameters": [
+          {
+            "type": "string",
+            "default": "Bearer \u003cAdd access token here\u003e",
+            "description": "Insert your access token",
+            "name": "Authorization",
+            "in": "header",
+            "required": true
+          },
+          {
+            "type": "string",
+            "description": "ID of the user",
+            "name": "userId",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "string",
+            "description": "ID of the device",
+            "name": "deviceUniqueId",
+            "in": "path",
+            "required": true
+          },
+          {
+            "description": "Request params",
+            "name": "request",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/users.DeviceSettings"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "created result",
+            "schema": {
+              "$ref": "#/definitions/users.DeviceSettings"
+            }
+          },
+          "400": {
+            "description": "if validations fail",
+            "schema": {
+              "$ref": "#/definitions/server.ErrorResponse"
+            }
+          },
+          "401": {
+            "description": "if not authorized",
+            "schema": {
+              "$ref": "#/definitions/server.ErrorResponse"
+            }
+          },
+          "403": {
+            "description": "if not allowed",
+            "schema": {
+              "$ref": "#/definitions/server.ErrorResponse"
+            }
+          },
+          "409": {
+            "description": "if already exists",
+            "schema": {
+              "$ref": "#/definitions/server.ErrorResponse"
+            }
+          },
+          "422": {
+            "description": "if syntax fails",
+            "schema": {
+              "$ref": "#/definitions/server.ErrorResponse"
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "$ref": "#/definitions/server.ErrorResponse"
+            }
+          },
+          "504": {
+            "description": "if request times out",
+            "schema": {
+              "$ref": "#/definitions/server.ErrorResponse"
+            }
+          }
+        }
+      },
+      "patch": {
+        "description": "Modifies only specific device settings provided in the request body.",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Devices"
+        ],
+        "parameters": [
+          {
+            "type": "string",
+            "default": "Bearer \u003cAdd access token here\u003e",
+            "description": "Insert your access token",
+            "name": "Authorization",
+            "in": "header",
+            "required": true
+          },
+          {
+            "type": "string",
+            "description": "ID of the user",
+            "name": "userId",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "string",
+            "description": "ID of the device",
+            "name": "deviceUniqueId",
+            "in": "path",
+            "required": true
+          },
+          {
+            "description": "Request params",
+            "name": "request",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/users.DeviceSettings"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "updated result",
+            "schema": {
+              "$ref": "#/definitions/users.DeviceSettings"
+            }
+          },
+          "400": {
+            "description": "if validations fail",
+            "schema": {
+              "$ref": "#/definitions/server.ErrorResponse"
+            }
+          },
+          "401": {
+            "description": "if not authorized",
+            "schema": {
+              "$ref": "#/definitions/server.ErrorResponse"
+            }
+          },
+          "403": {
+            "description": "if not allowed",
+            "schema": {
+              "$ref": "#/definitions/server.ErrorResponse"
+            }
+          },
+          "404": {
+            "description": "if not found",
+            "schema": {
+              "$ref": "#/definitions/server.ErrorResponse"
+            }
+          },
+          "422": {
+            "description": "if syntax fails",
+            "schema": {
+              "$ref": "#/definitions/server.ErrorResponse"
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "$ref": "#/definitions/server.ErrorResponse"
+            }
+          },
+          "504": {
+            "description": "if request times out",
+            "schema": {
+              "$ref": "#/definitions/server.ErrorResponse"
+            }
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "CreateUserRequestBody": {
+      "type": "object",
+      "properties": {
+        "email": {
+          "description": "Optional.",
+          "type": "string",
+          "example": "jdoe@gmail.com"
+        },
+        "phoneNumber": {
+          "description": "Optional.",
+          "type": "string",
+          "example": "+12099216581"
+        },
+        "phoneNumberHash": {
+          "description": "Optional. Required only if `phoneNumber` is set. Example:\"Ef86A6021afCDe5673511376B2\".",
+          "type": "string",
+          "example": "Ef86A6021afCDe5673511376B2"
+        },
+        "referredBy": {
+          "description": "Optional.",
+          "type": "string",
+          "example": "did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"
+        },
+        "username": {
+          "type": "string",
+          "example": "jdoe"
+        }
+      }
+    },
+    "ValidatePhoneNumberRequestBody": {
+      "type": "object",
+      "properties": {
+        "createdAt": {
+          "description": "`Read Only`.",
+          "type": "string",
+          "example": "2022-01-03T16:20:52.156534Z"
+        },
+        "phoneNumber": {
+          "type": "string",
+          "example": "+12345678"
+        },
+        "phoneNumberHash": {
+          "type": "string",
+          "example": "Ef86A6021afCDe5673511376B2"
+        },
+        "userId": {
+          "type": "string",
+          "example": "did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"
+        },
+        "validationCode": {
+          "type": "string",
+          "example": "1234"
+        }
+      }
+    },
+    "devicesettings.NotificationChannels": {
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "boolean",
+          "example": false
+        },
+        "inApp": {
+          "type": "boolean",
+          "example": false
+        },
+        "push": {
+          "type": "boolean",
+          "example": true
+        },
+        "sms": {
+          "type": "boolean",
+          "example": false
+        }
+      }
+    },
+    "devicesettings.NotificationSettings": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/definitions/devicesettings.NotificationChannels"
+      }
+    },
+    "server.ErrorResponse": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string",
+          "example": "SOMETHING_NOT_FOUND"
+        },
+        "data": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "error": {
+          "type": "string",
+          "example": "something is missing"
+        }
+      }
+    },
+    "users.DeviceLocation": {
+      "type": "object",
+      "properties": {
+        "city": {
+          "type": "string",
+          "example": "New York"
+        },
+        "country": {
+          "type": "string",
+          "example": "US"
+        }
+      }
+    },
+    "users.DeviceMetadata": {
+      "type": "object",
+      "properties": {
+        "apiLevel": {
+          "type": "integer"
+        },
+        "baseOS": {
+          "type": "string"
+        },
+        "bootloader": {
+          "type": "string"
+        },
+        "brand": {
+          "type": "string"
+        },
+        "buildId": {
+          "type": "string"
+        },
+        "carrier": {
+          "type": "string"
+        },
+        "codename": {
+          "type": "string"
+        },
+        "device": {
+          "type": "string"
+        },
+        "deviceId": {
+          "type": "string"
+        },
+        "deviceName": {
+          "type": "string"
+        },
+        "deviceType": {
+          "type": "string"
+        },
+        "deviceUniqueId": {
+          "type": "string",
+          "example": "FCDBD8EF-62FC-4ECB-B2F5-92C9E79AC7F9"
+        },
+        "emulator": {
+          "type": "boolean"
+        },
+        "fingerprint": {
+          "type": "string"
+        },
+        "firstInstallTime": {
+          "type": "integer"
+        },
+        "hardware": {
+          "type": "string"
+        },
+        "installerPackageName": {
+          "type": "string"
+        },
+        "instanceId": {
+          "type": "string"
+        },
+        "lastUpdateTime": {
+          "type": "integer"
+        },
+        "manufacturer": {
+          "type": "string"
+        },
+        "pinOrFingerprintSet": {
+          "type": "boolean"
+        },
+        "product": {
+          "type": "string"
+        },
+        "pushNotificationToken": {
+          "type": "string"
+        },
+        "readableVersion": {
+          "type": "string"
+        },
+        "systemName": {
+          "type": "string"
+        },
+        "systemVersion": {
+          "type": "string"
+        },
+        "tablet": {
+          "type": "boolean"
+        },
+        "tags": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "userAgent": {
+          "type": "string"
+        },
+        "userId": {
+          "type": "string",
+          "example": "did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"
+        }
+      }
+    },
+    "users.DeviceSettings": {
+      "type": "object",
+      "properties": {
+        "deviceUniqueId": {
+          "type": "string",
+          "example": "FCDBD8EF-62FC-4ECB-B2F5-92C9E79AC7F9"
+        },
+        "disableAllNotifications": {
+          "description": "Optional. Default is `false`.",
+          "type": "boolean",
+          "example": true
+        },
+        "language": {
+          "description": "Optional.",
+          "type": "string",
+          "example": "en"
+        },
+        "notificationSettings": {
+          "description": "Optional.",
+          "$ref": "#/definitions/devicesettings.NotificationSettings"
+        },
+        "updatedAt": {
+          "description": "`Read Only`.",
+          "type": "string",
+          "example": "2022-01-03T16:20:52.156534Z"
+        },
+        "userId": {
+          "type": "string",
+          "example": "did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"
+        }
+      }
+    },
+    "users.User": {
+      "type": "object",
+      "properties": {
+        "agendaPhoneNumberHashes": {
+          "type": "string",
+          "example": "Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2"
+        },
+        "city": {
+          "type": "string",
+          "example": "New York"
+        },
+        "country": {
+          "type": "string",
+          "example": "US"
+        },
+        "createdAt": {
+          "type": "string",
+          "example": "2022-01-03T16:20:52.156534Z"
+        },
+        "email": {
+          "type": "string",
+          "example": "jdoe@gmail.com"
+        },
+        "firstName": {
+          "type": "string",
+          "example": "John"
+        },
+        "id": {
+          "description": "Optional.",
+          "type": "string",
+          "example": "did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"
+        },
+        "lastMiningStartedAt": {
+          "type": "string",
+          "example": "2022-01-03T16:20:52.156534Z"
+        },
+        "lastName": {
+          "type": "string",
+          "example": "Doe"
+        },
+        "lastPingAt": {
+          "type": "string",
+          "example": "2022-01-03T16:20:52.156534Z"
+        },
+        "phoneNumber": {
+          "type": "string",
+          "example": "+12099216581"
+        },
+        "phoneNumberHash": {
+          "type": "string",
+          "example": "Ef86A6021afCDe5673511376B2"
+        },
+        "profilePictureURL": {
+          "type": "string",
+          "example": "https://somecdn.com/p1.jpg"
+        },
+        "referredBy": {
+          "description": "Optional.",
+          "type": "string",
+          "example": "did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"
+        },
+        "updatedAt": {
+          "type": "string",
+          "example": "2022-01-03T16:20:52.156534Z"
+        },
+        "username": {
+          "type": "string",
+          "example": "jdoe"
+        }
+      }
+    }
+  }
+}

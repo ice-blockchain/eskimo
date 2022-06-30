@@ -37,6 +37,8 @@ func New(ctx context.Context, cancel context.CancelFunc) Repository {
 func StartProcessor(ctx context.Context, cancel context.CancelFunc) Processor {
 	appCfg.MustLoadFromKey(applicationYamlKey, &cfg)
 
+	configurePictureStorage()
+
 	db := storage.MustConnect(ctx, cancel, ddl, applicationYamlKey)
 	mbProducer := messagebroker.MustConnect(ctx, applicationYamlKey)
 
