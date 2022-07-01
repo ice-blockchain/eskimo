@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net"
 
+	"github.com/goccy/go-json"
 	"github.com/pkg/errors"
 	"github.com/zeebo/xxh3"
 
@@ -57,8 +58,12 @@ func (r *repository) CreateUser(ctx context.Context, usr *User, clientIP net.IP)
 		if field == hashCodeDBColumnName {
 			return r.CreateUser(ctx, usr, clientIP)
 		}
-
-		return errors.Wrapf(tErr, "failed to insert user %#v", usr)
+		usrBytes, err := json.Marshal(usr)
+		usrStr := string(usrBytes)
+		if err != nil {
+			usrStr = fmt.Sprintf("%#v", usr)
+		}
+		return errors.Wrapf(tErr, "failed to insert user %v", usrStr)
 	}
 	usr.setCorrectProfilePictureURL()
 

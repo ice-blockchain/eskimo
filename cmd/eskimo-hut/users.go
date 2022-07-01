@@ -32,6 +32,7 @@ func (s *service) setupUserRoutes(router *server.Router) {
 // @Success     201           {object} users.User
 // @Failure     400           {object} server.ErrorResponse "if validations fail"
 // @Failure     401           {object} server.ErrorResponse "if not authorized"
+// @Failure     404           {object} server.ErrorResponse "referredBy points to non-existing user"
 // @Failure     409           {object} server.ErrorResponse "user already exists with that ID or with that username"
 // @Failure     422           {object} server.ErrorResponse "if syntax fails"
 // @Failure     500           {object} server.ErrorResponse
