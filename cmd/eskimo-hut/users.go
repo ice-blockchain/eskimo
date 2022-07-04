@@ -131,8 +131,12 @@ func (s *service) ModifyUser(ctx context.Context, r server.ParsedRequest) server
 		case errors.Is(err, users.ErrInvalidPhoneNumber):
 			return *server.BadRequest(err, phoneNumberInvalidErrorCode)
 		case errors.Is(err, users.ErrInvalidPhoneNumberFormat):
-			//nolint:errorlint // We know for sure it is that.
-			return *server.BadRequest(err, phoneNumberFormatInvalidErrorCode, err.(*users.Err).Data)
+			uErr := new(users.Err)
+			if ok := errors.As(err, uErr); ok {
+				return *server.BadRequest(err, phoneNumberFormatInvalidErrorCode, uErr.Data)
+			}
+
+			fallthrough
 		default:
 			return server.Unexpected(err)
 		}

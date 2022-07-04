@@ -79,7 +79,7 @@ func (r *repository) GetDeviceMetadata(ctx context.Context, id device.ID) (*Devi
 	if ctx.Err() != nil {
 		return nil, errors.Wrap(ctx.Err(), "context failed")
 	}
-	dm := new(DeviceMetadata)
+	dm := new(deviceMetadata)
 	if err := r.db.GetTyped("DEVICE_METADATA", "pk_unnamed_DEVICE_METADATA_1", id, dm); err != nil {
 		return nil, errors.Wrapf(err, "failed to get device metadata by id: %#v", id)
 	}
@@ -87,7 +87,7 @@ func (r *repository) GetDeviceMetadata(ctx context.Context, id device.ID) (*Devi
 		return nil, storage.ErrNotFound
 	}
 
-	return dm, nil
+	return &dm.DeviceMetadata, nil
 }
 
 func (r *repository) ReplaceDeviceMetadata(ctx context.Context, arg *ReplaceDeviceMetadataArg) (err error) {
