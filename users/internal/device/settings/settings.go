@@ -103,7 +103,7 @@ func (ds *DeviceSettings) buildUpdateOps() []tarantool.Op {
 	if ds.Language != "" {
 		ops = append(ops, tarantool.Op{Op: "=", Field: 4, Arg: ds.Language})
 	}
-	if len(ds.NotificationSettings) != 0 {
+	if ds.NotificationSettings != nil {
 		ops = append(ops, tarantool.Op{Op: "=", Field: 1, Arg: ds.NotificationSettings})
 	}
 
@@ -128,7 +128,7 @@ func (r *repository) sendDeviceSettingsSnapshotMessage(ctx context.Context, ds *
 	return errors.Wrapf(<-responder, "failed to send device settings message to broker")
 }
 
-func (n NotificationSettings) DecodeMsgpack(dec *msgpack.Decoder) error {
+func (n *NotificationSettings) DecodeMsgpack(dec *msgpack.Decoder) error {
 	v, err := dec.DecodeString()
 	if err != nil {
 		return errors.Wrap(err, "failed to DecodeString")
@@ -140,7 +140,7 @@ func (n NotificationSettings) DecodeMsgpack(dec *msgpack.Decoder) error {
 	return errors.Wrapf(json.Unmarshal([]byte(v), &n), "failed to json.Unmarshall(%v,*NotificationSettings)", v)
 }
 
-func (n NotificationSettings) EncodeMsgpack(enc *msgpack.Encoder) error {
+func (n *NotificationSettings) EncodeMsgpack(enc *msgpack.Encoder) error {
 	bytes, err := json.Marshal(n)
 	if err != nil {
 		return errors.Wrapf(err, "failed to json.Marshal(%#v)", n)

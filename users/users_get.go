@@ -71,8 +71,10 @@ func (r *repository) GetUserByID(ctx context.Context, id UserID) (*UserProfile, 
 	FROM users u 
 			LEFT JOIN USERS t1
                 	ON t1.referred_by = u.id
+					and t1.id != u.id
 						LEFT JOIN USERS t2
 								ON t2.referred_by = t1.id
+								and t2.id != t1.id
 	WHERE u.id = :userId`, cfg.PictureStorage.URLDownload)
 	var result []*UserProfile
 	if err := r.db.PrepareExecuteTyped(sql, map[string]interface{}{"userId": id}, &result); err != nil {

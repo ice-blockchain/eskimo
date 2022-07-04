@@ -63,7 +63,18 @@ func (r *repository) GetReferrals(ctx context.Context, arg *GetReferralsArg) (*R
 
 		UNION ALL
 
-		SELECT  referrals.last_mining_started_at                                                       AS last_mining_started_at,
+		SELECT X.last_mining_started_at,
+			   X.last_ping_at,
+			   X.id,
+			   X.username,
+			   X.first_name,
+			   X.last_name,
+			   X.phone_number_,
+			   X.profile_picture_url,
+			   X.country,
+			   X.city
+		FROM (SELECT  
+				referrals.last_mining_started_at                                                       AS last_mining_started_at,
 				(CASE
 					WHEN u.id = referrals.referred_by
 						THEN referrals.last_ping_at
@@ -80,13 +91,14 @@ func (r *repository) GetReferrals(ctx context.Context, arg *GetReferralsArg) (*R
 				 END)                                                                                   AS phone_number_,
 				'%[1]v/' || referrals.profile_picture_name                                              AS profile_picture_url,
 				referrals.country                                                                       AS country,
-				referrals.city                                                                       	AS city
+				referrals.city                                                                       	AS city,
+				referrals.created_at                                                                    AS created_at
 		FROM USERS u
 				%[2]v
 		WHERE u.id = :userId
 		ORDER BY (phone_number_ != '' AND phone_number_ != null) DESC,
 				 referrals.created_at DESC
-		LIMIT %[3]v OFFSET :offset`, cfg.PictureStorage.URLDownload, referralTypeJoin, arg.Limit)
+		LIMIT %[3]v OFFSET :offset) X`, cfg.PictureStorage.URLDownload, referralTypeJoin, arg.Limit)
 	params := map[string]interface{}{
 		"userId":   arg.UserID,
 		"nowNanos": time.Now(),
@@ -96,12 +108,18 @@ func (r *repository) GetReferrals(ctx context.Context, arg *GetReferralsArg) (*R
 	if err := r.db.PrepareExecuteTyped(sql, params, &result); err != nil {
 		return nil, errors.Wrapf(err, "failed to get referrals for %#v", arg)
 	}
-	//nolint:gomnd // Not a magic number.
-	total, err := strconv.ParseUint(result[0].ID, 10, 64)
-	log.Panic(err)
-	//nolint:gomnd // Not a magic number.
-	active, err := strconv.ParseUint(result[0].Username, 10, 64)
-	log.Panic(err)
+	var err error
+	var total, active uint64
+	if result[0].ID != "" {
+		//nolint:gomnd // Not a magic number.
+		total, err = strconv.ParseUint(result[0].ID, 10, 64)
+		log.Panic(err)
+	}
+	if result[0].Username != "" {
+		//nolint:gomnd // Not a magic number.
+		active, err = strconv.ParseUint(result[0].Username, 10, 64)
+		log.Panic(err)
+	}
 
 	return &Referrals{
 		Total:     total,

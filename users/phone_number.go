@@ -64,8 +64,8 @@ func (r *repository) sendValidationSMS(ctx context.Context, number, code string)
 func (r *repository) validatePhoneNumber(number string) (string, error) {
 	lookupResponse, err := r.twilioClient.LookupsV1.FetchPhoneNumber(number, nil)
 	if err != nil {
-		tErr := new(twilioclient.TwilioRestError)
-		if ok := errors.As(err, tErr); !ok || tErr.Code != 20404 || tErr.Status != 404 {
+		//nolint:errorlint // errors.As(err,*twilioclient.TwilioRestError) doesn't seem to work.
+		if tErr, ok := err.(*twilioclient.TwilioRestError); !ok || tErr.Code != 20404 || tErr.Status != 404 {
 			return "", errors.Wrapf(err, "failed to validate and lookup phone number %v", number)
 		}
 

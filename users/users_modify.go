@@ -12,6 +12,7 @@ import (
 	"github.com/ice-blockchain/wintr/time"
 )
 
+//nolint:funlen // Barely over the limit. It becomes uglier if broken down even further.
 func (r *repository) ModifyUser(ctx context.Context, arg *ModifyUserArg) error {
 	if ctx.Err() != nil {
 		return errors.Wrap(ctx.Err(), "update user failed because context failed")
@@ -28,6 +29,7 @@ func (r *repository) ModifyUser(ctx context.Context, arg *ModifyUserArg) error {
 	}
 	if arg.ProfilePicture != nil {
 		arg.ProfilePicture.Filename = fmt.Sprintf("%v", gUser.HashCode)
+		arg.User.ProfilePictureURL = fmt.Sprintf("%v/%v", cfg.PictureStorage.URLDownload, arg.ProfilePicture.Filename)
 	}
 	if err = r.uploadProfilePicture(ctx, arg.ProfilePicture); err != nil {
 		return errors.Wrapf(err, "failed to upload profile picture for userID:%v", arg.User.ID)

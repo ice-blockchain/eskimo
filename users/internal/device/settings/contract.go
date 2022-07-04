@@ -33,7 +33,7 @@ type (
 		// `Read Only`.
 		UpdatedAt *time.Time `json:"updatedAt,omitempty" example:"2022-01-03T16:20:52.156534Z"`
 		// Optional.
-		NotificationSettings NotificationSettings `json:"notificationSettings,omitempty"`
+		NotificationSettings *NotificationSettings `json:"notificationSettings,omitempty"`
 		device.ID
 		// Optional.
 		Language string `json:"language,omitempty" example:"en"`
@@ -52,8 +52,8 @@ const applicationYamlKey = "users"
 var (
 	//nolint:gochecknoglobals // Because its loaded once, at runtime.
 	cfg config
-	_   msgpack.CustomEncoder = NotificationSettings(nil)
-	_   msgpack.CustomDecoder = NotificationSettings(nil)
+	_   msgpack.CustomEncoder = (*NotificationSettings)(nil)
+	_   msgpack.CustomDecoder = (*NotificationSettings)(nil)
 )
 
 type (
