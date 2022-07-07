@@ -671,18 +671,22 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "email": {
+                    "description": "Optional.",
                     "type": "string",
                     "example": "jdoe@gmail.com"
                 },
                 "phoneNumber": {
+                    "description": "Optional.",
                     "type": "string",
                     "example": "+12099216581"
                 },
                 "phoneNumberHash": {
+                    "description": "Optional. Required only if ` + "`" + `phoneNumber` + "`" + ` is set. Example:\"Ef86A6021afCDe5673511376B2\".",
                     "type": "string",
                     "example": "Ef86A6021afCDe5673511376B2"
                 },
                 "referredBy": {
+                    "description": "Optional.",
                     "type": "string",
                     "example": "did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"
                 },
@@ -935,6 +939,7 @@ const docTemplate = `{
                     "example": "John"
                 },
                 "id": {
+                    "description": "Optional.",
                     "type": "string",
                     "example": "did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"
                 },
@@ -963,6 +968,7 @@ const docTemplate = `{
                     "example": "https://somecdn.com/p1.jpg"
                 },
                 "referredBy": {
+                    "description": "Optional.",
                     "type": "string",
                     "example": "did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"
                 },

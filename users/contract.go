@@ -157,13 +157,17 @@ type (
 // API Arguments.
 type (
 	CreateUserArg struct {
-		ReferredBy      UserID   `json:"referredBy,omitempty" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
-		Username        Username `json:"username,omitempty" example:"jdoe"`
-		PhoneNumber     string   `json:"phoneNumber,omitempty" example:"+12099216581"`
-		PhoneNumberHash string   `json:"phoneNumberHash,omitempty" example:"Ef86A6021afCDe5673511376B2"`
-		Email           string   `json:"email,omitempty" example:"jdoe@gmail.com"`
-		User            User     `json:"-"`
-		ClientIP        net.IP   `json:"-" swaggerignore:"true"`
+		// Optional.
+		ReferredBy UserID   `json:"referredBy,omitempty" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
+		Username   Username `json:"username,omitempty" example:"jdoe"`
+		// Optional.
+		PhoneNumber string `json:"phoneNumber,omitempty" example:"+12099216581"`
+		// Optional. Required only if `phoneNumber` is set. Example:"Ef86A6021afCDe5673511376B2".
+		PhoneNumberHash string `json:"phoneNumberHash,omitempty" example:"Ef86A6021afCDe5673511376B2"`
+		// Optional.
+		Email    string `json:"email,omitempty" example:"jdoe@gmail.com"`
+		User     User   `json:"-"`
+		ClientIP net.IP `json:"-" swaggerignore:"true"`
 	} // @name CreateUserRequestBody  //nolint:godot // It's handled by swaggo.
 	ModifyUserArg struct {
 		// Optional.

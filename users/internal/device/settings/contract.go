@@ -15,6 +15,9 @@ import (
 
 // Public API.
 
+//nolint:gochecknoglobals // It's a non-primitive constant.
+var AllNotificationDomains = [4]string{"NEWS", "ACHIEVEMENTS", "TEAM", "REMINDERS"}
+
 type (
 	NotificationDomain   = string
 	NotificationSettings map[NotificationDomain]NotificationChannels

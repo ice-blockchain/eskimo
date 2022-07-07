@@ -5,15 +5,19 @@ definitions:
   CreateUserRequestBody:
     properties:
       email:
+        description: Optional.
         example: jdoe@gmail.com
         type: string
       phoneNumber:
+        description: Optional.
         example: "+12099216581"
         type: string
       phoneNumberHash:
+        description: Optional. Required only if `phoneNumber` is set. Example:"Ef86A6021afCDe5673511376B2".
         example: Ef86A6021afCDe5673511376B2
         type: string
       referredBy:
+        description: Optional.
         example: did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2
         type: string
       username:
@@ -191,6 +195,7 @@ definitions:
         example: John
         type: string
       id:
+        description: Optional.
         example: did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2
         type: string
       lastMiningStartedAt:
@@ -212,6 +217,7 @@ definitions:
         example: https://somecdn.com/p1.jpg
         type: string
       referredBy:
+        description: Optional.
         example: did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2
         type: string
       updatedAt:

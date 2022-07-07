@@ -43,30 +43,43 @@ func (r *repository) GetDeviceSettings(ctx context.Context, id device.ID) (*Devi
 	if err != nil && errors.Is(err, storage.ErrNotFound) {
 		return &DeviceSettings{
 			ID:                      id,
-			DisableAllNotifications: true,
+			DisableAllNotifications: false,
 			NotificationSettings:    defaultNotificationSettings(),
 			Language:                defaultLanguage,
 		}, nil
 	}
 
-	return settings, err
+	return settings.addMissingNewNotificationSettings(), err
+}
+
+func (ds *DeviceSettings) addMissingNewNotificationSettings() *DeviceSettings {
+	if ds == nil {
+		return nil
+	}
+	if ds.NotificationSettings == nil {
+		ds.NotificationSettings = new(NotificationSettings)
+	}
+	for k, v := range *defaultNotificationSettings() {
+		if _, alreadyPresent := (*ds.NotificationSettings)[k]; !alreadyPresent {
+			(*ds.NotificationSettings)[k] = v
+		}
+	}
+
+	return ds
 }
 
 func defaultNotificationSettings() *NotificationSettings {
-	return &NotificationSettings{
-		"TODO1": NotificationChannels{
+	r := make(NotificationSettings, len(AllNotificationDomains))
+	for _, notificationDomain := range AllNotificationDomains {
+		r[notificationDomain] = NotificationChannels{
 			Push:  true,
 			Email: true,
 			SMS:   true,
 			InApp: true,
-		},
-		"TODO2": NotificationChannels{
-			Push:  true,
-			Email: true,
-			SMS:   true,
-			InApp: true,
-		},
+		}
 	}
+
+	return &r
 }
 
 func (r *repository) ModifyDeviceSettings(ctx context.Context, ds *DeviceSettings) error {
@@ -100,6 +113,7 @@ func (r *repository) insert(ctx context.Context, ds *DeviceSettings) error {
 		ds.Language = "en"
 	}
 	ds.UpdatedAt = time.Now()
+	ds.addMissingNewNotificationSettings()
 	var resp []*DeviceSettings
 	if err := r.db.InsertTyped("DEVICE_SETTINGS", ds, &resp); err != nil {
 		return errors.Wrapf(err, "failed to insert %#v", ds)
@@ -112,6 +126,9 @@ func (r *repository) insert(ctx context.Context, ds *DeviceSettings) error {
 func (r *repository) update(ctx context.Context, ds *DeviceSettings) error {
 	if ctx.Err() != nil {
 		return errors.Wrap(ctx.Err(), "context failed")
+	}
+	if ds.NotificationSettings != nil {
+		ds.addMissingNewNotificationSettings()
 	}
 	var resp []*DeviceSettings
 	if err := r.db.UpdateTyped("DEVICE_SETTINGS", "pk_unnamed_DEVICE_SETTINGS_1", ds.ID, ds.buildUpdateOps(), &resp); err != nil {
