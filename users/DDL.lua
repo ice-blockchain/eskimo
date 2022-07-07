@@ -43,6 +43,7 @@ box.execute([[CREATE TABLE IF NOT EXISTS device_settings  (
                     user_id                     STRING NOT NULL REFERENCES users(id) ON DELETE CASCADE,
                     device_unique_id            STRING NOT NULL,
                     language                    STRING NOT NULL DEFAULT 'en',
+                    disable_all_notifications   BOOLEAN NOT NULL DEFAULT true,
                     primary key(user_id, device_unique_id) ) WITH ENGINE = 'vinyl';]])
 -- from [country_short,usagetype] -inclusive at both ends- we have ip2location information,
 -- everything else (except user_id and updated_at) is from https://github.com/react-native-device-info/react-native-device-info#api

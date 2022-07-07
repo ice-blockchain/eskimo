@@ -23,7 +23,7 @@ func New(db tarantool.Connector, mb messagebroker.Client) DeviceSettingsReposito
 	return &repository{db: db, mb: mb}
 }
 
-func (r *repository) GetDeviceSettings(ctx context.Context, id device.ID) (*DeviceSettings, error) {
+func (r *repository) getDeviceSettings(ctx context.Context, id device.ID) (*DeviceSettings, error) {
 	if ctx.Err() != nil {
 		return nil, errors.Wrap(ctx.Err(), "context failed")
 	}
@@ -38,11 +38,42 @@ func (r *repository) GetDeviceSettings(ctx context.Context, id device.ID) (*Devi
 	return ds, nil
 }
 
+func (r *repository) GetDeviceSettings(ctx context.Context, id device.ID) (*DeviceSettings, error) {
+	settings, err := r.getDeviceSettings(ctx, id)
+	if err != nil && errors.Is(err, storage.ErrNotFound) {
+		return &DeviceSettings{
+			ID:                      id,
+			DisableAllNotifications: true,
+			NotificationSettings:    defaultNotificationSettings(),
+			Language:                defaultLanguage,
+		}, nil
+	}
+
+	return settings, err
+}
+
+func defaultNotificationSettings() *NotificationSettings {
+	return &NotificationSettings{
+		"TODO1": NotificationChannels{
+			Push:  true,
+			Email: true,
+			SMS:   true,
+			InApp: true,
+		},
+		"TODO2": NotificationChannels{
+			Push:  true,
+			Email: true,
+			SMS:   true,
+			InApp: true,
+		},
+	}
+}
+
 func (r *repository) ModifyDeviceSettings(ctx context.Context, ds *DeviceSettings) error {
 	if ctx.Err() != nil {
 		return errors.Wrap(ctx.Err(), "context failed")
 	}
-	before, err := r.GetDeviceSettings(ctx, ds.ID)
+	before, err := r.getDeviceSettings(ctx, ds.ID)
 	if err != nil {
 		if !errors.Is(err, storage.ErrNotFound) {
 			return errors.Wrapf(err, "failed to get current device settings for %#v", ds.ID)

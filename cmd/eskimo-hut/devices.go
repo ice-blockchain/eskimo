@@ -27,9 +27,9 @@ func (s *service) setupDevicesRoutes(router *gin.Engine) {
 // @Tags         Devices
 // @Accept       json
 // @Produce      json
-// @Param        Authorization   header  string                true  "Insert your access token"  default(Bearer <Add access token here>)
-// @Param        userId          path    string                true  "ID of the user"
-// @Param        deviceUniqueId  path    string                true  "ID of the device"
+// @Param        Authorization   header    string                true  "Insert your access token"  default(Bearer <Add access token here>)
+// @Param        userId          path      string                true  "ID of the user"
+// @Param        deviceUniqueId  path      string                true  "ID of the device"
 // @Param        request         body    users.DeviceMetadata  true  "Request params"
 // @Success      200             "OK"
 // @Failure      400             {object}  server.ErrorResponse  "if validations fail"
@@ -92,8 +92,8 @@ func (req *RequestReplaceDeviceMetadata) Bindings(c *gin.Context) []func(obj int
 // @Param        Authorization   header  string                true  "Insert your access token"  default(Bearer <Add access token here>)
 // @Param        userId          path    string                true  "ID of the user"
 // @Param        deviceUniqueId  path    string                true  "ID of the device"
-// @Param        request         body    users.DeviceSettings  true  "Request params"
-// @Success      200             "OK"
+// @Param        request         body      users.DeviceSettings  true  "Request params"
+// @Success      200             {object}  users.DeviceSettings  "updated result"
 // @Failure      400             {object}  server.ErrorResponse  "if validations fail"
 // @Failure      401             {object}  server.ErrorResponse  "if not authorized"
 // @Failure      403             {object}  server.ErrorResponse  "if not allowed"
@@ -106,7 +106,7 @@ func (s *service) ModifyDeviceSettings(ctx context.Context, r server.ParsedReque
 		return server.Unexpected(errors.Wrapf(err, "failed to ModifyDeviceSettings for %#v", &r.(*RequestModifyDeviceSettings).DeviceSettings))
 	}
 
-	return server.OK()
+	return server.OK(&r.(*RequestModifyDeviceSettings).DeviceSettings)
 }
 
 func newRequestModifyDeviceSettings() server.ParsedRequest {

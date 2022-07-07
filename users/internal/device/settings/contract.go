@@ -21,6 +21,8 @@ type (
 	NotificationChannels struct {
 		Push  bool `json:"push" example:"true"`
 		Email bool `json:"email" example:"false"`
+		SMS   bool `json:"sms" example:"false"`
+		InApp bool `json:"inApp" example:"false"`
 	}
 	//nolint:revive // We don't have a choice if we want to embed it, cuz it will clash with others named "snapshot".
 	DeviceSettingsSnapshot struct {
@@ -37,6 +39,8 @@ type (
 		device.ID
 		// Optional.
 		Language string `json:"language,omitempty" example:"en"`
+		// Optional. Default is `true`.
+		DisableAllNotifications bool `json:"disableAllNotifications" example:"true"`
 	}
 	//nolint:revive // We don't have a choice if we want to embed it, cuz it will clash with others named "Repository".
 	DeviceSettingsRepository interface {
@@ -47,7 +51,10 @@ type (
 
 // Private API.
 
-const applicationYamlKey = "users"
+const (
+	applicationYamlKey = "users"
+	defaultLanguage    = "en"
+)
 
 var (
 	//nolint:gochecknoglobals // Because its loaded once, at runtime.

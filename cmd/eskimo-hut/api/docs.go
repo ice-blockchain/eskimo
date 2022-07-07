@@ -621,7 +621,10 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK"
+                        "description": "updated result",
+                        "schema": {
+                            "$ref": "#/definitions/users.DeviceSettings"
+                        }
                     },
                     "400": {
                         "description": "if validations fail",
@@ -722,9 +725,17 @@ const docTemplate = `{
                     "type": "boolean",
                     "example": false
                 },
+                "inApp": {
+                    "type": "boolean",
+                    "example": false
+                },
                 "push": {
                     "type": "boolean",
                     "example": true
+                },
+                "sms": {
+                    "type": "boolean",
+                    "example": false
                 }
             }
         },
@@ -870,6 +881,11 @@ const docTemplate = `{
                 "deviceUniqueId": {
                     "type": "string",
                     "example": "FCDBD8EF-62FC-4ECB-B2F5-92C9E79AC7F9"
+                },
+                "disableAllNotifications": {
+                    "description": "Optional. Default is ` + "`" + `true` + "`" + `.",
+                    "type": "boolean",
+                    "example": true
                 },
                 "language": {
                     "description": "Optional.",

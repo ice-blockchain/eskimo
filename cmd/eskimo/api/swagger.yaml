@@ -7,8 +7,14 @@ definitions:
       email:
         example: false
         type: boolean
+      inApp:
+        example: false
+        type: boolean
       push:
         example: true
+        type: boolean
+      sms:
+        example: false
         type: boolean
     type: object
   devicesettings.NotificationSettings:
@@ -42,6 +48,10 @@ definitions:
       deviceUniqueId:
         example: FCDBD8EF-62FC-4ECB-B2F5-92C9E79AC7F9
         type: string
+      disableAllNotifications:
+        description: Optional. Default is `true`.
+        example: true
+        type: boolean
       language:
         description: Optional.
         example: en
