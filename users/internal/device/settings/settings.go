@@ -8,7 +8,6 @@ import (
 	"github.com/framey-io/go-tarantool"
 	"github.com/goccy/go-json"
 	"github.com/pkg/errors"
-	"github.com/vmihailenco/msgpack/v5"
 
 	"github.com/ice-blockchain/eskimo/users/internal/device"
 	appCfg "github.com/ice-blockchain/wintr/config"
@@ -40,47 +39,12 @@ func (r *repository) getDeviceSettings(ctx context.Context, id device.ID) (*Devi
 
 func (r *repository) GetDeviceSettings(ctx context.Context, id device.ID) (*DeviceSettings, error) {
 	settings, err := r.getDeviceSettings(ctx, id)
+	defDeviceSettings := defaultDeviceSettings(id)
 	if err != nil && errors.Is(err, storage.ErrNotFound) {
-		return &DeviceSettings{
-			ID:                      id,
-			DisableAllNotifications: false,
-			NotificationSettings:    defaultNotificationSettings(),
-			Language:                defaultLanguage,
-		}, nil
+		return defDeviceSettings, nil
 	}
 
-	return settings.addMissingNewNotificationSettings(), err
-}
-
-func (ds *DeviceSettings) addMissingNewNotificationSettings() *DeviceSettings {
-	if ds == nil {
-		return nil
-	}
-	if ds.NotificationSettings == nil {
-		ds.NotificationSettings = new(NotificationSettings)
-		*ds.NotificationSettings = make(NotificationSettings, len(AllNotificationDomains))
-	}
-	for k, v := range *defaultNotificationSettings() {
-		if _, alreadyPresent := (*ds.NotificationSettings)[k]; !alreadyPresent {
-			(*ds.NotificationSettings)[k] = v
-		}
-	}
-
-	return ds
-}
-
-func defaultNotificationSettings() *NotificationSettings {
-	r := make(NotificationSettings, len(AllNotificationDomains))
-	for _, notificationDomain := range AllNotificationDomains {
-		r[notificationDomain] = NotificationChannels{
-			Push:  true,
-			Email: true,
-			SMS:   true,
-			InApp: true,
-		}
-	}
-
-	return &r
+	return defDeviceSettings.patch(settings), err
 }
 
 func (r *repository) ModifyDeviceSettings(ctx context.Context, ds *DeviceSettings) error {
@@ -97,7 +61,7 @@ func (r *repository) ModifyDeviceSettings(ctx context.Context, ds *DeviceSetting
 		}
 	}
 	if before != nil {
-		if err = r.update(ctx, ds); err != nil {
+		if err = r.update(ctx, before, ds); err != nil {
 			return errors.Wrapf(err, "failed to update device settings %#v", ds)
 		}
 	}
@@ -110,11 +74,8 @@ func (r *repository) insert(ctx context.Context, ds *DeviceSettings) error {
 	if ctx.Err() != nil {
 		return errors.Wrap(ctx.Err(), "context failed")
 	}
-	if ds.Language == "" {
-		ds.Language = "en"
-	}
 	ds.UpdatedAt = time.Now()
-	ds.addMissingNewNotificationSettings()
+	*ds = *(defaultDeviceSettings(ds.ID).patch(ds))
 	var resp []*DeviceSettings
 	if err := r.db.InsertTyped("DEVICE_SETTINGS", ds, &resp); err != nil {
 		return errors.Wrapf(err, "failed to insert %#v", ds)
@@ -124,13 +85,11 @@ func (r *repository) insert(ctx context.Context, ds *DeviceSettings) error {
 	return nil
 }
 
-func (r *repository) update(ctx context.Context, ds *DeviceSettings) error {
+func (r *repository) update(ctx context.Context, before, ds *DeviceSettings) error {
 	if ctx.Err() != nil {
 		return errors.Wrap(ctx.Err(), "context failed")
 	}
-	if ds.NotificationSettings != nil {
-		ds.addMissingNewNotificationSettings()
-	}
+	*ds = *(defaultDeviceSettings(ds.ID).patch(before).patch(ds))
 	var resp []*DeviceSettings
 	if err := r.db.UpdateTyped("DEVICE_SETTINGS", "pk_unnamed_DEVICE_SETTINGS_1", ds.ID, ds.buildUpdateOps(), &resp); err != nil {
 		tErr := new(tarantool.Error)
@@ -143,20 +102,6 @@ func (r *repository) update(ctx context.Context, ds *DeviceSettings) error {
 	*ds = *resp[0]
 
 	return nil
-}
-
-//nolint:gomnd // Those are field indexes.
-func (ds *DeviceSettings) buildUpdateOps() []tarantool.Op {
-	ops := make([]tarantool.Op, 0, 1+1+1)
-	ops = append(ops, tarantool.Op{Op: "=", Field: 0, Arg: time.Now()})
-	if ds.Language != "" {
-		ops = append(ops, tarantool.Op{Op: "=", Field: 4, Arg: ds.Language})
-	}
-	if ds.NotificationSettings != nil {
-		ops = append(ops, tarantool.Op{Op: "=", Field: 1, Arg: ds.NotificationSettings})
-	}
-
-	return ops
 }
 
 func (r *repository) sendDeviceSettingsSnapshotMessage(ctx context.Context, ds *DeviceSettingsSnapshot) error {
@@ -175,26 +120,4 @@ func (r *repository) sendDeviceSettingsSnapshotMessage(ctx context.Context, ds *
 	r.mb.SendMessage(ctx, m, responder)
 
 	return errors.Wrapf(<-responder, "failed to send device settings message to broker")
-}
-
-func (n *NotificationSettings) DecodeMsgpack(dec *msgpack.Decoder) error {
-	v, err := dec.DecodeString()
-	if err != nil {
-		return errors.Wrap(err, "failed to DecodeString")
-	}
-	if v == "" || v == "{}" {
-		return nil
-	}
-
-	return errors.Wrapf(json.Unmarshal([]byte(v), &n), "failed to json.Unmarshall(%v,*NotificationSettings)", v)
-}
-
-func (n *NotificationSettings) EncodeMsgpack(enc *msgpack.Encoder) error {
-	bytes, err := json.Marshal(n)
-	if err != nil {
-		return errors.Wrapf(err, "failed to json.Marshal(%#v)", n)
-	}
-	v := string(bytes)
-
-	return errors.Wrapf(enc.EncodeString(v), "failed to EncodeString(%v)", v)
 }

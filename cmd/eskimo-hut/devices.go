@@ -127,7 +127,7 @@ func (req *RequestModifyDeviceSettings) Validate() *server.Response {
 	if req.AuthenticatedUser.ID != req.UserID {
 		return server.Forbidden(errors.Errorf("you can only modify the settings for your own devices. d>%#v!=a>%v", req.ID, req.AuthenticatedUser.ID))
 	}
-	if req.NotificationSettings == nil && req.Language == "" {
+	if req.NotificationSettings == nil && req.Language == nil && req.DisableAllNotifications == nil {
 		return server.BadRequest(errors.New("no properties provided for update"), invalidPropertiesErrorCode)
 	}
 

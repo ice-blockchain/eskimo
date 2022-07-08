@@ -49,7 +49,7 @@ definitions:
         example: FCDBD8EF-62FC-4ECB-B2F5-92C9E79AC7F9
         type: string
       disableAllNotifications:
-        description: Optional. Default is `true`.
+        description: Optional. Default is `false`.
         example: true
         type: boolean
       language:

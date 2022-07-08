@@ -20,12 +20,12 @@ var AllNotificationDomains = [4]string{"NEWS", "ACHIEVEMENTS", "TEAM", "REMINDER
 
 type (
 	NotificationDomain   = string
-	NotificationSettings map[NotificationDomain]NotificationChannels
+	NotificationSettings map[NotificationDomain]*NotificationChannels
 	NotificationChannels struct {
-		Push  bool `json:"push" example:"true"`
-		Email bool `json:"email" example:"false"`
-		SMS   bool `json:"sms" example:"false"`
-		InApp bool `json:"inApp" example:"false"`
+		Push  *bool `json:"push,omitempty" example:"true"`
+		Email *bool `json:"email,omitempty" example:"false"`
+		SMS   *bool `json:"sms,omitempty" example:"false"`
+		InApp *bool `json:"inApp,omitempty" example:"false"`
 	}
 	//nolint:revive // We don't have a choice if we want to embed it, cuz it will clash with others named "snapshot".
 	DeviceSettingsSnapshot struct {
@@ -39,11 +39,11 @@ type (
 		UpdatedAt *time.Time `json:"updatedAt,omitempty" example:"2022-01-03T16:20:52.156534Z"`
 		// Optional.
 		NotificationSettings *NotificationSettings `json:"notificationSettings,omitempty"`
-		device.ID
 		// Optional.
-		Language string `json:"language,omitempty" example:"en"`
-		// Optional. Default is `true`.
-		DisableAllNotifications bool `json:"disableAllNotifications" example:"true"`
+		Language *string `json:"language,omitempty" example:"en"`
+		// Optional. Default is `false`.
+		DisableAllNotifications *bool `json:"disableAllNotifications" example:"true"`
+		device.ID
 	}
 	//nolint:revive // We don't have a choice if we want to embed it, cuz it will clash with others named "Repository".
 	DeviceSettingsRepository interface {

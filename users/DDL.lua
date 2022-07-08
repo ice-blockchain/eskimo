@@ -39,11 +39,11 @@ box.execute([[INSERT INTO DAYS (DAY) VALUES (0),(1),(2),(3),(4),(5),(6),(7),(8),
                                            (16),(17),(18),(19),(20),(21),(22),(23),(24),(25),(26),(27),(28),(29),(30)]])
 box.execute([[CREATE TABLE IF NOT EXISTS device_settings  (
                     updated_at                  UNSIGNED NOT NULL,
-                    push_notification_channels  STRING,
-                    user_id                     STRING NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-                    device_unique_id            STRING NOT NULL,
+                    notification_settings       STRING,
                     language                    STRING NOT NULL DEFAULT 'en',
                     disable_all_notifications   BOOLEAN NOT NULL DEFAULT false,
+                    user_id                     STRING NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    device_unique_id            STRING NOT NULL,
                     primary key(user_id, device_unique_id) ) WITH ENGINE = 'vinyl';]])
 -- from [country_short,usagetype] -inclusive at both ends- we have ip2location information,
 -- everything else (except user_id and updated_at) is from https://github.com/react-native-device-info/react-native-device-info#api

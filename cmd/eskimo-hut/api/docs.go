@@ -887,7 +887,7 @@ const docTemplate = `{
                     "example": "FCDBD8EF-62FC-4ECB-B2F5-92C9E79AC7F9"
                 },
                 "disableAllNotifications": {
-                    "description": "Optional. Default is ` + "`" + `true` + "`" + `.",
+                    "description": "Optional. Default is ` + "`" + `false` + "`" + `.",
                     "type": "boolean",
                     "example": true
                 },
