@@ -58,6 +58,7 @@ func (ds *DeviceSettings) addMissingNewNotificationSettings() *DeviceSettings {
 	}
 	if ds.NotificationSettings == nil {
 		ds.NotificationSettings = new(NotificationSettings)
+		*ds.NotificationSettings = make(NotificationSettings, len(AllNotificationDomains))
 	}
 	for k, v := range *defaultNotificationSettings() {
 		if _, alreadyPresent := (*ds.NotificationSettings)[k]; !alreadyPresent {
