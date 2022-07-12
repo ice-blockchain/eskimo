@@ -48,6 +48,7 @@ type (
 	//nolint:revive // We don't have a choice if we want to embed it, cuz it will clash with others named "Repository".
 	DeviceSettingsRepository interface {
 		GetDeviceSettings(context.Context, device.ID) (*DeviceSettings, error)
+		CreateDeviceSettings(context.Context, *DeviceSettings) error
 		ModifyDeviceSettings(context.Context, *DeviceSettings) error
 	}
 )

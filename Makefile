@@ -207,6 +207,12 @@ download-ip2location-sample:
 	rm -f -R tmp
 	rm -f sample.bin.db24.zip
 
+format-imports:
+	go install golang.org/x/tools/cmd/goimports@latest
+	go install github.com/daixiang0/gci@latest
+	gci write -s standard -s default -s "prefix(github.com/ice-blockchain)" ./..
+	goimports -w -local github.com/ice-blockchain ./..
+
 all: checkLicense checkModVersion checkIfAllDependenciesAreUpToDate checkGenerated build buildAllSupportedPlatforms download-ip2location-sample test coverage benchmark clean
 local: addLicense checkLicense updateGoModVersion updateAllDependencies generate build buildMultiPlatformDockerImage test coverage benchmark lint clean
 dockerfile: binary-specific-service

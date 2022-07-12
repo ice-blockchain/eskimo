@@ -10,6 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/pkg/errors"
 
+	"github.com/ice-blockchain/eskimo/users"
 	"github.com/ice-blockchain/wintr/server"
 )
 
@@ -18,6 +19,7 @@ func (s *service) setupDevicesRoutes(router *gin.Engine) {
 		Group("v1w").
 		PUT("users/:userId/devices/:deviceUniqueId/metadata", server.RootHandler(newRequestReplaceDeviceMetadata, s.ReplaceDeviceMetadata)).
 		PATCH("users/:userId/devices/:deviceUniqueId/settings", server.RootHandler(newRequestModifyDeviceSettings, s.ModifyDeviceSettings)).
+		POST("users/:userId/devices/:deviceUniqueId/settings", server.RootHandler(newRequestCreateDeviceSettings, s.CreateDeviceSettings)).
 		PUT("users/:userId/devices/:deviceUniqueId/metadata/location", server.RootHandler(newRequestGetDeviceLocation, s.GetDeviceLocation))
 }
 
@@ -89,21 +91,28 @@ func (req *RequestReplaceDeviceMetadata) Bindings(c *gin.Context) []func(obj int
 // @Tags         Devices
 // @Accept       json
 // @Produce      json
-// @Param        Authorization   header  string                true  "Insert your access token"  default(Bearer <Add access token here>)
-// @Param        userId          path    string                true  "ID of the user"
-// @Param        deviceUniqueId  path    string                true  "ID of the device"
+// @Param        Authorization   header    string                true  "Insert your access token"  default(Bearer <Add access token here>)
+// @Param        userId          path      string                true  "ID of the user"
+// @Param        deviceUniqueId  path      string                true  "ID of the device"
 // @Param        request         body      users.DeviceSettings  true  "Request params"
 // @Success      200             {object}  users.DeviceSettings  "updated result"
 // @Failure      400             {object}  server.ErrorResponse  "if validations fail"
 // @Failure      401             {object}  server.ErrorResponse  "if not authorized"
 // @Failure      403             {object}  server.ErrorResponse  "if not allowed"
+// @Failure      404             {object}  server.ErrorResponse  "if not found"
 // @Failure      422             {object}  server.ErrorResponse  "if syntax fails"
 // @Failure      500             {object}  server.ErrorResponse
 // @Failure      504             {object}  server.ErrorResponse  "if request times out"
 // @Router       /users/{userId}/devices/{deviceUniqueId}/settings [PATCH].
 func (s *service) ModifyDeviceSettings(ctx context.Context, r server.ParsedRequest) server.Response {
 	if err := s.usersProcessor.ModifyDeviceSettings(ctx, &r.(*RequestModifyDeviceSettings).DeviceSettings); err != nil {
-		return server.Unexpected(errors.Wrapf(err, "failed to ModifyDeviceSettings for %#v", &r.(*RequestModifyDeviceSettings).DeviceSettings))
+		err = errors.Wrapf(err, "failed to ModifyDeviceSettings for %#v", &r.(*RequestModifyDeviceSettings).DeviceSettings)
+		switch {
+		case errors.Is(err, users.ErrNotFound):
+			return *server.NotFound(err, deviceSettingsNotFoundErrorCode)
+		default:
+			return server.Unexpected(err)
+		}
 	}
 
 	return server.OK(&r.(*RequestModifyDeviceSettings).DeviceSettings)
@@ -135,6 +144,68 @@ func (req *RequestModifyDeviceSettings) Validate() *server.Response {
 }
 
 func (req *RequestModifyDeviceSettings) Bindings(c *gin.Context) []func(obj interface{}) error {
+	return []func(obj interface{}) error{c.ShouldBindUri, c.ShouldBindJSON, server.ShouldBindAuthenticatedUser(c)}
+}
+
+// CreateDeviceSettings godoc
+// @Schemes
+// @Description  Creates initial device settings provided in the request body.
+// @Tags         Devices
+// @Accept       json
+// @Produce      json
+// @Param        Authorization   header  string                true  "Insert your access token"  default(Bearer <Add access token here>)
+// @Param        userId          path    string                true  "ID of the user"
+// @Param        deviceUniqueId  path    string                true  "ID of the device"
+// @Param        request         body      users.DeviceSettings  true  "Request params"
+// @Success      201             {object}  users.DeviceSettings  "created result"
+// @Failure      400             {object}  server.ErrorResponse  "if validations fail"
+// @Failure      401             {object}  server.ErrorResponse  "if not authorized"
+// @Failure      403             {object}  server.ErrorResponse  "if not allowed"
+// @Failure      409             {object}  server.ErrorResponse  "if already exists"
+// @Failure      422             {object}  server.ErrorResponse  "if syntax fails"
+// @Failure      500             {object}  server.ErrorResponse
+// @Failure      504             {object}  server.ErrorResponse  "if request times out"
+// @Router       /users/{userId}/devices/{deviceUniqueId}/settings [POST].
+func (s *service) CreateDeviceSettings(ctx context.Context, r server.ParsedRequest) server.Response {
+	if err := s.usersProcessor.CreateDeviceSettings(ctx, &r.(*RequestCreateDeviceSettings).DeviceSettings); err != nil {
+		err = errors.Wrapf(err, "failed to CreateDeviceSettings for %#v", &r.(*RequestCreateDeviceSettings).DeviceSettings)
+		switch {
+		case errors.Is(err, users.ErrDuplicate):
+			return *server.Conflict(err, deviceSettingsAlreadyExistsErrorCode)
+		default:
+			return server.Unexpected(err)
+		}
+	}
+
+	return server.Created(&r.(*RequestCreateDeviceSettings).DeviceSettings)
+}
+
+func newRequestCreateDeviceSettings() server.ParsedRequest {
+	return new(RequestCreateDeviceSettings)
+}
+
+func (req *RequestCreateDeviceSettings) SetAuthenticatedUser(user server.AuthenticatedUser) {
+	if req.AuthenticatedUser.ID == "" {
+		req.AuthenticatedUser = user
+	}
+}
+
+func (req *RequestCreateDeviceSettings) GetAuthenticatedUser() server.AuthenticatedUser {
+	return req.AuthenticatedUser
+}
+
+func (req *RequestCreateDeviceSettings) Validate() *server.Response {
+	if req.AuthenticatedUser.ID != req.UserID {
+		return server.Forbidden(errors.Errorf("you can only create the settings for your own devices. d>%#v!=a>%v", req.ID, req.AuthenticatedUser.ID))
+	}
+	if req.NotificationSettings == nil && req.Language == nil && req.DisableAllNotifications == nil {
+		return server.BadRequest(errors.New("no properties provided for update"), invalidPropertiesErrorCode)
+	}
+
+	return server.RequiredStrings(map[string]string{"userId": req.UserID, "deviceUniqueId": req.ID.DeviceUniqueID})
+}
+
+func (req *RequestCreateDeviceSettings) Bindings(c *gin.Context) []func(obj interface{}) error {
 	return []func(obj interface{}) error{c.ShouldBindUri, c.ShouldBindJSON, server.ShouldBindAuthenticatedUser(c)}
 }
 

@@ -39,12 +39,19 @@ func (r *repository) getDeviceSettings(ctx context.Context, id device.ID) (*Devi
 
 func (r *repository) GetDeviceSettings(ctx context.Context, id device.ID) (*DeviceSettings, error) {
 	settings, err := r.getDeviceSettings(ctx, id)
-	defDeviceSettings := defaultDeviceSettings(id)
-	if err != nil && errors.Is(err, storage.ErrNotFound) {
-		return defDeviceSettings, nil
+	if err == nil {
+		settings = defaultDeviceSettings(id).patch(settings)
 	}
 
-	return defDeviceSettings.patch(settings), err
+	return settings, err
+}
+
+func (r *repository) CreateDeviceSettings(ctx context.Context, settings *DeviceSettings) error {
+	if ctx.Err() != nil {
+		return errors.Wrap(ctx.Err(), "context failed")
+	}
+
+	return errors.Wrapf(r.insert(ctx, settings), "failed to insert %#v", settings)
 }
 
 func (r *repository) ModifyDeviceSettings(ctx context.Context, ds *DeviceSettings) error {
@@ -53,17 +60,10 @@ func (r *repository) ModifyDeviceSettings(ctx context.Context, ds *DeviceSetting
 	}
 	before, err := r.getDeviceSettings(ctx, ds.ID)
 	if err != nil {
-		if !errors.Is(err, storage.ErrNotFound) {
-			return errors.Wrapf(err, "failed to get current device settings for %#v", ds.ID)
-		}
-		if err = r.insert(ctx, ds); err != nil {
-			return errors.Wrapf(err, "failed to insert %#v", ds)
-		}
+		return errors.Wrapf(err, "failed to get current device settings for %#v", ds.ID)
 	}
-	if before != nil {
-		if err = r.update(ctx, before, ds); err != nil {
-			return errors.Wrapf(err, "failed to update device settings %#v", ds)
-		}
+	if err = r.update(ctx, before, ds); err != nil {
+		return errors.Wrapf(err, "failed to update device settings %#v", ds)
 	}
 	snapshot := &DeviceSettingsSnapshot{Before: before, DeviceSettings: ds}
 
@@ -78,6 +78,11 @@ func (r *repository) insert(ctx context.Context, ds *DeviceSettings) error {
 	*ds = *(defaultDeviceSettings(ds.ID).patch(ds))
 	var resp []*DeviceSettings
 	if err := r.db.InsertTyped("DEVICE_SETTINGS", ds, &resp); err != nil {
+		tErr := new(tarantool.Error)
+		if ok := errors.As(err, tErr); ok && tErr.Code == tarantool.ER_TUPLE_FOUND {
+			err = storage.ErrDuplicate
+		}
+
 		return errors.Wrapf(err, "failed to insert %#v", ds)
 	}
 	*ds = *resp[0]
@@ -93,11 +98,11 @@ func (r *repository) update(ctx context.Context, before, ds *DeviceSettings) err
 	var resp []*DeviceSettings
 	if err := r.db.UpdateTyped("DEVICE_SETTINGS", "pk_unnamed_DEVICE_SETTINGS_1", ds.ID, ds.buildUpdateOps(), &resp); err != nil {
 		tErr := new(tarantool.Error)
-		if ok := errors.As(err, tErr); !ok || tErr.Code != tarantool.ER_TUPLE_NOT_FOUND {
-			return errors.Wrapf(err, "failed to update device settings %#v", ds)
+		if ok := errors.As(err, tErr); ok && tErr.Code == tarantool.ER_TUPLE_NOT_FOUND {
+			err = storage.ErrNotFound
 		}
 
-		return r.ModifyDeviceSettings(ctx, ds)
+		return errors.Wrapf(err, "failed to update device settings %#v", ds)
 	}
 	*ds = *resp[0]
 

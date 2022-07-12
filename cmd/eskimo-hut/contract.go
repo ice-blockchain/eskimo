@@ -37,6 +37,10 @@ type (
 		AuthenticatedUser server.AuthenticatedUser `json:"-" swaggerignore:"true"`
 		users.DeviceSettings
 	}
+	RequestCreateDeviceSettings struct {
+		AuthenticatedUser server.AuthenticatedUser `json:"-" swaggerignore:"true"`
+		users.DeviceSettings
+	}
 	RequestReplaceDeviceMetadata struct {
 		AuthenticatedUser server.AuthenticatedUser `json:"-" swaggerignore:"true"`
 		users.ReplaceDeviceMetadataArg
@@ -51,14 +55,16 @@ const (
 
 // Values for server.ErrorResponse#Code.
 const (
-	userNotFoundErrorCode               = "USER_NOT_FOUND"
-	duplicateUserErrorCode              = "CONFLICT_WITH_ANOTHER_USER"
-	invalidValidationCodeErrorCode      = "INVALID_VALIDATION_CODE"
-	phoneValidationCodeExpiredErrorCode = "PHONE_VALIDATION_EXPIRED"
-	phoneValidationNotFoundErrorCode    = "PHONE_VALIDATION_NOT_FOUND"
-	phoneNumberFormatInvalidErrorCode   = "INVALID_PHONE_NUMBER_FORMAT"
-	phoneNumberInvalidErrorCode         = "INVALID_PHONE_NUMBER"
-	invalidPropertiesErrorCode          = "INVALID_PROPERTIES"
+	userNotFoundErrorCode                = "USER_NOT_FOUND"
+	duplicateUserErrorCode               = "CONFLICT_WITH_ANOTHER_USER"
+	invalidValidationCodeErrorCode       = "INVALID_VALIDATION_CODE"
+	phoneValidationCodeExpiredErrorCode  = "PHONE_VALIDATION_EXPIRED"
+	phoneValidationNotFoundErrorCode     = "PHONE_VALIDATION_NOT_FOUND"
+	phoneNumberFormatInvalidErrorCode    = "INVALID_PHONE_NUMBER_FORMAT"
+	phoneNumberInvalidErrorCode          = "INVALID_PHONE_NUMBER"
+	invalidPropertiesErrorCode           = "INVALID_PROPERTIES"
+	deviceSettingsNotFoundErrorCode      = "DEVICE_SETTINGS_NOT_FOUND"
+	deviceSettingsAlreadyExistsErrorCode = "DEVICE_SETTINGS_ALREADY_EXISTS"
 )
 
 //nolint:gochecknoglobals // Because its loaded once, at runtime.
