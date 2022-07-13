@@ -11,6 +11,8 @@ import (
 
 	"github.com/ice-blockchain/eskimo/users/internal/device"
 	"github.com/ice-blockchain/wintr/connectors/storage"
+	"github.com/ice-blockchain/wintr/log"
+	"github.com/ice-blockchain/wintr/terror"
 	"github.com/ice-blockchain/wintr/time"
 )
 
@@ -51,7 +53,12 @@ func (r *repository) CreateUser(ctx context.Context, arg *CreateUserArg) error {
 		params["referredBy"] = u.ReferredBy
 	}
 	if err := storage.CheckSQLDMLErr(r.db.PrepareExecute(sql, params)); err != nil {
-		return errors.Wrapf(err, "failed to insert user %#v", u)
+		field, tErr := detectAndParseDuplicateDatabaseError(err)
+		if field == "hash_code" {
+			return r.CreateUser(ctx, arg)
+		}
+
+		return errors.Wrapf(tErr, "failed to insert user %#v", u)
 	}
 
 	return errors.Wrapf(r.sendUserSnapshotMessage(ctx, &UserSnapshot{User: &u, Before: nil}),
@@ -64,4 +71,22 @@ func (r *repository) setCreateUserDefaults(ctx context.Context, arg *CreateUserA
 	arg.User.DeviceLocation = *r.GetDeviceMetadataLocation(ctx, &GetDeviceMetadataLocationArg{ID: device.ID{UserID: arg.User.ID}, ClientIP: arg.ClientIP})
 	arg.User.HashCode = xxh3.HashStringSeed(arg.User.ID, uint64(arg.User.CreatedAt.UnixNano()))
 	arg.User.ProfilePictureURL = defaultUserImage
+}
+
+func detectAndParseDuplicateDatabaseError(err error) (field string, _ error) {
+	if tErr := terror.As(err); tErr != nil && errors.Is(err, storage.ErrDuplicate) {
+		switch tErr.Data[storage.IndexName] {
+		case "pk_unnamed_USERS_1":
+			field = "id"
+		case "unique_unnamed_USERS_2":
+			field = "username"
+		case "unique_unnamed_USERS_3":
+			field = "hash_code"
+		default:
+			log.Panic("unexpected indexName `%v` for users space", tErr.Data[storage.IndexName])
+		}
+		err = terror.New(storage.ErrDuplicate, map[string]interface{}{"field": field})
+	}
+
+	return field, err //nolint:wrapcheck // It's a proxy.
 }

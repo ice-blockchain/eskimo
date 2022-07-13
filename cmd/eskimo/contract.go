@@ -3,8 +3,6 @@
 package main
 
 import (
-	"regexp"
-
 	"github.com/ice-blockchain/eskimo/users"
 	"github.com/ice-blockchain/wintr/server"
 )
@@ -46,7 +44,6 @@ type (
 
 const (
 	applicationYamlKey = "cmd/eskimo"
-	usernameRegex      = `^[\w\-.]{4,20}$`
 )
 
 // Values for server.ErrorResponse#Code.
@@ -57,11 +54,8 @@ const (
 	invalidPropertiesErrorCode      = "INVALID_PROPERTIES"
 )
 
-var (
-	compiledUsernameRegex = regexp.MustCompile(usernameRegex)
-	//nolint:gochecknoglobals // Because its loaded once, at runtime.
-	cfg config
-)
+//nolint:gochecknoglobals // Because its loaded once, at runtime.
+var cfg config
 
 type (
 	// | service implements server.State and is responsible for managing the state and lifecycle of the package.

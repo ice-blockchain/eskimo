@@ -13,6 +13,7 @@ import (
 
 	"github.com/ice-blockchain/eskimo/users"
 	"github.com/ice-blockchain/wintr/server"
+	"github.com/ice-blockchain/wintr/terror"
 )
 
 func (s *service) setupUserRoutes(router *gin.Engine) {
@@ -42,11 +43,18 @@ func (s *service) setupUserRoutes(router *gin.Engine) {
 func (s *service) CreateUser(ctx context.Context, r server.ParsedRequest) server.Response {
 	if err := s.usersProcessor.CreateUser(ctx, &r.(*RequestCreateUser).CreateUserArg); err != nil {
 		err = errors.Wrapf(err, "failed to create user %#v", r.(*RequestCreateUser).User)
-		if errors.Is(err, users.ErrDuplicate) {
-			return *server.Conflict(err, duplicateUserErrorCode)
-		}
+		switch {
+		case errors.Is(err, users.ErrRelationNotFound):
+			return *server.NotFound(err, referralNotFoundErrorCode)
+		case errors.Is(err, users.ErrDuplicate):
+			if tErr := terror.As(err); tErr != nil {
+				return *server.Conflict(err, duplicateUserErrorCode, tErr.Data)
+			}
 
-		return server.Unexpected(err)
+			fallthrough
+		default:
+			return server.Unexpected(err)
+		}
 	}
 
 	return server.Created(r.(*RequestCreateUser).User)
@@ -84,14 +92,26 @@ func (req *RequestCreateUser) Validate() *server.Response {
 	if err := server.RequiredStrings(map[string]string{"username": req.Username}); err != nil {
 		return err
 	}
+	if !users.CompiledUsernameRegex.MatchString(req.Username) {
+		err := errors.Errorf("username: %v is invalid, it should match regex: %v", req.Username, users.UsernameRegex)
+
+		return server.BadRequest(err, invalidUsernameErrorCode)
+	}
+	if strings.EqualFold(req.AuthenticatedUser.ID, req.ReferredBy) {
+		return server.BadRequest(errors.New("you cannot use yourself as your own referral"), invalidPropertiesErrorCode)
+	}
+	req.init()
+
+	return nil
+}
+
+func (req *RequestCreateUser) init() {
 	req.User.ID = req.AuthenticatedUser.ID
 	req.User.ReferredBy = req.ReferredBy
-	req.User.Username = req.Username
+	req.User.Username = strings.ToLower(req.Username)
 	req.User.PhoneNumber = req.PhoneNumber
 	req.User.PhoneNumberHash = req.PhoneNumberHash
 	req.User.Email = req.Email
-
-	return nil
 }
 
 func (req *RequestCreateUser) Bindings(c *gin.Context) []func(obj interface{}) error {
@@ -124,16 +144,19 @@ func (s *service) ModifyUser(ctx context.Context, r server.ParsedRequest) server
 		switch {
 		case errors.Is(err, users.ErrNotFound):
 			return *server.NotFound(err, userNotFoundErrorCode)
-		case errors.Is(err, users.ErrDuplicate):
-			return *server.Conflict(err, duplicateUserErrorCode)
 		case errors.Is(err, users.ErrInvalidCountry):
 			return *server.BadRequest(errors.Errorf("invalid country %v", r.(*RequestModifyUser).Country), invalidPropertiesErrorCode)
 		case errors.Is(err, users.ErrInvalidPhoneNumber):
 			return *server.BadRequest(err, phoneNumberInvalidErrorCode)
+		case errors.Is(err, users.ErrDuplicate):
+			if tErr := terror.As(err); tErr != nil {
+				return *server.Conflict(err, duplicateUserErrorCode, tErr.Data)
+			}
+
+			fallthrough
 		case errors.Is(err, users.ErrInvalidPhoneNumberFormat):
-			uErr := new(users.Err)
-			if ok := errors.As(err, uErr); ok {
-				return *server.BadRequest(err, phoneNumberFormatInvalidErrorCode, uErr.Data)
+			if tErr := terror.As(err); tErr != nil {
+				return *server.BadRequest(err, phoneNumberFormatInvalidErrorCode, tErr.Data)
 			}
 
 			fallthrough
@@ -173,8 +196,19 @@ func (req *RequestModifyUser) Validate() *server.Response {
 	if !req.hasValues() {
 		return server.BadRequest(errors.New("modify request without values"), invalidPropertiesErrorCode)
 	}
+	if req.Username != "" && !users.CompiledUsernameRegex.MatchString(req.Username) {
+		err := errors.Errorf("username: %v is invalid, it should match regex: %v", req.Username, users.UsernameRegex)
+
+		return server.BadRequest(err, invalidUsernameErrorCode)
+	}
+	req.init()
+
+	return nil
+}
+
+func (req *RequestModifyUser) init() {
 	req.User.ID = req.UserID
-	req.User.Username = req.Username
+	req.User.Username = strings.ToLower(req.Username)
 	req.User.FirstName = req.FirstName
 	req.User.LastName = req.LastName
 	req.User.PhoneNumber = req.PhoneNumber
@@ -183,8 +217,6 @@ func (req *RequestModifyUser) Validate() *server.Response {
 	req.User.City = req.City
 	req.User.Email = req.Email
 	req.User.AgendaPhoneNumberHashes = req.AgendaPhoneNumberHashes
-
-	return nil
 }
 
 //nolint:gocognit // Highly doubt it.

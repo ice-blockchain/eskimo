@@ -39,6 +39,8 @@ func (r *repository) ModifyUser(ctx context.Context, arg *ModifyUserArg) error {
 		return nil
 	}
 	if err = storage.CheckSQLDMLErr(r.db.PrepareExecute(sql, params)); err != nil {
+		_, err = detectAndParseDuplicateDatabaseError(err)
+
 		return errors.Wrapf(err, "failed to update user %#v", arg)
 	}
 	us := &UserSnapshot{User: gUser.override(&arg.User), Before: gUser}

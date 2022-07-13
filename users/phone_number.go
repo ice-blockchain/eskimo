@@ -20,6 +20,7 @@ import (
 
 	"github.com/ice-blockchain/wintr/connectors/storage"
 	"github.com/ice-blockchain/wintr/log"
+	"github.com/ice-blockchain/wintr/terror"
 	"github.com/ice-blockchain/wintr/time"
 )
 
@@ -177,7 +178,7 @@ func (r *repository) triggerNewPhoneNumberValidation(ctx context.Context, newUse
 		return errors.Wrapf(err, "invalid phone number %v", newUser.PhoneNumber)
 	}
 	if phoneNumber != newUser.PhoneNumber {
-		return &Err{error: ErrInvalidPhoneNumberFormat, Data: map[string]interface{}{"phoneNumber": phoneNumber}}
+		return terror.New(ErrInvalidPhoneNumberFormat, map[string]interface{}{"phoneNumber": phoneNumber})
 	}
 	confirm := new(PhoneNumberValidation)
 	confirm.UserID = newUser.ID

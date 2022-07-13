@@ -55,8 +55,10 @@ const (
 
 // Values for server.ErrorResponse#Code.
 const (
+	invalidUsernameErrorCode             = "INVALID_USERNAME"
 	userNotFoundErrorCode                = "USER_NOT_FOUND"
 	duplicateUserErrorCode               = "CONFLICT_WITH_ANOTHER_USER"
+	referralNotFoundErrorCode            = "REFERRAL_NOT_FOUND"
 	invalidValidationCodeErrorCode       = "INVALID_VALIDATION_CODE"
 	phoneValidationCodeExpiredErrorCode  = "PHONE_VALIDATION_EXPIRED"
 	phoneValidationNotFoundErrorCode     = "PHONE_VALIDATION_NOT_FOUND"

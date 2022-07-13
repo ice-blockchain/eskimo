@@ -121,20 +121,3 @@ func retry(ctx context.Context, op func() error) error {
 			log.Error(errors.Wrapf(e, "call failed. retrying in %v... ", next))
 		})
 }
-
-func (e *Err) Is(er error) bool {
-	return errors.Is(er, e.error)
-}
-
-func (e *Err) Unwrap() error {
-	return e.error
-}
-
-func (e *Err) As(err interface{}) bool {
-	o, ok := err.(*Err)
-	if ok {
-		*o = *e
-	}
-
-	return ok
-}

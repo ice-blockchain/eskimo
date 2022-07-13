@@ -4,6 +4,7 @@ package main
 
 import (
 	"context"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/pkg/errors"
@@ -173,8 +174,9 @@ func (req *RequestGetUserByUsername) GetAuthenticatedUser() server.Authenticated
 }
 
 func (req *RequestGetUserByUsername) Validate() *server.Response {
-	if !compiledUsernameRegex.MatchString(req.Username) {
-		err := errors.Errorf("username: %v is invalid, it should match regex: %v", req.Username, usernameRegex)
+	req.Username = strings.ToLower(req.Username)
+	if !users.CompiledUsernameRegex.MatchString(req.Username) {
+		err := errors.Errorf("username: %v is invalid, it should match regex: %v", req.Username, users.UsernameRegex)
 
 		return server.BadRequest(err, invalidUsernameErrorCode)
 	}

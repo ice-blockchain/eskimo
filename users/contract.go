@@ -8,6 +8,7 @@ import (
 	"io"
 	"mime/multipart"
 	"net"
+	"regexp"
 	stdlibtime "time"
 
 	"github.com/framey-io/go-tarantool"
@@ -29,6 +30,7 @@ const (
 	ContactsReferrals = "CONTACTS"
 	Tier1Referrals    = "T1"
 	Tier2Referrals    = "T2"
+	UsernameRegex     = `^[\w\-.]{4,20}$`
 )
 
 var (
@@ -41,14 +43,11 @@ var (
 	ErrInvalidPhoneNumberFormat   = errors.New("phone number has invalid format")
 	ErrInvalidCountry             = errors.New("country invalid")
 	//nolint:gochecknoglobals // It's just for more descriptive validation messages.
-	ReferralTypes = []string{ContactsReferrals, Tier1Referrals, Tier2Referrals}
+	ReferralTypes         = []string{ContactsReferrals, Tier1Referrals, Tier2Referrals}
+	CompiledUsernameRegex = regexp.MustCompile(UsernameRegex)
 )
 
 type (
-	Err struct {
-		error
-		Data map[string]interface{} `json:"data"`
-	}
 	NotExpired                   bool
 	UserID                       = string
 	Username                     = string
