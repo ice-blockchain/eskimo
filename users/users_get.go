@@ -50,6 +50,9 @@ func (r *repository) getUserByID(ctx context.Context, id UserID) (*User, error) 
 	if result.ID == "" {
 		return nil, ErrNotFound
 	}
+	if result.LastPingAt == nil || result.LastPingAt.UnixNano() == 0 {
+		result.LastPingAt = time.Now()
+	}
 
 	return result, nil
 }
@@ -100,6 +103,9 @@ func (r *repository) GetUserByUsername(ctx context.Context, name Username) (*Use
 	}
 	result.ProfilePictureURL = fmt.Sprintf("%s/%s", cfg.PictureStorage.URLDownload, result.ProfilePictureURL)
 	result.PhoneNumber = ""
+	if result.LastPingAt == nil || result.LastPingAt.UnixNano() == 0 {
+		result.LastPingAt = time.Now()
+	}
 
 	return &UserProfile{PublicUserInformation: result.PublicUserInformation}, nil
 }
