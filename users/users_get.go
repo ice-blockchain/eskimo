@@ -113,7 +113,7 @@ func (r *repository) GetUsers(ctx context.Context, arg *GetUsersArg) (result []*
 			SELECT u.last_mining_started_at                                                                          AS last_mining_started_at,
 				   (CASE
 						WHEN t0.id = :userId
-							THEN u.last_ping_at
+							THEN COALESCE(NULLIF(COALESCE(u.last_ping_at,0),0), :nowNanos)
 						ELSE :nowNanos
 					END)                                                                                             AS last_ping_at,	
 				   u.id                                                                                              AS id,

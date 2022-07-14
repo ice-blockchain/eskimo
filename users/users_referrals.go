@@ -77,7 +77,7 @@ func (r *repository) GetReferrals(ctx context.Context, arg *GetReferralsArg) (*R
 				referrals.last_mining_started_at                                                       AS last_mining_started_at,
 				(CASE
 					WHEN u.id = referrals.referred_by
-						THEN referrals.last_ping_at
+						THEN COALESCE(NULLIF(COALESCE(referrals.last_ping_at,0),0), :nowNanos)
 					ELSE :nowNanos
 				 END)                                                                                  AS last_ping_at,
 				referrals.ID                                                                           AS id,
