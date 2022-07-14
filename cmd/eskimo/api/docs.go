@@ -727,7 +727,7 @@ const docTemplate = `{
                     "type": "string",
                     "example": "+12099216581"
                 },
-                "pingAllowed": {
+                "pinged": {
                     "type": "boolean",
                     "example": false
                 },
@@ -808,7 +808,7 @@ const docTemplate = `{
                     "type": "string",
                     "example": "+12099216581"
                 },
-                "pingAllowed": {
+                "pinged": {
                     "type": "boolean",
                     "example": false
                 },

@@ -60,8 +60,8 @@ type (
 	DeviceSettings               = devicesettings.DeviceSettings
 	DeviceSettingsSnapshot       = devicesettings.DeviceSettingsSnapshot
 	MinimalUserProfile           struct {
-		Active      *NotExpired `json:"active,omitempty" example:"true"`
-		PingAllowed *NotExpired `json:"pingAllowed,omitempty" example:"false"`
+		Active *NotExpired `json:"active,omitempty" example:"true"`
+		Pinged *NotExpired `json:"pinged,omitempty" example:"false"`
 		PublicUserInformation
 	}
 	PublicUserInformation struct {

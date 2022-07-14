@@ -31,7 +31,7 @@ func main() {
 	appCfg.MustLoadFromKey(applicationYamlKey, &cfg)
 	api.SwaggerInfo.Host = cfg.Host
 	api.SwaggerInfo.Version = cfg.Version
-	srv := server.New(new(service), applicationYamlKey, "/users/w")
+	srv := server.New(new(service), applicationYamlKey, swaggerRoot)
 	srv.ListenAndServe(ctx, cancel)
 }
 

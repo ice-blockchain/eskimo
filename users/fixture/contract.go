@@ -2,6 +2,14 @@
 
 package fixture
 
-import "github.com/ice-blockchain/eskimo/users"
+// Public API.
 
-type User = users.User
+const (
+	TestConnectorsOrder = 0
+)
+
+// Private API.
+
+const (
+	applicationYAMLKey = "users"
+)

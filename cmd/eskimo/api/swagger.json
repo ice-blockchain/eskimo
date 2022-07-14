@@ -720,7 +720,7 @@
                     "type": "string",
                     "example": "+12099216581"
                 },
-                "pingAllowed": {
+                "pinged": {
                     "type": "boolean",
                     "example": false
                 },
@@ -801,7 +801,7 @@
                     "type": "string",
                     "example": "+12099216581"
                 },
-                "pingAllowed": {
+                "pinged": {
                     "type": "boolean",
                     "example": false
                 },
