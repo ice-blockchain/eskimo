@@ -20,8 +20,8 @@ cmd/eskimo-hut:
     port: 1443
     certPath: cmd/eskimo-hut/.testdata/localhost.crt
     keyPath: cmd/eskimo-hut/.testdata/localhost.key
-users:
-  db:
+users: &users
+  db: &usersDatabase
     spaces:
       - USERS
       - PHONE_NUMBER_VALIDATIONS
@@ -33,7 +33,7 @@ users:
       - localhost:3301
     user: admin
     password: pass
-  messageBroker:
+  messageBroker: &usersMessageBroker
     consumerGroup: eskimo-users-testing
     createTopics: true
     urls:
@@ -75,3 +75,9 @@ users:
     fromPhoneNumber: +12345678
     expirationTime: 3m
     smsTemplate: '{{.code}} is your ice verification code. This code expires in {{.expirationTime}} minutes.'
+users_test:
+    <<: *users
+    messageBroker:
+      <<: *usersMessageBroker
+    db:
+      <<: *usersDatabase
