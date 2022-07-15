@@ -90,7 +90,7 @@ definitions:
       phoneNumber:
         example: "+12099216581"
         type: string
-      pingAllowed:
+      pinged:
         example: false
         type: boolean
       profilePictureURL:
@@ -148,7 +148,7 @@ definitions:
       phoneNumber:
         example: "+12099216581"
         type: string
-      pingAllowed:
+      pinged:
         example: false
         type: boolean
       profilePictureURL:

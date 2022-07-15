@@ -63,7 +63,7 @@ users:
     consumingTopics:
       - users-events
       - mining-started-events
-  ip2LocationBinaryPath: ./users/.testdata/IP-COUNTRY-REGION-CITY-LATITUDE-LONGITUDE-ZIPCODE-TIMEZONE-ISP-DOMAIN-NETSPEED-AREACODE-WEATHER-MOBILE-ELEVATION-USAGETYPE-SAMPLE.BIN
+  ip2LocationBinaryPath: ./users/internal/device/metadata/.testdata/IP-COUNTRY-REGION-CITY-LATITUDE-LONGITUDE-ZIPCODE-TIMEZONE-ISP-DOMAIN-NETSPEED-AREACODE-WEATHER-MOBILE-ELEVATION-USAGETYPE-SAMPLE.BIN
   pictureStorage:
     urlUpload: https://storage.bunnycdn.com/ice-staging/profile
     urlDownload: https://ice-staging.b-cdn.net/profile

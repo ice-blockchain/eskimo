@@ -200,10 +200,10 @@ fix-field-alignment:
 download-ip2location-sample:
 	rm -f -R tmp
 	rm -f sample.bin.db24.zip
-	rm -f ./users/.testdata/IP-COUNTRY-REGION-CITY-LATITUDE-LONGITUDE-ZIPCODE-TIMEZONE-ISP-DOMAIN-NETSPEED-AREACODE-WEATHER-MOBILE-ELEVATION-USAGETYPE-SAMPLE.BIN
+	rm -f ./users/internal/device/metadata/.testdata/IP-COUNTRY-REGION-CITY-LATITUDE-LONGITUDE-ZIPCODE-TIMEZONE-ISP-DOMAIN-NETSPEED-AREACODE-WEATHER-MOBILE-ELEVATION-USAGETYPE-SAMPLE.BIN
 	wget https://cdn.ip2location.com/downloads/sample.bin.db24.zip
 	unzip sample.bin.db24.zip -d tmp
-	mkdir -p ./users/.testdata/; mv ./tmp/IP-COUNTRY-REGION-CITY-LATITUDE-LONGITUDE-ZIPCODE-TIMEZONE-ISP-DOMAIN-NETSPEED-AREACODE-WEATHER-MOBILE-ELEVATION-USAGETYPE-SAMPLE.BIN ./users/.testdata/IP-COUNTRY-REGION-CITY-LATITUDE-LONGITUDE-ZIPCODE-TIMEZONE-ISP-DOMAIN-NETSPEED-AREACODE-WEATHER-MOBILE-ELEVATION-USAGETYPE-SAMPLE.BIN
+	mkdir -p ./users/internal/device/metadata/.testdata/; mv ./tmp/IP-COUNTRY-REGION-CITY-LATITUDE-LONGITUDE-ZIPCODE-TIMEZONE-ISP-DOMAIN-NETSPEED-AREACODE-WEATHER-MOBILE-ELEVATION-USAGETYPE-SAMPLE.BIN ./users/internal/device/metadata/.testdata/IP-COUNTRY-REGION-CITY-LATITUDE-LONGITUDE-ZIPCODE-TIMEZONE-ISP-DOMAIN-NETSPEED-AREACODE-WEATHER-MOBILE-ELEVATION-USAGETYPE-SAMPLE.BIN
 	rm -f -R tmp
 	rm -f sample.bin.db24.zip
 
@@ -213,6 +213,6 @@ format-imports:
 	gci write -s standard -s default -s "prefix(github.com/ice-blockchain)" ./..
 	goimports -w -local github.com/ice-blockchain ./..
 
-all: checkLicense checkModVersion checkIfAllDependenciesAreUpToDate checkGenerated build buildAllSupportedPlatforms download-ip2location-sample test coverage benchmark clean
+all: checkLicense checkModVersion checkIfAllDependenciesAreUpToDate checkGenerated build buildAllSupportedPlatforms download-ip2location-sample clean
 local: addLicense checkLicense updateGoModVersion updateAllDependencies generate build buildMultiPlatformDockerImage test coverage benchmark lint clean
 dockerfile: binary-specific-service

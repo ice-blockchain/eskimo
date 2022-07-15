@@ -44,6 +44,7 @@ type (
 
 const (
 	applicationYamlKey = "cmd/eskimo"
+	swaggerRoot        = "/users/r"
 )
 
 // Values for server.ErrorResponse#Code.
