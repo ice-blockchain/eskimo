@@ -28,6 +28,11 @@ jobs:
         with:
           version: latest
       - name: Make
+        env:
+          SMS_CLIENT_USER: ${{ secrets.SMS_CLIENT_USER }}
+          SMS_CLIENT_PASSWORD: ${{ secrets.SMS_CLIENT_PASSWORD }}
+          SMS_CLIENT_FROM_PHONE_NUMBER: ${{ secrets.SMS_CLIENT_FROM_PHONE_NUMBER }}
+          PICTURE_STORAGE_ACCESS_KEY: ${{ secrets.PICTURE_STORAGE_ACCESS_KEY }}
         run: make
       - name: Compute new Tag version
         id: compute_tag
