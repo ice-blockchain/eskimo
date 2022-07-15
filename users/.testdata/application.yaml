@@ -61,4 +61,4 @@ users_test:
     consumerGroup: eskimo-users-testing-runner
   db:
     <<: *usersDatabase
-    schemaPath: DDL.lua
+    schemaPath: users/DDL.lua

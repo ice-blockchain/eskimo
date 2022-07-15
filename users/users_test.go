@@ -5,6 +5,8 @@ package users
 import (
 	"context"
 	"net"
+	"os"
+	"sync"
 	"testing"
 	"time"
 
@@ -54,49 +56,91 @@ func afterConnectorsStarted(ctx context.Context) connectorsfixture.ContextErrClo
 }
 
 //nolint:funlen // A lot of APIs to check.
-func requireAllAPIMethodsFailIfRepositoryOrProcessorAreStopped(ctx context.Context) error {
-	var errs []error
-	errs = append(errs,
-		p.CheckHealth(ctx),
-		p.CreateUser(ctx, &CreateUserArg{Username: "bogus"}),
-		p.ModifyUser(ctx, &ModifyUserArg{Username: "bogus-modified"}),
-		p.DeleteUser(ctx, "bogus"),
-		p.CreateDeviceSettings(ctx, &devicesettings.DeviceSettings{ID: device.ID{UserID: "bogus", DeviceUniqueID: "bogus"}}),
-		p.ModifyDeviceSettings(ctx, &devicesettings.DeviceSettings{ID: device.ID{UserID: "bogus", DeviceUniqueID: "bogus"}}),
-		p.ValidatePhoneNumber(ctx, &PhoneNumberValidation{UserID: "bogus", PhoneNumber: "bogus"}),
-		p.ReplaceDeviceMetadata(ctx, &ReplaceDeviceMetadataArg{
-			ClientIP:       net.ParseIP("1.1.1.1"),
-			DeviceMetadata: devicemetadata.DeviceMetadata{ID: device.ID{UserID: "bogus", DeviceUniqueID: "bogus"}},
-		}))
-	_, err := u.GetReferrals(ctx, &GetReferralsArg{UserID: "bogus", Type: Tier1Referrals})
-	errs = append(errs, err)
-	_, err = u.GetReferralAcquisitionHistory(ctx, &GetReferralAcquisitionHistoryArg{UserID: "bogus"})
-	errs = append(errs, err)
-	_, err = u.GetDeviceMetadata(ctx, device.ID{UserID: "bogus", DeviceUniqueID: "bogus"})
-	errs = append(errs, err)
-	_, err = p.GetDeviceSettings(ctx, device.ID{UserID: "bogus", DeviceUniqueID: "bogus"})
-	errs = append(errs, err)
-	_, err = p.GetUsers(ctx, &GetUsersArg{UserID: "bogus", Keyword: "bogus"})
-	errs = append(errs, err)
-	_, err = p.GetUserByUsername(ctx, "bogususername")
-	errs = append(errs, err)
-	_, err = p.GetUserByID(ctx, "bogusid")
-	errs = append(errs, err)
-	_, err = p.GetTopCountries(ctx, &GetTopCountriesArg{Keyword: "us"})
-	errs = append(errs, err)
-
+func requireAllAPIMethodsFailIfRepositoryOrProcessorAreStopped(pCtx context.Context) error {
+	const apiMethodsCount = 16
+	errsChan := make(chan error, apiMethodsCount)
+	wg := new(sync.WaitGroup)
+	wg.Add(apiMethodsCount)
+	//nolint:nlreturn,wrapcheck // Not needed.
+	apiMethods := []func(context.Context) error{
+		func(ctx context.Context) error {
+			return p.CheckHealth(ctx)
+		},
+		func(ctx context.Context) error {
+			return p.CreateUser(ctx, &CreateUserArg{Username: "bogus"})
+		},
+		func(ctx context.Context) error {
+			return p.ModifyUser(ctx, &ModifyUserArg{Username: "bogus-modified"})
+		},
+		func(ctx context.Context) error {
+			return p.DeleteUser(ctx, "bogus")
+		},
+		func(ctx context.Context) error {
+			return p.CreateDeviceSettings(ctx, &devicesettings.DeviceSettings{ID: device.ID{UserID: "bogus", DeviceUniqueID: "bogus"}})
+		},
+		func(ctx context.Context) error {
+			return p.ModifyDeviceSettings(ctx, &devicesettings.DeviceSettings{ID: device.ID{UserID: "bogus", DeviceUniqueID: "bogus"}})
+		},
+		func(ctx context.Context) error {
+			return p.ValidatePhoneNumber(ctx, &PhoneNumberValidation{UserID: "bogus", PhoneNumber: "bogus"})
+		},
+		func(ctx context.Context) error {
+			return p.ReplaceDeviceMetadata(ctx, &ReplaceDeviceMetadataArg{
+				ClientIP:       net.ParseIP("1.1.1.1"),
+				DeviceMetadata: devicemetadata.DeviceMetadata{ID: device.ID{UserID: "bogus", DeviceUniqueID: "bogus"}},
+			})
+		},
+		func(ctx context.Context) error {
+			_, err := u.GetReferrals(ctx, &GetReferralsArg{UserID: "bogus", Type: Tier1Referrals})
+			return err
+		},
+		func(ctx context.Context) error {
+			_, err := u.GetReferralAcquisitionHistory(ctx, &GetReferralAcquisitionHistoryArg{UserID: "bogus"})
+			return err
+		},
+		func(ctx context.Context) error {
+			_, err := u.GetDeviceMetadata(ctx, device.ID{UserID: "bogus", DeviceUniqueID: "bogus"})
+			return err
+		},
+		func(ctx context.Context) error {
+			_, err := p.GetDeviceSettings(ctx, device.ID{UserID: "bogus", DeviceUniqueID: "bogus"})
+			return err
+		},
+		func(ctx context.Context) error {
+			_, err := p.GetUsers(ctx, &GetUsersArg{UserID: "bogus", Keyword: "bogus"})
+			return err
+		},
+		func(ctx context.Context) error {
+			_, err := p.GetUserByUsername(ctx, "bogususername")
+			return err
+		},
+		func(ctx context.Context) error {
+			_, err := p.GetUserByID(ctx, "bogusid")
+			return err
+		},
+		func(ctx context.Context) error {
+			_, err := p.GetTopCountries(ctx, &GetTopCountriesArg{Keyword: "us"})
+			return err
+		},
+	}
+	for _, f := range apiMethods {
+		go func(apiMethod func(context.Context) error) {
+			defer wg.Done()
+			ctx, cancel := context.WithTimeout(pCtx, 100*time.Millisecond)
+			defer cancel()
+			errsChan <- apiMethod(ctx)
+		}(f)
+	}
+	wg.Wait()
+	close(errsChan)
 	var unexpectedErrors []error
-	for _, e := range errs {
-		if e == nil || !errors.Is(e, tmulti.ErrNoConnection) {
+	for e := range errsChan {
+		if e == nil || (!errors.Is(e, tmulti.ErrNoConnection) && !errors.Is(e, os.ErrClosed)) {
 			unexpectedErrors = append(unexpectedErrors, e)
 		}
 	}
-	err = multierror.Append(nil, unexpectedErrors...).ErrorOrNil()
-	if err == nil {
-		err = errors.New("none of the APIs failed")
-	}
 
-	return errors.Wrapf(err, "atleast one API did not error or had an unexpected error")
+	return errors.Wrapf(multierror.Append(nil, unexpectedErrors...).ErrorOrNil(), "atleast one API did not error or had an unexpected error")
 }
 
 func TestCheckHealth(t *testing.T) {
