@@ -23,4 +23,5 @@ vendor/
 /.idea
 *.iws
 /.vscode
-/.tmp-*
+.tmp-*
+.env

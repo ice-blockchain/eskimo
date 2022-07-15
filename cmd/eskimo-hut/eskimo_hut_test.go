@@ -29,17 +29,9 @@ func TestMain(m *testing.M) {
 	serverConnector = serverfixture.NewTestConnector(applicationYamlKey, swaggerRoot, expectedSwaggerJSON, order, main, usersfixture.WContainerMounts()...)
 	testConnectors := usersfixture.WTestConnectors()
 	testConnectors = append(testConnectors, serverConnector)
-	//nolint:godox // .
-	// TODO remove the hooks if u don't need em.
-	hooks := &connectorsfixture.ConnectorLifecycleHooks{
-		AfterConnectorsStarted:  nil,
-		BeforeConnectorsStarted: nil,
-		AfterConnectorsStopped:  nil,
-		BeforeConnectorsStopped: nil,
-	}
 
 	connectorsfixture.
-		NewTestRunner(applicationYamlKey, hooks, testConnectors...).
+		NewTestRunner(applicationYamlKey, nil, testConnectors...).
 		RunTests(m)
 }
 

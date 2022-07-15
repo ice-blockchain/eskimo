@@ -8,6 +8,7 @@ import (
 	"io"
 	"mime/multipart"
 	"net/http"
+	"os"
 	stdlibtime "time"
 
 	"github.com/imroc/req/v3"
@@ -15,6 +16,12 @@ import (
 
 	"github.com/ice-blockchain/wintr/log"
 )
+
+func configurePictureStorage() {
+	if cfg.PictureStorage.AccessKey == "" {
+		cfg.PictureStorage.AccessKey = os.Getenv("PICTURE_STORAGE_ACCESS_KEY")
+	}
+}
 
 func (r *repository) uploadProfilePicture(ctx context.Context, data *multipart.FileHeader) error {
 	if data == nil || data.Size == 0 {

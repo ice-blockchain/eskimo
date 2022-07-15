@@ -8,6 +8,7 @@ import (
 	"crypto/rand"
 	"fmt"
 	"math/big"
+	"os"
 	"text/template"
 	stdlibtime "time"
 
@@ -25,6 +26,16 @@ import (
 )
 
 func initTwilioClient() *twilio.RestClient {
+	if cfg.PhoneNumberValidation.TwilioCredentials.User == "" {
+		cfg.PhoneNumberValidation.TwilioCredentials.User = os.Getenv("SMS_CLIENT_USER")
+	}
+	if cfg.PhoneNumberValidation.TwilioCredentials.Password == "" {
+		cfg.PhoneNumberValidation.TwilioCredentials.Password = os.Getenv("SMS_CLIENT_PASSWORD")
+	}
+	if cfg.PhoneNumberValidation.FromPhoneNumber == "" {
+		cfg.PhoneNumberValidation.FromPhoneNumber = os.Getenv("SMS_CLIENT_FROM_PHONE_NUMBER")
+	}
+
 	return twilio.NewRestClientWithParams(twilio.ClientParams{
 		Username: cfg.PhoneNumberValidation.TwilioCredentials.User,
 		Password: cfg.PhoneNumberValidation.TwilioCredentials.Password,
