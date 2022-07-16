@@ -67,12 +67,7 @@ users: &users
   pictureStorage:
     urlUpload: https://storage.bunnycdn.com/ice-staging/profile
     urlDownload: https://ice-staging.b-cdn.net/profile
-    accessKey: access_key_hidden
   phoneNumberValidation:
-    twilioCredentials:
-      user: user_hidden
-      password: password_hidden
-    fromPhoneNumber: +12345678
     expirationTime: 3m
     smsTemplate: '{{.code}} is your ice verification code. This code expires in {{.expirationTime}} minutes.'
 users_test:
