@@ -886,7 +886,7 @@ const docTemplate = `{
                 "apiLevel": {
                     "type": "integer"
                 },
-                "baseOS": {
+                "baseOs": {
                     "type": "string"
                 },
                 "bootloader": {
@@ -1064,7 +1064,7 @@ const docTemplate = `{
                     "type": "string",
                     "example": "Ef86A6021afCDe5673511376B2"
                 },
-                "profilePictureURL": {
+                "profilePictureUrl": {
                     "type": "string",
                     "example": "https://somecdn.com/p1.jpg"
                 },

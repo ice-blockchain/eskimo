@@ -70,8 +70,10 @@ const (
 	deviceSettingsAlreadyExistsErrorCode = "DEVICE_SETTINGS_ALREADY_EXISTS"
 )
 
-//nolint:gochecknoglobals // Because its loaded once, at runtime.
-var cfg config
+//nolint:gochecknoglobals // Because they're loaded once, at runtime.
+var (
+	cfg config
+)
 
 type (
 	// | service implements server.State and is responsible for managing the state and lifecycle of the package.

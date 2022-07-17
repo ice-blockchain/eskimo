@@ -11,25 +11,25 @@ import (
 	messagebroker "github.com/ice-blockchain/wintr/connectors/message_broker"
 )
 
-func (s *userSnapshotSource) Process(ctx context.Context, m *messagebroker.Message) error {
+func (s *userSnapshotSource) Process(ctx context.Context, msg *messagebroker.Message) error {
 	if ctx.Err() != nil {
 		return errors.Wrap(ctx.Err(), "unexpected deadline while processing message")
 	}
 
-	var u UserSnapshot
-	if err := json.Unmarshal(m.Value, &u); err != nil {
-		return errors.Wrapf(err, "Process: cannot unmarshall %v into %#v", string(m.Value), u)
+	var usr UserSnapshot
+	if err := json.Unmarshal(msg.Value, &usr); err != nil {
+		return errors.Wrapf(err, "process: cannot unmarshall %v into %#v", string(msg.Value), usr)
 	}
 
-	if u.User != nil {
-		if err := s.incrementOrDecrementCountryUserCount(ctx, u.User.Country, add); err != nil {
-			return errors.Wrapf(err, "error incrementing country user count for country %v", u.User.Country)
+	if usr.User != nil {
+		if err := s.incrementOrDecrementCountryUserCount(ctx, usr.User.Country, add); err != nil {
+			return errors.Wrapf(err, "error incrementing country user count for country %v", usr.User.Country)
 		}
 	}
 
-	if u.Before != nil {
-		if err := s.incrementOrDecrementCountryUserCount(ctx, u.Before.Country, subtract); err != nil {
-			return errors.Wrapf(err, "error incrementing country user count for country %v", u.Before.Country)
+	if usr.Before != nil {
+		if err := s.incrementOrDecrementCountryUserCount(ctx, usr.Before.Country, subtract); err != nil {
+			return errors.Wrapf(err, "error incrementing country user count for country %v", usr.Before.Country)
 		}
 	}
 
@@ -49,7 +49,7 @@ func (r *repository) sendUserSnapshotMessage(ctx context.Context, user *UserSnap
 		key = user.ID
 	}
 
-	m := &messagebroker.Message{
+	msg := &messagebroker.Message{
 		Headers: map[string]string{"producer": "eskimo"},
 		Key:     key,
 		Topic:   cfg.MessageBroker.Topics[0].Name,
@@ -58,7 +58,7 @@ func (r *repository) sendUserSnapshotMessage(ctx context.Context, user *UserSnap
 
 	responder := make(chan error, 1)
 	defer close(responder)
-	r.mb.SendMessage(ctx, m, responder)
+	r.mb.SendMessage(ctx, msg, responder)
 
 	return errors.Wrapf(<-responder, "failed to send user snapshot message to broker")
 }

@@ -58,58 +58,58 @@ func (u *User) override(user *User) *User {
 		return oldData
 	}
 
-	n := new(User)
-	*n = *u
-	n.UpdatedAt = user.UpdatedAt
-	n.Email = mergeField(u.Email, user.Email)
-	n.FirstName = mergeField(u.FirstName, user.FirstName)
-	n.LastName = mergeField(u.LastName, user.LastName)
-	n.Username = mergeField(u.Username, user.Username)
-	n.ProfilePictureURL = mergeField(u.ProfilePictureURL, user.ProfilePictureURL)
-	n.Country = mergeField(u.Country, user.Country)
-	n.City = mergeField(u.City, user.City)
-	n.PhoneNumber = mergeField(u.PhoneNumber, user.PhoneNumber)
-	n.PhoneNumberHash = mergeField(u.PhoneNumberHash, user.PhoneNumberHash)
-	n.AgendaPhoneNumberHashes = mergeField(u.AgendaPhoneNumberHashes, user.AgendaPhoneNumberHashes)
+	usr := new(User)
+	*usr = *u
+	usr.UpdatedAt = user.UpdatedAt
+	usr.Email = mergeField(u.Email, user.Email)
+	usr.FirstName = mergeField(u.FirstName, user.FirstName)
+	usr.LastName = mergeField(u.LastName, user.LastName)
+	usr.Username = mergeField(u.Username, user.Username)
+	usr.ProfilePictureURL = mergeField(u.ProfilePictureURL, user.ProfilePictureURL)
+	usr.Country = mergeField(u.Country, user.Country)
+	usr.City = mergeField(u.City, user.City)
+	usr.PhoneNumber = mergeField(u.PhoneNumber, user.PhoneNumber)
+	usr.PhoneNumberHash = mergeField(u.PhoneNumberHash, user.PhoneNumberHash)
+	usr.AgendaPhoneNumberHashes = mergeField(u.AgendaPhoneNumberHashes, user.AgendaPhoneNumberHashes)
 
-	return n
+	return usr
 }
 
 //nolint:funlen // Because it's a big unitary SQL processing logic.
 func (arg *ModifyUserArg) genSQLUpdate() (sql string, params map[string]interface{}) {
 	params = make(map[string]interface{})
-	u := arg.User
-	params["id"] = u.ID
+	usr := arg.User
+	params["id"] = usr.ID
 	params["updatedAt"] = time.Now()
 
 	sql = "UPDATE USERS set UPDATED_AT = :updatedAt"
 
-	if u.Email != "" {
-		params["email"] = u.Email
+	if usr.Email != "" {
+		params["email"] = usr.Email
 		sql += ", EMAIL = :email"
 	}
-	if u.FirstName != "" {
-		params["firstName"] = u.FirstName
+	if usr.FirstName != "" {
+		params["firstName"] = usr.FirstName
 		sql += ", FIRST_NAME = :firstName"
 	}
-	if u.LastName != "" {
-		params["lastName"] = u.LastName
+	if usr.LastName != "" {
+		params["lastName"] = usr.LastName
 		sql += ", LAST_NAME = :lastName"
 	}
-	if u.Username != "" {
-		params["username"] = u.Username
+	if usr.Username != "" {
+		params["username"] = usr.Username
 		sql += ", USERNAME = :username"
 	}
 	if arg.ProfilePicture != nil {
 		params["profilePictureName"] = arg.ProfilePicture.Filename
 		sql += ", PROFILE_PICTURE_NAME = :profilePictureName"
 	}
-	if u.Country != "" {
-		params["country"] = u.Country
+	if usr.Country != "" {
+		params["country"] = usr.Country
 		sql += ", COUNTRY = :country"
 	}
-	if u.City != "" {
-		params["city"] = u.City
+	if usr.City != "" {
+		params["city"] = usr.City
 		sql += ", CITY = :city"
 	}
 	if arg.confirmedPhoneNumber != "" {
@@ -117,12 +117,12 @@ func (arg *ModifyUserArg) genSQLUpdate() (sql string, params map[string]interfac
 		params["phoneNumber"] = arg.confirmedPhoneNumber
 		sql += ", PHONE_NUMBER = :phoneNumber"
 		// And its hash, we need hashes to know if users are in agenda for each other.
-		params["phoneNumberHash"] = u.PhoneNumberHash
+		params["phoneNumberHash"] = usr.PhoneNumberHash
 		sql += ", PHONE_NUMBER_HASH = :phoneNumberHash"
 	}
 	// Agenda can be updated after user creation (in case if user granted permission to access contacts on the team screen after initial user created).
-	if u.AgendaPhoneNumberHashes != "" {
-		params["agendaPhoneNumberHashes"] = u.AgendaPhoneNumberHashes
+	if usr.AgendaPhoneNumberHashes != "" {
+		params["agendaPhoneNumberHashes"] = usr.AgendaPhoneNumberHashes
 		sql += ", AGENDA_PHONE_NUMBER_HASHES = :agendaPhoneNumberHashes"
 	}
 	sql += " WHERE ID = :id"

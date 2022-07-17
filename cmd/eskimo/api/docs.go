@@ -731,7 +731,7 @@ const docTemplate = `{
                     "type": "boolean",
                     "example": false
                 },
-                "profilePictureURL": {
+                "profilePictureUrl": {
                     "type": "string",
                     "example": "https://somecdn.com/p1.jpg"
                 },
@@ -812,7 +812,7 @@ const docTemplate = `{
                     "type": "boolean",
                     "example": false
                 },
-                "profilePictureURL": {
+                "profilePictureUrl": {
                     "type": "string",
                     "example": "https://somecdn.com/p1.jpg"
                 },
@@ -857,7 +857,7 @@ const docTemplate = `{
                     "type": "string",
                     "example": "+12099216581"
                 },
-                "profilePictureURL": {
+                "profilePictureUrl": {
                     "type": "string",
                     "example": "https://somecdn.com/p1.jpg"
                 },

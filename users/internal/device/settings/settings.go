@@ -37,6 +37,7 @@ func (r *repository) getDeviceSettings(ctx context.Context, id device.ID) (*Devi
 	return ds, nil
 }
 
+//nolint:revive // There's no other way to rename them.
 func (r *repository) GetDeviceSettings(ctx context.Context, id device.ID) (*DeviceSettings, error) {
 	settings, err := r.getDeviceSettings(ctx, id)
 	if err == nil {
@@ -114,7 +115,7 @@ func (r *repository) sendDeviceSettingsSnapshotMessage(ctx context.Context, ds *
 	if err != nil {
 		return errors.Wrapf(err, "failed to marshal DeviceSettings %#v", ds)
 	}
-	m := &messagebroker.Message{
+	msg := &messagebroker.Message{
 		Headers: map[string]string{"producer": "eskimo"},
 		Key:     ds.UserID + "~" + ds.DeviceUniqueID,
 		Topic:   cfg.MessageBroker.Topics[2].Name,
@@ -122,7 +123,7 @@ func (r *repository) sendDeviceSettingsSnapshotMessage(ctx context.Context, ds *
 	}
 	responder := make(chan error, 1)
 	defer close(responder)
-	r.mb.SendMessage(ctx, m, responder)
+	r.mb.SendMessage(ctx, msg, responder)
 
 	return errors.Wrapf(<-responder, "failed to send device settings message to broker")
 }

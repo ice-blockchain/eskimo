@@ -73,7 +73,7 @@ func (r *repository) sendValidationSMS(ctx context.Context, number, code string)
 	}), "failed to send sms message via twilio")
 }
 
-func (r *repository) validatePhoneNumber(number string) (string, error) {
+func (r *repository) verifyPhoneNumber(number string) (string, error) {
 	lookupResponse, err := r.twilioClient.LookupsV1.FetchPhoneNumber(number, nil)
 	if err != nil {
 		//nolint:errorlint // errors.As(err,*twilioclient.TwilioRestError) doesn't seem to work.
@@ -90,7 +90,6 @@ func (r *repository) validatePhoneNumber(number string) (string, error) {
 	return number, nil
 }
 
-//nolint:gocognit // .
 func (r *repository) replacePhoneValidation(ctx context.Context, conf *PhoneNumberValidation) error {
 	sql := `REPLACE INTO PHONE_NUMBER_VALIDATIONS (USER_ID, PHONE_NUMBER, PHONE_NUMBER_HASH, VALIDATION_CODE, CREATED_AT) 
 						 VALUES 				  (:id,     :phoneNumber, :phoneNumberHash,  :validationCode, :createdAt)`
@@ -184,7 +183,7 @@ func (r *repository) triggerNewPhoneNumberValidation(ctx context.Context, newUse
 		return nil
 	}
 
-	phoneNumber, err := r.validatePhoneNumber(newUser.PhoneNumber)
+	phoneNumber, err := r.verifyPhoneNumber(newUser.PhoneNumber)
 	if err != nil {
 		return errors.Wrapf(err, "invalid phone number %v", newUser.PhoneNumber)
 	}

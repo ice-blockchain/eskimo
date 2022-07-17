@@ -37,17 +37,16 @@ func (s *service) setupUserReferralRoutes(router *gin.Engine) {
 // @Failure      500            {object}  server.ErrorResponse
 // @Failure      504            {object}  server.ErrorResponse  "if request times out"
 // @Router       /users/{userId}/referral-acquisition-history [GET].
-func (s *service) GetReferralAcquisitionHistory(ctx context.Context, r server.ParsedRequest) server.Response {
-	arg := &r.(*RequestGetReferralAcquisitionHistory).GetReferralAcquisitionHistoryArg
-	res, err := s.usersRepository.GetReferralAcquisitionHistory(ctx, arg)
+func (s *service) GetReferralAcquisitionHistory(ctx context.Context, req *RequestGetReferralAcquisitionHistory) server.Response {
+	res, err := s.usersRepository.GetReferralAcquisitionHistory(ctx, &req.GetReferralAcquisitionHistoryArg)
 	if err != nil {
-		return server.Unexpected(errors.Wrapf(err, "error getting referral acquisition history for %#v", arg))
+		return server.Unexpected(errors.Wrapf(err, "error getting referral acquisition history for %#v", &req.GetReferralAcquisitionHistoryArg))
 	}
 
 	return server.OK(res)
 }
 
-func newRequestGetReferralAcquisitionHistory() server.ParsedRequest {
+func newRequestGetReferralAcquisitionHistory() *RequestGetReferralAcquisitionHistory {
 	return new(RequestGetReferralAcquisitionHistory)
 }
 
@@ -72,7 +71,7 @@ func (req *RequestGetReferralAcquisitionHistory) Validate() *server.Response {
 	return server.RequiredStrings(map[string]string{"userId": req.UserID})
 }
 
-func (req *RequestGetReferralAcquisitionHistory) Bindings(c *gin.Context) []func(obj interface{}) error {
+func (*RequestGetReferralAcquisitionHistory) Bindings(c *gin.Context) []func(obj interface{}) error {
 	return []func(obj interface{}) error{c.ShouldBindUri, c.ShouldBindQuery, server.ShouldBindAuthenticatedUser(c)}
 }
 
@@ -95,16 +94,16 @@ func (req *RequestGetReferralAcquisitionHistory) Bindings(c *gin.Context) []func
 // @Failure      500            {object}  server.ErrorResponse
 // @Failure      504            {object}  server.ErrorResponse  "if request times out"
 // @Router       /users/{userId}/referrals [GET].
-func (s *service) GetReferrals(ctx context.Context, r server.ParsedRequest) server.Response {
-	referrals, err := s.usersRepository.GetReferrals(ctx, &r.(*RequestGetReferrals).GetReferralsArg)
+func (s *service) GetReferrals(ctx context.Context, req *RequestGetReferrals) server.Response {
+	referrals, err := s.usersRepository.GetReferrals(ctx, &req.GetReferralsArg)
 	if err != nil {
-		return server.Unexpected(errors.Wrapf(err, "failed to get referrals for %#v", &r.(*RequestGetReferrals).GetReferralsArg))
+		return server.Unexpected(errors.Wrapf(err, "failed to get referrals for %#v", &req.GetReferralsArg))
 	}
 
 	return server.OK(referrals)
 }
 
-func newRequestGetReferrals() server.ParsedRequest {
+func newRequestGetReferrals() *RequestGetReferrals {
 	return new(RequestGetReferrals)
 }
 
@@ -138,6 +137,6 @@ func (req *RequestGetReferrals) Validate() *server.Response {
 	return server.BadRequest(errors.Errorf("type '%v' is invalid, valid types are %v", req.Type, users.ReferralTypes), invalidPropertiesErrorCode)
 }
 
-func (req *RequestGetReferrals) Bindings(c *gin.Context) []func(obj interface{}) error {
+func (*RequestGetReferrals) Bindings(c *gin.Context) []func(obj interface{}) error {
 	return []func(obj interface{}) error{c.ShouldBindUri, c.ShouldBindQuery, server.ShouldBindAuthenticatedUser(c)}
 }

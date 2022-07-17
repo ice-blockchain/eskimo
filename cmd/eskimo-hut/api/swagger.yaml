@@ -87,7 +87,7 @@ definitions:
     properties:
       apiLevel:
         type: integer
-      baseOS:
+      baseOs:
         type: string
       bootloader:
         type: string
@@ -213,7 +213,7 @@ definitions:
       phoneNumberHash:
         example: Ef86A6021afCDe5673511376B2
         type: string
-      profilePictureURL:
+      profilePictureUrl:
         example: https://somecdn.com/p1.jpg
         type: string
       referredBy:

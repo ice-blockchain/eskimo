@@ -12,15 +12,15 @@ import (
 	messagebroker "github.com/ice-blockchain/wintr/connectors/message_broker"
 )
 
-func (s *miningStartedSource) Process(ctx context.Context, m *messagebroker.Message) error {
+func (s *miningStartedSource) Process(ctx context.Context, msg *messagebroker.Message) error {
 	if ctx.Err() != nil {
 		return errors.Wrap(ctx.Err(), "unexpected deadline while processing message")
 	}
 	var ms miningStarted
-	if err := json.Unmarshal(m.Value, &ms); err != nil {
-		return errors.Wrapf(err, "Process: cannot unmarshall %v into %#v", string(m.Value), ms)
+	if err := json.Unmarshal(msg.Value, &ms); err != nil {
+		return errors.Wrapf(err, "process: cannot unmarshall %v into %#v", string(msg.Value), ms)
 	}
-	userID := m.Key
+	userID := msg.Key
 	existing, err := s.mustGetUserByID(ctx, userID)
 	if err != nil {
 		return errors.Wrapf(err, "failed to get current user by id %v, before updating the users.last_mining_started_at", userID)

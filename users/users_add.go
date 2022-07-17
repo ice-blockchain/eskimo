@@ -23,8 +23,8 @@ func (r *repository) CreateUser(ctx context.Context, arg *CreateUserArg) error {
 	}
 	r.setCreateUserDefaults(ctx, arg)
 	var referral UserID
-	u := arg.User
-	if u.ReferredBy != "" {
+	usr := arg.User
+	if usr.ReferredBy != "" {
 		referral = ":referredBy"
 	} else {
 		referral = `(SELECT X.ID FROM (SELECT X.ID FROM (SELECT ID FROM users WHERE ID != :id ORDER BY random() LIMIT 1) X UNION ALL SELECT :id as ID) X LIMIT 1)`
@@ -35,34 +35,34 @@ func (r *repository) CreateUser(ctx context.Context, arg *CreateUserArg) error {
 	VALUES
 		(:id, :hashCode, :email, :firstName, :lastName, :phoneNumber, :phoneNumberHash, :username, %v, :profilePictureName, :country, :city, :createdAt, :updatedAt)`, referral)
 	params := map[string]interface{}{
-		"id":                 u.ID,
-		"hashCode":           u.HashCode,
-		"email":              u.Email,
-		"firstName":          u.FirstName,
-		"lastName":           u.LastName,
-		"phoneNumber":        u.PhoneNumber,
-		"phoneNumberHash":    u.PhoneNumberHash,
-		"username":           u.Username,
-		"profilePictureName": u.ProfilePictureURL,
-		"country":            u.Country,
-		"city":               u.City,
-		"createdAt":          u.CreatedAt,
-		"updatedAt":          u.UpdatedAt,
+		"id":                 usr.ID,
+		"hashCode":           usr.HashCode,
+		"email":              usr.Email,
+		"firstName":          usr.FirstName,
+		"lastName":           usr.LastName,
+		"phoneNumber":        usr.PhoneNumber,
+		"phoneNumberHash":    usr.PhoneNumberHash,
+		"username":           usr.Username,
+		"profilePictureName": usr.ProfilePictureURL,
+		"country":            usr.Country,
+		"city":               usr.City,
+		"createdAt":          usr.CreatedAt,
+		"updatedAt":          usr.UpdatedAt,
 	}
-	if u.ReferredBy != "" {
-		params["referredBy"] = u.ReferredBy
+	if usr.ReferredBy != "" {
+		params["referredBy"] = usr.ReferredBy
 	}
 	if err := storage.CheckSQLDMLErr(r.db.PrepareExecute(sql, params)); err != nil {
 		field, tErr := detectAndParseDuplicateDatabaseError(err)
-		if field == "hash_code" {
+		if field == hashCodeDBColumnName {
 			return r.CreateUser(ctx, arg)
 		}
 
-		return errors.Wrapf(tErr, "failed to insert user %#v", u)
+		return errors.Wrapf(tErr, "failed to insert user %#v", usr)
 	}
 
-	return errors.Wrapf(r.sendUserSnapshotMessage(ctx, &UserSnapshot{User: &u, Before: nil}),
-		"failed to send user created message for %#v", u)
+	return errors.Wrapf(r.sendUserSnapshotMessage(ctx, &UserSnapshot{User: &usr, Before: nil}),
+		"failed to send user created message for %#v", usr)
 }
 
 func (r *repository) setCreateUserDefaults(ctx context.Context, arg *CreateUserArg) {
@@ -73,20 +73,21 @@ func (r *repository) setCreateUserDefaults(ctx context.Context, arg *CreateUserA
 	arg.User.ProfilePictureURL = defaultUserImage
 }
 
-func detectAndParseDuplicateDatabaseError(err error) (field string, _ error) {
-	if tErr := terror.As(err); tErr != nil && errors.Is(err, storage.ErrDuplicate) {
+func detectAndParseDuplicateDatabaseError(err error) (field string, newErr error) {
+	newErr = err
+	if tErr := terror.As(newErr); tErr != nil && errors.Is(newErr, storage.ErrDuplicate) {
 		switch tErr.Data[storage.IndexName] {
 		case "pk_unnamed_USERS_1":
 			field = "id"
 		case "unique_unnamed_USERS_2":
 			field = "username"
 		case "unique_unnamed_USERS_3":
-			field = "hash_code"
+			field = hashCodeDBColumnName
 		default:
 			log.Panic("unexpected indexName `%v` for users space", tErr.Data[storage.IndexName])
 		}
-		err = terror.New(storage.ErrDuplicate, map[string]interface{}{"field": field})
+		newErr = terror.New(storage.ErrDuplicate, map[string]interface{}{"field": field})
 	}
 
-	return field, err //nolint:wrapcheck // It's a proxy.
+	return field, newErr //nolint:wrapcheck // It's a proxy.
 }

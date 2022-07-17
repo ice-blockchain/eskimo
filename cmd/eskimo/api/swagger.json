@@ -724,7 +724,7 @@
                     "type": "boolean",
                     "example": false
                 },
-                "profilePictureURL": {
+                "profilePictureUrl": {
                     "type": "string",
                     "example": "https://somecdn.com/p1.jpg"
                 },
@@ -805,7 +805,7 @@
                     "type": "boolean",
                     "example": false
                 },
-                "profilePictureURL": {
+                "profilePictureUrl": {
                     "type": "string",
                     "example": "https://somecdn.com/p1.jpg"
                 },
@@ -850,7 +850,7 @@
                     "type": "string",
                     "example": "+12099216581"
                 },
-                "profilePictureURL": {
+                "profilePictureUrl": {
                     "type": "string",
                     "example": "https://somecdn.com/p1.jpg"
                 },

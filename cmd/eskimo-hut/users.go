@@ -40,9 +40,9 @@ func (s *service) setupUserRoutes(router *gin.Engine) {
 // @Failure      500            {object}  server.ErrorResponse
 // @Failure      504            {object}  server.ErrorResponse  "if request times out"
 // @Router       /users [POST].
-func (s *service) CreateUser(ctx context.Context, r server.ParsedRequest) server.Response {
-	if err := s.usersProcessor.CreateUser(ctx, &r.(*RequestCreateUser).CreateUserArg); err != nil {
-		err = errors.Wrapf(err, "failed to create user %#v", r.(*RequestCreateUser).User)
+func (s *service) CreateUser(ctx context.Context, req *RequestCreateUser) server.Response {
+	if err := s.usersProcessor.CreateUser(ctx, &req.CreateUserArg); err != nil {
+		err = errors.Wrapf(err, "failed to create user %#v", req.User)
 		switch {
 		case errors.Is(err, users.ErrRelationNotFound):
 			return *server.NotFound(err, referralNotFoundErrorCode)
@@ -57,10 +57,10 @@ func (s *service) CreateUser(ctx context.Context, r server.ParsedRequest) server
 		}
 	}
 
-	return server.Created(r.(*RequestCreateUser).User)
+	return server.Created(&req.User)
 }
 
-func newRequestCreateUser() server.ParsedRequest {
+func newRequestCreateUser() *RequestCreateUser {
 	return new(RequestCreateUser)
 }
 
@@ -114,7 +114,7 @@ func (req *RequestCreateUser) init() {
 	req.User.Email = req.Email
 }
 
-func (req *RequestCreateUser) Bindings(c *gin.Context) []func(obj interface{}) error {
+func (*RequestCreateUser) Bindings(c *gin.Context) []func(obj interface{}) error {
 	return []func(obj interface{}) error{c.ShouldBindJSON, server.ShouldBindClientIP(c), server.ShouldBindAuthenticatedUser(c)}
 }
 
@@ -138,14 +138,14 @@ func (req *RequestCreateUser) Bindings(c *gin.Context) []func(obj interface{}) e
 // @Failure      500                {object}  server.ErrorResponse
 // @Failure      504                {object}  server.ErrorResponse  "if request times out"
 // @Router       /users/{userId} [PATCH].
-func (s *service) ModifyUser(ctx context.Context, r server.ParsedRequest) server.Response {
-	if err := s.usersProcessor.ModifyUser(ctx, &r.(*RequestModifyUser).ModifyUserArg); err != nil {
-		err = errors.Wrapf(err, "failed to modify user for %#v", r.(*RequestModifyUser).User)
+func (s *service) ModifyUser(ctx context.Context, req *RequestModifyUser) server.Response {
+	if err := s.usersProcessor.ModifyUser(ctx, &req.ModifyUserArg); err != nil {
+		err = errors.Wrapf(err, "failed to modify user for %#v", req.User)
 		switch {
 		case errors.Is(err, users.ErrNotFound):
 			return *server.NotFound(err, userNotFoundErrorCode)
 		case errors.Is(err, users.ErrInvalidCountry):
-			return *server.BadRequest(errors.Errorf("invalid country %v", r.(*RequestModifyUser).Country), invalidPropertiesErrorCode)
+			return *server.BadRequest(errors.Errorf("invalid country %v", req.Country), invalidPropertiesErrorCode)
 		case errors.Is(err, users.ErrInvalidPhoneNumber):
 			return *server.BadRequest(err, phoneNumberInvalidErrorCode)
 		case errors.Is(err, users.ErrDuplicate):
@@ -165,10 +165,10 @@ func (s *service) ModifyUser(ctx context.Context, r server.ParsedRequest) server
 		}
 	}
 
-	return server.OK(&r.(*RequestModifyUser).User)
+	return server.OK(&req.User)
 }
 
-func newRequestModifyUser() server.ParsedRequest {
+func newRequestModifyUser() *RequestModifyUser {
 	return new(RequestModifyUser)
 }
 
@@ -232,9 +232,9 @@ func (req *RequestModifyUser) hasValues() bool {
 		req.ProfilePicture != nil
 }
 
-func (req *RequestModifyUser) Bindings(c *gin.Context) []func(obj interface{}) error {
+func (*RequestModifyUser) Bindings(c *gin.Context) []func(obj interface{}) error {
 	multipart := func(obj interface{}) error {
-		return errors.Wrap(c.ShouldBindWith(obj, binding.FormMultipart), "FormMultipart binding failed")
+		return errors.Wrap(c.ShouldBindWith(obj, binding.FormMultipart), "formMultipart binding failed")
 	}
 
 	return []func(obj interface{}) error{multipart, c.ShouldBindUri, server.ShouldBindAuthenticatedUser(c)}
@@ -268,19 +268,19 @@ func verifyIfPhoneNumberAndHashProvidedTogether(phoneNumber, phoneNumberHash str
 // @Failure      500            {object}  server.ErrorResponse
 // @Failure      504            {object}  server.ErrorResponse  "if request times out"
 // @Router       /users/{userId} [DELETE].
-func (s *service) DeleteUser(ctx context.Context, r server.ParsedRequest) server.Response {
-	if err := s.usersProcessor.DeleteUser(ctx, r.(*RequestDeleteUser).UserID); err != nil {
+func (s *service) DeleteUser(ctx context.Context, req *RequestDeleteUser) server.Response {
+	if err := s.usersProcessor.DeleteUser(ctx, req.UserID); err != nil {
 		if errors.Is(err, users.ErrNotFound) {
 			return server.NoContent()
 		}
 
-		return server.Unexpected(errors.Wrapf(err, "failed to delete user with id: %v", r.(*RequestDeleteUser).UserID))
+		return server.Unexpected(errors.Wrapf(err, "failed to delete user with id: %v", req.UserID))
 	}
 
 	return server.OK()
 }
 
-func newRequestDeleteUser() server.ParsedRequest {
+func newRequestDeleteUser() *RequestDeleteUser {
 	return new(RequestDeleteUser)
 }
 
@@ -306,6 +306,6 @@ func (req *RequestDeleteUser) Validate() *server.Response {
 	return nil
 }
 
-func (req *RequestDeleteUser) Bindings(c *gin.Context) []func(obj interface{}) error {
+func (*RequestDeleteUser) Bindings(c *gin.Context) []func(obj interface{}) error {
 	return []func(obj interface{}) error{c.ShouldBindUri, server.ShouldBindAuthenticatedUser(c)}
 }

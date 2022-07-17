@@ -24,14 +24,16 @@ import (
 	storagefixture "github.com/ice-blockchain/wintr/connectors/storage/fixture"
 )
 
-const testDeadline = 30 * time.Second
+const (
+	testDeadline = 30 * time.Second
+)
 
 //nolint:gochecknoglobals // Because those are global, set only once for the whole package test runtime and execution.
 var (
-	dbConnector storagefixture.TestConnector
-	mbConnector messagebrokerfixture.TestConnector
-	u           Repository
-	p           Processor
+	dbConnector     storagefixture.TestConnector
+	mbConnector     messagebrokerfixture.TestConnector
+	usersRepository Repository
+	usersProcessor  Processor
 )
 
 func TestMain(m *testing.M) {
@@ -39,14 +41,14 @@ func TestMain(m *testing.M) {
 }
 
 func afterConnectorsStarted(ctx context.Context) connectorsfixture.ContextErrClose {
-	u = New(ctx, func() {})
-	p = StartProcessor(ctx, func() {})
+	usersRepository = New(ctx, func() {})
+	usersProcessor = StartProcessor(ctx, func() {})
 
 	return func(context.Context) error {
-		if err := u.Close(); err != nil {
+		if err := usersRepository.Close(); err != nil {
 			return errors.Wrap(err, "can't close test users repository")
 		}
-		if err := p.Close(); err != nil {
+		if err := usersProcessor.Close(); err != nil {
 			return errors.Wrap(err, "can't close test users processors")
 		}
 
@@ -64,72 +66,72 @@ func requireAllAPIMethodsFailIfRepositoryOrProcessorAreStopped(pCtx context.Cont
 	//nolint:nlreturn,wrapcheck // Not needed.
 	apiMethods := []func(context.Context) error{
 		func(ctx context.Context) error {
-			return p.CheckHealth(ctx)
+			return usersProcessor.CheckHealth(ctx)
 		},
 		func(ctx context.Context) error {
-			return p.CreateUser(ctx, &CreateUserArg{Username: "bogus"})
+			return usersProcessor.CreateUser(ctx, &CreateUserArg{Username: "bogus"})
 		},
 		func(ctx context.Context) error {
-			return p.ModifyUser(ctx, &ModifyUserArg{Username: "bogus-modified"})
+			return usersProcessor.ModifyUser(ctx, &ModifyUserArg{Username: "bogus-modified"})
 		},
 		func(ctx context.Context) error {
-			return p.DeleteUser(ctx, "bogus")
+			return usersProcessor.DeleteUser(ctx, "bogus")
 		},
 		func(ctx context.Context) error {
-			return p.CreateDeviceSettings(ctx, &devicesettings.DeviceSettings{ID: device.ID{UserID: "bogus", DeviceUniqueID: "bogus"}})
+			return usersProcessor.CreateDeviceSettings(ctx, &devicesettings.DeviceSettings{ID: device.ID{UserID: "bogus", DeviceUniqueID: "bogus"}})
 		},
 		func(ctx context.Context) error {
-			return p.ModifyDeviceSettings(ctx, &devicesettings.DeviceSettings{ID: device.ID{UserID: "bogus", DeviceUniqueID: "bogus"}})
+			return usersProcessor.ModifyDeviceSettings(ctx, &devicesettings.DeviceSettings{ID: device.ID{UserID: "bogus", DeviceUniqueID: "bogus"}})
 		},
 		func(ctx context.Context) error {
-			return p.ValidatePhoneNumber(ctx, &PhoneNumberValidation{UserID: "bogus", PhoneNumber: "bogus"})
+			return usersProcessor.ValidatePhoneNumber(ctx, &PhoneNumberValidation{UserID: "bogus", PhoneNumber: "bogus"})
 		},
 		func(ctx context.Context) error {
-			return p.ReplaceDeviceMetadata(ctx, &ReplaceDeviceMetadataArg{
+			return usersProcessor.ReplaceDeviceMetadata(ctx, &ReplaceDeviceMetadataArg{
 				ClientIP:       net.ParseIP("1.1.1.1"),
 				DeviceMetadata: devicemetadata.DeviceMetadata{ID: device.ID{UserID: "bogus", DeviceUniqueID: "bogus"}},
 			})
 		},
 		func(ctx context.Context) error {
-			_, err := u.GetReferrals(ctx, &GetReferralsArg{UserID: "bogus", Type: Tier1Referrals})
+			_, err := usersRepository.GetReferrals(ctx, &GetReferralsArg{UserID: "bogus", Type: Tier1Referrals})
 			return err
 		},
 		func(ctx context.Context) error {
-			_, err := u.GetReferralAcquisitionHistory(ctx, &GetReferralAcquisitionHistoryArg{UserID: "bogus"})
+			_, err := usersRepository.GetReferralAcquisitionHistory(ctx, &GetReferralAcquisitionHistoryArg{UserID: "bogus"})
 			return err
 		},
 		func(ctx context.Context) error {
-			_, err := u.GetDeviceMetadata(ctx, device.ID{UserID: "bogus", DeviceUniqueID: "bogus"})
+			_, err := usersRepository.GetDeviceMetadata(ctx, device.ID{UserID: "bogus", DeviceUniqueID: "bogus"})
 			return err
 		},
 		func(ctx context.Context) error {
-			_, err := p.GetDeviceSettings(ctx, device.ID{UserID: "bogus", DeviceUniqueID: "bogus"})
+			_, err := usersProcessor.GetDeviceSettings(ctx, device.ID{UserID: "bogus", DeviceUniqueID: "bogus"})
 			return err
 		},
 		func(ctx context.Context) error {
-			_, err := p.GetUsers(ctx, &GetUsersArg{UserID: "bogus", Keyword: "bogus"})
+			_, err := usersProcessor.GetUsers(ctx, &GetUsersArg{UserID: "bogus", Keyword: "bogus"})
 			return err
 		},
 		func(ctx context.Context) error {
-			_, err := p.GetUserByUsername(ctx, "bogususername")
+			_, err := usersProcessor.GetUserByUsername(ctx, "bogususername")
 			return err
 		},
 		func(ctx context.Context) error {
-			_, err := p.GetUserByID(ctx, "bogusid")
+			_, err := usersProcessor.GetUserProfileByID(ctx, "bogusid")
 			return err
 		},
 		func(ctx context.Context) error {
-			_, err := p.GetTopCountries(ctx, &GetTopCountriesArg{Keyword: "us"})
+			_, err := usersProcessor.GetTopCountries(ctx, &GetTopCountriesArg{Keyword: "us"})
 			return err
 		},
 	}
-	for _, f := range apiMethods {
+	for _, fn := range apiMethods {
 		go func(apiMethod func(context.Context) error) {
 			defer wg.Done()
 			ctx, cancel := context.WithTimeout(pCtx, 100*time.Millisecond)
 			defer cancel()
 			errsChan <- apiMethod(ctx)
-		}(f)
+		}(fn)
 	}
 	wg.Wait()
 	close(errsChan)
@@ -152,5 +154,5 @@ func TestCheckHealth(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), testDeadline)
 	defer cancel()
 
-	require.NoError(t, p.CheckHealth(ctx))
+	require.NoError(t, usersProcessor.CheckHealth(ctx))
 }

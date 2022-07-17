@@ -70,11 +70,11 @@ type (
 		FirstName         string   `json:"firstName,omitempty" example:"John"`
 		LastName          string   `json:"lastName,omitempty" example:"Doe"`
 		PhoneNumber       string   `json:"phoneNumber,omitempty" example:"+12099216581"`
-		ProfilePictureURL string   `json:"profilePictureURL,omitempty" example:"https://somecdn.com/p1.jpg"`
+		ProfilePictureURL string   `json:"profilePictureUrl,omitempty" example:"https://somecdn.com/p1.jpg"`
 		DeviceLocation
 	}
 	User struct {
-		_msgpack            struct{}   `msgpack:",asArray"` // nolint:unused // To insert we need asArray
+		_msgpack            struct{}   `msgpack:",asArray"` // nolint:unused,tagliatelle,revive // To insert we need asArray
 		CreatedAt           *time.Time `json:"createdAt,omitempty" example:"2022-01-03T16:20:52.156534Z"`
 		UpdatedAt           *time.Time `json:"updatedAt,omitempty" example:"2022-01-03T16:20:52.156534Z"`
 		LastMiningStartedAt *time.Time `json:"lastMiningStartedAt,omitempty" example:"2022-01-03T16:20:52.156534Z"`
@@ -112,13 +112,13 @@ type (
 		T2   uint64     `json:"t2" example:"13"`
 	}
 	CountryStatistics struct {
-		_msgpack struct{} `msgpack:",asArray"` // nolint:unused // To insert we need asArray
+		_msgpack struct{} `msgpack:",asArray"` // nolint:unused,revive,tagliatelle // To insert we need asArray
 		// ISO 3166 country code.
 		Country   devicemetadata.Country `json:"country" example:"US"`
 		UserCount uint64                 `json:"userCount" example:"12121212"`
 	}
 	PhoneNumberValidation struct {
-		_msgpack struct{} `msgpack:",asArray"` // nolint:unused // To insert we need asArray
+		_msgpack struct{} `msgpack:",asArray"` // nolint:unused,revive,tagliatelle // To insert we need asArray
 		// `Read Only`.
 		CreatedAt       *time.Time `json:"createdAt" example:"2022-01-03T16:20:52.156534Z"`
 		UserID          UserID     `uri:"userId" json:"userId" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
@@ -134,7 +134,7 @@ type (
 
 		GetUsers(context.Context, *GetUsersArg) ([]*RelatableUserProfile, error)
 		GetUserByUsername(context.Context, Username) (*UserProfile, error)
-		GetUserByID(context.Context, UserID) (*UserProfile, error)
+		GetUserProfileByID(context.Context, UserID) (*UserProfile, error)
 
 		CreateUser(context.Context, *CreateUserArg) error
 		DeleteUser(context.Context, UserID) error
@@ -185,7 +185,7 @@ type (
 		PhoneNumber string `form:"phoneNumber" json:"phoneNumber,omitempty" `
 		// Optional. Required only if `phoneNumber` is set. Example:"Ef86A6021afCDe5673511376B2".
 		PhoneNumberHash      string `form:"phoneNumberHash" json:"phoneNumberHash,omitempty"`
-		confirmedPhoneNumber string `example:"+12099216581"`
+		confirmedPhoneNumber string `example:"+12099216581"` //nolint:revive // Just for descriptiveness.
 		// Optional. Example:"jdoe@gmail.com".
 		Email string `form:"email" json:"email,omitempty"`
 		// Optional. Example:"Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2".
@@ -218,11 +218,12 @@ type (
 // Private API.
 
 const (
-	applicationYamlKey                     = "users"
-	defaultUserImage                       = "default-user-image.jpg"
-	add                arithmeticOperation = "+"
-	subtract           arithmeticOperation = "-"
-	expirationDeadline                     = 24 * stdlibtime.Hour
+	applicationYamlKey                       = "users"
+	defaultUserImage                         = "default-user-image.jpg"
+	hashCodeDBColumnName                     = "hash_code"
+	add                  arithmeticOperation = "+"
+	subtract             arithmeticOperation = "-"
+	expirationDeadline                       = 24 * stdlibtime.Hour
 )
 
 var (
@@ -254,7 +255,7 @@ type (
 		devicemetadata.DeviceMetadataRepository
 		devicesettings.DeviceSettingsRepository
 		twilioClient *twilio.RestClient
-		close        func() error
+		shutdown     func() error
 	}
 
 	processor struct {

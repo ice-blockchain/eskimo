@@ -53,12 +53,12 @@ func (s *service) Close(ctx context.Context) error {
 	return errors.Wrap(s.usersProcessor.Close(), "could not close usersProcessor")
 }
 
-func (s *service) CheckHealth(ctx context.Context, r *server.RequestCheckHealth) server.Response {
+func (s *service) CheckHealth(ctx context.Context, req *server.RequestCheckHealth) server.Response {
 	log.Debug("checking health...", "package", "users")
 
 	if err := s.usersProcessor.CheckHealth(ctx); err != nil {
 		return server.Unexpected(err)
 	}
 
-	return server.OK(r)
+	return server.OK(req)
 }

@@ -39,13 +39,13 @@ func (r *repository) getTopCountriesParams(a *GetTopCountriesArg) (countriesSQLE
 	if keyword == "" {
 		countriesSQLEnumeration = "lower(country)"
 	} else if countries := r.LookupCountries(keyword); len(countries) != 0 {
-		var c []string
+		var countryParams []string
 		for i, country := range countries {
 			k := fmt.Sprintf("country%v", i)
-			c = append(c, fmt.Sprintf(":%v", k))
+			countryParams = append(countryParams, fmt.Sprintf(":%v", k))
 			params[k] = strings.ToLower(country)
 		}
-		countriesSQLEnumeration = strings.Join(c, ",")
+		countriesSQLEnumeration = strings.Join(countryParams, ",")
 	}
 
 	return

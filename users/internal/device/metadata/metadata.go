@@ -22,6 +22,7 @@ import (
 //nolint:gochecknoinits // We're just transforming the embedded files into useful data types.
 func init() {
 	var countryArray []*country
+	//nolint:revive // That's the point.
 	log.Panic(json.Unmarshal([]byte(countriesJSON), &countryArray))
 	countries = make(map[string]*country)
 	for _, c := range countryArray {
@@ -33,16 +34,16 @@ func init() {
 	}
 }
 
-func New(db tarantool.Connector, mb messagebroker.Client) (r DeviceMetadataRepository) {
+func New(db tarantool.Connector, mb messagebroker.Client) DeviceMetadataRepository {
 	appCfg.MustLoadFromKey(applicationYamlKey, &cfg)
-	r = &repository{db: db, mb: mb}
+	repo := &repository{db: db, mb: mb}
 	if mb != nil {
 		var err error
-		r.(*repository).ip2LocationDB, err = ip2location.OpenDB(cfg.IP2LocationBinaryPath)
+		repo.ip2LocationDB, err = ip2location.OpenDB(cfg.IP2LocationBinaryPath)
 		log.Panic(errors.Wrap(err, "unable to open ip2location database"))
 	}
 
-	return r
+	return repo
 }
 
 func (r *repository) Close() error {
@@ -116,9 +117,9 @@ func (r *repository) ReplaceDeviceMetadata(ctx context.Context, arg *ReplaceDevi
 
 func deviceMetadataSnapshot(before, after *DeviceMetadata) *DeviceMetadataSnapshot {
 	// Because we don't care about the other fields, for now.
-	var b *DeviceMetadata
+	var meta *DeviceMetadata
 	if before != nil {
-		b = &DeviceMetadata{
+		meta = &DeviceMetadata{
 			ID:                    before.ID,
 			PushNotificationToken: before.PushNotificationToken,
 		}
@@ -129,7 +130,7 @@ func deviceMetadataSnapshot(before, after *DeviceMetadata) *DeviceMetadataSnapsh
 			ID:                    after.ID,
 			PushNotificationToken: after.PushNotificationToken,
 		},
-		Before: b,
+		Before: meta,
 	}
 }
 
@@ -138,7 +139,7 @@ func (r *repository) sendDeviceMetadataSnapshotMessage(ctx context.Context, dm *
 	if err != nil {
 		return errors.Wrapf(err, "failed to marshal DeviceMetadata %#v", dm)
 	}
-	m := &messagebroker.Message{
+	msg := &messagebroker.Message{
 		Headers: map[string]string{"producer": "eskimo"},
 		Key:     dm.UserID + "~" + dm.DeviceUniqueID,
 		Topic:   cfg.MessageBroker.Topics[1].Name,
@@ -146,17 +147,17 @@ func (r *repository) sendDeviceMetadataSnapshotMessage(ctx context.Context, dm *
 	}
 	responder := make(chan error, 1)
 	defer close(responder)
-	r.mb.SendMessage(ctx, m, responder)
+	r.mb.SendMessage(ctx, msg, responder)
 
 	return errors.Wrapf(<-responder, "failed to send device metadata message to broker")
 }
 
-func (r *repository) LookupCountries(keyword Keyword) []Country {
-	keyword = strings.ToUpper(keyword)
+func (*repository) LookupCountries(keyword Keyword) []Country {
+	kw := strings.ToUpper(keyword)
 	matchingCountries := make([]Country, 0)
 	for countryCode, c := range countries {
-		if strings.Contains(countryCode, keyword) ||
-			strings.Contains(strings.ToUpper(c.Name), keyword) {
+		if strings.Contains(countryCode, kw) ||
+			strings.Contains(strings.ToUpper(c.Name), kw) {
 			matchingCountries = append(matchingCountries, countryCode)
 		}
 	}
@@ -164,7 +165,7 @@ func (r *repository) LookupCountries(keyword Keyword) []Country {
 	return matchingCountries
 }
 
-func (r *repository) IsValid(c Country) bool {
+func (*repository) IsValid(c Country) bool {
 	_, found := countries[strings.ToUpper(c)]
 
 	return found

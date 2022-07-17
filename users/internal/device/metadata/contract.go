@@ -61,7 +61,7 @@ type (
 		UserAgent             string `json:"userAgent"`
 		SystemName            string `json:"systemName"`
 		SystemVersion         string `json:"systemVersion"`
-		BaseOS                string `json:"baseOS"`
+		BaseOS                string `json:"baseOs"`
 		BuildID               string `json:"buildId"`
 		Bootloader            string `json:"bootloader"`
 		Codename              string `json:"codename"`
@@ -77,18 +77,20 @@ type (
 // API Arguments.
 type (
 	ReplaceDeviceMetadataArg struct {
-		ClientIP net.IP `json:"clientIP" swaggerignore:"true"`
+		ClientIP net.IP `json:"clientIp" swaggerignore:"true"`
 		DeviceMetadata
 	}
 	GetDeviceMetadataLocationArg struct {
 		device.ID
-		ClientIP net.IP `json:"clientIP" swaggerignore:"true"`
+		ClientIP net.IP `json:"clientIp" swaggerignore:"true"`
 	}
 )
 
 // Private API.
 
-const applicationYamlKey = "users"
+const (
+	applicationYamlKey = "users"
+)
 
 var (
 	//nolint:gochecknoglobals // Because its loaded once, at runtime.
@@ -101,7 +103,7 @@ var (
 
 type (
 	deviceMetadata struct {
-		//nolint:unused // Wrong. It's a marker for marshalling/unmarshalling to/from db.
+		//nolint:unused,revive,tagliatelle // Wrong. It's a marker for marshalling/unmarshalling to/from db.
 		_msgpack struct{} `msgpack:",asArray"`
 		ip2location.IP2Locationrecord
 		UpdatedAt *time.Time `json:"updatedAt"`

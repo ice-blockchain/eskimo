@@ -36,10 +36,10 @@ func (s *service) setupDevicesRoutes(router *gin.Engine) {
 // @Failure      500             {object}  server.ErrorResponse
 // @Failure      504             {object}  server.ErrorResponse  "if request times out"
 // @Router       /users/{userId}/devices/{deviceUniqueId}/settings [GET].
-func (s *service) GetDeviceSettings(ctx context.Context, r server.ParsedRequest) server.Response {
-	resp, err := s.usersRepository.GetDeviceSettings(ctx, r.(*RequestGetDeviceSettings).DeviceID)
+func (s *service) GetDeviceSettings(ctx context.Context, req *RequestGetDeviceSettings) server.Response {
+	resp, err := s.usersRepository.GetDeviceSettings(ctx, req.DeviceID)
 	if err != nil {
-		err = errors.Wrapf(err, "failed to GetDeviceSettings for %#v", r.(*RequestGetDeviceSettings).DeviceID)
+		err = errors.Wrapf(err, "failed to GetDeviceSettings for %#v", req.DeviceID)
 		switch {
 		case errors.Is(err, users.ErrNotFound):
 			return *server.NotFound(err, deviceSettingsNotFoundErrorCode)
@@ -51,7 +51,7 @@ func (s *service) GetDeviceSettings(ctx context.Context, r server.ParsedRequest)
 	return server.OK(resp)
 }
 
-func newRequestGetDeviceSettings() server.ParsedRequest {
+func newRequestGetDeviceSettings() *RequestGetDeviceSettings {
 	return new(RequestGetDeviceSettings)
 }
 
@@ -73,6 +73,6 @@ func (req *RequestGetDeviceSettings) Validate() *server.Response {
 	return server.RequiredStrings(map[string]string{"userId": req.UserID, "deviceUniqueId": req.DeviceUniqueID})
 }
 
-func (req *RequestGetDeviceSettings) Bindings(c *gin.Context) []func(obj interface{}) error {
+func (*RequestGetDeviceSettings) Bindings(c *gin.Context) []func(obj interface{}) error {
 	return []func(obj interface{}) error{c.ShouldBindUri, server.ShouldBindAuthenticatedUser(c)}
 }

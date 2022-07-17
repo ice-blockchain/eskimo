@@ -27,7 +27,7 @@ func New(ctx context.Context, cancel context.CancelFunc) Repository {
 	db := storage.MustConnect(ctx, cancel, ddl, applicationYamlKey)
 
 	return &repository{
-		close:                    db.Close,
+		shutdown:                 db.Close,
 		db:                       db,
 		DeviceMetadataRepository: devicemetadata.New(db, nil),
 		DeviceSettingsRepository: devicesettings.New(db, nil),
@@ -42,15 +42,15 @@ func StartProcessor(ctx context.Context, cancel context.CancelFunc) Processor {
 	db := storage.MustConnect(ctx, cancel, ddl, applicationYamlKey)
 	mbProducer := messagebroker.MustConnect(ctx, applicationYamlKey)
 
-	p := &processor{}
+	prc := &processor{}
 	mbConsumer := messagebroker.MustConnectAndStartConsuming(context.Background(), cancel, applicationYamlKey, map[messagebroker.Topic]messagebroker.Processor{
-		cfg.MessageBroker.ConsumingTopics[0]: &userSnapshotSource{processor: p},
-		cfg.MessageBroker.ConsumingTopics[1]: &miningStartedSource{processor: p},
+		cfg.MessageBroker.ConsumingTopics[0]: &userSnapshotSource{processor: prc},
+		cfg.MessageBroker.ConsumingTopics[1]: &miningStartedSource{processor: prc},
 	})
 
 	deviceMetadataRepository := devicemetadata.New(db, mbProducer)
-	p.repository = &repository{
-		close:                    closeAll(mbConsumer, mbProducer, db, deviceMetadataRepository.Close),
+	prc.repository = &repository{
+		shutdown:                 closeAll(mbConsumer, mbProducer, db, deviceMetadataRepository.Close),
 		db:                       db,
 		mb:                       mbProducer,
 		DeviceMetadataRepository: deviceMetadataRepository,
@@ -58,11 +58,11 @@ func StartProcessor(ctx context.Context, cancel context.CancelFunc) Processor {
 		twilioClient:             initTwilioClient(),
 	}
 
-	return p
+	return prc
 }
 
 func (r *repository) Close() error {
-	return errors.Wrap(r.close(), "closing users repository failed")
+	return errors.Wrap(r.shutdown(), "closing users repository failed")
 }
 
 func closeAll(mbConsumer, mbProducer messagebroker.Client, db tarantool.Connector, otherClosers ...func() error) func() error {
@@ -90,7 +90,7 @@ func (p *processor) CheckHealth(ctx context.Context) error {
 		TS *time.Time `json:"ts"`
 	}
 	now := ts{TS: time.Now()}
-	b, err := json.Marshal(now)
+	bytes, err := json.Marshal(now)
 	if err != nil {
 		return errors.Wrapf(err, "[health-check] failed to marshal %#v", now)
 	}
@@ -99,7 +99,7 @@ func (p *processor) CheckHealth(ctx context.Context) error {
 		Headers: map[string]string{"producer": "eskimo"},
 		Key:     cfg.MessageBroker.Topics[len(cfg.MessageBroker.Topics)-1].Name,
 		Topic:   cfg.MessageBroker.Topics[len(cfg.MessageBroker.Topics)-1].Name,
-		Value:   b,
+		Value:   bytes,
 	}, responder)
 
 	return errors.Wrapf(<-responder, "[health-check] failed to send health check message to broker")

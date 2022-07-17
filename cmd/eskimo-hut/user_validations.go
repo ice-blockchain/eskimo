@@ -36,9 +36,9 @@ func (s *service) setupUserValidationRoutes(router *gin.Engine) {
 // @Failure      500            {object}  server.ErrorResponse
 // @Failure      504            {object}  server.ErrorResponse  "if request times out"
 // @Router       /user-validations/{userId}/phone-number [PUT].
-func (s *service) ValidatePhoneNumber(ctx context.Context, r server.ParsedRequest) server.Response {
-	if err := s.usersProcessor.ValidatePhoneNumber(ctx, &r.(*RequestValidatePhoneNumber).PhoneNumberValidation); err != nil {
-		err = errors.Wrapf(err, "validate phone number failed for %#v", &r.(*RequestValidatePhoneNumber).PhoneNumberValidation)
+func (s *service) ValidatePhoneNumber(ctx context.Context, req *RequestValidatePhoneNumber) server.Response {
+	if err := s.usersProcessor.ValidatePhoneNumber(ctx, &req.PhoneNumberValidation); err != nil {
+		err = errors.Wrapf(err, "validate phone number failed for %#v", &req.PhoneNumberValidation)
 		switch {
 		case errors.Is(err, users.ErrRelationNotFound):
 			return *server.NotFound(err, userNotFoundErrorCode)
@@ -56,7 +56,7 @@ func (s *service) ValidatePhoneNumber(ctx context.Context, r server.ParsedReques
 	return server.OK()
 }
 
-func newRequestValidatePhoneNumber() server.ParsedRequest {
+func newRequestValidatePhoneNumber() *RequestValidatePhoneNumber {
 	return new(RequestValidatePhoneNumber)
 }
 
@@ -83,6 +83,6 @@ func (req *RequestValidatePhoneNumber) Validate() *server.Response {
 	})
 }
 
-func (req *RequestValidatePhoneNumber) Bindings(c *gin.Context) []func(obj interface{}) error {
+func (*RequestValidatePhoneNumber) Bindings(c *gin.Context) []func(obj interface{}) error {
 	return []func(obj interface{}) error{c.ShouldBindJSON, c.ShouldBindUri, server.ShouldBindAuthenticatedUser(c)}
 }

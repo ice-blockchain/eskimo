@@ -14,8 +14,8 @@ import (
 	"github.com/ice-blockchain/wintr/time"
 )
 
-func (r *repository) mustGetUserByID(ctx context.Context, userID UserID) (u *User, err error) {
-	if u, err = r.getUserByID(ctx, userID); err == nil {
+func (r *repository) mustGetUserByID(ctx context.Context, userID UserID) (usr *User, err error) {
+	if usr, err = r.getUserByID(ctx, userID); err == nil {
 		return
 	}
 
@@ -24,7 +24,7 @@ func (r *repository) mustGetUserByID(ctx context.Context, userID UserID) (u *Use
 	}
 
 	err = retry(ctx, func() error {
-		if u, err = r.getUserByID(ctx, userID); err != nil {
+		if usr, err = r.getUserByID(ctx, userID); err != nil {
 			if errors.Is(err, ErrNotFound) {
 				return err
 			}
@@ -54,7 +54,7 @@ func (r *repository) getUserByID(ctx context.Context, id UserID) (*User, error) 
 	return result, nil
 }
 
-func (r *repository) GetUserByID(ctx context.Context, id UserID) (*UserProfile, error) {
+func (r *repository) GetUserProfileByID(ctx context.Context, id UserID) (*UserProfile, error) {
 	if ctx.Err() != nil {
 		return nil, errors.Wrap(ctx.Err(), "get user failed because context failed")
 	}
@@ -80,7 +80,7 @@ func (r *repository) GetUserByID(ctx context.Context, id UserID) (*UserProfile, 
 	if err := r.db.PrepareExecuteTyped(sql, map[string]interface{}{"userId": id}, &result); err != nil {
 		return nil, errors.Wrapf(err, "failed to select user by id %v", id)
 	}
-	if len(result) == 0 || result[0].ID == "" {
+	if len(result) == 0 || result[0].ID == "" { //nolint:revive // False negative.
 		return nil, errors.Wrapf(ErrNotFound, "no user found with id %v", id)
 	}
 

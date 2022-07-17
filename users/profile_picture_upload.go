@@ -23,7 +23,7 @@ func configurePictureStorage() {
 	}
 }
 
-func (r *repository) uploadProfilePicture(ctx context.Context, data *multipart.FileHeader) error {
+func (*repository) uploadProfilePicture(ctx context.Context, data *multipart.FileHeader) error {
 	if data == nil || data.Size == 0 {
 		return nil
 	}

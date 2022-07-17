@@ -34,16 +34,16 @@ func (s *service) setupUserStatisticsRoutes(router *gin.Engine) {
 // @Failure      500            {object}  server.ErrorResponse
 // @Failure      504            {object}  server.ErrorResponse  "if request times out"
 // @Router       /user-statistics/top-countries [GET].
-func (s *service) GetTopCountries(ctx context.Context, r server.ParsedRequest) server.Response {
-	result, err := s.usersRepository.GetTopCountries(ctx, &r.(*RequestGetTopCountries).GetTopCountriesArg)
+func (s *service) GetTopCountries(ctx context.Context, req *RequestGetTopCountries) server.Response {
+	result, err := s.usersRepository.GetTopCountries(ctx, &req.GetTopCountriesArg)
 	if err != nil {
-		return server.Unexpected(errors.Wrapf(err, "failed to get top countries for: %#v", &r.(*RequestGetTopCountries).GetTopCountriesArg))
+		return server.Unexpected(errors.Wrapf(err, "failed to get top countries for: %#v", &req.GetTopCountriesArg))
 	}
 
 	return server.OK(result)
 }
 
-func newRequestGetTopCountries() server.ParsedRequest {
+func newRequestGetTopCountries() *RequestGetTopCountries {
 	return new(RequestGetTopCountries)
 }
 
@@ -65,6 +65,6 @@ func (req *RequestGetTopCountries) Validate() *server.Response {
 	return nil
 }
 
-func (req *RequestGetTopCountries) Bindings(c *gin.Context) []func(obj interface{}) error {
+func (*RequestGetTopCountries) Bindings(c *gin.Context) []func(obj interface{}) error {
 	return []func(obj interface{}) error{c.ShouldBindQuery, server.ShouldBindAuthenticatedUser(c)}
 }

@@ -41,15 +41,15 @@ func (s *service) setupDevicesRoutes(router *gin.Engine) {
 // @Failure      500             {object}  server.ErrorResponse
 // @Failure      504             {object}  server.ErrorResponse  "if request times out"
 // @Router       /users/{userId}/devices/{deviceUniqueId}/metadata [PUT].
-func (s *service) ReplaceDeviceMetadata(ctx context.Context, r server.ParsedRequest) server.Response {
-	if err := s.usersProcessor.ReplaceDeviceMetadata(ctx, &r.(*RequestReplaceDeviceMetadata).ReplaceDeviceMetadataArg); err != nil {
-		return server.Unexpected(errors.Wrapf(err, "failed to ReplaceDeviceMetadata for %#v", &r.(*RequestReplaceDeviceMetadata).ReplaceDeviceMetadataArg))
+func (s *service) ReplaceDeviceMetadata(ctx context.Context, req *RequestReplaceDeviceMetadata) server.Response {
+	if err := s.usersProcessor.ReplaceDeviceMetadata(ctx, &req.ReplaceDeviceMetadataArg); err != nil {
+		return server.Unexpected(errors.Wrapf(err, "failed to ReplaceDeviceMetadata for %#v", &req.ReplaceDeviceMetadataArg))
 	}
 
 	return server.OK()
 }
 
-func newRequestReplaceDeviceMetadata() server.ParsedRequest {
+func newRequestReplaceDeviceMetadata() *RequestReplaceDeviceMetadata {
 	return new(RequestReplaceDeviceMetadata)
 }
 
@@ -81,7 +81,7 @@ func (req *RequestReplaceDeviceMetadata) Validate() *server.Response {
 	return server.RequiredStrings(map[string]string{"userId": req.UserID, "deviceUniqueId": req.ID.DeviceUniqueID})
 }
 
-func (req *RequestReplaceDeviceMetadata) Bindings(c *gin.Context) []func(obj interface{}) error {
+func (*RequestReplaceDeviceMetadata) Bindings(c *gin.Context) []func(obj interface{}) error {
 	return []func(obj interface{}) error{c.ShouldBindUri, c.ShouldBindJSON, server.ShouldBindClientIP(c), server.ShouldBindAuthenticatedUser(c)}
 }
 
@@ -104,9 +104,9 @@ func (req *RequestReplaceDeviceMetadata) Bindings(c *gin.Context) []func(obj int
 // @Failure      500             {object}  server.ErrorResponse
 // @Failure      504             {object}  server.ErrorResponse  "if request times out"
 // @Router       /users/{userId}/devices/{deviceUniqueId}/settings [PATCH].
-func (s *service) ModifyDeviceSettings(ctx context.Context, r server.ParsedRequest) server.Response {
-	if err := s.usersProcessor.ModifyDeviceSettings(ctx, &r.(*RequestModifyDeviceSettings).DeviceSettings); err != nil {
-		err = errors.Wrapf(err, "failed to ModifyDeviceSettings for %#v", &r.(*RequestModifyDeviceSettings).DeviceSettings)
+func (s *service) ModifyDeviceSettings(ctx context.Context, req *RequestModifyDeviceSettings) server.Response {
+	if err := s.usersProcessor.ModifyDeviceSettings(ctx, &req.DeviceSettings); err != nil {
+		err = errors.Wrapf(err, "failed to ModifyDeviceSettings for %#v", &req.DeviceSettings)
 		switch {
 		case errors.Is(err, users.ErrNotFound):
 			return *server.NotFound(err, deviceSettingsNotFoundErrorCode)
@@ -115,10 +115,10 @@ func (s *service) ModifyDeviceSettings(ctx context.Context, r server.ParsedReque
 		}
 	}
 
-	return server.OK(&r.(*RequestModifyDeviceSettings).DeviceSettings)
+	return server.OK(&req.DeviceSettings)
 }
 
-func newRequestModifyDeviceSettings() server.ParsedRequest {
+func newRequestModifyDeviceSettings() *RequestModifyDeviceSettings {
 	return new(RequestModifyDeviceSettings)
 }
 
@@ -143,7 +143,7 @@ func (req *RequestModifyDeviceSettings) Validate() *server.Response {
 	return server.RequiredStrings(map[string]string{"userId": req.UserID, "deviceUniqueId": req.ID.DeviceUniqueID})
 }
 
-func (req *RequestModifyDeviceSettings) Bindings(c *gin.Context) []func(obj interface{}) error {
+func (*RequestModifyDeviceSettings) Bindings(c *gin.Context) []func(obj interface{}) error {
 	return []func(obj interface{}) error{c.ShouldBindUri, c.ShouldBindJSON, server.ShouldBindAuthenticatedUser(c)}
 }
 
@@ -166,9 +166,9 @@ func (req *RequestModifyDeviceSettings) Bindings(c *gin.Context) []func(obj inte
 // @Failure      500             {object}  server.ErrorResponse
 // @Failure      504             {object}  server.ErrorResponse  "if request times out"
 // @Router       /users/{userId}/devices/{deviceUniqueId}/settings [POST].
-func (s *service) CreateDeviceSettings(ctx context.Context, r server.ParsedRequest) server.Response {
-	if err := s.usersProcessor.CreateDeviceSettings(ctx, &r.(*RequestCreateDeviceSettings).DeviceSettings); err != nil {
-		err = errors.Wrapf(err, "failed to CreateDeviceSettings for %#v", &r.(*RequestCreateDeviceSettings).DeviceSettings)
+func (s *service) CreateDeviceSettings(ctx context.Context, req *RequestCreateDeviceSettings) server.Response {
+	if err := s.usersProcessor.CreateDeviceSettings(ctx, &req.DeviceSettings); err != nil {
+		err = errors.Wrapf(err, "failed to CreateDeviceSettings for %#v", &req.DeviceSettings)
 		switch {
 		case errors.Is(err, users.ErrDuplicate):
 			return *server.Conflict(err, deviceSettingsAlreadyExistsErrorCode)
@@ -177,10 +177,10 @@ func (s *service) CreateDeviceSettings(ctx context.Context, r server.ParsedReque
 		}
 	}
 
-	return server.Created(&r.(*RequestCreateDeviceSettings).DeviceSettings)
+	return server.Created(&req.DeviceSettings)
 }
 
-func newRequestCreateDeviceSettings() server.ParsedRequest {
+func newRequestCreateDeviceSettings() *RequestCreateDeviceSettings {
 	return new(RequestCreateDeviceSettings)
 }
 
@@ -205,7 +205,7 @@ func (req *RequestCreateDeviceSettings) Validate() *server.Response {
 	return server.RequiredStrings(map[string]string{"userId": req.UserID, "deviceUniqueId": req.ID.DeviceUniqueID})
 }
 
-func (req *RequestCreateDeviceSettings) Bindings(c *gin.Context) []func(obj interface{}) error {
+func (*RequestCreateDeviceSettings) Bindings(c *gin.Context) []func(obj interface{}) error {
 	return []func(obj interface{}) error{c.ShouldBindUri, c.ShouldBindJSON, server.ShouldBindAuthenticatedUser(c)}
 }
 
@@ -226,11 +226,11 @@ func (req *RequestCreateDeviceSettings) Bindings(c *gin.Context) []func(obj inte
 // @Failure      500             {object}  server.ErrorResponse
 // @Failure      504             {object}  server.ErrorResponse  "if request times out"
 // @Router       /users/{userId}/devices/{deviceUniqueId}/metadata/location [PUT].
-func (s *service) GetDeviceLocation(ctx context.Context, r server.ParsedRequest) server.Response {
-	return server.OK(s.usersProcessor.GetDeviceMetadataLocation(ctx, &r.(*RequestGetDeviceLocation).GetDeviceMetadataLocationArg))
+func (s *service) GetDeviceLocation(ctx context.Context, req *RequestGetDeviceLocation) server.Response {
+	return server.OK(s.usersProcessor.GetDeviceMetadataLocation(ctx, &req.GetDeviceMetadataLocationArg))
 }
 
-func newRequestGetDeviceLocation() server.ParsedRequest {
+func newRequestGetDeviceLocation() *RequestGetDeviceLocation {
 	return new(RequestGetDeviceLocation)
 }
 
@@ -244,7 +244,7 @@ func (req *RequestGetDeviceLocation) GetAuthenticatedUser() server.Authenticated
 	return req.AuthenticatedUser
 }
 
-func (req *RequestGetDeviceLocation) ShouldAuthenticateUser(ginCtx *gin.Context) bool {
+func (*RequestGetDeviceLocation) ShouldAuthenticateUser(ginCtx *gin.Context) bool {
 	userID := strings.Trim(ginCtx.Param("userId"), " ")
 
 	return userID != "" && userID != "-"
@@ -271,6 +271,6 @@ func (req *RequestGetDeviceLocation) Validate() *server.Response {
 	return server.RequiredStrings(map[string]string{"deviceUniqueId": req.ID.DeviceUniqueID})
 }
 
-func (req *RequestGetDeviceLocation) Bindings(c *gin.Context) []func(obj interface{}) error {
+func (*RequestGetDeviceLocation) Bindings(c *gin.Context) []func(obj interface{}) error {
 	return []func(obj interface{}) error{c.ShouldBindUri, server.ShouldBindAuthenticatedUser(c), server.ShouldBindClientIP(c)}
 }

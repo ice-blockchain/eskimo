@@ -38,16 +38,16 @@ func (s *service) setupUserRoutes(router *gin.Engine) {
 // @Failure      500            {object}  server.ErrorResponse
 // @Failure      504            {object}  server.ErrorResponse  "if request times out"
 // @Router       /users [GET].
-func (s *service) GetUsers(ctx context.Context, r server.ParsedRequest) server.Response {
-	resp, err := s.usersRepository.GetUsers(ctx, &r.(*RequestGetUsers).GetUsersArg)
+func (s *service) GetUsers(ctx context.Context, req *RequestGetUsers) server.Response {
+	resp, err := s.usersRepository.GetUsers(ctx, &req.GetUsersArg)
 	if err != nil {
-		return server.Unexpected(errors.Wrapf(err, "failed to get users by %#v", &r.(*RequestGetUsers).GetUsersArg))
+		return server.Unexpected(errors.Wrapf(err, "failed to get users by %#v", &req.GetUsersArg))
 	}
 
 	return server.OK(resp)
 }
 
-func newRequestGetUsers() server.ParsedRequest {
+func newRequestGetUsers() *RequestGetUsers {
 	return new(RequestGetUsers)
 }
 
@@ -70,7 +70,7 @@ func (req *RequestGetUsers) Validate() *server.Response {
 	return server.RequiredStrings(map[string]string{"keyword": req.Keyword})
 }
 
-func (req *RequestGetUsers) Bindings(c *gin.Context) []func(obj interface{}) error {
+func (*RequestGetUsers) Bindings(c *gin.Context) []func(obj interface{}) error {
 	return []func(obj interface{}) error{c.ShouldBindQuery, server.ShouldBindAuthenticatedUser(c)}
 }
 
@@ -90,9 +90,9 @@ func (req *RequestGetUsers) Bindings(c *gin.Context) []func(obj interface{}) err
 // @Failure      500            {object}  server.ErrorResponse
 // @Failure      504            {object}  server.ErrorResponse  "if request times out"
 // @Router       /users/{userId} [GET].
-func (s *service) GetUserByID(ctx context.Context, r server.ParsedRequest) server.Response {
-	userID := r.(*RequestGetUserByID).UserID
-	resp, err := s.usersRepository.GetUserByID(ctx, userID)
+func (s *service) GetUserByID(ctx context.Context, req *RequestGetUserByID) server.Response {
+	userID := req.UserID
+	resp, err := s.usersRepository.GetUserProfileByID(ctx, userID)
 	if err != nil {
 		if errors.Is(err, users.ErrNotFound) {
 			return *server.NotFound(errors.Wrapf(err, "user with id `%v` was not found", userID), userNotFoundErrorCode)
@@ -100,14 +100,14 @@ func (s *service) GetUserByID(ctx context.Context, r server.ParsedRequest) serve
 
 		return server.Unexpected(errors.Wrapf(err, "failed to get user by id: %v", userID))
 	}
-	if userID != r.(*RequestGetUserByID).AuthenticatedUser.ID {
+	if userID != req.AuthenticatedUser.ID {
 		resp.PhoneNumber = ""
 	}
 
 	return server.OK(resp)
 }
 
-func newRequestGetUserByID() server.ParsedRequest {
+func newRequestGetUserByID() *RequestGetUserByID {
 	return new(RequestGetUserByID)
 }
 
@@ -125,7 +125,7 @@ func (req *RequestGetUserByID) Validate() *server.Response {
 	return server.RequiredStrings(map[string]string{"userId": req.UserID})
 }
 
-func (req *RequestGetUserByID) Bindings(c *gin.Context) []func(obj interface{}) error {
+func (*RequestGetUserByID) Bindings(c *gin.Context) []func(obj interface{}) error {
 	return []func(obj interface{}) error{c.ShouldBindUri, server.ShouldBindAuthenticatedUser(c)}
 }
 
@@ -145,8 +145,8 @@ func (req *RequestGetUserByID) Bindings(c *gin.Context) []func(obj interface{}) 
 // @Failure      500            {object}  server.ErrorResponse
 // @Failure      504            {object}  server.ErrorResponse  "if request times out"
 // @Router       /user-views/username [GET].
-func (s *service) GetUserByUsername(ctx context.Context, r server.ParsedRequest) server.Response {
-	username := r.(*RequestGetUserByUsername).Username
+func (s *service) GetUserByUsername(ctx context.Context, req *RequestGetUserByUsername) server.Response {
+	username := req.Username
 	resp, err := s.usersRepository.GetUserByUsername(ctx, username)
 	if err != nil {
 		if errors.Is(err, users.ErrNotFound) {
@@ -159,7 +159,7 @@ func (s *service) GetUserByUsername(ctx context.Context, r server.ParsedRequest)
 	return server.OK(resp)
 }
 
-func newRequestGetUserByUsername() server.ParsedRequest {
+func newRequestGetUserByUsername() *RequestGetUserByUsername {
 	return new(RequestGetUserByUsername)
 }
 
@@ -184,6 +184,6 @@ func (req *RequestGetUserByUsername) Validate() *server.Response {
 	return nil
 }
 
-func (req *RequestGetUserByUsername) Bindings(c *gin.Context) []func(obj interface{}) error {
+func (*RequestGetUserByUsername) Bindings(c *gin.Context) []func(obj interface{}) error {
 	return []func(obj interface{}) error{c.ShouldBindQuery, server.ShouldBindAuthenticatedUser(c)}
 }

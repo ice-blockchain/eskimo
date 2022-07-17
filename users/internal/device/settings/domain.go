@@ -39,33 +39,32 @@ func (ds *DeviceSettings) patch(with *DeviceSettings) *DeviceSettings {
 		return ds
 	}
 	ds.requireEqualID(with)
-	r := new(DeviceSettings)
+	res := new(DeviceSettings)
 	if with.ID.UserID != "" {
-		r.ID = with.ID
+		res.ID = with.ID
 	} else {
-		r.ID = ds.ID
+		res.ID = ds.ID
 	}
 	if with.Language != nil {
-		r.Language = with.Language
+		res.Language = with.Language
 	} else {
-		r.Language = ds.Language
+		res.Language = ds.Language
 	}
 	if with.DisableAllNotifications != nil {
-		r.DisableAllNotifications = with.DisableAllNotifications
+		res.DisableAllNotifications = with.DisableAllNotifications
 	} else {
-		r.DisableAllNotifications = ds.DisableAllNotifications
+		res.DisableAllNotifications = ds.DisableAllNotifications
 	}
 	if with.UpdatedAt != nil {
-		r.UpdatedAt = with.UpdatedAt
+		res.UpdatedAt = with.UpdatedAt
 	} else {
-		r.UpdatedAt = ds.UpdatedAt
+		res.UpdatedAt = ds.UpdatedAt
 	}
-	r.NotificationSettings = ds.NotificationSettings.patch(with.NotificationSettings)
+	res.NotificationSettings = ds.NotificationSettings.patch(with.NotificationSettings)
 
-	return r
+	return res
 }
 
-//nolint:gocognit // Wrong.
 func (ds *DeviceSettings) requireEqualID(with *DeviceSettings) {
 	idIsSetForBoth := with.ID.UserID != "" &&
 		ds.ID.UserID != "" &&
@@ -86,15 +85,15 @@ func (ds *DeviceSettings) requireEqualID(with *DeviceSettings) {
 }
 
 func (n *NotificationSettings) DecodeMsgpack(dec *msgpack.Decoder) error {
-	v, err := dec.DecodeString()
+	val, err := dec.DecodeString()
 	if err != nil {
 		return errors.Wrap(err, "failed to DecodeString")
 	}
-	if v == "" || v == "{}" {
+	if val == "" || val == "{}" {
 		return nil
 	}
 
-	return errors.Wrapf(json.Unmarshal([]byte(v), &n), "failed to json.Unmarshall(%v,*NotificationSettings)", v)
+	return errors.Wrapf(json.Unmarshal([]byte(val), &n), "failed to json.Unmarshall(%v,*NotificationSettings)", val)
 }
 
 func (n *NotificationSettings) EncodeMsgpack(enc *msgpack.Encoder) error {
@@ -114,18 +113,18 @@ func (n *NotificationSettings) patch(with *NotificationSettings) *NotificationSe
 	if with == nil {
 		return n
 	}
-	r := new(NotificationSettings)
-	*r = make(NotificationSettings, len(AllNotificationDomains))
+	res := new(NotificationSettings)
+	*res = make(NotificationSettings, len(AllNotificationDomains))
 	for domain, channels := range *n {
-		(*r)[domain] = channels.patch((*with)[domain])
+		(*res)[domain] = channels.patch((*with)[domain])
 	}
 	for domain, channels := range *with {
-		if _, alreadyPresent := (*r)[domain]; !alreadyPresent {
-			(*r)[domain] = defaultChannels().patch(channels)
+		if _, alreadyPresent := (*res)[domain]; !alreadyPresent {
+			(*res)[domain] = defaultChannels().patch(channels)
 		}
 	}
 
-	return r
+	return res
 }
 
 func (c *NotificationChannels) patch(with *NotificationChannels) *NotificationChannels {
@@ -135,29 +134,29 @@ func (c *NotificationChannels) patch(with *NotificationChannels) *NotificationCh
 	if with == nil {
 		return c
 	}
-	r := new(NotificationChannels)
+	res := new(NotificationChannels)
 	if with.SMS != nil {
-		r.SMS = with.SMS
+		res.SMS = with.SMS
 	} else {
-		r.SMS = c.SMS
+		res.SMS = c.SMS
 	}
 	if with.Push != nil {
-		r.Push = with.Push
+		res.Push = with.Push
 	} else {
-		r.Push = c.Push
+		res.Push = c.Push
 	}
 	if with.Email != nil {
-		r.Email = with.Email
+		res.Email = with.Email
 	} else {
-		r.Email = c.Email
+		res.Email = c.Email
 	}
 	if with.InApp != nil {
-		r.InApp = with.InApp
+		res.InApp = with.InApp
 	} else {
-		r.InApp = c.InApp
+		res.InApp = c.InApp
 	}
 
-	return r
+	return res
 }
 
 func defaultDeviceSettings(id device.ID) *DeviceSettings {

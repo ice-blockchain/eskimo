@@ -93,7 +93,7 @@ definitions:
       pinged:
         example: false
         type: boolean
-      profilePictureURL:
+      profilePictureUrl:
         example: https://somecdn.com/p1.jpg
         type: string
       username:
@@ -151,7 +151,7 @@ definitions:
       pinged:
         example: false
         type: boolean
-      profilePictureURL:
+      profilePictureUrl:
         example: https://somecdn.com/p1.jpg
         type: string
       referralType:
@@ -184,7 +184,7 @@ definitions:
       phoneNumber:
         example: "+12099216581"
         type: string
-      profilePictureURL:
+      profilePictureUrl:
         example: https://somecdn.com/p1.jpg
         type: string
       referralCount:
