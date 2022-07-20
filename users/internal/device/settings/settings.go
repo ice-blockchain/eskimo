@@ -80,7 +80,7 @@ func (r *repository) insert(ctx context.Context, ds *DeviceSettings) error {
 	var resp []*DeviceSettings
 	if err := r.db.InsertTyped("DEVICE_SETTINGS", ds, &resp); err != nil {
 		tErr := new(tarantool.Error)
-		if ok := errors.As(err, tErr); ok && tErr.Code == tarantool.ER_TUPLE_FOUND {
+		if ok := errors.As(err, tErr); ok && tErr.Code == tarantool.ER_TUPLE_FOUND { //nolint:nosnakecase // Because this is from external library.
 			err = storage.ErrDuplicate
 		}
 
@@ -99,7 +99,7 @@ func (r *repository) update(ctx context.Context, before, ds *DeviceSettings) err
 	var resp []*DeviceSettings
 	if err := r.db.UpdateTyped("DEVICE_SETTINGS", "pk_unnamed_DEVICE_SETTINGS_1", ds.ID, ds.buildUpdateOps(), &resp); err != nil {
 		tErr := new(tarantool.Error)
-		if ok := errors.As(err, tErr); ok && tErr.Code == tarantool.ER_TUPLE_NOT_FOUND {
+		if ok := errors.As(err, tErr); ok && tErr.Code == tarantool.ER_TUPLE_NOT_FOUND { //nolint:nosnakecase // Because this is from external library.
 			err = storage.ErrNotFound
 		}
 

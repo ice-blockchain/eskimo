@@ -35,7 +35,7 @@ type (
 		Before *DeviceSettings `json:"before"`
 	}
 	DeviceSettings struct {
-		//nolint:unused,revive,tagliatelle // Because it is used by the msgpack library for marshalling/unmarshalling.
+		//nolint:unused,revive,tagliatelle,nosnakecase // Because it is used by the msgpack library for marshalling/unmarshalling.
 		_msgpack struct{} `msgpack:",asArray"`
 		// `Read Only`.
 		UpdatedAt *time.Time `json:"updatedAt,omitempty" example:"2022-01-03T16:20:52.156534Z"`

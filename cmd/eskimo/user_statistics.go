@@ -57,6 +57,7 @@ func (req *RequestGetTopCountries) GetAuthenticatedUser() server.AuthenticatedUs
 	return req.AuthenticatedUser
 }
 
+//nolint:unparam // Because it belongs to the common interface.
 func (req *RequestGetTopCountries) Validate() *server.Response {
 	if req.Limit == 0 {
 		req.Limit = 10
