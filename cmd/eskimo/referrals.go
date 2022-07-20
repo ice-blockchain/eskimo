@@ -22,21 +22,21 @@ func (s *service) setupUserReferralRoutes(router *gin.Engine) {
 
 // GetReferralAcquisitionHistory godoc
 // @Schemes
-// @Description  Returns the history of referral acquisition for the provided user id.
-// @Tags         Referrals
-// @Accept       json
-// @Produce      json
-// @Param        Authorization  header    string  true   "Insert your access token"  default(Bearer <Add access token here>)
-// @Param        userId         path      string  true   "ID of the user"
-// @Param        days           query     uint64  false  "The number of days to look in the past. Defaults to 5."
-// @Success      200            {array}   users.ReferralAcquisition
-// @Failure      400            {object}  server.ErrorResponse  "if validations fail"
-// @Failure      401            {object}  server.ErrorResponse  "if not authorized"
-// @Failure      403            {object}  server.ErrorResponse  "if not allowed"
-// @Failure      422            {object}  server.ErrorResponse  "if syntax fails"
-// @Failure      500            {object}  server.ErrorResponse
-// @Failure      504            {object}  server.ErrorResponse  "if request times out"
-// @Router       /users/{userId}/referral-acquisition-history [GET].
+// @Description Returns the history of referral acquisition for the provided user id.
+// @Tags        Referrals
+// @Accept      json
+// @Produce     json
+// @Param       Authorization header   string true  "Insert your access token" default(Bearer <Add access token here>)
+// @Param       userId        path     string true  "ID of the user"
+// @Param       days          query    uint64 false "The number of days to look in the past. Defaults to 5."
+// @Success     200           {array}  users.ReferralAcquisition
+// @Failure     400           {object} server.ErrorResponse "if validations fail"
+// @Failure     401           {object} server.ErrorResponse "if not authorized"
+// @Failure     403           {object} server.ErrorResponse "if not allowed"
+// @Failure     422           {object} server.ErrorResponse "if syntax fails"
+// @Failure     500           {object} server.ErrorResponse
+// @Failure     504           {object} server.ErrorResponse "if request times out"
+// @Router      /users/{userId}/referral-acquisition-history [GET].
 func (s *service) GetReferralAcquisitionHistory(ctx context.Context, req *RequestGetReferralAcquisitionHistory) server.Response {
 	res, err := s.usersRepository.GetReferralAcquisitionHistory(ctx, &req.GetReferralAcquisitionHistoryArg)
 	if err != nil {
@@ -77,23 +77,23 @@ func (*RequestGetReferralAcquisitionHistory) Bindings(c *gin.Context) []func(obj
 
 // GetReferrals godoc
 // @Schemes
-// @Description  Returns the referrals of an user.
-// @Tags         Referrals
-// @Accept       json
-// @Produce      json
-// @Param        Authorization  header    string  true   "Insert your access token"  default(Bearer <Add access token here>)
-// @Param        userId         path      string  true   "ID of the user"
-// @Param        type           query     string  true   "Type of referrals: `CONTACTS` or `T1` or `T2`"
-// @Param        limit          query     uint64  false  "Limit of elements to return. Defaults to 10"
-// @Param        offset         query     uint64  false  "Number of elements to skip before collecting elements to return"
-// @Success      200            {object}  users.Referrals
-// @Failure      400            {object}  server.ErrorResponse  "if validations fail"
-// @Failure      401            {object}  server.ErrorResponse  "if not authorized"
-// @Failure      403            {object}  server.ErrorResponse  "if not allowed"
-// @Failure      422            {object}  server.ErrorResponse  "if syntax fails"
-// @Failure      500            {object}  server.ErrorResponse
-// @Failure      504            {object}  server.ErrorResponse  "if request times out"
-// @Router       /users/{userId}/referrals [GET].
+// @Description Returns the referrals of an user.
+// @Tags        Referrals
+// @Accept      json
+// @Produce     json
+// @Param       Authorization header   string true  "Insert your access token" default(Bearer <Add access token here>)
+// @Param       userId        path     string true  "ID of the user"
+// @Param       type          query    string true  "Type of referrals: `CONTACTS` or `T1` or `T2`"
+// @Param       limit         query    uint64 false "Limit of elements to return. Defaults to 10"
+// @Param       offset        query    uint64 false "Number of elements to skip before collecting elements to return"
+// @Success     200           {object} users.Referrals
+// @Failure     400           {object} server.ErrorResponse "if validations fail"
+// @Failure     401           {object} server.ErrorResponse "if not authorized"
+// @Failure     403           {object} server.ErrorResponse "if not allowed"
+// @Failure     422           {object} server.ErrorResponse "if syntax fails"
+// @Failure     500           {object} server.ErrorResponse
+// @Failure     504           {object} server.ErrorResponse "if request times out"
+// @Router      /users/{userId}/referrals [GET].
 func (s *service) GetReferrals(ctx context.Context, req *RequestGetReferrals) server.Response {
 	referrals, err := s.usersRepository.GetReferrals(ctx, &req.GetReferralsArg)
 	if err != nil {

@@ -26,20 +26,20 @@ func (s *service) setupUserRoutes(router *gin.Engine) {
 
 // CreateUser godoc
 // @Schemes
-// @Description  Creates an user account
-// @Tags         Accounts
-// @Accept       json
-// @Produce      json
-// @Param        Authorization  header    string               true  "Insert your access token"  default(Bearer <Add access token here>)
-// @Param        request        body      users.CreateUserArg  true  "Request params"
-// @Success      201            {object}  users.User
-// @Failure      400            {object}  server.ErrorResponse  "if validations fail"
-// @Failure      401            {object}  server.ErrorResponse  "if not authorized"
-// @Failure      409            {object}  server.ErrorResponse  "user already exists with that ID or with that username"
-// @Failure      422            {object}  server.ErrorResponse  "if syntax fails"
-// @Failure      500            {object}  server.ErrorResponse
-// @Failure      504            {object}  server.ErrorResponse  "if request times out"
-// @Router       /users [POST].
+// @Description Creates an user account
+// @Tags        Accounts
+// @Accept      json
+// @Produce     json
+// @Param       Authorization header   string              true "Insert your access token" default(Bearer <Add access token here>)
+// @Param       request       body     users.CreateUserArg true "Request params"
+// @Success     201           {object} users.User
+// @Failure     400           {object} server.ErrorResponse "if validations fail"
+// @Failure     401           {object} server.ErrorResponse "if not authorized"
+// @Failure     409           {object} server.ErrorResponse "user already exists with that ID or with that username"
+// @Failure     422           {object} server.ErrorResponse "if syntax fails"
+// @Failure     500           {object} server.ErrorResponse
+// @Failure     504           {object} server.ErrorResponse "if request times out"
+// @Router      /users [POST].
 func (s *service) CreateUser(ctx context.Context, req *RequestCreateUser) server.Response {
 	if err := s.usersProcessor.CreateUser(ctx, &req.CreateUserArg); err != nil {
 		err = errors.Wrapf(err, "failed to create user %#v", req.User)
@@ -120,24 +120,24 @@ func (*RequestCreateUser) Bindings(c *gin.Context) []func(obj interface{}) error
 
 // ModifyUser godoc
 // @Schemes
-// @Description  Modifies an user account
-// @Tags         Accounts
-// @Accept       multipart/form-data
-// @Produce      json
-// @Param        Authorization      header    string               true   "Insert your access token"  default(Bearer <Add access token here>)
-// @Param        userId             path      string               true   "ID of the user"
-// @Param        multiPartFormData  formData  users.ModifyUserArg  true   "Request params"
-// @Param        profilePicture     formData  file                 false  "The new profile picture for the user"
-// @Success      200                {object}  users.User
-// @Failure      400                {object}  server.ErrorResponse  "if validations fail"
-// @Failure      401                {object}  server.ErrorResponse  "if not authorized"
-// @Failure      403                {object}  server.ErrorResponse  "not allowed"
-// @Failure      404                {object}  server.ErrorResponse  "user is not found"
-// @Failure      409                {object}  server.ErrorResponse  "if username conflicts with another other user's"
-// @Failure      422                {object}  server.ErrorResponse  "if syntax fails"
-// @Failure      500                {object}  server.ErrorResponse
-// @Failure      504                {object}  server.ErrorResponse  "if request times out"
-// @Router       /users/{userId} [PATCH].
+// @Description Modifies an user account
+// @Tags        Accounts
+// @Accept      multipart/form-data
+// @Produce     json
+// @Param       Authorization     header   string              true  "Insert your access token" default(Bearer <Add access token here>)
+// @Param       userId            path     string              true  "ID of the user"
+// @Param       multiPartFormData formData users.ModifyUserArg true  "Request params"
+// @Param       profilePicture    formData file                false "The new profile picture for the user"
+// @Success     200               {object} users.User
+// @Failure     400               {object} server.ErrorResponse "if validations fail"
+// @Failure     401               {object} server.ErrorResponse "if not authorized"
+// @Failure     403               {object} server.ErrorResponse "not allowed"
+// @Failure     404               {object} server.ErrorResponse "user is not found"
+// @Failure     409               {object} server.ErrorResponse "if username conflicts with another other user's"
+// @Failure     422               {object} server.ErrorResponse "if syntax fails"
+// @Failure     500               {object} server.ErrorResponse
+// @Failure     504               {object} server.ErrorResponse "if request times out"
+// @Router      /users/{userId} [PATCH].
 func (s *service) ModifyUser(ctx context.Context, req *RequestModifyUser) server.Response {
 	if err := s.usersProcessor.ModifyUser(ctx, &req.ModifyUserArg); err != nil {
 		err = errors.Wrapf(err, "failed to modify user for %#v", req.User)
@@ -253,21 +253,21 @@ func verifyIfPhoneNumberAndHashProvidedTogether(phoneNumber, phoneNumberHash str
 
 // DeleteUser godoc
 // @Schemes
-// @Description  Deletes an user account
-// @Tags         Accounts
-// @Accept       json
-// @Produce      json
-// @Param        Authorization  header  string  true  "Insert your access token"  default(Bearer <Add access token here>)
-// @Param        userId         path    string  true  "ID of the User"
-// @Success      200            "OK - found and deleted"
-// @Success      204            "No Content - already deleted"
-// @Failure      400            {object}  server.ErrorResponse  "if validations fail"
-// @Failure      401            {object}  server.ErrorResponse  "if not authorized"
-// @Failure      403            {object}  server.ErrorResponse  "not allowed"
-// @Failure      422            {object}  server.ErrorResponse  "if syntax fails"
-// @Failure      500            {object}  server.ErrorResponse
-// @Failure      504            {object}  server.ErrorResponse  "if request times out"
-// @Router       /users/{userId} [DELETE].
+// @Description Deletes an user account
+// @Tags        Accounts
+// @Accept      json
+// @Produce     json
+// @Param       Authorization header string true "Insert your access token" default(Bearer <Add access token here>)
+// @Param       userId        path   string true "ID of the User"
+// @Success     200           "OK - found and deleted"
+// @Success     204           "No Content - already deleted"
+// @Failure     400           {object} server.ErrorResponse "if validations fail"
+// @Failure     401           {object} server.ErrorResponse "if not authorized"
+// @Failure     403           {object} server.ErrorResponse "not allowed"
+// @Failure     422           {object} server.ErrorResponse "if syntax fails"
+// @Failure     500           {object} server.ErrorResponse
+// @Failure     504           {object} server.ErrorResponse "if request times out"
+// @Router      /users/{userId} [DELETE].
 func (s *service) DeleteUser(ctx context.Context, req *RequestDeleteUser) server.Response {
 	if err := s.usersProcessor.DeleteUser(ctx, req.UserID); err != nil {
 		if errors.Is(err, users.ErrNotFound) {

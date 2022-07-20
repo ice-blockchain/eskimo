@@ -16,14 +16,14 @@ import (
 )
 
 //nolint:godot,lll // Because those are comments parsed by swagger
-// @title                    User Accounts, User Devices, User Statistics API
-// @version                  latest
-// @description              API that handles everything related to read only operations for user's account, user's devices and statistics about those accounts and devices.
-// @query.collection.format  multi
-// @schemes                  https
-// @contact.name             ice.io
-// @contact.url              https://ice.io
-// @BasePath                 /v1r
+// @title                   User Accounts, User Devices, User Statistics API
+// @version                 latest
+// @description             API that handles everything related to read only operations for user's account, user's devices and statistics about those accounts and devices.
+// @query.collection.format multi
+// @schemes                 https
+// @contact.name            ice.io
+// @contact.url             https://ice.io
+// @BasePath                /v1r
 func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

@@ -8,12 +8,12 @@ require (
 	github.com/gin-gonic/gin v1.8.1
 	github.com/goccy/go-json v0.9.10
 	github.com/hashicorp/go-multierror v1.1.1
-	github.com/ice-blockchain/wintr v1.36.0
+	github.com/ice-blockchain/wintr v1.37.0
 	github.com/imroc/req/v3 v3.14.0
 	github.com/ip2location/ip2location-go v8.3.0+incompatible
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.8.0
-	github.com/swaggo/swag v1.8.3
+	github.com/swaggo/swag v1.8.4
 	github.com/testcontainers/testcontainers-go v0.13.0
 	github.com/twilio/twilio-go v0.26.0
 	github.com/vmihailenco/msgpack/v5 v5.3.5
@@ -87,8 +87,8 @@ require (
 	github.com/pierrec/lz4/v4 v4.1.15 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rs/zerolog v1.27.0 // indirect
-	github.com/sirupsen/logrus v1.8.1 // indirect
-	github.com/spf13/afero v1.9.0 // indirect
+	github.com/sirupsen/logrus v1.9.0 // indirect
+	github.com/spf13/afero v1.9.2 // indirect
 	github.com/spf13/cast v1.5.0 // indirect
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
@@ -108,7 +108,7 @@ require (
 	golang.org/x/sys v0.0.0-20220715151400-c0bba94af5f8 // indirect
 	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/tools v0.1.11 // indirect
-	google.golang.org/genproto v0.0.0-20220715211116-798f69b842b9 // indirect
+	google.golang.org/genproto v0.0.0-20220719170305-83ca9fad585f // indirect
 	google.golang.org/grpc v1.48.0 // indirect
 	google.golang.org/protobuf v1.28.0 // indirect
 	gopkg.in/ini.v1 v1.66.6 // indirect

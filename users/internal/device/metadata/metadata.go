@@ -63,7 +63,7 @@ func (r *repository) GetDeviceMetadataLocation(ctx context.Context, arg *GetDevi
 	//nolint:godox // .
 	//TODO: TBD if we need to use arg.DeviceUniqueID and/or arg.UserID to find some default/preferred value for the user.
 
-	result, err := r.ip2LocationDB.Get_all(arg.ClientIP.String())
+	result, err := r.ip2LocationDB.Get_all(arg.ClientIP.String()) //nolint:nosnakecase // Because this is from external library.
 	if err != nil {
 		log.Error(errors.Wrapf(err, "unable to get country&city for %#v", arg))
 
@@ -71,6 +71,7 @@ func (r *repository) GetDeviceMetadataLocation(ctx context.Context, arg *GetDevi
 	}
 
 	return &DeviceLocation{
+		//nolint:nosnakecase // This is struct member from the external library.
 		Country: strings.ToUpper(result.Country_short),
 		City:    result.City,
 	}
@@ -99,7 +100,7 @@ func (r *repository) ReplaceDeviceMetadata(ctx context.Context, arg *ReplaceDevi
 	metadata := new(deviceMetadata)
 	metadata.UpdatedAt = time.Now()
 	metadata.DeviceMetadata = arg.DeviceMetadata
-	if metadata.IP2Locationrecord, err = r.ip2LocationDB.Get_all(ip.String()); err != nil {
+	if metadata.IP2Locationrecord, err = r.ip2LocationDB.Get_all(ip.String()); err != nil { //nolint:nosnakecase // Because this is from external library.
 		return errors.Wrapf(err, "failed to get location information based on IP %v to replace device metadata", ip.String())
 	}
 	before, err := r.GetDeviceMetadata(ctx, arg.ID)

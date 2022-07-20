@@ -74,7 +74,7 @@ type (
 		DeviceLocation
 	}
 	User struct {
-		_msgpack            struct{}   `msgpack:",asArray"` // nolint:unused,tagliatelle,revive // To insert we need asArray
+		_msgpack            struct{}   `msgpack:",asArray"` // nolint:unused,tagliatelle,revive,nosnakecase // To insert we need asArray
 		CreatedAt           *time.Time `json:"createdAt,omitempty" example:"2022-01-03T16:20:52.156534Z"`
 		UpdatedAt           *time.Time `json:"updatedAt,omitempty" example:"2022-01-03T16:20:52.156534Z"`
 		LastMiningStartedAt *time.Time `json:"lastMiningStartedAt,omitempty" example:"2022-01-03T16:20:52.156534Z"`
@@ -112,13 +112,13 @@ type (
 		T2   uint64     `json:"t2" example:"13"`
 	}
 	CountryStatistics struct {
-		_msgpack struct{} `msgpack:",asArray"` // nolint:unused,revive,tagliatelle // To insert we need asArray
+		_msgpack struct{} `msgpack:",asArray"` // nolint:unused,revive,tagliatelle,nosnakecase // To insert we need asArray
 		// ISO 3166 country code.
 		Country   devicemetadata.Country `json:"country" example:"US"`
 		UserCount uint64                 `json:"userCount" example:"12121212"`
 	}
 	PhoneNumberValidation struct {
-		_msgpack struct{} `msgpack:",asArray"` // nolint:unused,revive,tagliatelle // To insert we need asArray
+		_msgpack struct{} `msgpack:",asArray"` // nolint:unused,revive,tagliatelle,nosnakecase // To insert we need asArray
 		// `Read Only`.
 		CreatedAt       *time.Time `json:"createdAt" example:"2022-01-03T16:20:52.156534Z"`
 		UserID          UserID     `uri:"userId" json:"userId" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`

@@ -23,21 +23,21 @@ func (s *service) setupUserRoutes(router *gin.Engine) {
 
 // GetUsers godoc
 // @Schemes
-// @Description  Returns a list of user account based on the provided query parameters.
-// @Tags         Accounts
-// @Accept       json
-// @Produce      json
-// @Param        Authorization  header    string  true   "Insert your access token"  default(Bearer <Add access token here>)
-// @Param        keyword        query     string  true   "A keyword to look for in the usernames and full names of users"
-// @Param        limit          query     uint64  false  "Limit of elements to return. Defaults to 10"
-// @Param        offset         query     uint64  false  "Elements to skip before starting to look for"
-// @Success      200            {array}   users.RelatableUserProfile
-// @Failure      400            {object}  server.ErrorResponse  "if validations fail"
-// @Failure      401            {object}  server.ErrorResponse  "if not authorized"
-// @Failure      422            {object}  server.ErrorResponse  "if syntax fails"
-// @Failure      500            {object}  server.ErrorResponse
-// @Failure      504            {object}  server.ErrorResponse  "if request times out"
-// @Router       /users [GET].
+// @Description Returns a list of user account based on the provided query parameters.
+// @Tags        Accounts
+// @Accept      json
+// @Produce     json
+// @Param       Authorization header   string true  "Insert your access token" default(Bearer <Add access token here>)
+// @Param       keyword       query    string true  "A keyword to look for in the usernames and full names of users"
+// @Param       limit         query    uint64 false "Limit of elements to return. Defaults to 10"
+// @Param       offset        query    uint64 false "Elements to skip before starting to look for"
+// @Success     200           {array}  users.RelatableUserProfile
+// @Failure     400           {object} server.ErrorResponse "if validations fail"
+// @Failure     401           {object} server.ErrorResponse "if not authorized"
+// @Failure     422           {object} server.ErrorResponse "if syntax fails"
+// @Failure     500           {object} server.ErrorResponse
+// @Failure     504           {object} server.ErrorResponse "if request times out"
+// @Router      /users [GET].
 func (s *service) GetUsers(ctx context.Context, req *RequestGetUsers) server.Response {
 	resp, err := s.usersRepository.GetUsers(ctx, &req.GetUsersArg)
 	if err != nil {
@@ -76,20 +76,20 @@ func (*RequestGetUsers) Bindings(c *gin.Context) []func(obj interface{}) error {
 
 // GetUserByID godoc
 // @Schemes
-// @Description  Returns an user's account.
-// @Tags         Accounts
-// @Accept       json
-// @Produce      json
-// @Param        Authorization  header    string  true  "Insert your access token"  default(Bearer <Add access token here>)
-// @Param        userId         path      string  true  "ID of the user"
-// @Success      200            {object}  users.UserProfile
-// @Failure      400            {object}  server.ErrorResponse  "if validations fail"
-// @Failure      401            {object}  server.ErrorResponse  "if not authorized"
-// @Failure      404            {object}  server.ErrorResponse  "if not found"
-// @Failure      422            {object}  server.ErrorResponse  "if syntax fails"
-// @Failure      500            {object}  server.ErrorResponse
-// @Failure      504            {object}  server.ErrorResponse  "if request times out"
-// @Router       /users/{userId} [GET].
+// @Description Returns an user's account.
+// @Tags        Accounts
+// @Accept      json
+// @Produce     json
+// @Param       Authorization header   string true "Insert your access token" default(Bearer <Add access token here>)
+// @Param       userId        path     string true "ID of the user"
+// @Success     200           {object} users.UserProfile
+// @Failure     400           {object} server.ErrorResponse "if validations fail"
+// @Failure     401           {object} server.ErrorResponse "if not authorized"
+// @Failure     404           {object} server.ErrorResponse "if not found"
+// @Failure     422           {object} server.ErrorResponse "if syntax fails"
+// @Failure     500           {object} server.ErrorResponse
+// @Failure     504           {object} server.ErrorResponse "if request times out"
+// @Router      /users/{userId} [GET].
 func (s *service) GetUserByID(ctx context.Context, req *RequestGetUserByID) server.Response {
 	userID := req.UserID
 	resp, err := s.usersRepository.GetUserProfileByID(ctx, userID)
@@ -131,20 +131,20 @@ func (*RequestGetUserByID) Bindings(c *gin.Context) []func(obj interface{}) erro
 
 // GetUserByUsername godoc
 // @Schemes
-// @Description  Returns public information about an user account based on an username, making sure the username is valid first.
-// @Tags         Accounts
-// @Accept       json
-// @Produce      json
-// @Param        Authorization  header    string  true  "Insert your access token"  default(Bearer <Add access token here>)
-// @Param        username       query     string  true  "username of the user. It will validate it first"
-// @Success      200            {object}  users.UserProfile
-// @Failure      400            {object}  server.ErrorResponse  "if validations fail"
-// @Failure      401            {object}  server.ErrorResponse  "if not authorized"
-// @Failure      404            {object}  server.ErrorResponse  "if not found"
-// @Failure      422            {object}  server.ErrorResponse  "if syntax fails"
-// @Failure      500            {object}  server.ErrorResponse
-// @Failure      504            {object}  server.ErrorResponse  "if request times out"
-// @Router       /user-views/username [GET].
+// @Description Returns public information about an user account based on an username, making sure the username is valid first.
+// @Tags        Accounts
+// @Accept      json
+// @Produce     json
+// @Param       Authorization header   string true "Insert your access token" default(Bearer <Add access token here>)
+// @Param       username      query    string true "username of the user. It will validate it first"
+// @Success     200           {object} users.UserProfile
+// @Failure     400           {object} server.ErrorResponse "if validations fail"
+// @Failure     401           {object} server.ErrorResponse "if not authorized"
+// @Failure     404           {object} server.ErrorResponse "if not found"
+// @Failure     422           {object} server.ErrorResponse "if syntax fails"
+// @Failure     500           {object} server.ErrorResponse
+// @Failure     504           {object} server.ErrorResponse "if request times out"
+// @Router      /user-views/username [GET].
 func (s *service) GetUserByUsername(ctx context.Context, req *RequestGetUserByUsername) server.Response {
 	username := req.Username
 	resp, err := s.usersRepository.GetUserByUsername(ctx, username)

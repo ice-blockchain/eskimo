@@ -103,7 +103,7 @@ var (
 
 type (
 	deviceMetadata struct {
-		//nolint:unused,revive,tagliatelle // Wrong. It's a marker for marshalling/unmarshalling to/from db.
+		//nolint:unused,revive,tagliatelle,nosnakecase // Wrong. It's a marker for marshalling/unmarshalling to/from db.
 		_msgpack struct{} `msgpack:",asArray"`
 		ip2location.IP2Locationrecord
 		UpdatedAt *time.Time `json:"updatedAt"`
