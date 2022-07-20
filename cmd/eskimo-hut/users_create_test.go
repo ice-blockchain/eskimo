@@ -137,17 +137,50 @@ func TestService_CreateUser_Failure_Duplicate(t *testing.T) {
 	testCreateUser(ctx, t,
 		`{"email": "testuser@example.com", "username": "test"}`,
 		// nolint:lll // Long response here.
-		fmt.Sprintf(`{"createdAt":%[1]q,"updatedAt":%[1]q,"id":"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2","username":"test","profilePictureUrl":"https://ice-staging.b-cdn.net/profile/default-user-image.jpg","country":"-","city":"This is DB24 demo BIN database. Please evaluate IP address from 0.0.0.0 to 99.255.255.255.","email":"testuser@example.com"}`, timeRegex),
+		fmt.Sprintf(`{
+			"createdAt":%[1]q,
+			"updatedAt":%[1]q,
+			"id":"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2",
+			"username":"test",
+			"profilePictureUrl":"https://ice-staging.b-cdn.net/profile/default-user-image.jpg",
+			"country":"-",
+			"city":"This is DB24 demo BIN database. Please evaluate IP address from 0.0.0.0 to 99.255.255.255.",
+			"email":"testuser@example.com"
+		}`, timeRegex),
 		201)
 	// Duplicate user name -> 409.
 	testCreateUser(ctx, t,
 		`{"email": "testuser@example.com","username": "test"}`,
-		`{"data":{"field":"username"},"error":"failed to create user: failed to insert user {\\"createdAt\\":%[1]s,\\"updatedAt\\":%[1]s,\\"id\\":\\"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2\\",\\"username\\":\\"test\\",\\"profilePictureUrl\\":\\"default-user-image.jpg\\",\\"country\\":\\"-\\",\\"city\\":\\"This is DB24 demo BIN database. Please evaluate IP address from 0.0.0.0 to 99.255.255.255.\\",\\"email\\":\\"testuser@example.com\\"}: duplicate","code":"CONFLICT_WITH_ANOTHER_USER"}`,
-		409, map[string]string{"Authorization": fmt.Sprintf("Bearer %v", testMagicToken)}) // TODO: another token to create user with another userID
+		`{
+			"data":{"field":"username"},
+			"error":"failed to create user: failed to insert user {
+				\\"createdAt\\":%[1]s,
+				\\"updatedAt\\":%[1]s,
+				\\"id\\":\\"did:ethr:0xbf6e4672B791185161185a0432aBE731cf4DbEb4\\",
+				\\"username\\":\\"test\\",
+				\\"profilePictureUrl\\":\\"default-user-image.jpg\\",
+				\\"country\\":\\"-\\",
+				\\"city\\":\\"This is DB24 demo BIN database. Please evaluate IP address from 0.0.0.0 to 99.255.255.255.\\",
+				\\"email\\":\\"testuser@example.com\\"
+			}: duplicate","code":"CONFLICT_WITH_ANOTHER_USER"
+		}`,
+		409, map[string]string{"Authorization": fmt.Sprintf("Bearer %v", testMagicToken2ndUser)}) // Another token to create user with another userID but same username
 	// Duplicate userID (cuz of the same auth header) -> 409.
 	testCreateUser(ctx, t,
 		`{"email": "testuser@example.com","username": "another_user_test"}`,
-		fmt.Sprintf(`{"data":{"field":"id"},"error":"failed to create user: failed to insert user {\\"createdAt\\":%[1]s,\\"updatedAt\\":%[1]s,\\"id\\":\\"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2\\",\\"username\\":\\"another_user_test\\",\\"profilePictureUrl\\":\\"default-user-image.jpg\\",\\"country\\":\\"-\\",\\"city\\":\\"This is DB24 demo BIN database. Please evaluate IP address from 0.0.0.0 to 99.255.255.255.\\",\\"email\\":\\"testuser@example.com\\"}: duplicate","code":"CONFLICT_WITH_ANOTHER_USER"}`,
+		fmt.Sprintf(`{
+			"data":{"field":"id"},
+			"error":"failed to create user: failed to insert user {
+				\\"createdAt\\":%[1]s,
+				\\"updatedAt\\":%[1]s,
+				\\"id\\":\\"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2\\",
+				\\"username\\":\\"another_user_test\\",
+				\\"profilePictureUrl\\":\\"default-user-image.jpg\\",
+				\\"country\\":\\"-\\",
+				\\"city\\":\\"This is DB24 demo BIN database. Please evaluate IP address from 0.0.0.0 to 99.255.255.255.\\",
+				\\"email\\":\\"testuser@example.com\\"
+			}: duplicate","code":"CONFLICT_WITH_ANOTHER_USER"
+		}`,
 			strings.ReplaceAll(fmt.Sprintf("%q", timeRegex), `"`, "\\\\\"")),
 		409)
 	testDeleteUser(ctx, t, "did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2", 200)
@@ -162,7 +195,16 @@ func TestService_CreateUser_Success_WithEmail(t *testing.T) {
 	// User creation -> 201.
 	testCreateUser(ctx, t,
 		`{"email": "testuser@example.com", "username": "test"}`,
-		fmt.Sprintf(`{"createdAt":%[1]q,"updatedAt":%[1]q,"id":"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2","username":"test","profilePictureUrl":"https://ice-staging.b-cdn.net/profile/default-user-image.jpg","country":"-","city":"This is DB24 demo BIN database. Please evaluate IP address from 0.0.0.0 to 99.255.255.255.","email":"testuser@example.com"}`, timeRegex),
+		fmt.Sprintf(`{
+			"createdAt":%[1]q,
+			"updatedAt":%[1]q,
+			"id":"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2",
+			"username":"test",
+			"profilePictureUrl":"https://ice-staging.b-cdn.net/profile/default-user-image.jpg",
+			"country":"-",
+			"city":"This is DB24 demo BIN database. Please evaluate IP address from 0.0.0.0 to 99.255.255.255.",
+			"email":"testuser@example.com"
+		}`, timeRegex),
 		201)
 	testDeleteUser(ctx, t, "did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2", 200)
 }
@@ -173,11 +215,35 @@ func TestService_CreateUser_Success_WithReferral(t *testing.T) {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), testDeadline)
 	defer cancel()
-	// User creation -> 201.
+	// T0.
+	testCreateUser(ctx, t,
+		`{"email": "testuser@example.com", "username": "test"}`,
+		// nolint:lll // Long response here.
+		fmt.Sprintf(`{
+			"createdAt":%[1]q,
+			"updatedAt":%[1]q,
+			"id":"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2",
+			"username":"test",
+			"profilePictureUrl":"https://ice-staging.b-cdn.net/profile/default-user-image.jpg",
+			"country":"-",
+			"city":"This is DB24 demo BIN database. Please evaluate IP address from 0.0.0.0 to 99.255.255.255.",
+			"email":"testuser@example.com"
+		}`, timeRegex),
+		201)
+	// Referred user.
 	testCreateUser(ctx, t,
 		`{"referredBy": "did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2", "username": "test"}`,
-		fmt.Sprintf(`{"createdAt":%[1]q,"updatedAt":%[1]q,"id":"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2","username":"test","profilePictureUrl":"https://ice-staging.b-cdn.net/profile/default-user-image.jpg","country":"-","city":"This is DB24 demo BIN database. Please evaluate IP address from 0.0.0.0 to 99.255.255.255.","email":"testuser@example.com"}`, timeRegex),
-		201, map[string]string{"Authorization": fmt.Sprintf("Bearer %v", testMagicToken)}) // TODO: another token to create from another user
+		fmt.Sprintf(`{
+			"createdAt":%[1]q,
+			"updatedAt":%[1]q,
+			"id":"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2",
+			"username":"test",
+			"profilePictureUrl":"https://ice-staging.b-cdn.net/profile/default-user-image.jpg",
+			"country":"-",
+			"city":"This is DB24 demo BIN database. Please evaluate IP address from 0.0.0.0 to 99.255.255.255.",
+			"email":"testuser@example.com"
+		}`, timeRegex),
+		201, map[string]string{"Authorization": fmt.Sprintf("Bearer %v", testMagicToken2ndUser)}) // Another token to create from another user.
 	testDeleteUser(ctx, t, "did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2", 200)
 }
 
@@ -190,7 +256,18 @@ func TestService_CreateUser_Failure_NonExistingReferral(t *testing.T) {
 	defer cancel()
 	testCreateUser(ctx, t,
 		`{"referredBy": "did:ethr:NON_EXISTING_USER", "username": "test"}`,
-		fmt.Sprintf(`{"error":"failed to create user: failed to insert user {\\"createdAt\\":%[1]s,\\"updatedAt\\":%[1]s,\\"id\\":\\"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2\\",\\"username\\":\\"test\\",\\"profilePictureUrl\\":\\"default-user-image.jpg\\",\\"country\\":\\"-\\",\\"city\\":\\"This is DB24 demo BIN database. Please evaluate IP address from 0.0.0.0 to 99.255.255.255.\\",\\"referredBy\\":\\"did:ethr:NON_EXISTING_USER\\"}: relation not found","code":"REFERRAL_NOT_FOUND"}`,
+		fmt.Sprintf(`{
+			"error":"failed to create user: failed to insert user{
+				\\"createdAt\\":%[1]s,
+				\\"updatedAt\\":%[1]s,
+				\\"id\\":\\"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2\\",
+				\\"username\\":\\"test\\",
+				\\"profilePictureUrl\\":\\"default-user-image.jpg\\",
+				\\"country\\":\\"-\\",
+				\\"city\\":\\"This is DB24 demo BIN database. Please evaluate IP address from 0.0.0.0 to 99.255.255.255.\\",
+				\\"referredBy\\":\\"did:ethr:NON_EXISTING_USER\\"
+			}: relation not found","code":"REFERRAL_NOT_FOUND"
+		}`,
 			strings.ReplaceAll(fmt.Sprintf("%q", timeRegex), `"`, "\\\\\"")),
 		404)
 }
@@ -218,7 +295,15 @@ func TestService_CreateUser_Success(t *testing.T) {
 	testCreateUser(ctx, t,
 		`{"username": "test_no_email"}`,
 		// nolint:lll // Long response here.
-		fmt.Sprintf(`{"createdAt":%[1]q,"updatedAt":%[1]q,"id":"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2","username":"test_no_email","profilePictureUrl":"https://ice-staging.b-cdn.net/profile/default-user-image.jpg","country":"-","city":"This is DB24 demo BIN database. Please evaluate IP address from 0.0.0.0 to 99.255.255.255."}`, timeRegex),
+		fmt.Sprintf(`{
+			"createdAt":%[1]q,
+			"updatedAt":%[1]q,
+			"id":"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2",
+			"username":"test_no_email",
+			"profilePictureUrl":"https://ice-staging.b-cdn.net/profile/default-user-image.jpg",
+			"country":"-",
+			"city":"This is DB24 demo BIN database. Please evaluate IP address from 0.0.0.0 to 99.255.255.255."
+		}`, timeRegex),
 		201)
 	testDeleteUser(ctx, t, "did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2", 200)
 }
@@ -238,7 +323,7 @@ func testCreateUser(ctx context.Context, tb testing.TB, reqBody, expectedRespBod
 		}
 	}
 	body, status, headers := serverConnector.Post(ctx, tb, `/v1w/users`, jsonBody, reqHeaders)
-	fmt.Println(body)
+	expectedRespBody = strings.ReplaceAll(strings.ReplaceAll(expectedRespBody, "\t", ""), "\n", "")
 	assert.Regexp(tb, regexp.MustCompile(expectedRespBody), body)
 	assert.Equal(tb, expectedRespStatus, status)
 	l, err := strconv.Atoi(headers.Get("Content-Length"))
