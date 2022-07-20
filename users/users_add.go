@@ -23,7 +23,7 @@ func (r *repository) CreateUser(ctx context.Context, arg *CreateUserArg) error {
 	}
 	r.setCreateUserDefaults(ctx, arg)
 	var referral UserID
-	usr := arg.User
+	usr := &arg.User
 	if usr.ReferredBy != "" {
 		referral = ":referredBy"
 	} else {
@@ -60,8 +60,9 @@ func (r *repository) CreateUser(ctx context.Context, arg *CreateUserArg) error {
 
 		return errors.Wrapf(tErr, "failed to insert user %#v", usr)
 	}
+	usr.ProfilePictureURL = fmt.Sprintf("%v/%v", cfg.PictureStorage.URLDownload, usr.ProfilePictureURL)
 
-	return errors.Wrapf(r.sendUserSnapshotMessage(ctx, &UserSnapshot{User: &usr, Before: nil}),
+	return errors.Wrapf(r.sendUserSnapshotMessage(ctx, &UserSnapshot{User: usr, Before: nil}),
 		"failed to send user created message for %#v", usr)
 }
 

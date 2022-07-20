@@ -50,6 +50,7 @@ func (r *repository) getUserByID(ctx context.Context, id UserID) (*User, error) 
 	if result.ID == "" {
 		return nil, ErrNotFound
 	}
+	result.ProfilePictureURL = fmt.Sprintf("%s/%s", cfg.PictureStorage.URLDownload, result.ProfilePictureURL)
 
 	return result, nil
 }
