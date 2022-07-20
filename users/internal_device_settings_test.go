@@ -26,6 +26,7 @@ const (
 	repeatNum = 20
 )
 
+//nolint:nosnakecase // Our code style allows to use underscores for test functions.
 func TestUsersProcessor_CreateDeviceSettings_Success(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
@@ -45,6 +46,7 @@ func TestUsersProcessor_CreateDeviceSettings_Success(t *testing.T) {
 	})
 }
 
+//nolint:nosnakecase // Our code style allows to use underscores for test functions.
 func TestUsersProcessor_CreateDeviceSettings_Failure_Duplicate(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
@@ -67,6 +69,7 @@ func TestUsersProcessor_CreateDeviceSettings_Failure_Duplicate(t *testing.T) {
 	})
 }
 
+//nolint:nosnakecase // Our code style allows to use underscores for test functions.
 func TestUsersProcessor_CreateDeviceSettings_Success_Nil_Notification_Settings(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
@@ -86,6 +89,7 @@ func TestUsersProcessor_CreateDeviceSettings_Success_Nil_Notification_Settings(t
 	})
 }
 
+//nolint:nosnakecase // Our code style allows to use underscores for test functions.
 func TestUsersProcessor_ModifyDeviceSettings_Failure_Record_Not_Exists(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
@@ -100,6 +104,7 @@ func TestUsersProcessor_ModifyDeviceSettings_Failure_Record_Not_Exists(t *testin
 	})
 }
 
+//nolint:nosnakecase // Our code style allows to use underscores for test functions.
 func TestUsersProcessor_ModifyDeviceSettings_Success(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
@@ -124,6 +129,7 @@ func TestUsersProcessor_ModifyDeviceSettings_Success(t *testing.T) {
 	})
 }
 
+//nolint:nosnakecase // Our code style allows to use underscores for test functions.
 func TestUsersProcessor_ModifyDeviceSettings_Success_Nil_Notification_Settings(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
@@ -153,6 +159,7 @@ func TestUsersProcessor_ModifyDeviceSettings_Success_Nil_Notification_Settings(t
 	})
 }
 
+//nolint:nosnakecase // Our code style allows to use underscores for test functions.
 func TestUsersProcessor_ModifyDeviceSettings_Failure_NoRecord(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
@@ -168,6 +175,7 @@ func TestUsersProcessor_ModifyDeviceSettings_Failure_NoRecord(t *testing.T) {
 	})
 }
 
+//nolint:nosnakecase // Our code style allows to use underscores for test functions.
 func TestUsersRepository_GetDeviceSettings_Success(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
@@ -187,6 +195,7 @@ func TestUsersRepository_GetDeviceSettings_Success(t *testing.T) {
 	})
 }
 
+//nolint:nosnakecase // Our code style allows to use underscores for test functions.
 func TestUsersRepository_GetDeviceSettings_Success_NotFullChannels(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
@@ -210,6 +219,7 @@ func TestUsersRepository_GetDeviceSettings_Success_NotFullChannels(t *testing.T)
 	})
 }
 
+//nolint:nosnakecase // Our code style allows to use underscores for test functions.
 func TestUsersProcessor_ModifyDeviceSettings_Failure_ContextTimeout(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
@@ -222,6 +232,7 @@ func TestUsersProcessor_ModifyDeviceSettings_Failure_ContextTimeout(t *testing.T
 	require.Error(t, usersProcessor.ModifyDeviceSettings(ctx, &devicesettings.DeviceSettings{}))
 }
 
+//nolint:nosnakecase // Our code style allows to use underscores for test functions.
 func TestUsersProcessor_CreateDeviceSettings_Failure_ContextTimeout(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
@@ -234,6 +245,7 @@ func TestUsersProcessor_CreateDeviceSettings_Failure_ContextTimeout(t *testing.T
 	require.Error(t, usersProcessor.CreateDeviceSettings(ctx, &devicesettings.DeviceSettings{}))
 }
 
+//nolint:nosnakecase // Our code style allows to use underscores for test functions.
 func TestUsersRepository_CreateDeviceSettings_Failure_ContextTimeout(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {

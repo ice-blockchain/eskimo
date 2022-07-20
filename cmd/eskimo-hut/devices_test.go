@@ -46,6 +46,7 @@ type (
 	}
 )
 
+//nolint:nosnakecase // Our code style allows to use underscores for test functions.
 func TestEskimoHut_CreateDeviceSettings_Success(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
@@ -68,6 +69,7 @@ func TestEskimoHut_CreateDeviceSettings_Success(t *testing.T) {
 	})
 }
 
+//nolint:nosnakecase // Our code style allows to use underscores for test functions.
 func TestEskimoHut_CreateDeviceSettings_Failure_Duplicate(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
@@ -101,6 +103,7 @@ func TestEskimoHut_CreateDeviceSettings_Failure_Duplicate(t *testing.T) {
 	})
 }
 
+//nolint:nosnakecase // Our code style allows to use underscores for test functions.
 func TestEskimoHut_CreateDeviceSettings_Failure_SyntaxFails(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
@@ -122,6 +125,7 @@ func TestEskimoHut_CreateDeviceSettings_Failure_SyntaxFails(t *testing.T) {
 	})
 }
 
+//nolint:nosnakecase // Our code style allows to use underscores for test functions.
 func TestEskimoHut_CreateDeviceSettings_Failure_Forbidden(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
@@ -148,6 +152,7 @@ func TestEskimoHut_CreateDeviceSettings_Failure_Forbidden(t *testing.T) {
 	})
 }
 
+//nolint:nosnakecase // Our code style allows to use underscores for test functions.
 func TestEskimoHut_CreateDeviceSettings_Failure_InvalidProperties(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
@@ -170,6 +175,7 @@ func TestEskimoHut_CreateDeviceSettings_Failure_InvalidProperties(t *testing.T) 
 	})
 }
 
+//nolint:nosnakecase // Our code style allows to use underscores for test functions.
 func TestEskimoHut_CreateDeviceSettings_Failure_Unauthorized(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
@@ -192,6 +198,7 @@ func TestEskimoHut_CreateDeviceSettings_Failure_Unauthorized(t *testing.T) {
 	})
 }
 
+//nolint:nosnakecase // Our code style allows to use underscores for test functions.
 func TestEskimoHut_ModifyDeviceSettings_Success(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
@@ -225,6 +232,7 @@ func TestEskimoHut_ModifyDeviceSettings_Success(t *testing.T) {
 	})
 }
 
+//nolint:nosnakecase // Our code style allows to use underscores for test functions.
 func TestEskimoHut_ModifyDeviceSettings_Failure_NotFound(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
@@ -250,6 +258,7 @@ func TestEskimoHut_ModifyDeviceSettings_Failure_NotFound(t *testing.T) {
 	})
 }
 
+//nolint:nosnakecase // Our code style allows to use underscores for test functions.
 func TestEskimoHut_ModifyDeviceSettings_Failure_Unauthorized(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
@@ -273,6 +282,7 @@ func TestEskimoHut_ModifyDeviceSettings_Failure_Unauthorized(t *testing.T) {
 	})
 }
 
+//nolint:nosnakecase // Our code style allows to use underscores for test functions.
 func TestEskimoHut_ModifyDeviceSettings_Failure_Forbidden(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
@@ -298,6 +308,7 @@ func TestEskimoHut_ModifyDeviceSettings_Failure_Forbidden(t *testing.T) {
 	})
 }
 
+//nolint:nosnakecase // Our code style allows to use underscores for test functions.
 func TestEskimoHut_ModifyDeviceSettings_Failure_InvalidProperties(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
@@ -321,6 +332,7 @@ func TestEskimoHut_ModifyDeviceSettings_Failure_InvalidProperties(t *testing.T) 
 	})
 }
 
+//nolint:nosnakecase // Our code style allows to use underscores for test functions.
 func TestEskimoHut_ModifyDeviceSettings_Failure_SyntaxFails(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {

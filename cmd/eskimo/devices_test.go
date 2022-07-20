@@ -37,6 +37,7 @@ type (
 	}
 )
 
+//nolint:nosnakecase // Our code style allows to use underscores for test functions.
 func TestEskimo_GetUserDevices_NotFound(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
@@ -59,6 +60,7 @@ func TestEskimo_GetUserDevices_NotFound(t *testing.T) {
 	})
 }
 
+//nolint:nosnakecase // Our code style allows to use underscores for test functions.
 func TestEskimo_GetUserDevices_Unauthorized(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
@@ -80,6 +82,7 @@ func TestEskimo_GetUserDevices_Unauthorized(t *testing.T) {
 	})
 }
 
+//nolint:nosnakecase // Our code style allows to use underscores for test functions.
 func TestEskimo_GetUserDevices_OperationNotAllowed(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
