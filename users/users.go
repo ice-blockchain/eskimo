@@ -123,3 +123,9 @@ func retry(ctx context.Context, op func() error) error {
 			log.Error(errors.Wrapf(e, "call failed. retrying in %v... ", next))
 		})
 }
+
+func requestingUserID(ctx context.Context) (requestingUserID string) {
+	requestingUserID, _ = ctx.Value(requestingUserIDCtxValueKey).(string) //nolint:errcheck // Not needed.
+
+	return
+}

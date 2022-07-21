@@ -27,9 +27,9 @@ type (
 		io.Closer
 		IsValid(Country) bool
 		LookupCountries(Keyword) []Country
-		GetDeviceMetadataLocation(context.Context, *GetDeviceMetadataLocationArg) *DeviceLocation
+		GetDeviceMetadataLocation(ctx context.Context, deviceID device.ID, clientIP net.IP) *DeviceLocation
 		GetDeviceMetadata(context.Context, device.ID) (*DeviceMetadata, error)
-		ReplaceDeviceMetadata(context.Context, *ReplaceDeviceMetadataArg) error
+		ReplaceDeviceMetadata(ctx context.Context, deviceMetadata *DeviceMetadata, clientIP net.IP) error
 	}
 	DeviceLocation struct {
 		Country Country `json:"country,omitempty" example:"US"`
@@ -71,18 +71,6 @@ type (
 		Tablet                bool   `json:"tablet"`
 		PinOrFingerprintSet   bool   `json:"pinOrFingerprintSet"`
 		Emulator              bool   `json:"emulator"`
-	}
-)
-
-// API Arguments.
-type (
-	ReplaceDeviceMetadataArg struct {
-		ClientIP net.IP `json:"clientIp" swaggerignore:"true"`
-		DeviceMetadata
-	}
-	GetDeviceMetadataLocationArg struct {
-		device.ID
-		ClientIP net.IP `json:"clientIp" swaggerignore:"true"`
 	}
 )
 

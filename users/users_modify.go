@@ -5,6 +5,8 @@ package users
 import (
 	"context"
 	"fmt"
+	"mime/multipart"
+	"strings"
 
 	"github.com/pkg/errors"
 
@@ -12,39 +14,48 @@ import (
 	"github.com/ice-blockchain/wintr/time"
 )
 
-//nolint:funlen // Barely over the limit. It becomes uglier if broken down even further.
-func (r *repository) ModifyUser(ctx context.Context, arg *ModifyUserArg) error {
+//nolint:funlen // It needs a better breakdown.
+func (r *repository) ModifyUser(ctx context.Context, usr *User, profilePicture *multipart.FileHeader) error {
 	if ctx.Err() != nil {
 		return errors.Wrap(ctx.Err(), "update user failed because context failed")
 	}
-	if arg.User.Country != "" && !r.IsValid(arg.User.Country) {
+	if usr.Country != "" && !r.IsValid(usr.Country) {
 		return ErrInvalidCountry
 	}
-	gUser, err := r.getUserByID(ctx, arg.User.ID)
+	gUser, err := r.getUserByID(ctx, usr.ID)
 	if err != nil {
-		return errors.Wrapf(err, "get user %v failed", arg.User.ID)
+		return errors.Wrapf(err, "get user %v failed", usr.ID)
 	}
-	if err = r.triggerNewPhoneNumberValidation(ctx, &arg.User, gUser); err != nil {
-		return errors.Wrapf(err, "failed to trigger new phone number validation for %#v", arg)
+	usr.UpdatedAt = time.Now()
+	if err = r.triggerNewPhoneNumberValidation(ctx, usr, gUser); err != nil {
+		return errors.Wrapf(err, "failed to trigger new phone number validation for %#v", usr)
 	}
-	if arg.ProfilePicture != nil {
-		arg.ProfilePicture.Filename = fmt.Sprintf("%v", gUser.HashCode)
-		arg.User.ProfilePictureURL = fmt.Sprintf("%v/%v", cfg.PictureStorage.URLDownload, arg.ProfilePicture.Filename)
+	if profilePicture != nil {
+		lastDotIdx := strings.LastIndex(profilePicture.Filename, ".")
+		var ext string
+		if lastDotIdx > 0 {
+			ext = profilePicture.Filename[lastDotIdx:]
+		}
+		profilePicture.Filename = fmt.Sprintf("%v%v", gUser.HashCode, ext)
+		usr.ProfilePictureURL = profilePicture.Filename
+		if err = r.uploadProfilePicture(ctx, profilePicture); err != nil {
+			return errors.Wrapf(err, "failed to upload profile picture for userID:%v", usr.ID)
+		}
 	}
-	if err = r.uploadProfilePicture(ctx, arg.ProfilePicture); err != nil {
-		return errors.Wrapf(err, "failed to upload profile picture for userID:%v", arg.User.ID)
-	}
-	sql, params := arg.genSQLUpdate()
+	sql, params := usr.genSQLUpdate(ctx)
 	if len(params) == 1+1 {
 		return nil
 	}
 	if err = storage.CheckSQLDMLErr(r.db.PrepareExecute(sql, params)); err != nil {
 		_, err = detectAndParseDuplicateDatabaseError(err)
 
-		return errors.Wrapf(err, "failed to update user %#v", arg)
+		return errors.Wrapf(err, "failed to update user %#v", usr)
 	}
-	us := &UserSnapshot{User: gUser.override(&arg.User), Before: gUser}
-	arg.User = *us.User
+	if profilePicture != nil {
+		usr.setCorrectProfilePictureURL()
+	}
+	us := &UserSnapshot{User: gUser.override(usr), Before: gUser}
+	*usr = *us.User
 
 	return errors.Wrapf(r.sendUserSnapshotMessage(ctx, us), "failed to send updated user snapshot message %#v", us)
 }
@@ -76,53 +87,52 @@ func (u *User) override(user *User) *User {
 }
 
 //nolint:funlen // Because it's a big unitary SQL processing logic.
-func (arg *ModifyUserArg) genSQLUpdate() (sql string, params map[string]interface{}) {
+func (u *User) genSQLUpdate(ctx context.Context) (sql string, params map[string]interface{}) {
 	params = make(map[string]interface{})
-	usr := arg.User
-	params["id"] = usr.ID
-	params["updatedAt"] = time.Now()
+	params["id"] = u.ID
+	params["updatedAt"] = u.UpdatedAt
 
 	sql = "UPDATE USERS set UPDATED_AT = :updatedAt"
 
-	if usr.Email != "" {
-		params["email"] = usr.Email
+	if u.Email != "" {
+		params["email"] = u.Email
 		sql += ", EMAIL = :email"
 	}
-	if usr.FirstName != "" {
-		params["firstName"] = usr.FirstName
+	if u.FirstName != "" {
+		params["firstName"] = u.FirstName
 		sql += ", FIRST_NAME = :firstName"
 	}
-	if usr.LastName != "" {
-		params["lastName"] = usr.LastName
+	if u.LastName != "" {
+		params["lastName"] = u.LastName
 		sql += ", LAST_NAME = :lastName"
 	}
-	if usr.Username != "" {
-		params["username"] = usr.Username
+	if u.Username != "" {
+		params["username"] = u.Username
 		sql += ", USERNAME = :username"
 	}
-	if arg.ProfilePicture != nil {
-		params["profilePictureName"] = arg.ProfilePicture.Filename
+	if u.ProfilePictureURL != "" {
+		params["profilePictureName"] = u.ProfilePictureURL
 		sql += ", PROFILE_PICTURE_NAME = :profilePictureName"
 	}
-	if usr.Country != "" {
-		params["country"] = usr.Country
+	if u.Country != "" {
+		params["country"] = u.Country
 		sql += ", COUNTRY = :country"
 	}
-	if usr.City != "" {
-		params["city"] = usr.City
+	if u.City != "" {
+		params["city"] = u.City
 		sql += ", CITY = :city"
 	}
-	if arg.confirmedPhoneNumber != "" {
+	if isPhoneNumberConfirmed, ok := ctx.Value(isPhoneNumberConfirmedCtxValueKey).(bool); ok && isPhoneNumberConfirmed {
 		// Updating phone number.
-		params["phoneNumber"] = arg.confirmedPhoneNumber
+		params["phoneNumber"] = u.PhoneNumber
 		sql += ", PHONE_NUMBER = :phoneNumber"
 		// And its hash, we need hashes to know if users are in agenda for each other.
-		params["phoneNumberHash"] = usr.PhoneNumberHash
+		params["phoneNumberHash"] = u.PhoneNumberHash
 		sql += ", PHONE_NUMBER_HASH = :phoneNumberHash"
 	}
 	// Agenda can be updated after user creation (in case if user granted permission to access contacts on the team screen after initial user created).
-	if usr.AgendaPhoneNumberHashes != "" {
-		params["agendaPhoneNumberHashes"] = usr.AgendaPhoneNumberHashes
+	if u.AgendaPhoneNumberHashes != "" {
+		params["agendaPhoneNumberHashes"] = u.AgendaPhoneNumberHashes
 		sql += ", AGENDA_PHONE_NUMBER_HASHES = :agendaPhoneNumberHashes"
 	}
 	sql += " WHERE ID = :id"

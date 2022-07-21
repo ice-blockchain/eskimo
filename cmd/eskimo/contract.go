@@ -4,39 +4,40 @@ package main
 
 import (
 	"github.com/ice-blockchain/eskimo/users"
-	"github.com/ice-blockchain/wintr/server"
 )
 
 // Public API.
 
 type (
-	RequestGetDeviceSettings struct {
-		AuthenticatedUser server.AuthenticatedUser `json:"-" swaggerignore:"true"`
-		users.DeviceID
+	GetDeviceSettingsArg struct {
+		UserID         string `uri:"userId" required:"true" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
+		DeviceUniqueID string `uri:"deviceUniqueId" required:"true" example:"FCDBD8EF-62FC-4ECB-B2F5-92C9E79AC7F9"`
 	}
-	RequestGetUsers struct {
-		AuthenticatedUser server.AuthenticatedUser `json:"-" swaggerignore:"true"`
-		users.GetUsersArg
+	GetUsersArg struct {
+		Keyword string `form:"keyword" required:"true" example:"john"`
+		Limit   uint64 `form:"limit" maximum:"1000" example:"10"` // 10 by default.
+		Offset  uint64 `form:"offset" example:"5"`
 	}
-	RequestGetUserByID struct {
-		AuthenticatedUser server.AuthenticatedUser `json:"-" swaggerignore:"true"`
-		UserID            string                   `uri:"userId" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
+	GetUserByIDArg struct {
+		UserID string `uri:"userId" required:"true" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
 	}
-	RequestGetUserByUsername struct {
-		AuthenticatedUser server.AuthenticatedUser `json:"-" swaggerignore:"true"`
-		Username          string                   `form:"username" example:"jdoe"`
+	GetUserByUsernameArg struct {
+		Username string `form:"username" required:"true" example:"jdoe"`
 	}
-	RequestGetTopCountries struct {
-		AuthenticatedUser server.AuthenticatedUser `json:"-" swaggerignore:"true"`
-		users.GetTopCountriesArg
+	GetTopCountriesArg struct {
+		Keyword string `form:"keyword" example:"united states"`
+		Limit   uint64 `form:"limit" maximum:"1000" example:"10"` // 10 by default.
+		Offset  uint64 `form:"offset" example:"5"`
 	}
-	RequestGetReferralAcquisitionHistory struct {
-		AuthenticatedUser server.AuthenticatedUser `json:"-" swaggerignore:"true"`
-		users.GetReferralAcquisitionHistoryArg
+	GetReferralAcquisitionHistoryArg struct {
+		UserID string `uri:"userId" required:"true" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
+		Days   uint64 `form:"days" maximum:"30" example:"5"`
 	}
-	RequestGetReferrals struct {
-		AuthenticatedUser server.AuthenticatedUser `json:"-" swaggerignore:"true"`
-		users.GetReferralsArg
+	GetReferralsArg struct {
+		UserID string `uri:"userId" required:"true" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
+		Type   string `form:"type" required:"true" example:"T1" enums:"T1,T2,CONTACTS"`
+		Limit  uint64 `form:"limit" maximum:"1000" example:"10"` // 10 by default.
+		Offset uint64 `form:"offset" example:"5"`
 	}
 )
 
@@ -55,8 +56,9 @@ const (
 	invalidPropertiesErrorCode      = "INVALID_PROPERTIES"
 )
 
-//nolint:gochecknoglobals // Because they're loaded once, at runtime.
+//
 var (
+	//nolint:gochecknoglobals // Because its loaded once, at runtime.
 	cfg config
 )
 

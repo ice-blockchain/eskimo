@@ -4,23 +4,20 @@ package main
 
 import (
 	"context"
-	"net"
-	"strings"
 
-	"github.com/gin-gonic/gin"
 	"github.com/pkg/errors"
 
 	"github.com/ice-blockchain/eskimo/users"
 	"github.com/ice-blockchain/wintr/server"
 )
 
-func (s *service) setupDevicesRoutes(router *gin.Engine) {
+func (s *service) setupDevicesRoutes(router *server.Router) {
 	router.
 		Group("v1w").
-		PUT("users/:userId/devices/:deviceUniqueId/metadata", server.RootHandler(newRequestReplaceDeviceMetadata, s.ReplaceDeviceMetadata)).
-		PATCH("users/:userId/devices/:deviceUniqueId/settings", server.RootHandler(newRequestModifyDeviceSettings, s.ModifyDeviceSettings)).
-		POST("users/:userId/devices/:deviceUniqueId/settings", server.RootHandler(newRequestCreateDeviceSettings, s.CreateDeviceSettings)).
-		PUT("users/:userId/devices/:deviceUniqueId/metadata/location", server.RootHandler(newRequestGetDeviceLocation, s.GetDeviceLocation))
+		PUT("users/:userId/devices/:deviceUniqueId/metadata", server.RootHandler(s.ReplaceDeviceMetadata)).
+		PATCH("users/:userId/devices/:deviceUniqueId/settings", server.RootHandler(s.ModifyDeviceSettings)).
+		POST("users/:userId/devices/:deviceUniqueId/settings", server.RootHandler(s.CreateDeviceSettings)).
+		PUT("users/:userId/devices/:deviceUniqueId/metadata/location", server.RootHandler(s.GetDeviceLocation))
 }
 
 // ReplaceDeviceMetadata godoc
@@ -29,10 +26,10 @@ func (s *service) setupDevicesRoutes(router *gin.Engine) {
 // @Tags        Devices
 // @Accept      json
 // @Produce     json
-// @Param       Authorization  header string               true "Insert your access token" default(Bearer <Add access token here>)
-// @Param       userId         path   string               true "ID of the user"
-// @Param       deviceUniqueId path   string               true "ID of the device"
-// @Param       request        body   users.DeviceMetadata true "Request params"
+// @Param       Authorization  header string                   true "Insert your access token" default(Bearer <Add access token here>)
+// @Param       userId         path   string                   true "ID of the user"
+// @Param       deviceUniqueId path   string                   true "ID of the device"
+// @Param       request        body   ReplaceDeviceMetadataArg true "Request params"
 // @Success     200            "OK"
 // @Failure     400            {object} server.ErrorResponse "if validations fail"
 // @Failure     401            {object} server.ErrorResponse "if not authorized"
@@ -41,48 +38,17 @@ func (s *service) setupDevicesRoutes(router *gin.Engine) {
 // @Failure     500            {object} server.ErrorResponse
 // @Failure     504            {object} server.ErrorResponse "if request times out"
 // @Router      /users/{userId}/devices/{deviceUniqueId}/metadata [PUT].
-func (s *service) ReplaceDeviceMetadata(ctx context.Context, req *RequestReplaceDeviceMetadata) server.Response {
-	if err := s.usersProcessor.ReplaceDeviceMetadata(ctx, &req.ReplaceDeviceMetadataArg); err != nil {
-		return server.Unexpected(errors.Wrapf(err, "failed to ReplaceDeviceMetadata for %#v", &req.ReplaceDeviceMetadataArg))
+func (s *service) ReplaceDeviceMetadata( //nolint:gocritic // False negative.
+	ctx context.Context,
+	req *server.Request[ReplaceDeviceMetadataArg, any],
+) (*server.Response[any], *server.Response[server.ErrorResponse]) {
+	req.Data.DeviceMetadata.ID.DeviceUniqueID = req.Data.DeviceUniqueID
+	req.Data.DeviceMetadata.ID.UserID = req.Data.UserID
+	if err := s.usersProcessor.ReplaceDeviceMetadata(ctx, &req.Data.DeviceMetadata, req.ClientIP); err != nil {
+		return nil, server.Unexpected(errors.Wrapf(err, "failed to ReplaceDeviceMetadata for %#v", req.Data))
 	}
 
-	return server.OK()
-}
-
-func newRequestReplaceDeviceMetadata() *RequestReplaceDeviceMetadata {
-	return new(RequestReplaceDeviceMetadata)
-}
-
-func (req *RequestReplaceDeviceMetadata) SetAuthenticatedUser(user server.AuthenticatedUser) {
-	if req.AuthenticatedUser.ID == "" {
-		req.AuthenticatedUser = user
-	}
-}
-
-func (req *RequestReplaceDeviceMetadata) GetAuthenticatedUser() server.AuthenticatedUser {
-	return req.AuthenticatedUser
-}
-
-func (req *RequestReplaceDeviceMetadata) SetClientIP(ip net.IP) {
-	if len(req.ClientIP) == 0 {
-		req.ClientIP = ip
-	}
-}
-
-func (req *RequestReplaceDeviceMetadata) GetClientIP() net.IP {
-	return req.ClientIP
-}
-
-func (req *RequestReplaceDeviceMetadata) Validate() *server.Response {
-	if req.AuthenticatedUser.ID != req.UserID {
-		return server.Forbidden(errors.Errorf("you can only replace the metadata for your own devices. d>%#v!=a>%v", req.DeviceID, req.AuthenticatedUser.ID))
-	}
-
-	return server.RequiredStrings(map[string]string{"userId": req.UserID, "deviceUniqueId": req.ID.DeviceUniqueID})
-}
-
-func (*RequestReplaceDeviceMetadata) Bindings(c *gin.Context) []func(obj interface{}) error {
-	return []func(obj interface{}) error{c.ShouldBindUri, c.ShouldBindJSON, server.ShouldBindClientIP(c), server.ShouldBindAuthenticatedUser(c)}
+	return server.OK[any](), nil
 }
 
 // ModifyDeviceSettings godoc
@@ -91,60 +57,48 @@ func (*RequestReplaceDeviceMetadata) Bindings(c *gin.Context) []func(obj interfa
 // @Tags        Devices
 // @Accept      json
 // @Produce     json
-// @Param       Authorization  header   string               true "Insert your access token" default(Bearer <Add access token here>)
-// @Param       userId         path     string               true "ID of the user"
-// @Param       deviceUniqueId path     string               true "ID of the device"
-// @Param       request        body     users.DeviceSettings true "Request params"
-// @Success     200            {object} users.DeviceSettings "updated result"
-// @Failure     400            {object} server.ErrorResponse "if validations fail"
-// @Failure     401            {object} server.ErrorResponse "if not authorized"
-// @Failure     403            {object} server.ErrorResponse "if not allowed"
-// @Failure     404            {object} server.ErrorResponse "if not found"
-// @Failure     422            {object} server.ErrorResponse "if syntax fails"
+// @Param       Authorization  header   string                  true "Insert your access token" default(Bearer <Add access token here>)
+// @Param       userId         path     string                  true "ID of the user"
+// @Param       deviceUniqueId path     string                  true "ID of the device"
+// @Param       request        body     ModifyDeviceSettingsArg true "Request params"
+// @Success     200            {object} users.DeviceSettings    "updated result"
+// @Failure     400            {object} server.ErrorResponse    "if validations fail"
+// @Failure     401            {object} server.ErrorResponse    "if not authorized"
+// @Failure     403            {object} server.ErrorResponse    "if not allowed"
+// @Failure     404            {object} server.ErrorResponse    "if not found"
+// @Failure     422            {object} server.ErrorResponse    "if syntax fails"
 // @Failure     500            {object} server.ErrorResponse
 // @Failure     504            {object} server.ErrorResponse "if request times out"
 // @Router      /users/{userId}/devices/{deviceUniqueId}/settings [PATCH].
-func (s *service) ModifyDeviceSettings(ctx context.Context, req *RequestModifyDeviceSettings) server.Response {
-	if err := s.usersProcessor.ModifyDeviceSettings(ctx, &req.DeviceSettings); err != nil {
-		err = errors.Wrapf(err, "failed to ModifyDeviceSettings for %#v", &req.DeviceSettings)
+func (s *service) ModifyDeviceSettings( //nolint:dupl,gocritic // That's intended.
+	ctx context.Context,
+	req *server.Request[ModifyDeviceSettingsArg, users.DeviceSettings],
+) (*server.Response[users.DeviceSettings], *server.Response[server.ErrorResponse]) {
+	if req.Data.NotificationSettings == nil &&
+		req.Data.Language == nil &&
+		req.Data.DisableAllNotifications == nil {
+		return nil, server.UnprocessableEntity(errors.New("no properties provided for update"), invalidPropertiesErrorCode)
+	}
+	ds := &users.DeviceSettings{
+		NotificationSettings:    req.Data.NotificationSettings,
+		Language:                req.Data.Language,
+		DisableAllNotifications: req.Data.DisableAllNotifications,
+		ID: users.DeviceID{
+			UserID:         req.Data.UserID,
+			DeviceUniqueID: req.Data.DeviceUniqueID,
+		},
+	}
+	if err := s.usersProcessor.ModifyDeviceSettings(ctx, ds); err != nil {
+		err = errors.Wrapf(err, "failed to ModifyDeviceSettings for %#v", req.Data)
 		switch {
 		case errors.Is(err, users.ErrNotFound):
-			return *server.NotFound(err, deviceSettingsNotFoundErrorCode)
+			return nil, server.NotFound(err, deviceSettingsNotFoundErrorCode)
 		default:
-			return server.Unexpected(err)
+			return nil, server.Unexpected(err)
 		}
 	}
 
-	return server.OK(&req.DeviceSettings)
-}
-
-func newRequestModifyDeviceSettings() *RequestModifyDeviceSettings {
-	return new(RequestModifyDeviceSettings)
-}
-
-func (req *RequestModifyDeviceSettings) SetAuthenticatedUser(user server.AuthenticatedUser) {
-	if req.AuthenticatedUser.ID == "" {
-		req.AuthenticatedUser = user
-	}
-}
-
-func (req *RequestModifyDeviceSettings) GetAuthenticatedUser() server.AuthenticatedUser {
-	return req.AuthenticatedUser
-}
-
-func (req *RequestModifyDeviceSettings) Validate() *server.Response {
-	if req.AuthenticatedUser.ID != req.UserID {
-		return server.Forbidden(errors.Errorf("you can only modify the settings for your own devices. d>%#v!=a>%v", req.ID, req.AuthenticatedUser.ID))
-	}
-	if req.NotificationSettings == nil && req.Language == nil && req.DisableAllNotifications == nil {
-		return server.BadRequest(errors.New("no properties provided for update"), invalidPropertiesErrorCode)
-	}
-
-	return server.RequiredStrings(map[string]string{"userId": req.UserID, "deviceUniqueId": req.ID.DeviceUniqueID})
-}
-
-func (*RequestModifyDeviceSettings) Bindings(c *gin.Context) []func(obj interface{}) error {
-	return []func(obj interface{}) error{c.ShouldBindUri, c.ShouldBindJSON, server.ShouldBindAuthenticatedUser(c)}
+	return server.OK(ds), nil
 }
 
 // CreateDeviceSettings godoc
@@ -153,60 +107,48 @@ func (*RequestModifyDeviceSettings) Bindings(c *gin.Context) []func(obj interfac
 // @Tags        Devices
 // @Accept      json
 // @Produce     json
-// @Param       Authorization  header   string               true "Insert your access token" default(Bearer <Add access token here>)
-// @Param       userId         path     string               true "ID of the user"
-// @Param       deviceUniqueId path     string               true "ID of the device"
-// @Param       request        body     users.DeviceSettings true "Request params"
-// @Success     201            {object} users.DeviceSettings "created result"
-// @Failure     400            {object} server.ErrorResponse "if validations fail"
-// @Failure     401            {object} server.ErrorResponse "if not authorized"
-// @Failure     403            {object} server.ErrorResponse "if not allowed"
-// @Failure     409            {object} server.ErrorResponse "if already exists"
-// @Failure     422            {object} server.ErrorResponse "if syntax fails"
+// @Param       Authorization  header   string                  true "Insert your access token" default(Bearer <Add access token here>)
+// @Param       userId         path     string                  true "ID of the user"
+// @Param       deviceUniqueId path     string                  true "ID of the device"
+// @Param       request        body     CreateDeviceSettingsArg true "Request params"
+// @Success     201            {object} users.DeviceSettings    "created result"
+// @Failure     400            {object} server.ErrorResponse    "if validations fail"
+// @Failure     401            {object} server.ErrorResponse    "if not authorized"
+// @Failure     403            {object} server.ErrorResponse    "if not allowed"
+// @Failure     409            {object} server.ErrorResponse    "if already exists"
+// @Failure     422            {object} server.ErrorResponse    "if syntax fails"
 // @Failure     500            {object} server.ErrorResponse
 // @Failure     504            {object} server.ErrorResponse "if request times out"
 // @Router      /users/{userId}/devices/{deviceUniqueId}/settings [POST].
-func (s *service) CreateDeviceSettings(ctx context.Context, req *RequestCreateDeviceSettings) server.Response {
-	if err := s.usersProcessor.CreateDeviceSettings(ctx, &req.DeviceSettings); err != nil {
-		err = errors.Wrapf(err, "failed to CreateDeviceSettings for %#v", &req.DeviceSettings)
+func (s *service) CreateDeviceSettings( //nolint:dupl,gocritic // That's intended.
+	ctx context.Context,
+	req *server.Request[CreateDeviceSettingsArg, users.DeviceSettings],
+) (*server.Response[users.DeviceSettings], *server.Response[server.ErrorResponse]) {
+	if req.Data.NotificationSettings == nil &&
+		req.Data.Language == nil &&
+		req.Data.DisableAllNotifications == nil {
+		return nil, server.UnprocessableEntity(errors.New("no properties provided for update"), invalidPropertiesErrorCode)
+	}
+	ds := &users.DeviceSettings{
+		NotificationSettings:    req.Data.NotificationSettings,
+		Language:                req.Data.Language,
+		DisableAllNotifications: req.Data.DisableAllNotifications,
+		ID: users.DeviceID{
+			UserID:         req.Data.UserID,
+			DeviceUniqueID: req.Data.DeviceUniqueID,
+		},
+	}
+	if err := s.usersProcessor.CreateDeviceSettings(ctx, ds); err != nil {
+		err = errors.Wrapf(err, "failed to CreateDeviceSettings for %#v", req.Data)
 		switch {
 		case errors.Is(err, users.ErrDuplicate):
-			return *server.Conflict(err, deviceSettingsAlreadyExistsErrorCode)
+			return nil, server.Conflict(err, deviceSettingsAlreadyExistsErrorCode)
 		default:
-			return server.Unexpected(err)
+			return nil, server.Unexpected(err)
 		}
 	}
 
-	return server.Created(&req.DeviceSettings)
-}
-
-func newRequestCreateDeviceSettings() *RequestCreateDeviceSettings {
-	return new(RequestCreateDeviceSettings)
-}
-
-func (req *RequestCreateDeviceSettings) SetAuthenticatedUser(user server.AuthenticatedUser) {
-	if req.AuthenticatedUser.ID == "" {
-		req.AuthenticatedUser = user
-	}
-}
-
-func (req *RequestCreateDeviceSettings) GetAuthenticatedUser() server.AuthenticatedUser {
-	return req.AuthenticatedUser
-}
-
-func (req *RequestCreateDeviceSettings) Validate() *server.Response {
-	if req.AuthenticatedUser.ID != req.UserID {
-		return server.Forbidden(errors.Errorf("you can only create the settings for your own devices. d>%#v!=a>%v", req.ID, req.AuthenticatedUser.ID))
-	}
-	if req.NotificationSettings == nil && req.Language == nil && req.DisableAllNotifications == nil {
-		return server.BadRequest(errors.New("no properties provided for update"), invalidPropertiesErrorCode)
-	}
-
-	return server.RequiredStrings(map[string]string{"userId": req.UserID, "deviceUniqueId": req.ID.DeviceUniqueID})
-}
-
-func (*RequestCreateDeviceSettings) Bindings(c *gin.Context) []func(obj interface{}) error {
-	return []func(obj interface{}) error{c.ShouldBindUri, c.ShouldBindJSON, server.ShouldBindAuthenticatedUser(c)}
+	return server.Created(ds), nil
 }
 
 // GetDeviceLocation godoc
@@ -217,7 +159,7 @@ func (*RequestCreateDeviceSettings) Bindings(c *gin.Context) []func(obj interfac
 // @Produce     json
 // @Param       Authorization  header   string false "Insert your access token. Required only if userId is set" default(Bearer <Add access token here>)
 // @Param       userId         path     string true  "ID of the user. Is optional, set an `-` if none."
-// @Param       deviceUniqueId path     string true  "ID of the device"
+// @Param       deviceUniqueId path     string true  "ID of the device. Is optional, set an `-` if none."
 // @Success     200            {object} users.DeviceLocation
 // @Failure     400            {object} server.ErrorResponse "if validations fail"
 // @Failure     401            {object} server.ErrorResponse "if not authenticated"
@@ -226,51 +168,17 @@ func (*RequestCreateDeviceSettings) Bindings(c *gin.Context) []func(obj interfac
 // @Failure     500            {object} server.ErrorResponse
 // @Failure     504            {object} server.ErrorResponse "if request times out"
 // @Router      /users/{userId}/devices/{deviceUniqueId}/metadata/location [PUT].
-func (s *service) GetDeviceLocation(ctx context.Context, req *RequestGetDeviceLocation) server.Response {
-	return server.OK(s.usersProcessor.GetDeviceMetadataLocation(ctx, &req.GetDeviceMetadataLocationArg))
-}
-
-func newRequestGetDeviceLocation() *RequestGetDeviceLocation {
-	return new(RequestGetDeviceLocation)
-}
-
-func (req *RequestGetDeviceLocation) SetAuthenticatedUser(user server.AuthenticatedUser) {
-	if req.AuthenticatedUser.ID == "" {
-		req.AuthenticatedUser = user
+func (s *service) GetDeviceLocation( //nolint:gocritic // False negative.
+	ctx context.Context,
+	req *server.Request[GetDeviceLocationArg, users.DeviceLocation],
+) (*server.Response[users.DeviceLocation], *server.Response[server.ErrorResponse]) {
+	if req.Data.UserID == "-" {
+		req.Data.UserID = ""
 	}
-}
-
-func (req *RequestGetDeviceLocation) GetAuthenticatedUser() server.AuthenticatedUser {
-	return req.AuthenticatedUser
-}
-
-func (*RequestGetDeviceLocation) ShouldAuthenticateUser(ginCtx *gin.Context) bool {
-	userID := strings.Trim(ginCtx.Param("userId"), " ")
-
-	return userID != "" && userID != "-"
-}
-
-func (req *RequestGetDeviceLocation) SetClientIP(ip net.IP) {
-	if len(req.ClientIP) == 0 {
-		req.ClientIP = ip
+	if req.Data.DeviceUniqueID == "-" {
+		req.Data.DeviceUniqueID = ""
 	}
-}
+	deviceID := users.DeviceID{UserID: req.Data.UserID, DeviceUniqueID: req.Data.DeviceUniqueID}
 
-func (req *RequestGetDeviceLocation) GetClientIP() net.IP {
-	return req.ClientIP
-}
-
-func (req *RequestGetDeviceLocation) Validate() *server.Response {
-	if req.UserID == "-" {
-		req.UserID = ""
-	}
-	if req.AuthenticatedUser.ID != req.UserID {
-		return server.Forbidden(errors.Errorf("you can get device location only for your devices. u>%v!=a>%v", req.UserID, req.AuthenticatedUser.ID))
-	}
-
-	return server.RequiredStrings(map[string]string{"deviceUniqueId": req.ID.DeviceUniqueID})
-}
-
-func (*RequestGetDeviceLocation) Bindings(c *gin.Context) []func(obj interface{}) error {
-	return []func(obj interface{}) error{c.ShouldBindUri, server.ShouldBindAuthenticatedUser(c), server.ShouldBindClientIP(c)}
+	return server.OK(s.usersProcessor.GetDeviceMetadataLocation(ctx, deviceID, req.ClientIP)), nil
 }

@@ -5,7 +5,6 @@ package main
 import (
 	"context"
 
-	"github.com/gin-gonic/gin"
 	"github.com/pkg/errors"
 
 	"github.com/ice-blockchain/eskimo/cmd/eskimo/api"
@@ -35,11 +34,11 @@ func main() {
 	srv.ListenAndServe(ctx, cancel)
 }
 
-func (s *service) RegisterRoutes(engine *gin.Engine) {
-	s.setupUserRoutes(engine)
-	s.setupUserReferralRoutes(engine)
-	s.setupUserStatisticsRoutes(engine)
-	s.setupDevicesRoutes(engine)
+func (s *service) RegisterRoutes(router *server.Router) {
+	s.setupUserRoutes(router)
+	s.setupUserReferralRoutes(router)
+	s.setupUserStatisticsRoutes(router)
+	s.setupDevicesRoutes(router)
 }
 
 func (s *service) Init(ctx context.Context, cancel context.CancelFunc) {
@@ -54,11 +53,9 @@ func (s *service) Close(ctx context.Context) error {
 	return errors.Wrap(s.usersRepository.Close(), "could not close repository")
 }
 
-func (s *service) CheckHealth(ctx context.Context, req *server.RequestCheckHealth) server.Response {
+func (s *service) CheckHealth(ctx context.Context) error {
 	log.Debug("checking health...", "package", "users")
-	if _, err := s.usersRepository.GetTopCountries(ctx, &users.GetTopCountriesArg{Limit: 1}); err != nil {
-		return server.Unexpected(err)
-	}
+	_, err := s.usersRepository.GetTopCountries(ctx, "", 1, 0)
 
-	return server.OK(req)
+	return errors.Wrapf(err, "get top countries failed")
 }

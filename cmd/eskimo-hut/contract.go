@@ -4,47 +4,88 @@ package main
 
 import (
 	_ "embed"
+	"mime/multipart"
 
 	"github.com/ice-blockchain/eskimo/users"
-	"github.com/ice-blockchain/wintr/server"
 )
 
 // Public API.
 
 type (
-	RequestCreateUser struct {
-		AuthenticatedUser server.AuthenticatedUser `json:"-" swaggerignore:"true"`
-		users.CreateUserArg
+	CreateUserArg struct {
+		// Optional.
+		ReferredBy string `json:"referredBy" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
+		Username   string `json:"username" required:"true" example:"jdoe"`
+		// Optional.
+		PhoneNumber string `json:"phoneNumber" example:"+12099216581"`
+		// Optional. Required only if `phoneNumber` is set.
+		PhoneNumberHash string `json:"phoneNumberHash" example:"Ef86A6021afCDe5673511376B2"`
+		// Optional.
+		Email string `json:"email" example:"jdoe@gmail.com"`
+	} // @name CreateUserRequestBody  //nolint:godot // It's handled by swaggo.
+	ModifyUserArg struct {
+		UserID string `uri:"userId" swaggerignore:"true" required:"true" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
+		// Optional.
+		ProfilePicture *multipart.FileHeader `form:"profilePicture" formMultipart:"profilePicture" swaggerignore:"true"`
+		// Optional. Example:`US`.
+		Country string `form:"country" formMultipart:"country"`
+		// Optional. Example:`New York`.
+		City string `form:"city" formMultipart:"city"`
+		// Optional. Example:`jdoe`.
+		Username string `form:"username" formMultipart:"username"`
+		// Optional. Required only if `lastName` is set. Example:`John`.
+		FirstName string `form:"firstName" formMultipart:"firstName"`
+		// Optional. Required only if `firstName` is set. Example:`Doe`.
+		LastName string `form:"lastName" formMultipart:"lastName"`
+		// Optional. Example:`+12099216581`.
+		PhoneNumber string `form:"phoneNumber" formMultipart:"phoneNumber"`
+		// Optional. Required only if `phoneNumber` is set. Example:`Ef86A6021afCDe5673511376B2`.
+		PhoneNumberHash string `form:"phoneNumberHash" formMultipart:"phoneNumberHash"`
+		// Optional. Example:`jdoe@gmail.com`.
+		Email string `form:"email" formMultipart:"email"`
+		// Optional. Example:`Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2`.
+		AgendaPhoneNumberHashes string `form:"agendaPhoneNumberHashes" formMultipart:"agendaPhoneNumberHashes"`
+	} // @name ModifyUserRequestBody  //nolint:godot // It's handled by swaggo.
+	DeleteUserArg struct {
+		UserID string `uri:"userId" required:"true" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
 	}
-	RequestModifyUser struct {
-		AuthenticatedUser server.AuthenticatedUser `json:"-" swaggerignore:"true"`
-		UserID            users.UserID             `uri:"userId" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
-		users.ModifyUserArg
+	ValidatePhoneNumberArg struct {
+		UserID          string `uri:"userId" swaggerignore:"true" required:"true" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
+		PhoneNumber     string `json:"phoneNumber" required:"true" example:"+12345678"`
+		PhoneNumberHash string `json:"phoneNumberHash" required:"true" example:"Ef86A6021afCDe5673511376B2"`
+		ValidationCode  string `json:"validationCode" required:"true" example:"1234"`
+	} // @name ValidatePhoneNumberRequestBody  //nolint:godot // It's handled by swaggo.
+	GetDeviceLocationArg struct {
+		// Optional. Set it to `-` if unknown.
+		UserID string `uri:"userId" required:"true" allowUnauthorized:"true" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
+		// Optional. Set it to `-` if unknown.
+		DeviceUniqueID string `uri:"deviceUniqueId" required:"true" example:"FCDBD8EF-62FC-4ECB-B2F5-92C9E79AC7F9"`
 	}
-	RequestDeleteUser struct {
-		AuthenticatedUser server.AuthenticatedUser `json:"-" swaggerignore:"true"`
-		UserID            string                   `uri:"userId" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
-	}
-	RequestValidatePhoneNumber struct {
-		AuthenticatedUser server.AuthenticatedUser `json:"-" swaggerignore:"true"`
-		users.PhoneNumberValidation
-	}
-	RequestGetDeviceLocation struct {
-		AuthenticatedUser server.AuthenticatedUser `json:"-" swaggerignore:"true"`
-		users.GetDeviceMetadataLocationArg
-	}
-	RequestModifyDeviceSettings struct {
-		AuthenticatedUser server.AuthenticatedUser `json:"-" swaggerignore:"true"`
-		users.DeviceSettings
-	}
-	RequestCreateDeviceSettings struct {
-		AuthenticatedUser server.AuthenticatedUser `json:"-" swaggerignore:"true"`
-		users.DeviceSettings
-	}
-	RequestReplaceDeviceMetadata struct {
-		AuthenticatedUser server.AuthenticatedUser `json:"-" swaggerignore:"true"`
-		users.ReplaceDeviceMetadataArg
-	}
+	ModifyDeviceSettingsArg struct {
+		// Optional.
+		NotificationSettings *users.NotificationSettings `json:"notificationSettings"`
+		// Optional.
+		Language *string `json:"language" example:"en"`
+		// Optional.
+		DisableAllNotifications *bool  `json:"disableAllNotifications" example:"true"`
+		UserID                  string `uri:"userId" required:"true" swaggerignore:"true" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
+		DeviceUniqueID          string `uri:"deviceUniqueId" required:"true" swaggerignore:"true" example:"FCDBD8EF-62FC-4ECB-B2F5-92C9E79AC7F9"`
+	} // @name ModifyDeviceSettingsRequestBody  //nolint:godot // It's handled by swaggo.
+	CreateDeviceSettingsArg struct {
+		// Optional.
+		NotificationSettings *users.NotificationSettings `json:"notificationSettings"`
+		// Optional.
+		Language *string `json:"language" example:"en"`
+		// Optional.
+		DisableAllNotifications *bool  `json:"disableAllNotifications" example:"true"`
+		UserID                  string `uri:"userId" required:"true" swaggerignore:"true" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
+		DeviceUniqueID          string `uri:"deviceUniqueId" required:"true" swaggerignore:"true" example:"FCDBD8EF-62FC-4ECB-B2F5-92C9E79AC7F9"`
+	} // @name CreateDeviceSettingsRequestBody  //nolint:godot // It's handled by swaggo.
+	ReplaceDeviceMetadataArg struct {
+		UserID         string `uri:"userId" required:"true" swaggerignore:"true" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
+		DeviceUniqueID string `uri:"deviceUniqueId" required:"true" swaggerignore:"true" example:"FCDBD8EF-62FC-4ECB-B2F5-92C9E79AC7F9"`
+		users.DeviceMetadata
+	} // @name ReplaceDeviceMetadataRequestBody  //nolint:godot // It's handled by swaggo.
 )
 
 // Private API.
@@ -70,8 +111,9 @@ const (
 	deviceSettingsAlreadyExistsErrorCode = "DEVICE_SETTINGS_ALREADY_EXISTS"
 )
 
-//nolint:gochecknoglobals // Because they're loaded once, at runtime.
+//
 var (
+	//nolint:gochecknoglobals // Because its loaded once, at runtime.
 	cfg config
 )
 

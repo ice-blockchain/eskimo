@@ -5,6 +5,7 @@ package users
 import (
 	"context"
 	"fmt"
+	"net"
 
 	"github.com/pkg/errors"
 	"github.com/zeebo/xxh3"
@@ -17,13 +18,12 @@ import (
 )
 
 //nolint:funlen,lll // A lot of SQL params.
-func (r *repository) CreateUser(ctx context.Context, arg *CreateUserArg) error {
+func (r *repository) CreateUser(ctx context.Context, usr *User, clientIP net.IP) error {
 	if ctx.Err() != nil {
 		return errors.Wrap(ctx.Err(), "create user failed because context failed")
 	}
-	r.setCreateUserDefaults(ctx, arg)
+	r.setCreateUserDefaults(ctx, usr, clientIP)
 	var referral UserID
-	usr := &arg.User
 	if usr.ReferredBy != "" {
 		referral = ":referredBy"
 	} else {
@@ -55,23 +55,23 @@ func (r *repository) CreateUser(ctx context.Context, arg *CreateUserArg) error {
 	if err := storage.CheckSQLDMLErr(r.db.PrepareExecute(sql, params)); err != nil {
 		field, tErr := detectAndParseDuplicateDatabaseError(err)
 		if field == hashCodeDBColumnName {
-			return r.CreateUser(ctx, arg)
+			return r.CreateUser(ctx, usr, clientIP)
 		}
 
 		return errors.Wrapf(tErr, "failed to insert user %#v", usr)
 	}
-	usr.ProfilePictureURL = fmt.Sprintf("%v/%v", cfg.PictureStorage.URLDownload, usr.ProfilePictureURL)
+	usr.setCorrectProfilePictureURL()
 
 	return errors.Wrapf(r.sendUserSnapshotMessage(ctx, &UserSnapshot{User: usr, Before: nil}),
 		"failed to send user created message for %#v", usr)
 }
 
-func (r *repository) setCreateUserDefaults(ctx context.Context, arg *CreateUserArg) {
-	arg.User.CreatedAt = time.Now()
-	arg.User.UpdatedAt = arg.User.CreatedAt
-	arg.User.DeviceLocation = *r.GetDeviceMetadataLocation(ctx, &GetDeviceMetadataLocationArg{ID: device.ID{UserID: arg.User.ID}, ClientIP: arg.ClientIP})
-	arg.User.HashCode = xxh3.HashStringSeed(arg.User.ID, uint64(arg.User.CreatedAt.UnixNano()))
-	arg.User.ProfilePictureURL = defaultUserImage
+func (r *repository) setCreateUserDefaults(ctx context.Context, usr *User, clientIP net.IP) {
+	usr.CreatedAt = time.Now()
+	usr.UpdatedAt = usr.CreatedAt
+	usr.DeviceLocation = *r.GetDeviceMetadataLocation(ctx, device.ID{UserID: usr.ID}, clientIP)
+	usr.HashCode = xxh3.HashStringSeed(usr.ID, uint64(usr.CreatedAt.UnixNano()))
+	usr.ProfilePictureURL = defaultUserImage
 }
 
 func detectAndParseDuplicateDatabaseError(err error) (field string, newErr error) {

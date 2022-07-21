@@ -148,22 +148,26 @@ func (r *repository) ValidatePhoneNumber(ctx context.Context, conf *PhoneNumberV
 }
 
 func (r *repository) modifyPhoneNumber(ctx context.Context, conf *PhoneNumberValidation) error {
-	arg := new(ModifyUserArg)
-	arg.User.ID = conf.UserID
-	arg.User.PhoneNumberHash = conf.PhoneNumberHash
-	arg.confirmedPhoneNumber = conf.PhoneNumber
-	if err := r.ModifyUser(ctx, arg); err != nil {
+	usr := &User{
+		PhoneNumberHash: conf.PhoneNumberHash,
+		PublicUserInformation: PublicUserInformation{
+			ID:          conf.UserID,
+			PhoneNumber: conf.PhoneNumber,
+		},
+	}
+	//nolint:nolintlint // Its gonna come back.
+	if err := r.ModifyUser(context.WithValue(ctx, isPhoneNumberConfirmedCtxValueKey, true), usr, nil); err != nil { //nolint:revive,staticcheck // .
 		if errors.Is(err, ErrNotFound) {
 			err = ErrRelationNotFound
 		}
 
-		return errors.Wrapf(err, "error modifying phone number in users for userID:%v", arg.User.ID)
+		return errors.Wrapf(err, "error modifying phone number in users for userID:%v", usr.ID)
 	}
 	confirm := new(PhoneNumberValidation)
-	confirm.UserID = arg.User.ID
+	confirm.UserID = usr.ID
 	confirm.PhoneNumber = conf.PhoneNumber
 	confirm.PhoneNumberHash = conf.PhoneNumberHash
-	confirm.ValidationCode = arg.User.ID
+	confirm.ValidationCode = usr.ID
 
 	return errors.Wrapf(r.replacePhoneValidation(ctx, confirm), "error updating phone number validation for userID:%v", conf.UserID)
 }
@@ -179,7 +183,8 @@ func (r *repository) getPhoneNumberValidation(ctx context.Context, id UserID) (*
 }
 
 func (r *repository) triggerNewPhoneNumberValidation(ctx context.Context, newUser, oldUser *User) error {
-	if newUser.PhoneNumber == "" || newUser.PhoneNumber == oldUser.PhoneNumber {
+	isPhoneNumberConfirmed, ok := ctx.Value(isPhoneNumberConfirmedCtxValueKey).(bool)
+	if (ok && isPhoneNumberConfirmed) || newUser.PhoneNumber == "" || newUser.PhoneNumber == oldUser.PhoneNumber {
 		return nil
 	}
 

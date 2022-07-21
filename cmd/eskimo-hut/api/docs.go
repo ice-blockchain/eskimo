@@ -288,55 +288,55 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "Optional. Example:\"Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2\".",
+                        "description": "Optional. Example:` + "`" + `Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2` + "`" + `.",
                         "name": "agendaPhoneNumberHashes",
                         "in": "formData"
                     },
                     {
                         "type": "string",
-                        "description": "Optional. Example:\"New York\".",
+                        "description": "Optional. Example:` + "`" + `New York` + "`" + `.",
                         "name": "city",
                         "in": "formData"
                     },
                     {
                         "type": "string",
-                        "description": "Optional. Example:\"US\".",
+                        "description": "Optional. Example:` + "`" + `US` + "`" + `.",
                         "name": "country",
                         "in": "formData"
                     },
                     {
                         "type": "string",
-                        "description": "Optional. Example:\"jdoe@gmail.com\".",
+                        "description": "Optional. Example:` + "`" + `jdoe@gmail.com` + "`" + `.",
                         "name": "email",
                         "in": "formData"
                     },
                     {
                         "type": "string",
-                        "description": "Optional. Required only if ` + "`" + `lastName` + "`" + ` is set. Example:\"John\".",
+                        "description": "Optional. Required only if ` + "`" + `lastName` + "`" + ` is set. Example:` + "`" + `John` + "`" + `.",
                         "name": "firstName",
                         "in": "formData"
                     },
                     {
                         "type": "string",
-                        "description": "Optional. Required only if ` + "`" + `firstName` + "`" + ` is set.  Example:\"Doe\".",
+                        "description": "Optional. Required only if ` + "`" + `firstName` + "`" + ` is set. Example:` + "`" + `Doe` + "`" + `.",
                         "name": "lastName",
                         "in": "formData"
                     },
                     {
                         "type": "string",
-                        "description": "Optional. Example:\"+12099216581\".",
+                        "description": "Optional. Example:` + "`" + `+12099216581` + "`" + `.",
                         "name": "phoneNumber",
                         "in": "formData"
                     },
                     {
                         "type": "string",
-                        "description": "Optional. Required only if ` + "`" + `phoneNumber` + "`" + ` is set. Example:\"Ef86A6021afCDe5673511376B2\".",
+                        "description": "Optional. Required only if ` + "`" + `phoneNumber` + "`" + ` is set. Example:` + "`" + `Ef86A6021afCDe5673511376B2` + "`" + `.",
                         "name": "phoneNumberHash",
                         "in": "formData"
                     },
                     {
                         "type": "string",
-                        "description": "Example:\"jdoe\".",
+                        "description": "Optional. Example:` + "`" + `jdoe` + "`" + `.",
                         "name": "username",
                         "in": "formData"
                     },
@@ -446,7 +446,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/users.DeviceMetadata"
+                            "$ref": "#/definitions/ReplaceDeviceMetadataRequestBody"
                         }
                     }
                 ],
@@ -522,7 +522,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "ID of the device",
+                        "description": "ID of the device. Is optional, set an ` + "`" + `-` + "`" + ` if none.",
                         "name": "deviceUniqueId",
                         "in": "path",
                         "required": true
@@ -615,7 +615,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/users.DeviceSettings"
+                            "$ref": "#/definitions/CreateDeviceSettingsRequestBody"
                         }
                     }
                 ],
@@ -710,7 +710,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/users.DeviceSettings"
+                            "$ref": "#/definitions/ModifyDeviceSettingsRequestBody"
                         }
                     }
                 ],
@@ -768,6 +768,25 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "CreateDeviceSettingsRequestBody": {
+            "type": "object",
+            "properties": {
+                "disableAllNotifications": {
+                    "description": "Optional.",
+                    "type": "boolean",
+                    "example": true
+                },
+                "language": {
+                    "description": "Optional.",
+                    "type": "string",
+                    "example": "en"
+                },
+                "notificationSettings": {
+                    "description": "Optional.",
+                    "$ref": "#/definitions/users.NotificationSettings"
+                }
+            }
+        },
         "CreateUserRequestBody": {
             "type": "object",
             "properties": {
@@ -782,7 +801,7 @@ const docTemplate = `{
                     "example": "+12099216581"
                 },
                 "phoneNumberHash": {
-                    "description": "Optional. Required only if ` + "`" + `phoneNumber` + "`" + ` is set. Example:\"Ef86A6021afCDe5673511376B2\".",
+                    "description": "Optional. Required only if ` + "`" + `phoneNumber` + "`" + ` is set.",
                     "type": "string",
                     "example": "Ef86A6021afCDe5673511376B2"
                 },
@@ -797,90 +816,26 @@ const docTemplate = `{
                 }
             }
         },
-        "ValidatePhoneNumberRequestBody": {
+        "ModifyDeviceSettingsRequestBody": {
             "type": "object",
             "properties": {
-                "createdAt": {
-                    "description": "` + "`" + `Read Only` + "`" + `.",
-                    "type": "string",
-                    "example": "2022-01-03T16:20:52.156534Z"
-                },
-                "phoneNumber": {
-                    "type": "string",
-                    "example": "+12345678"
-                },
-                "phoneNumberHash": {
-                    "type": "string",
-                    "example": "Ef86A6021afCDe5673511376B2"
-                },
-                "userId": {
-                    "type": "string",
-                    "example": "did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"
-                },
-                "validationCode": {
-                    "type": "string",
-                    "example": "1234"
-                }
-            }
-        },
-        "devicesettings.NotificationChannels": {
-            "type": "object",
-            "properties": {
-                "email": {
-                    "type": "boolean",
-                    "example": false
-                },
-                "inApp": {
-                    "type": "boolean",
-                    "example": false
-                },
-                "push": {
+                "disableAllNotifications": {
+                    "description": "Optional.",
                     "type": "boolean",
                     "example": true
                 },
-                "sms": {
-                    "type": "boolean",
-                    "example": false
+                "language": {
+                    "description": "Optional.",
+                    "type": "string",
+                    "example": "en"
+                },
+                "notificationSettings": {
+                    "description": "Optional.",
+                    "$ref": "#/definitions/users.NotificationSettings"
                 }
             }
         },
-        "devicesettings.NotificationSettings": {
-            "type": "object",
-            "additionalProperties": {
-                "$ref": "#/definitions/devicesettings.NotificationChannels"
-            }
-        },
-        "server.ErrorResponse": {
-            "type": "object",
-            "properties": {
-                "code": {
-                    "type": "string",
-                    "example": "SOMETHING_NOT_FOUND"
-                },
-                "data": {
-                    "type": "object",
-                    "additionalProperties": true
-                },
-                "error": {
-                    "type": "string",
-                    "example": "something is missing"
-                }
-            }
-        },
-        "users.DeviceLocation": {
-            "type": "object",
-            "properties": {
-                "city": {
-                    "type": "string",
-                    "example": "New York"
-                },
-                "country": {
-                    "type": "string",
-                    "example": "US"
-                }
-            }
-        },
-        "users.DeviceMetadata": {
+        "ReplaceDeviceMetadataRequestBody": {
             "type": "object",
             "properties": {
                 "apiLevel": {
@@ -980,6 +935,80 @@ const docTemplate = `{
                 }
             }
         },
+        "ValidatePhoneNumberRequestBody": {
+            "type": "object",
+            "properties": {
+                "phoneNumber": {
+                    "type": "string",
+                    "example": "+12345678"
+                },
+                "phoneNumberHash": {
+                    "type": "string",
+                    "example": "Ef86A6021afCDe5673511376B2"
+                },
+                "validationCode": {
+                    "type": "string",
+                    "example": "1234"
+                }
+            }
+        },
+        "devicesettings.NotificationChannels": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "boolean",
+                    "example": false
+                },
+                "inApp": {
+                    "type": "boolean",
+                    "example": false
+                },
+                "push": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "sms": {
+                    "type": "boolean",
+                    "example": false
+                }
+            }
+        },
+        "devicesettings.NotificationSettings": {
+            "type": "object",
+            "additionalProperties": {
+                "$ref": "#/definitions/devicesettings.NotificationChannels"
+            }
+        },
+        "server.ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string",
+                    "example": "SOMETHING_NOT_FOUND"
+                },
+                "data": {
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "error": {
+                    "type": "string",
+                    "example": "something is missing"
+                }
+            }
+        },
+        "users.DeviceLocation": {
+            "type": "object",
+            "properties": {
+                "city": {
+                    "type": "string",
+                    "example": "New York"
+                },
+                "country": {
+                    "type": "string",
+                    "example": "US"
+                }
+            }
+        },
         "users.DeviceSettings": {
             "type": "object",
             "properties": {
@@ -1012,6 +1041,12 @@ const docTemplate = `{
                 }
             }
         },
+        "users.NotificationSettings": {
+            "type": "object",
+            "additionalProperties": {
+                "$ref": "#/definitions/devicesettings.NotificationChannels"
+            }
+        },
         "users.User": {
             "type": "object",
             "properties": {
@@ -1040,7 +1075,6 @@ const docTemplate = `{
                     "example": "John"
                 },
                 "id": {
-                    "description": "Optional.",
                     "type": "string",
                     "example": "did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"
                 },
@@ -1069,7 +1103,6 @@ const docTemplate = `{
                     "example": "https://somecdn.com/p1.jpg"
                 },
                 "referredBy": {
-                    "description": "Optional.",
                     "type": "string",
                     "example": "did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"
                 },
