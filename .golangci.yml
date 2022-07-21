@@ -497,6 +497,7 @@ linters-settings:
 
 linters:
   disable:
+    - gomoddirectives
     # The following we don't need at all, ever, in any scenario.
     - importas
     - durationcheck
