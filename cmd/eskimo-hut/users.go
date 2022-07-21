@@ -4,11 +4,8 @@ package main
 
 import (
 	"context"
-	"net"
 	"strings"
 
-	"github.com/gin-gonic/gin"
-	"github.com/gin-gonic/gin/binding"
 	"github.com/pkg/errors"
 
 	"github.com/ice-blockchain/eskimo/users"
@@ -16,12 +13,12 @@ import (
 	"github.com/ice-blockchain/wintr/terror"
 )
 
-func (s *service) setupUserRoutes(router *gin.Engine) {
+func (s *service) setupUserRoutes(router *server.Router) {
 	router.
 		Group("v1w").
-		POST("users", server.RootHandler(newRequestCreateUser, s.CreateUser)).
-		PATCH("users/:userId", server.RootHandler(newRequestModifyUser, s.ModifyUser)).
-		DELETE("users/:userId", server.RootHandler(newRequestDeleteUser, s.DeleteUser))
+		POST("users", server.RootHandler(s.CreateUser)).
+		PATCH("users/:userId", server.RootHandler(s.ModifyUser)).
+		DELETE("users/:userId", server.RootHandler(s.DeleteUser))
 }
 
 // CreateUser godoc
@@ -30,8 +27,8 @@ func (s *service) setupUserRoutes(router *gin.Engine) {
 // @Tags        Accounts
 // @Accept      json
 // @Produce     json
-// @Param       Authorization header   string              true "Insert your access token" default(Bearer <Add access token here>)
-// @Param       request       body     users.CreateUserArg true "Request params"
+// @Param       Authorization header   string        true "Insert your access token" default(Bearer <Add access token here>)
+// @Param       request       body     CreateUserArg true "Request params"
 // @Success     201           {object} users.User
 // @Failure     400           {object} server.ErrorResponse "if validations fail"
 // @Failure     401           {object} server.ErrorResponse "if not authorized"
@@ -40,82 +37,43 @@ func (s *service) setupUserRoutes(router *gin.Engine) {
 // @Failure     500           {object} server.ErrorResponse
 // @Failure     504           {object} server.ErrorResponse "if request times out"
 // @Router      /users [POST].
-func (s *service) CreateUser(ctx context.Context, req *RequestCreateUser) server.Response {
-	if err := s.usersProcessor.CreateUser(ctx, &req.CreateUserArg); err != nil {
-		err = errors.Wrapf(err, "failed to create user %#v", req.User)
+func (s *service) CreateUser( //nolint:funlen,gocritic // .
+	ctx context.Context,
+	req *server.Request[CreateUserArg, users.User],
+) (*server.Response[users.User], *server.Response[server.ErrorResponse]) {
+	if err := verifyPhoneNumberAndUsername(req.Data.PhoneNumber, req.Data.PhoneNumberHash, req.Data.Username); err != nil {
+		return nil, err
+	}
+	if strings.EqualFold(req.AuthenticatedUser.ID, req.Data.ReferredBy) {
+		return nil, server.UnprocessableEntity(errors.New("you cannot use yourself as your own referral"), invalidPropertiesErrorCode)
+	}
+	usr := &users.User{
+		PublicUserInformation: users.PublicUserInformation{
+			ID:          req.AuthenticatedUser.ID,
+			Username:    strings.ToLower(req.Data.Username),
+			PhoneNumber: req.Data.PhoneNumber,
+		},
+		Email:           req.Data.Email,
+		ReferredBy:      req.Data.ReferredBy,
+		PhoneNumberHash: req.Data.PhoneNumberHash,
+	}
+	if err := s.usersProcessor.CreateUser(ctx, usr, req.ClientIP); err != nil {
+		err = errors.Wrapf(err, "failed to create user %#v", req.Data)
 		switch {
 		case errors.Is(err, users.ErrRelationNotFound):
-			return *server.NotFound(err, referralNotFoundErrorCode)
+			return nil, server.NotFound(err, referralNotFoundErrorCode)
 		case errors.Is(err, users.ErrDuplicate):
 			if tErr := terror.As(err); tErr != nil {
-				return *server.Conflict(err, duplicateUserErrorCode, tErr.Data)
+				return nil, server.Conflict(err, duplicateUserErrorCode, tErr.Data)
 			}
 
 			fallthrough
 		default:
-			return server.Unexpected(err)
+			return nil, server.Unexpected(err)
 		}
 	}
 
-	return server.Created(&req.User)
-}
-
-func newRequestCreateUser() *RequestCreateUser {
-	return new(RequestCreateUser)
-}
-
-func (req *RequestCreateUser) SetAuthenticatedUser(user server.AuthenticatedUser) {
-	if req.AuthenticatedUser.ID == "" {
-		req.AuthenticatedUser.ID = user.ID
-	}
-}
-
-func (req *RequestCreateUser) GetAuthenticatedUser() server.AuthenticatedUser {
-	return req.AuthenticatedUser
-}
-
-func (req *RequestCreateUser) SetClientIP(ip net.IP) {
-	if len(req.ClientIP) == 0 {
-		req.ClientIP = ip
-	}
-}
-
-func (req *RequestCreateUser) GetClientIP() net.IP {
-	return req.ClientIP
-}
-
-func (req *RequestCreateUser) Validate() *server.Response {
-	if err := verifyIfPhoneNumberAndHashProvidedTogether(req.PhoneNumber, req.PhoneNumberHash); err != nil {
-		return server.BadRequest(err, invalidPropertiesErrorCode)
-	}
-
-	if err := server.RequiredStrings(map[string]string{"username": req.Username}); err != nil {
-		return err
-	}
-	if !users.CompiledUsernameRegex.MatchString(req.Username) {
-		err := errors.Errorf("username: %v is invalid, it should match regex: %v", req.Username, users.UsernameRegex)
-
-		return server.BadRequest(err, invalidUsernameErrorCode)
-	}
-	if strings.EqualFold(req.AuthenticatedUser.ID, req.ReferredBy) {
-		return server.BadRequest(errors.New("you cannot use yourself as your own referral"), invalidPropertiesErrorCode)
-	}
-	req.init()
-
-	return nil
-}
-
-func (req *RequestCreateUser) init() {
-	req.User.ID = req.AuthenticatedUser.ID
-	req.User.ReferredBy = req.ReferredBy
-	req.User.Username = strings.ToLower(req.Username)
-	req.User.PhoneNumber = req.PhoneNumber
-	req.User.PhoneNumberHash = req.PhoneNumberHash
-	req.User.Email = req.Email
-}
-
-func (*RequestCreateUser) Bindings(c *gin.Context) []func(obj interface{}) error {
-	return []func(obj interface{}) error{c.ShouldBindJSON, server.ShouldBindClientIP(c), server.ShouldBindAuthenticatedUser(c)}
+	return server.Created(usr), nil
 }
 
 // ModifyUser godoc
@@ -124,10 +82,10 @@ func (*RequestCreateUser) Bindings(c *gin.Context) []func(obj interface{}) error
 // @Tags        Accounts
 // @Accept      multipart/form-data
 // @Produce     json
-// @Param       Authorization     header   string              true  "Insert your access token" default(Bearer <Add access token here>)
-// @Param       userId            path     string              true  "ID of the user"
-// @Param       multiPartFormData formData users.ModifyUserArg true  "Request params"
-// @Param       profilePicture    formData file                false "The new profile picture for the user"
+// @Param       Authorization     header   string        true  "Insert your access token" default(Bearer <Add access token here>)
+// @Param       userId            path     string        true  "ID of the user"
+// @Param       multiPartFormData formData ModifyUserArg true  "Request params"
+// @Param       profilePicture    formData file          false "The new profile picture for the user"
 // @Success     200               {object} users.User
 // @Failure     400               {object} server.ErrorResponse "if validations fail"
 // @Failure     401               {object} server.ErrorResponse "if not authorized"
@@ -138,114 +96,86 @@ func (*RequestCreateUser) Bindings(c *gin.Context) []func(obj interface{}) error
 // @Failure     500               {object} server.ErrorResponse
 // @Failure     504               {object} server.ErrorResponse "if request times out"
 // @Router      /users/{userId} [PATCH].
-func (s *service) ModifyUser(ctx context.Context, req *RequestModifyUser) server.Response {
-	if err := s.usersProcessor.ModifyUser(ctx, &req.ModifyUserArg); err != nil {
-		err = errors.Wrapf(err, "failed to modify user for %#v", req.User)
+func (s *service) ModifyUser( //nolint:funlen,gocritic // .
+	ctx context.Context,
+	req *server.Request[ModifyUserArg, users.User],
+) (*server.Response[users.User], *server.Response[server.ErrorResponse]) {
+	if err := req.Data.verifyIfAtLeastOnePropertyProvided(); err != nil {
+		return nil, err
+	}
+	if err := verifyPhoneNumberAndUsername(req.Data.PhoneNumber, req.Data.PhoneNumberHash, req.Data.Username); err != nil {
+		return nil, err
+	}
+	usr := &users.User{
+		PublicUserInformation: users.PublicUserInformation{
+			ID:          req.Data.UserID,
+			FirstName:   req.Data.FirstName,
+			LastName:    req.Data.LastName,
+			Username:    strings.ToLower(req.Data.Username),
+			PhoneNumber: req.Data.PhoneNumber,
+			DeviceLocation: users.DeviceLocation{
+				Country: strings.ToUpper(req.Data.Country),
+				City:    req.Data.City,
+			},
+		},
+		Email:                   req.Data.Email,
+		PhoneNumberHash:         req.Data.PhoneNumberHash,
+		AgendaPhoneNumberHashes: req.Data.AgendaPhoneNumberHashes,
+	}
+	if err := s.usersProcessor.ModifyUser(ctx, usr, req.Data.ProfilePicture); err != nil {
+		err = errors.Wrapf(err, "failed to modify user for %#v", req.Data)
 		switch {
 		case errors.Is(err, users.ErrNotFound):
-			return *server.NotFound(err, userNotFoundErrorCode)
+			return nil, server.NotFound(err, userNotFoundErrorCode)
 		case errors.Is(err, users.ErrInvalidCountry):
-			return *server.BadRequest(errors.Errorf("invalid country %v", req.Country), invalidPropertiesErrorCode)
+			return nil, server.BadRequest(errors.Errorf("invalid country %v", req.Data.Country), invalidPropertiesErrorCode)
 		case errors.Is(err, users.ErrInvalidPhoneNumber):
-			return *server.BadRequest(err, phoneNumberInvalidErrorCode)
+			return nil, server.BadRequest(err, phoneNumberInvalidErrorCode)
 		case errors.Is(err, users.ErrDuplicate):
 			if tErr := terror.As(err); tErr != nil {
-				return *server.Conflict(err, duplicateUserErrorCode, tErr.Data)
+				return nil, server.Conflict(err, duplicateUserErrorCode, tErr.Data)
 			}
 
 			fallthrough
 		case errors.Is(err, users.ErrInvalidPhoneNumberFormat):
 			if tErr := terror.As(err); tErr != nil {
-				return *server.BadRequest(err, phoneNumberFormatInvalidErrorCode, tErr.Data)
+				return nil, server.BadRequest(err, phoneNumberFormatInvalidErrorCode, tErr.Data)
 			}
 
 			fallthrough
 		default:
-			return server.Unexpected(err)
+			return nil, server.Unexpected(err)
 		}
 	}
 
-	return server.OK(&req.User)
+	return server.OK(usr), nil
 }
 
-func newRequestModifyUser() *RequestModifyUser {
-	return new(RequestModifyUser)
-}
-
-func (req *RequestModifyUser) SetAuthenticatedUser(user server.AuthenticatedUser) {
-	if req.AuthenticatedUser.ID == "" {
-		req.AuthenticatedUser = user
+//nolint:gocognit // Highly doubt it.
+func (a *ModifyUserArg) verifyIfAtLeastOnePropertyProvided() *server.Response[server.ErrorResponse] {
+	if a.Country == "" &&
+		a.City == "" &&
+		a.Email == "" &&
+		a.FirstName == "" &&
+		a.LastName == "" &&
+		a.PhoneNumber == "" &&
+		a.Username == "" &&
+		a.AgendaPhoneNumberHashes == "" &&
+		a.ProfilePicture == nil {
+		return server.UnprocessableEntity(errors.New("modify request without values"), invalidPropertiesErrorCode)
 	}
-}
-
-func (req *RequestModifyUser) GetAuthenticatedUser() server.AuthenticatedUser {
-	return req.AuthenticatedUser
-}
-
-func (req *RequestModifyUser) Validate() *server.Response {
-	if req.UserID == "" {
-		return server.RequiredStrings(map[string]string{"userId": req.UserID})
-	}
-	if req.UserID != req.AuthenticatedUser.ID {
-		return server.Forbidden(errors.Errorf("update account not allowed for anyone except the owner. `%v` tried to update `%v`",
-			req.AuthenticatedUser.ID, req.UserID))
-	}
-	if err := verifyIfPhoneNumberAndHashProvidedTogether(req.PhoneNumber, req.PhoneNumberHash); err != nil {
-		return server.BadRequest(err, invalidPropertiesErrorCode)
-	}
-	if !req.hasValues() {
-		return server.BadRequest(errors.New("modify request without values"), invalidPropertiesErrorCode)
-	}
-	if req.Username != "" && !users.CompiledUsernameRegex.MatchString(req.Username) {
-		err := errors.Errorf("username: %v is invalid, it should match regex: %v", req.Username, users.UsernameRegex)
-
-		return server.BadRequest(err, invalidUsernameErrorCode)
-	}
-	req.init()
 
 	return nil
 }
 
-func (req *RequestModifyUser) init() {
-	req.User.ID = req.UserID
-	req.User.Username = strings.ToLower(req.Username)
-	req.User.FirstName = req.FirstName
-	req.User.LastName = req.LastName
-	req.User.PhoneNumber = req.PhoneNumber
-	req.User.PhoneNumberHash = req.PhoneNumberHash
-	req.User.Country = strings.ToUpper(req.Country)
-	req.User.City = req.City
-	req.User.Email = req.Email
-	req.User.AgendaPhoneNumberHashes = req.AgendaPhoneNumberHashes
-}
-
-//nolint:gocognit // Highly doubt it.
-func (req *RequestModifyUser) hasValues() bool {
-	return req.Country != "" ||
-		req.City != "" ||
-		req.Email != "" ||
-		req.FirstName != "" ||
-		req.LastName != "" ||
-		req.PhoneNumber != "" ||
-		req.Username != "" ||
-		req.AgendaPhoneNumberHashes != "" ||
-		req.ProfilePicture != nil
-}
-
-func (*RequestModifyUser) Bindings(c *gin.Context) []func(obj interface{}) error {
-	multipart := func(obj interface{}) error {
-		return errors.Wrap(c.ShouldBindWith(obj, binding.FormMultipart), "formMultipart binding failed")
+func verifyPhoneNumberAndUsername(phoneNumber, phoneNumberHash, username string) *server.Response[server.ErrorResponse] {
+	if (phoneNumber == "" && phoneNumberHash != "") || (phoneNumberHash == "" && phoneNumber != "") {
+		return server.UnprocessableEntity(errors.New("phoneNumber must be provided only together with phoneNumberHash"), invalidPropertiesErrorCode)
 	}
+	if !users.CompiledUsernameRegex.MatchString(username) {
+		err := errors.Errorf("username: %v is invalid, it should match regex: %v", username, users.UsernameRegex)
 
-	return []func(obj interface{}) error{multipart, c.ShouldBindUri, server.ShouldBindAuthenticatedUser(c)}
-}
-
-func verifyIfPhoneNumberAndHashProvidedTogether(phoneNumber, phoneNumberHash string) error {
-	if phoneNumberHash == "" && phoneNumber != "" {
-		return errors.New("phoneNumber must be provided only together with phoneNumberHash")
-	}
-	if phoneNumber == "" && phoneNumberHash != "" {
-		return errors.New("phoneNumberHash must be provided only together with phoneNumber")
+		return server.BadRequest(err, invalidUsernameErrorCode)
 	}
 
 	return nil
@@ -268,44 +198,17 @@ func verifyIfPhoneNumberAndHashProvidedTogether(phoneNumber, phoneNumberHash str
 // @Failure     500           {object} server.ErrorResponse
 // @Failure     504           {object} server.ErrorResponse "if request times out"
 // @Router      /users/{userId} [DELETE].
-func (s *service) DeleteUser(ctx context.Context, req *RequestDeleteUser) server.Response {
-	if err := s.usersProcessor.DeleteUser(ctx, req.UserID); err != nil {
+func (s *service) DeleteUser( //nolint:gocritic // False negative.
+	ctx context.Context,
+	req *server.Request[DeleteUserArg, any],
+) (*server.Response[any], *server.Response[server.ErrorResponse]) {
+	if err := s.usersProcessor.DeleteUser(ctx, req.Data.UserID); err != nil {
 		if errors.Is(err, users.ErrNotFound) {
-			return server.NoContent()
+			return server.NoContent(), nil
 		}
 
-		return server.Unexpected(errors.Wrapf(err, "failed to delete user with id: %v", req.UserID))
+		return nil, server.Unexpected(errors.Wrapf(err, "failed to delete user with id: %v", req.Data.UserID))
 	}
 
-	return server.OK()
-}
-
-func newRequestDeleteUser() *RequestDeleteUser {
-	return new(RequestDeleteUser)
-}
-
-func (req *RequestDeleteUser) SetAuthenticatedUser(user server.AuthenticatedUser) {
-	if req.AuthenticatedUser.ID == "" {
-		req.AuthenticatedUser = user
-	}
-}
-
-func (req *RequestDeleteUser) GetAuthenticatedUser() server.AuthenticatedUser {
-	return req.AuthenticatedUser
-}
-
-func (req *RequestDeleteUser) Validate() *server.Response {
-	if req.UserID == "" {
-		return server.RequiredStrings(map[string]string{"userId": req.UserID})
-	}
-	if req.UserID != req.AuthenticatedUser.ID {
-		return server.Forbidden(errors.Errorf("delete account not allowed for anyone except the owner. `%v` tried to delete `%v`",
-			req.AuthenticatedUser.ID, req.UserID))
-	}
-
-	return nil
-}
-
-func (*RequestDeleteUser) Bindings(c *gin.Context) []func(obj interface{}) error {
-	return []func(obj interface{}) error{c.ShouldBindUri, server.ShouldBindAuthenticatedUser(c)}
+	return server.OK[any](), nil
 }

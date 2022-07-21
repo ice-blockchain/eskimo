@@ -5,7 +5,6 @@ package main
 import (
 	"context"
 
-	"github.com/gin-gonic/gin"
 	"github.com/pkg/errors"
 
 	"github.com/ice-blockchain/eskimo/cmd/eskimo-hut/api"
@@ -35,10 +34,10 @@ func main() {
 	srv.ListenAndServe(ctx, cancel)
 }
 
-func (s *service) RegisterRoutes(engine *gin.Engine) {
-	s.setupUserRoutes(engine)
-	s.setupUserValidationRoutes(engine)
-	s.setupDevicesRoutes(engine)
+func (s *service) RegisterRoutes(router *server.Router) {
+	s.setupUserRoutes(router)
+	s.setupUserValidationRoutes(router)
+	s.setupDevicesRoutes(router)
 }
 
 func (s *service) Init(ctx context.Context, cancel context.CancelFunc) {
@@ -53,12 +52,8 @@ func (s *service) Close(ctx context.Context) error {
 	return errors.Wrap(s.usersProcessor.Close(), "could not close usersProcessor")
 }
 
-func (s *service) CheckHealth(ctx context.Context, req *server.RequestCheckHealth) server.Response {
+func (s *service) CheckHealth(ctx context.Context) error {
 	log.Debug("checking health...", "package", "users")
 
-	if err := s.usersProcessor.CheckHealth(ctx); err != nil {
-		return server.Unexpected(err)
-	}
-
-	return server.OK(req)
+	return errors.Wrapf(s.usersProcessor.CheckHealth(ctx), "processor health check failed")
 }

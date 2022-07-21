@@ -170,7 +170,7 @@ linters-settings:
       - name: argument-limit
         severity: error
         disabled: false
-        arguments: [ 4 ]
+        arguments: [ 5 ]
       # https://github.com/mgechev/revive/blob/master/RULES_DESCRIPTIONS.md#atomic
       - name: atomic
         severity: error

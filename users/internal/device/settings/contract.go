@@ -44,7 +44,7 @@ type (
 		// Optional.
 		Language *string `json:"language,omitempty" example:"en"`
 		// Optional. Default is `false`.
-		DisableAllNotifications *bool `json:"disableAllNotifications" example:"true"`
+		DisableAllNotifications *bool `json:"disableAllNotifications,omitempty" example:"true"`
 		device.ID
 	}
 	//nolint:revive // We don't have a choice if we want to embed it, cuz it will clash with others named "Repository".

@@ -15,12 +15,12 @@ import (
 )
 
 //nolint:funlen // It has a long SQL, it's better to be within the same method.
-func (r *repository) GetReferrals(ctx context.Context, arg *GetReferralsArg) (*Referrals, error) {
+func (r *repository) GetReferrals(ctx context.Context, userID, referralType string, limit, offset uint64) (*Referrals, error) {
 	if ctx.Err() != nil {
 		return nil, errors.Wrap(ctx.Err(), "failed to get referrals because of context failed")
 	}
 	var referralTypeJoin string
-	switch arg.Type {
+	switch referralType {
 	case Tier1Referrals:
 		referralTypeJoin = `
 			 JOIN USERS referrals
@@ -40,7 +40,7 @@ func (r *repository) GetReferrals(ctx context.Context, arg *GetReferralsArg) (*R
 					ON POSITION(referrals.phone_number_hash, u.agenda_phone_number_hashes) > 0
 					and referrals.id != u.id`
 	default:
-		log.Panic(errors.Errorf("referral type: '%v' not supported", arg.Type))
+		log.Panic(errors.Errorf("referral type: '%v' not supported", referralType))
 	}
 	sql := fmt.Sprintf(`
 		SELECT  0 																					   AS last_mining_started_at, 
@@ -98,15 +98,15 @@ func (r *repository) GetReferrals(ctx context.Context, arg *GetReferralsArg) (*R
 		WHERE u.id = :userId
 		ORDER BY (phone_number_ != '' AND phone_number_ != null) DESC,
 				 referrals.created_at DESC
-		LIMIT %[3]v OFFSET :offset) X`, cfg.PictureStorage.URLDownload, referralTypeJoin, arg.Limit)
+		LIMIT %[3]v OFFSET :offset) X`, cfg.PictureStorage.URLDownload, referralTypeJoin, limit)
 	params := map[string]interface{}{
-		"userId":   arg.UserID,
+		"userId":   userID,
 		"nowNanos": time.Now(),
-		"offset":   arg.Offset,
+		"offset":   offset,
 	}
 	var result []*Referral
 	if err := r.db.PrepareExecuteTyped(sql, params, &result); err != nil {
-		return nil, errors.Wrapf(err, "failed to get referrals for %#v", arg)
+		return nil, errors.Wrapf(err, "failed to get referrals for userID:%v,referralType%v,limit:%v,offset:%v", userID, referralType, limit, offset)
 	}
 	var err error
 	var total, active uint64
@@ -129,12 +129,12 @@ func (r *repository) GetReferrals(ctx context.Context, arg *GetReferralsArg) (*R
 }
 
 //nolint:funlen // It has a long SQL and specific time handling, it's better to be within the same method.
-func (r *repository) GetReferralAcquisitionHistory(ctx context.Context, arg *GetReferralAcquisitionHistoryArg) ([]*ReferralAcquisition, error) {
+func (r *repository) GetReferralAcquisitionHistory(ctx context.Context, userID string, daysNumber uint64) ([]*ReferralAcquisition, error) {
 	if ctx.Err() != nil {
 		return nil, errors.Wrap(ctx.Err(), "failed to get acquisition history because context failed")
 	}
 
-	days := stdlibtime.Duration(arg.Days)
+	days := stdlibtime.Duration(daysNumber)
 	now := time.Now()
 	nowNanos := now.UnixNano()
 	nanosSinceMidnight := stdlibtime.Duration(now.Nanosecond()) +
@@ -187,10 +187,10 @@ FROM (
 		ORDER BY days.day
      )`
 	params := map[string]interface{}{
-		"userId":    arg.UserID,
+		"userId":    userID,
 		"nowNanos":  nowNanos,
 		"pastNanos": pastNanos,
-		"days":      arg.Days,
+		"days":      daysNumber,
 	}
 	var resultFromQuery []*struct {
 		CountT1 uint64
@@ -198,10 +198,10 @@ FROM (
 		PastDay uint64
 	}
 	if err := r.db.PrepareExecuteTyped(sql, params, &resultFromQuery); err != nil {
-		return nil, errors.Wrapf(err, "failed to select ReferralAcquisition history for %#v", arg)
+		return nil, errors.Wrapf(err, "failed to select ReferralAcquisition history for userID:%v,days:%v", userID, daysNumber)
 	}
 
-	result := make([]*ReferralAcquisition, 0, arg.Days+1)
+	result := make([]*ReferralAcquisition, 0, daysNumber+1)
 	for i, row := range resultFromQuery {
 		tmp := new(ReferralAcquisition)
 		var date *time.Time

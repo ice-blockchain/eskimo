@@ -5,16 +5,16 @@ package main
 import (
 	"context"
 
-	"github.com/gin-gonic/gin"
 	"github.com/pkg/errors"
 
+	"github.com/ice-blockchain/eskimo/users"
 	"github.com/ice-blockchain/wintr/server"
 )
 
-func (s *service) setupUserStatisticsRoutes(router *gin.Engine) {
+func (s *service) setupUserStatisticsRoutes(router *server.Router) {
 	router.
 		Group("v1r").
-		GET("user-statistics/top-countries", server.RootHandler(newRequestGetTopCountries, s.GetTopCountries))
+		GET("user-statistics/top-countries", server.RootHandler(s.GetTopCountries))
 }
 
 // GetTopCountries godoc
@@ -34,38 +34,17 @@ func (s *service) setupUserStatisticsRoutes(router *gin.Engine) {
 // @Failure     500           {object} server.ErrorResponse
 // @Failure     504           {object} server.ErrorResponse "if request times out"
 // @Router      /user-statistics/top-countries [GET].
-func (s *service) GetTopCountries(ctx context.Context, req *RequestGetTopCountries) server.Response {
-	result, err := s.usersRepository.GetTopCountries(ctx, &req.GetTopCountriesArg)
+func (s *service) GetTopCountries( //nolint:gocritic // False negative.
+	ctx context.Context,
+	req *server.Request[GetTopCountriesArg, []*users.CountryStatistics],
+) (*server.Response[[]*users.CountryStatistics], *server.Response[server.ErrorResponse]) {
+	if req.Data.Limit == 0 {
+		req.Data.Limit = 10
+	}
+	result, err := s.usersRepository.GetTopCountries(ctx, req.Data.Keyword, req.Data.Limit, req.Data.Offset)
 	if err != nil {
-		return server.Unexpected(errors.Wrapf(err, "failed to get top countries for: %#v", &req.GetTopCountriesArg))
+		return nil, server.Unexpected(errors.Wrapf(err, "failed to get top countries for: %#v", req.Data))
 	}
 
-	return server.OK(result)
-}
-
-func newRequestGetTopCountries() *RequestGetTopCountries {
-	return new(RequestGetTopCountries)
-}
-
-func (req *RequestGetTopCountries) SetAuthenticatedUser(user server.AuthenticatedUser) {
-	if req.AuthenticatedUser.ID == "" {
-		req.AuthenticatedUser = user
-	}
-}
-
-func (req *RequestGetTopCountries) GetAuthenticatedUser() server.AuthenticatedUser {
-	return req.AuthenticatedUser
-}
-
-//nolint:unparam // Because it belongs to the common interface.
-func (req *RequestGetTopCountries) Validate() *server.Response {
-	if req.Limit == 0 {
-		req.Limit = 10
-	}
-
-	return nil
-}
-
-func (*RequestGetTopCountries) Bindings(c *gin.Context) []func(obj interface{}) error {
-	return []func(obj interface{}) error{c.ShouldBindQuery, server.ShouldBindAuthenticatedUser(c)}
+	return server.OK(&result), nil
 }

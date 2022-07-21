@@ -166,11 +166,20 @@ definitions:
     type: object
   users.UserProfile:
     properties:
+      agendaPhoneNumberHashes:
+        example: Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2
+        type: string
       city:
         example: New York
         type: string
       country:
         example: US
+        type: string
+      createdAt:
+        example: "2022-01-03T16:20:52.156534Z"
+        type: string
+      email:
+        example: jdoe@gmail.com
         type: string
       firstName:
         example: John
@@ -178,11 +187,20 @@ definitions:
       id:
         example: did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2
         type: string
+      lastMiningStartedAt:
+        example: "2022-01-03T16:20:52.156534Z"
+        type: string
       lastName:
         example: Doe
         type: string
+      lastPingAt:
+        example: "2022-01-03T16:20:52.156534Z"
+        type: string
       phoneNumber:
         example: "+12099216581"
+        type: string
+      phoneNumberHash:
+        example: Ef86A6021afCDe5673511376B2
         type: string
       profilePictureUrl:
         example: https://somecdn.com/p1.jpg
@@ -190,6 +208,12 @@ definitions:
       referralCount:
         example: 100
         type: integer
+      referredBy:
+        example: did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2
+        type: string
+      updatedAt:
+        example: "2022-01-03T16:20:52.156534Z"
+        type: string
       username:
         example: jdoe
         type: string

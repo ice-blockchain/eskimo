@@ -2,6 +2,20 @@
 
 basePath: /v1w
 definitions:
+  CreateDeviceSettingsRequestBody:
+    properties:
+      disableAllNotifications:
+        description: Optional.
+        example: true
+        type: boolean
+      language:
+        description: Optional.
+        example: en
+        type: string
+      notificationSettings:
+        $ref: '#/definitions/users.NotificationSettings'
+        description: Optional.
+    type: object
   CreateUserRequestBody:
     properties:
       email:
@@ -13,7 +27,7 @@ definitions:
         example: "+12099216581"
         type: string
       phoneNumberHash:
-        description: Optional. Required only if `phoneNumber` is set. Example:"Ef86A6021afCDe5673511376B2".
+        description: Optional. Required only if `phoneNumber` is set.
         example: Ef86A6021afCDe5673511376B2
         type: string
       referredBy:
@@ -24,66 +38,21 @@ definitions:
         example: jdoe
         type: string
     type: object
-  ValidatePhoneNumberRequestBody:
+  ModifyDeviceSettingsRequestBody:
     properties:
-      createdAt:
-        description: '`Read Only`.'
-        example: "2022-01-03T16:20:52.156534Z"
-        type: string
-      phoneNumber:
-        example: "+12345678"
-        type: string
-      phoneNumberHash:
-        example: Ef86A6021afCDe5673511376B2
-        type: string
-      userId:
-        example: did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2
-        type: string
-      validationCode:
-        example: "1234"
-        type: string
-    type: object
-  devicesettings.NotificationChannels:
-    properties:
-      email:
-        example: false
-        type: boolean
-      inApp:
-        example: false
-        type: boolean
-      push:
+      disableAllNotifications:
+        description: Optional.
         example: true
         type: boolean
-      sms:
-        example: false
-        type: boolean
-    type: object
-  devicesettings.NotificationSettings:
-    additionalProperties:
-      $ref: '#/definitions/devicesettings.NotificationChannels'
-    type: object
-  server.ErrorResponse:
-    properties:
-      code:
-        example: SOMETHING_NOT_FOUND
+      language:
+        description: Optional.
+        example: en
         type: string
-      data:
-        additionalProperties: true
-        type: object
-      error:
-        example: something is missing
-        type: string
+      notificationSettings:
+        $ref: '#/definitions/users.NotificationSettings'
+        description: Optional.
     type: object
-  users.DeviceLocation:
-    properties:
-      city:
-        example: New York
-        type: string
-      country:
-        example: US
-        type: string
-    type: object
-  users.DeviceMetadata:
+  ReplaceDeviceMetadataRequestBody:
     properties:
       apiLevel:
         type: integer
@@ -150,6 +119,58 @@ definitions:
         example: did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2
         type: string
     type: object
+  ValidatePhoneNumberRequestBody:
+    properties:
+      phoneNumber:
+        example: "+12345678"
+        type: string
+      phoneNumberHash:
+        example: Ef86A6021afCDe5673511376B2
+        type: string
+      validationCode:
+        example: "1234"
+        type: string
+    type: object
+  devicesettings.NotificationChannels:
+    properties:
+      email:
+        example: false
+        type: boolean
+      inApp:
+        example: false
+        type: boolean
+      push:
+        example: true
+        type: boolean
+      sms:
+        example: false
+        type: boolean
+    type: object
+  devicesettings.NotificationSettings:
+    additionalProperties:
+      $ref: '#/definitions/devicesettings.NotificationChannels'
+    type: object
+  server.ErrorResponse:
+    properties:
+      code:
+        example: SOMETHING_NOT_FOUND
+        type: string
+      data:
+        additionalProperties: true
+        type: object
+      error:
+        example: something is missing
+        type: string
+    type: object
+  users.DeviceLocation:
+    properties:
+      city:
+        example: New York
+        type: string
+      country:
+        example: US
+        type: string
+    type: object
   users.DeviceSettings:
     properties:
       deviceUniqueId:
@@ -174,6 +195,10 @@ definitions:
         example: did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2
         type: string
     type: object
+  users.NotificationSettings:
+    additionalProperties:
+      $ref: '#/definitions/devicesettings.NotificationChannels'
+    type: object
   users.User:
     properties:
       agendaPhoneNumberHashes:
@@ -195,7 +220,6 @@ definitions:
         example: John
         type: string
       id:
-        description: Optional.
         example: did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2
         type: string
       lastMiningStartedAt:
@@ -217,7 +241,6 @@ definitions:
         example: https://somecdn.com/p1.jpg
         type: string
       referredBy:
-        description: Optional.
         example: did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2
         type: string
       updatedAt:
@@ -413,39 +436,39 @@ paths:
         name: userId
         required: true
         type: string
-      - description: Optional. Example:"Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2".
+      - description: Optional. Example:`Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2`.
         in: formData
         name: agendaPhoneNumberHashes
         type: string
-      - description: Optional. Example:"New York".
+      - description: Optional. Example:`New York`.
         in: formData
         name: city
         type: string
-      - description: Optional. Example:"US".
+      - description: Optional. Example:`US`.
         in: formData
         name: country
         type: string
-      - description: Optional. Example:"jdoe@gmail.com".
+      - description: Optional. Example:`jdoe@gmail.com`.
         in: formData
         name: email
         type: string
-      - description: Optional. Required only if `lastName` is set. Example:"John".
+      - description: Optional. Required only if `lastName` is set. Example:`John`.
         in: formData
         name: firstName
         type: string
-      - description: Optional. Required only if `firstName` is set.  Example:"Doe".
+      - description: Optional. Required only if `firstName` is set. Example:`Doe`.
         in: formData
         name: lastName
         type: string
-      - description: Optional. Example:"+12099216581".
+      - description: Optional. Example:`+12099216581`.
         in: formData
         name: phoneNumber
         type: string
-      - description: Optional. Required only if `phoneNumber` is set. Example:"Ef86A6021afCDe5673511376B2".
+      - description: Optional. Required only if `phoneNumber` is set. Example:`Ef86A6021afCDe5673511376B2`.
         in: formData
         name: phoneNumberHash
         type: string
-      - description: Example:"jdoe".
+      - description: Optional. Example:`jdoe`.
         in: formData
         name: username
         type: string
@@ -521,7 +544,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/users.DeviceMetadata'
+          $ref: '#/definitions/ReplaceDeviceMetadataRequestBody'
       produces:
       - application/json
       responses:
@@ -570,7 +593,7 @@ paths:
         name: userId
         required: true
         type: string
-      - description: ID of the device
+      - description: ID of the device. Is optional, set an `-` if none.
         in: path
         name: deviceUniqueId
         required: true
@@ -636,7 +659,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/users.DeviceSettings'
+          $ref: '#/definitions/ModifyDeviceSettingsRequestBody'
       produces:
       - application/json
       responses:
@@ -700,7 +723,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/users.DeviceSettings'
+          $ref: '#/definitions/CreateDeviceSettingsRequestBody'
       produces:
       - application/json
       responses:

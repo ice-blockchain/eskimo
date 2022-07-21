@@ -5,17 +5,16 @@ package main
 import (
 	"context"
 
-	"github.com/gin-gonic/gin"
 	"github.com/pkg/errors"
 
 	"github.com/ice-blockchain/eskimo/users"
 	"github.com/ice-blockchain/wintr/server"
 )
 
-func (s *service) setupDevicesRoutes(router *gin.Engine) {
+func (s *service) setupDevicesRoutes(router *server.Router) {
 	router.
 		Group("v1r").
-		GET("users/:userId/devices/:deviceUniqueId/settings", server.RootHandler(newRequestGetDeviceSettings, s.GetDeviceSettings))
+		GET("users/:userId/devices/:deviceUniqueId/settings", server.RootHandler(s.GetDeviceSettings))
 }
 
 // GetDeviceSettings godoc
@@ -36,43 +35,20 @@ func (s *service) setupDevicesRoutes(router *gin.Engine) {
 // @Failure     500            {object} server.ErrorResponse
 // @Failure     504            {object} server.ErrorResponse "if request times out"
 // @Router      /users/{userId}/devices/{deviceUniqueId}/settings [GET].
-func (s *service) GetDeviceSettings(ctx context.Context, req *RequestGetDeviceSettings) server.Response {
-	resp, err := s.usersRepository.GetDeviceSettings(ctx, req.DeviceID)
+func (s *service) GetDeviceSettings( //nolint:gocritic // False negative.
+	ctx context.Context,
+	req *server.Request[GetDeviceSettingsArg, users.DeviceSettings],
+) (*server.Response[users.DeviceSettings], *server.Response[server.ErrorResponse]) {
+	resp, err := s.usersRepository.GetDeviceSettings(ctx, users.DeviceID{UserID: req.Data.UserID, DeviceUniqueID: req.Data.DeviceUniqueID})
 	if err != nil {
-		err = errors.Wrapf(err, "failed to GetDeviceSettings for %#v", req.DeviceID)
+		err = errors.Wrapf(err, "failed to GetDeviceSettings for %#v", req.Data)
 		switch {
 		case errors.Is(err, users.ErrNotFound):
-			return *server.NotFound(err, deviceSettingsNotFoundErrorCode)
+			return nil, server.NotFound(err, deviceSettingsNotFoundErrorCode)
 		default:
-			return server.Unexpected(err)
+			return nil, server.Unexpected(err)
 		}
 	}
 
-	return server.OK(resp)
-}
-
-func newRequestGetDeviceSettings() *RequestGetDeviceSettings {
-	return new(RequestGetDeviceSettings)
-}
-
-func (req *RequestGetDeviceSettings) SetAuthenticatedUser(user server.AuthenticatedUser) {
-	if req.AuthenticatedUser.ID == "" {
-		req.AuthenticatedUser = user
-	}
-}
-
-func (req *RequestGetDeviceSettings) GetAuthenticatedUser() server.AuthenticatedUser {
-	return req.AuthenticatedUser
-}
-
-func (req *RequestGetDeviceSettings) Validate() *server.Response {
-	if req.AuthenticatedUser.ID != req.UserID {
-		return server.Forbidden(errors.Errorf("you can only see the settings for your own devices. d>%#v!=a>%v", req.DeviceID, req.AuthenticatedUser.ID))
-	}
-
-	return server.RequiredStrings(map[string]string{"userId": req.UserID, "deviceUniqueId": req.DeviceUniqueID})
-}
-
-func (*RequestGetDeviceSettings) Bindings(c *gin.Context) []func(obj interface{}) error {
-	return []func(obj interface{}) error{c.ShouldBindUri, server.ShouldBindAuthenticatedUser(c)}
+	return server.OK(resp), nil
 }

@@ -833,6 +833,10 @@ const docTemplate = `{
         "users.UserProfile": {
             "type": "object",
             "properties": {
+                "agendaPhoneNumberHashes": {
+                    "type": "string",
+                    "example": "Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2"
+                },
                 "city": {
                     "type": "string",
                     "example": "New York"
@@ -840,6 +844,14 @@ const docTemplate = `{
                 "country": {
                     "type": "string",
                     "example": "US"
+                },
+                "createdAt": {
+                    "type": "string",
+                    "example": "2022-01-03T16:20:52.156534Z"
+                },
+                "email": {
+                    "type": "string",
+                    "example": "jdoe@gmail.com"
                 },
                 "firstName": {
                     "type": "string",
@@ -849,13 +861,25 @@ const docTemplate = `{
                     "type": "string",
                     "example": "did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"
                 },
+                "lastMiningStartedAt": {
+                    "type": "string",
+                    "example": "2022-01-03T16:20:52.156534Z"
+                },
                 "lastName": {
                     "type": "string",
                     "example": "Doe"
                 },
+                "lastPingAt": {
+                    "type": "string",
+                    "example": "2022-01-03T16:20:52.156534Z"
+                },
                 "phoneNumber": {
                     "type": "string",
                     "example": "+12099216581"
+                },
+                "phoneNumberHash": {
+                    "type": "string",
+                    "example": "Ef86A6021afCDe5673511376B2"
                 },
                 "profilePictureUrl": {
                     "type": "string",
@@ -864,6 +888,14 @@ const docTemplate = `{
                 "referralCount": {
                     "type": "integer",
                     "example": 100
+                },
+                "referredBy": {
+                    "type": "string",
+                    "example": "did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"
+                },
+                "updatedAt": {
+                    "type": "string",
+                    "example": "2022-01-03T16:20:52.156534Z"
                 },
                 "username": {
                     "type": "string",

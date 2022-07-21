@@ -50,25 +50,21 @@ func (r *repository) getUserByID(ctx context.Context, id UserID) (*User, error) 
 	if result.ID == "" {
 		return nil, ErrNotFound
 	}
-	result.ProfilePictureURL = fmt.Sprintf("%s/%s", cfg.PictureStorage.URLDownload, result.ProfilePictureURL)
+	result.setCorrectProfilePictureURL()
 
 	return result, nil
 }
 
-func (r *repository) GetUserProfileByID(ctx context.Context, id UserID) (*UserProfile, error) {
+func (r *repository) GetUserByID(ctx context.Context, userID string) (*UserProfile, error) { //nolint:revive // Its fine.
 	if ctx.Err() != nil {
 		return nil, errors.Wrap(ctx.Err(), "get user failed because context failed")
 	}
-	sql := fmt.Sprintf(`
-	SELECT  u.id 									AS id,
-			u.username 								AS username,
-			u.first_name 							AS first_name,
-			u.last_name 							AS last_name,
-			u.phone_number 							AS phone_number_,
-			'%v/' || u.profile_picture_name 		AS profile_picture_url,
-			u.country 								AS country,
-			u.city 									AS city,
-			count(distinct t1.id) + count(t2.id) 	AS total_referral_count
+	if userID != requestingUserID(ctx) {
+		return r.getOtherUserProfile(ctx, userID)
+	}
+	sql := `
+	SELECT  u.*,
+			count(distinct t1.id) + count(t2.id) AS total_referral_count
 	FROM users u 
 			LEFT JOIN USERS t1
                 	ON t1.referred_by = u.id
@@ -76,37 +72,52 @@ func (r *repository) GetUserProfileByID(ctx context.Context, id UserID) (*UserPr
 						LEFT JOIN USERS t2
 								ON t2.referred_by = t1.id
 								and t2.id != t1.id
-	WHERE u.id = :userId`, cfg.PictureStorage.URLDownload)
+	WHERE u.id = :userId`
 	var result []*UserProfile
-	if err := r.db.PrepareExecuteTyped(sql, map[string]interface{}{"userId": id}, &result); err != nil {
-		return nil, errors.Wrapf(err, "failed to select user by id %v", id)
+	if err := r.db.PrepareExecuteTyped(sql, map[string]interface{}{"userId": userID}, &result); err != nil {
+		return nil, errors.Wrapf(err, "failed to select user by id %v", userID)
 	}
 	if len(result) == 0 || result[0].ID == "" { //nolint:revive // False negative.
-		return nil, errors.Wrapf(ErrNotFound, "no user found with id %v", id)
+		return nil, errors.Wrapf(ErrNotFound, "no user found with id %v", userID)
 	}
+	result[0].setCorrectProfilePictureURL()
 
 	return result[0], nil
 }
 
-func (r *repository) GetUserByUsername(ctx context.Context, name Username) (*UserProfile, error) {
+func (r *repository) getOtherUserProfile(ctx context.Context, userID string) (*UserProfile, error) {
+	usr, err := r.getUserByID(ctx, userID)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to select user by id %v", userID)
+	}
+	usr.PhoneNumber = ""
+
+	return &UserProfile{User: User{PublicUserInformation: usr.PublicUserInformation}}, nil
+}
+
+func (r *repository) GetUserByUsername(ctx context.Context, username string) (*UserProfile, error) {
 	if ctx.Err() != nil {
 		return nil, errors.Wrap(ctx.Err(), "get user failed because context failed")
 	}
 	result := new(User)
-	if err := r.db.GetTyped("USERS", "unique_unnamed_USERS_2", tarantool.StringKey{S: name}, result); err != nil {
-		return nil, errors.Wrapf(err, "failed to get user by username %v", name)
+	if err := r.db.GetTyped("USERS", "unique_unnamed_USERS_2", tarantool.StringKey{S: username}, result); err != nil {
+		return nil, errors.Wrapf(err, "failed to get user by username %v", username)
 	}
 	if result.ID == "" {
-		return nil, errors.Wrapf(ErrNotFound, "no user found with username %v", name)
+		return nil, errors.Wrapf(ErrNotFound, "no user found with username %v", username)
 	}
-	result.ProfilePictureURL = fmt.Sprintf("%s/%s", cfg.PictureStorage.URLDownload, result.ProfilePictureURL)
-	result.PhoneNumber = ""
+	result.setCorrectProfilePictureURL()
+	if result.ID != requestingUserID(ctx) {
+		result.PhoneNumber = ""
 
-	return &UserProfile{PublicUserInformation: result.PublicUserInformation}, nil
+		return &UserProfile{User: User{PublicUserInformation: result.PublicUserInformation}}, nil
+	}
+
+	return &UserProfile{User: *result}, nil
 }
 
 //nolint:funlen // Big sql.
-func (r *repository) GetUsers(ctx context.Context, arg *GetUsersArg) (result []*RelatableUserProfile, err error) {
+func (r *repository) GetUsers(ctx context.Context, keyword string, limit, offset uint64) (result []*RelatableUserProfile, err error) {
 	if ctx.Err() != nil {
 		return nil, errors.Wrap(ctx.Err(), "get users failed because context failed")
 	}
@@ -153,16 +164,16 @@ func (r *repository) GetUsers(ctx context.Context, arg *GetUsersArg) (result []*
 				t0.id = :userId DESC,
 				t0.referred_by = :userId DESC,
 				u.username DESC
-			LIMIT %v OFFSET :offset`, cfg.PictureStorage.URLDownload, arg.Limit)
+			LIMIT %v OFFSET :offset`, cfg.PictureStorage.URLDownload, limit)
 	params := map[string]interface{}{
-		"keyword":  arg.Keyword,
-		"offset":   arg.Offset,
-		"userId":   arg.UserID,
+		"keyword":  keyword,
+		"offset":   offset,
+		"userId":   requestingUserID(ctx),
 		"nowNanos": time.Now(),
 	}
 	err = r.db.PrepareExecuteTyped(sql, params, &result)
 
-	return result, errors.Wrapf(err, "failed to select for users by %#v", arg)
+	return result, errors.Wrapf(err, "failed to select for users by %#v", params)
 }
 
 func (n *NotExpired) DecodeMsgpack(dec *msgpack.Decoder) error {
@@ -173,4 +184,8 @@ func (n *NotExpired) DecodeMsgpack(dec *msgpack.Decoder) error {
 	*n = time.Now().Sub(*v.Time) <= expirationDeadline
 
 	return nil
+}
+
+func (i *PublicUserInformation) setCorrectProfilePictureURL() {
+	i.ProfilePictureURL = fmt.Sprintf("%v/%v", cfg.PictureStorage.URLDownload, i.ProfilePictureURL)
 }

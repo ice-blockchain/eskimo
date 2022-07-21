@@ -13,29 +13,29 @@ import (
 	devicemetadata "github.com/ice-blockchain/eskimo/users/internal/device/metadata"
 )
 
-func (r *repository) GetTopCountries(ctx context.Context, arg *GetTopCountriesArg) (cs []*CountryStatistics, err error) {
+func (r *repository) GetTopCountries(ctx context.Context, keyword string, limit, offset uint64) (cs []*CountryStatistics, err error) {
 	if ctx.Err() != nil {
 		return nil, errors.Wrap(ctx.Err(), "get top countries failed because context failed")
 	}
-	countries, params := r.getTopCountriesParams(arg)
+	countries, params := r.getTopCountriesParams(keyword, offset)
 	sql := fmt.Sprintf(`
 						SELECT  country, 
 								user_count 
 						FROM users_per_country
 						WHERE lower(country) in (%v)
 						ORDER BY user_count desc 
-						LIMIT %v OFFSET :offset`, countries, arg.Limit)
-	err = errors.Wrapf(r.db.PrepareExecuteTyped(sql, params, &cs), "get top countries failed for %#v", arg)
+						LIMIT %v OFFSET :offset`, countries, limit)
+	err = errors.Wrapf(r.db.PrepareExecuteTyped(sql, params, &cs), "get top countries failed for %v %v %v", keyword, limit, offset)
 
 	return
 }
 
-func (r *repository) getTopCountriesParams(a *GetTopCountriesArg) (countriesSQLEnumeration string, params map[string]interface{}) {
+func (r *repository) getTopCountriesParams(countryKeyword string, offset uint64) (countriesSQLEnumeration string, params map[string]interface{}) {
 	countriesSQLEnumeration = "''"
 	params = map[string]interface{}{
-		"offset": a.Offset,
+		"offset": offset,
 	}
-	keyword := strings.ToLower(a.Keyword)
+	keyword := strings.ToLower(countryKeyword)
 	if keyword == "" {
 		countriesSQLEnumeration = "lower(country)"
 	} else if countries := r.LookupCountries(keyword); len(countries) != 0 {

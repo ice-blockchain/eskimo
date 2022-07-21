@@ -48,29 +48,20 @@ var (
 )
 
 type (
-	NotExpired                   bool
-	UserID                       = string
-	Username                     = string
-	DeviceID                     = device.ID
-	DeviceMetadataSnapshot       = devicemetadata.DeviceMetadataSnapshot
-	DeviceMetadata               = devicemetadata.DeviceMetadata
-	ReplaceDeviceMetadataArg     = devicemetadata.ReplaceDeviceMetadataArg
-	GetDeviceMetadataLocationArg = devicemetadata.GetDeviceMetadataLocationArg
-	DeviceLocation               = devicemetadata.DeviceLocation
-	DeviceSettings               = devicesettings.DeviceSettings
-	DeviceSettingsSnapshot       = devicesettings.DeviceSettingsSnapshot
-	MinimalUserProfile           struct {
+	NotExpired         bool
+	UserID             = string
+	MinimalUserProfile struct {
 		Active *NotExpired `json:"active,omitempty" example:"true"`
 		Pinged *NotExpired `json:"pinged,omitempty" example:"false"`
 		PublicUserInformation
 	}
 	PublicUserInformation struct {
-		ID                UserID   `uri:"userId" json:"id,omitempty" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
-		Username          Username `json:"username,omitempty" example:"jdoe"`
-		FirstName         string   `json:"firstName,omitempty" example:"John"`
-		LastName          string   `json:"lastName,omitempty" example:"Doe"`
-		PhoneNumber       string   `json:"phoneNumber,omitempty" example:"+12099216581"`
-		ProfilePictureURL string   `json:"profilePictureUrl,omitempty" example:"https://somecdn.com/p1.jpg"`
+		ID                UserID `json:"id,omitempty" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
+		Username          string `json:"username,omitempty" example:"jdoe"`
+		FirstName         string `json:"firstName,omitempty" example:"John"`
+		LastName          string `json:"lastName,omitempty" example:"Doe"`
+		PhoneNumber       string `json:"phoneNumber,omitempty" example:"+12099216581"`
+		ProfilePictureURL string `json:"profilePictureUrl,omitempty" example:"https://somecdn.com/p1.jpg"`
 		DeviceLocation
 	}
 	User struct {
@@ -80,18 +71,18 @@ type (
 		LastMiningStartedAt *time.Time `json:"lastMiningStartedAt,omitempty" example:"2022-01-03T16:20:52.156534Z"`
 		LastPingAt          *time.Time `json:"lastPingAt,omitempty" example:"2022-01-03T16:20:52.156534Z"`
 		PublicUserInformation
-		Email                   string `form:"email" json:"email,omitempty" example:"jdoe@gmail.com"`
-		ReferredBy              UserID `form:"referredBy" json:"referredBy,omitempty" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
-		PhoneNumberHash         string `form:"phoneNumberHash" json:"phoneNumberHash,omitempty" example:"Ef86A6021afCDe5673511376B2"`
-		AgendaPhoneNumberHashes string `form:"agendaPhoneNumberHashes" json:"agendaPhoneNumberHashes,omitempty" example:"Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2"` //nolint:lll // .
-		HashCode                uint64 `json:"-" swaggerignore:"true"`
+		Email                   string `json:"email,omitempty" example:"jdoe@gmail.com"`
+		ReferredBy              UserID `json:"referredBy,omitempty" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
+		PhoneNumberHash         string `json:"phoneNumberHash,omitempty" example:"Ef86A6021afCDe5673511376B2"`
+		AgendaPhoneNumberHashes string `json:"agendaPhoneNumberHashes,omitempty" example:"Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2"` //nolint:lll // .
+		HashCode                uint64 `json:"-"`
 	}
 	RelatableUserProfile struct {
 		MinimalUserProfile
 		ReferralType string `json:"referralType,omitempty" example:"T1" enums:"T1,T2"`
 	}
 	UserProfile struct {
-		PublicUserInformation
+		User
 		ReferralCount uint64 `json:"referralCount,omitempty" example:"100"`
 	}
 	Referrals struct {
@@ -121,31 +112,31 @@ type (
 		_msgpack struct{} `msgpack:",asArray"` // nolint:unused,revive,tagliatelle,nosnakecase // To insert we need asArray
 		// `Read Only`.
 		CreatedAt       *time.Time `json:"createdAt" example:"2022-01-03T16:20:52.156534Z"`
-		UserID          UserID     `uri:"userId" json:"userId" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
+		UserID          UserID     `json:"userId" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
 		PhoneNumber     string     `json:"phoneNumber" example:"+12345678"`
 		PhoneNumberHash string     `json:"phoneNumberHash" example:"Ef86A6021afCDe5673511376B2"`
 		ValidationCode  string     `json:"validationCode" example:"1234"`
-	} // @name ValidatePhoneNumberRequestBody //nolint:godot // It's handled by swaggo.
+	}
 	// Repository main API exposed that handles all the features of this package.
 	Repository interface {
 		io.Closer
 		devicemetadata.DeviceMetadataRepository
 		devicesettings.DeviceSettingsRepository
 
-		GetUsers(context.Context, *GetUsersArg) ([]*RelatableUserProfile, error)
-		GetUserByUsername(context.Context, Username) (*UserProfile, error)
-		GetUserProfileByID(context.Context, UserID) (*UserProfile, error)
+		GetUsers(ctx context.Context, keyword string, limit, offset uint64) ([]*RelatableUserProfile, error)
+		GetUserByUsername(ctx context.Context, username string) (*UserProfile, error)
+		GetUserByID(ctx context.Context, userID string) (*UserProfile, error)
 
-		CreateUser(context.Context, *CreateUserArg) error
-		DeleteUser(context.Context, UserID) error
-		ModifyUser(context.Context, *ModifyUserArg) error
+		CreateUser(ctx context.Context, usr *User, clientIP net.IP) error
+		DeleteUser(ctx context.Context, userID UserID) error
+		ModifyUser(ctx context.Context, usr *User, profilePicture *multipart.FileHeader) error
 
 		ValidatePhoneNumber(context.Context, *PhoneNumberValidation) error
 
-		GetTopCountries(context.Context, *GetTopCountriesArg) ([]*CountryStatistics, error)
+		GetTopCountries(ctx context.Context, keyword string, limit, offset uint64) ([]*CountryStatistics, error)
 
-		GetReferrals(context.Context, *GetReferralsArg) (*Referrals, error)
-		GetReferralAcquisitionHistory(context.Context, *GetReferralAcquisitionHistoryArg) ([]*ReferralAcquisition, error)
+		GetReferrals(ctx context.Context, userID, referralType string, limit, offset uint64) (*Referrals, error)
+		GetReferralAcquisitionHistory(ctx context.Context, userID string, days uint64) ([]*ReferralAcquisition, error)
 	}
 	Processor interface {
 		Repository
@@ -153,77 +144,28 @@ type (
 	}
 )
 
-// API Arguments.
+// Proxy Internal Types.
 type (
-	CreateUserArg struct {
-		// Optional.
-		ReferredBy UserID   `json:"referredBy,omitempty" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
-		Username   Username `json:"username,omitempty" example:"jdoe"`
-		// Optional.
-		PhoneNumber string `json:"phoneNumber,omitempty" example:"+12099216581"`
-		// Optional. Required only if `phoneNumber` is set. Example:"Ef86A6021afCDe5673511376B2".
-		PhoneNumberHash string `json:"phoneNumberHash,omitempty" example:"Ef86A6021afCDe5673511376B2"`
-		// Optional.
-		Email    string `json:"email,omitempty" example:"jdoe@gmail.com"`
-		User     User   `json:"-"`
-		ClientIP net.IP `json:"-" swaggerignore:"true"`
-	} // @name CreateUserRequestBody  //nolint:godot // It's handled by swaggo.
-	ModifyUserArg struct {
-		// Optional.
-		ProfilePicture *multipart.FileHeader `form:"profilePicture" json:"-"`
-		// Optional. Example:"US".
-		Country string `form:"country" json:"country,omitempty"`
-		// Optional. Example:"New York".
-		City string `form:"city" json:"city,omitempty"`
-		// Example:"jdoe".
-		Username Username `form:"username" json:"username,omitempty"`
-		// Optional. Required only if `lastName` is set. Example:"John".
-		FirstName string `form:"firstName" json:"firstName,omitempty"`
-		// Optional. Required only if `firstName` is set.  Example:"Doe".
-		LastName string `form:"lastName" json:"lastName,omitempty"`
-		// Optional. Example:"+12099216581".
-		PhoneNumber string `form:"phoneNumber" json:"phoneNumber,omitempty" `
-		// Optional. Required only if `phoneNumber` is set. Example:"Ef86A6021afCDe5673511376B2".
-		PhoneNumberHash      string `form:"phoneNumberHash" json:"phoneNumberHash,omitempty"`
-		confirmedPhoneNumber string `example:"+12099216581"` //nolint:revive // Just for descriptiveness.
-		// Optional. Example:"jdoe@gmail.com".
-		Email string `form:"email" json:"email,omitempty"`
-		// Optional. Example:"Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2".
-		AgendaPhoneNumberHashes string `form:"agendaPhoneNumberHashes" json:"agendaPhoneNumberHashes,omitempty"`
-		User                    User   `json:"-"`
-	} // @name ModifyUserRequestBody  //nolint:godot // It's handled by swaggo.
-	GetUsersArg struct {
-		UserID  UserID `json:"userId" swaggerignore:"true"`
-		Keyword string `form:"keyword" json:"keyword" example:"john"`
-		Limit   uint64 `form:"limit" json:"limit" maximum:"1000" example:"10"`
-		Offset  uint64 `form:"offset" json:"offset" example:"5"`
-	}
-	GetTopCountriesArg struct {
-		Keyword string `form:"keyword" json:"keyword" example:"united states"`
-		Limit   uint64 `form:"limit" json:"limit" maximum:"1000" example:"20"`
-		Offset  uint64 `form:"offset" json:"offset" example:"5"`
-	}
-	GetReferralAcquisitionHistoryArg struct {
-		UserID UserID `uri:"userId" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
-		Days   uint64 `form:"days" maximum:"30" example:"5"`
-	}
-	GetReferralsArg struct {
-		UserID UserID `uri:"userId" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
-		Type   string `form:"type" example:"T1" enums:"T1,T2,CONTACTS"`
-		Limit  uint64 `form:"limit" maximum:"1000" example:"10"` // 10 by default.
-		Offset uint64 `form:"offset" example:"5"`
-	}
+	DeviceID               = device.ID
+	DeviceMetadataSnapshot = devicemetadata.DeviceMetadataSnapshot
+	DeviceMetadata         = devicemetadata.DeviceMetadata
+	DeviceLocation         = devicemetadata.DeviceLocation
+	DeviceSettings         = devicesettings.DeviceSettings
+	NotificationSettings   = devicesettings.NotificationSettings
+	DeviceSettingsSnapshot = devicesettings.DeviceSettingsSnapshot
 )
 
 // Private API.
 
 const (
-	applicationYamlKey                       = "users"
-	defaultUserImage                         = "default-user-image.jpg"
-	hashCodeDBColumnName                     = "hash_code"
-	add                  arithmeticOperation = "+"
-	subtract             arithmeticOperation = "-"
-	expirationDeadline                       = 24 * stdlibtime.Hour
+	applicationYamlKey                                    = "users"
+	isPhoneNumberConfirmedCtxValueKey                     = "isPhoneNumberConfirmedCtxValueKey"
+	requestingUserIDCtxValueKey                           = "requestingUserIDCtxValueKey"
+	defaultUserImage                                      = "default-user-image.jpg"
+	hashCodeDBColumnName                                  = "hash_code"
+	add                               arithmeticOperation = "+"
+	subtract                          arithmeticOperation = "-"
+	expirationDeadline                                    = 24 * stdlibtime.Hour
 )
 
 var (

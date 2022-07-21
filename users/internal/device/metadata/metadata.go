@@ -4,6 +4,7 @@ package devicemetadata
 
 import (
 	"context"
+	"net"
 	"strings"
 
 	"github.com/framey-io/go-tarantool"
@@ -54,25 +55,24 @@ func (r *repository) Close() error {
 	return nil
 }
 
-func (r *repository) GetDeviceMetadataLocation(ctx context.Context, arg *GetDeviceMetadataLocationArg) *DeviceLocation {
+func (r *repository) GetDeviceMetadataLocation(ctx context.Context, deviceID device.ID, clientIP net.IP) *DeviceLocation {
 	if ctx.Err() != nil {
-		log.Error(errors.Wrapf(ctx.Err(), "context error for GetDeviceMetadataLocation for %#v", arg))
+		log.Error(errors.Wrapf(ctx.Err(), "context error for GetDeviceMetadataLocation for %#v", deviceID))
 
 		return new(DeviceLocation)
 	}
 	//nolint:godox // .
-	//TODO: TBD if we need to use arg.DeviceUniqueID and/or arg.UserID to find some default/preferred value for the user.
+	//TODO: TBD if we need to use deviceID.DeviceUniqueID and/or deviceID.UserID to find some default/preferred value for the user.
 
-	result, err := r.ip2LocationDB.Get_all(arg.ClientIP.String()) //nolint:nosnakecase // Because this is from external library.
+	result, err := r.ip2LocationDB.Get_all(clientIP.String()) //nolint:nosnakecase // External library.
 	if err != nil {
-		log.Error(errors.Wrapf(err, "unable to get country&city for %#v", arg))
+		log.Error(errors.Wrapf(err, "unable to get country&city for %#v, %v", deviceID, clientIP.String()))
 
 		return new(DeviceLocation)
 	}
 
 	return &DeviceLocation{
-		//nolint:nosnakecase // This is struct member from the external library.
-		Country: strings.ToUpper(result.Country_short),
+		Country: strings.ToUpper(result.Country_short), //nolint:nosnakecase // External library.
 		City:    result.City,
 	}
 }
@@ -92,20 +92,19 @@ func (r *repository) GetDeviceMetadata(ctx context.Context, id device.ID) (*Devi
 	return &dm.DeviceMetadata, nil
 }
 
-func (r *repository) ReplaceDeviceMetadata(ctx context.Context, arg *ReplaceDeviceMetadataArg) (err error) {
+func (r *repository) ReplaceDeviceMetadata(ctx context.Context, input *DeviceMetadata, clientIP net.IP) (err error) {
 	if ctx.Err() != nil {
 		return errors.Wrap(ctx.Err(), "context failed")
 	}
-	ip := arg.ClientIP
 	metadata := new(deviceMetadata)
 	metadata.UpdatedAt = time.Now()
-	metadata.DeviceMetadata = arg.DeviceMetadata
-	if metadata.IP2Locationrecord, err = r.ip2LocationDB.Get_all(ip.String()); err != nil { //nolint:nosnakecase // Because this is from external library.
-		return errors.Wrapf(err, "failed to get location information based on IP %v to replace device metadata", ip.String())
+	metadata.DeviceMetadata = *input
+	if metadata.IP2Locationrecord, err = r.ip2LocationDB.Get_all(clientIP.String()); err != nil { //nolint:nosnakecase // External library.
+		return errors.Wrapf(err, "failed to get location information based on IP %v to replace device metadata", clientIP.String())
 	}
-	before, err := r.GetDeviceMetadata(ctx, arg.ID)
+	before, err := r.GetDeviceMetadata(ctx, input.ID)
 	if err != nil && !errors.Is(err, storage.ErrNotFound) {
-		return errors.Wrapf(err, "failed to get current device metadata for %#v", arg.ID)
+		return errors.Wrapf(err, "failed to get current device metadata for %#v", input.ID)
 	}
 	var result []*deviceMetadata
 	if err = r.db.ReplaceTyped("DEVICE_METADATA", metadata, &result); err != nil {

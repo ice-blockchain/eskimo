@@ -58,24 +58,27 @@ func afterConnectorsStarted(ctx context.Context) connectorsfixture.ContextErrClo
 }
 
 //nolint:funlen // A lot of APIs to check.
-func requireAllAPIMethodsFailIfRepositoryOrProcessorAreStopped(pCtx context.Context) error {
+func requireAllAPIMethodsFailIfRepositoryOrProcessorAreStopped(cctx context.Context) error {
 	const apiMethodsCount = 16
 	errsChan := make(chan error, apiMethodsCount)
 	wg := new(sync.WaitGroup)
 	wg.Add(apiMethodsCount)
+	bogusIP := net.ParseIP("1.1.1.1")
+	//nolint:nolintlint // Its gonna come back.
+	pCtx := context.WithValue(cctx, requestingUserIDCtxValueKey, "bogusRequestingUserID") //nolint:revive,staticcheck // Nope.
 	//nolint:nlreturn,wrapcheck // Not needed.
 	apiMethods := []func(context.Context) error{
 		func(ctx context.Context) error {
 			return usersProcessor.CheckHealth(ctx)
 		},
 		func(ctx context.Context) error {
-			return usersProcessor.CreateUser(ctx, &CreateUserArg{Username: "bogus"})
+			return usersProcessor.CreateUser(ctx, &User{PublicUserInformation: PublicUserInformation{Username: "bogus"}}, bogusIP)
 		},
 		func(ctx context.Context) error {
-			return usersProcessor.ModifyUser(ctx, &ModifyUserArg{Username: "bogus-modified"})
+			return usersProcessor.ModifyUser(ctx, &User{PublicUserInformation: PublicUserInformation{Username: "bogus"}}, nil)
 		},
 		func(ctx context.Context) error {
-			return usersProcessor.DeleteUser(ctx, "bogus")
+			return usersProcessor.DeleteUser(ctx, "bogusUserID")
 		},
 		func(ctx context.Context) error {
 			return usersProcessor.CreateDeviceSettings(ctx, &devicesettings.DeviceSettings{ID: device.ID{UserID: "bogus", DeviceUniqueID: "bogus"}})
@@ -87,17 +90,14 @@ func requireAllAPIMethodsFailIfRepositoryOrProcessorAreStopped(pCtx context.Cont
 			return usersProcessor.ValidatePhoneNumber(ctx, &PhoneNumberValidation{UserID: "bogus", PhoneNumber: "bogus"})
 		},
 		func(ctx context.Context) error {
-			return usersProcessor.ReplaceDeviceMetadata(ctx, &ReplaceDeviceMetadataArg{
-				ClientIP:       net.ParseIP("1.1.1.1"),
-				DeviceMetadata: devicemetadata.DeviceMetadata{ID: device.ID{UserID: "bogus", DeviceUniqueID: "bogus"}},
-			})
+			return usersProcessor.ReplaceDeviceMetadata(ctx, &devicemetadata.DeviceMetadata{ID: device.ID{UserID: "bogus", DeviceUniqueID: "bogus"}}, bogusIP)
 		},
 		func(ctx context.Context) error {
-			_, err := usersRepository.GetReferrals(ctx, &GetReferralsArg{UserID: "bogus", Type: Tier1Referrals})
+			_, err := usersRepository.GetReferrals(ctx, "bogusUserID", Tier1Referrals, 1, 0)
 			return err
 		},
 		func(ctx context.Context) error {
-			_, err := usersRepository.GetReferralAcquisitionHistory(ctx, &GetReferralAcquisitionHistoryArg{UserID: "bogus"})
+			_, err := usersRepository.GetReferralAcquisitionHistory(ctx, "bogusUserID", 5)
 			return err
 		},
 		func(ctx context.Context) error {
@@ -109,7 +109,7 @@ func requireAllAPIMethodsFailIfRepositoryOrProcessorAreStopped(pCtx context.Cont
 			return err
 		},
 		func(ctx context.Context) error {
-			_, err := usersProcessor.GetUsers(ctx, &GetUsersArg{UserID: "bogus", Keyword: "bogus"})
+			_, err := usersProcessor.GetUsers(ctx, "bogus", 1, 0)
 			return err
 		},
 		func(ctx context.Context) error {
@@ -117,11 +117,11 @@ func requireAllAPIMethodsFailIfRepositoryOrProcessorAreStopped(pCtx context.Cont
 			return err
 		},
 		func(ctx context.Context) error {
-			_, err := usersProcessor.GetUserProfileByID(ctx, "bogusid")
+			_, err := usersProcessor.GetUserByID(ctx, "bogusUserID")
 			return err
 		},
 		func(ctx context.Context) error {
-			_, err := usersProcessor.GetTopCountries(ctx, &GetTopCountriesArg{Keyword: "us"})
+			_, err := usersProcessor.GetTopCountries(ctx, "us", 1, 0)
 			return err
 		},
 	}
