@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// nolint:paralleltest // We're not running this in parallel because it counts users, and users from other tests can affect values
+// nolint:paralleltest,nosnakecase // We're not running this in parallel because it counts users, and users from other tests can affect values
 func TestUserProcessor_IncrementCountryUserCount_Success_OnUserCreation(t *testing.T) {
 	if testing.Short() {
 		return
@@ -29,7 +29,7 @@ func TestUserProcessor_IncrementCountryUserCount_Success_OnUserCreation(t *testi
 	require.NoError(t, usersProcessor.DeleteUser(ctx, userID))
 }
 
-// nolint:paralleltest // We're not running this in parallel because it counts users, and users from other tests can affect values
+// nolint:paralleltest,nosnakecase // We're not running this in parallel because it counts users, and users from other tests can affect values
 func TestUserProcessor_DecrementCountryUserCount_Success_OnUserDeletion(t *testing.T) {
 	if testing.Short() {
 		return

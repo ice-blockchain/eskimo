@@ -58,11 +58,13 @@ func (r *repository) CreateUser(ctx context.Context, usr *User, clientIP net.IP)
 		if field == hashCodeDBColumnName {
 			return r.CreateUser(ctx, usr, clientIP)
 		}
-		usrBytes, err := json.Marshal(usr)
+		var usrBytes []byte
+		usrBytes, err = json.Marshal(usr)
 		usrStr := string(usrBytes)
 		if err != nil {
 			usrStr = fmt.Sprintf("%#v", usr)
 		}
+
 		return errors.Wrapf(tErr, "failed to insert user %v", usrStr)
 	}
 	usr.setCorrectProfilePictureURL()

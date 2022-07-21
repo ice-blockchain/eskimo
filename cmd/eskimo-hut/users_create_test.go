@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// nolint:nosnakecase // We're using this naming for tests with underscore
 func TestService_CreateUser_Failure_Unauthorized(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
@@ -29,6 +30,7 @@ func TestService_CreateUser_Failure_Unauthorized(t *testing.T) {
 		map[string]string{"Authorization": ""})
 }
 
+// nolint:nosnakecase // We're using this naming for tests with underscore
 func TestService_CreateUser_Failure_NoPhoneHash(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
@@ -41,6 +43,7 @@ func TestService_CreateUser_Failure_NoPhoneHash(t *testing.T) {
 		`{"error":"phoneNumber must be provided only together with phoneNumberHash","code":"INVALID_PROPERTIES"}`, 400)
 }
 
+// nolint:nosnakecase // We're using this naming for tests with underscore
 func TestService_CreateUser_Failure_PhoneHashWithoutPhoneNumber(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
@@ -53,6 +56,7 @@ func TestService_CreateUser_Failure_PhoneHashWithoutPhoneNumber(t *testing.T) {
 		`{"error":"phoneNumberHash must be provided only together with phoneNumber","code":"INVALID_PROPERTIES"}`, 400)
 }
 
+// nolint:nosnakecase // We're using this naming for tests with underscore
 func TestService_CreateUser_Failure_NoUsername(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
@@ -65,6 +69,7 @@ func TestService_CreateUser_Failure_NoUsername(t *testing.T) {
 		"{\"error\":\"properties `username` are required\",\"code\":\"MISSING_PROPERTIES\"}", 400)
 }
 
+// nolint:nosnakecase // We're using this naming for tests with underscore
 func TestService_CreateUser_Failure_UserIsReferralOfItself(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
@@ -77,6 +82,7 @@ func TestService_CreateUser_Failure_UserIsReferralOfItself(t *testing.T) {
 		`{"error":"you cannot use yourself as your own referral","code":"INVALID_PROPERTIES"}`, 400)
 }
 
+// nolint:nosnakecase // We're using this naming for tests with underscore
 func TestService_CreateUser_Failure_NonExistingReferredBy(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
@@ -89,6 +95,7 @@ func TestService_CreateUser_Failure_NonExistingReferredBy(t *testing.T) {
 		`REFERRAL_NOT_FOUND`, 404)
 }
 
+// nolint:nosnakecase // We're using this naming for tests with underscore
 func TestService_CreateUser_Failure_UsernameIsTooShort(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
@@ -101,6 +108,7 @@ func TestService_CreateUser_Failure_UsernameIsTooShort(t *testing.T) {
 		`{"error":"username: t is invalid, it should match regex: \^\[\-\\\\w\.\]\{4,20\}\$","code":"INVALID_USERNAME"}`, 400)
 }
 
+// nolint:nosnakecase // We're using this naming for tests with underscore
 func TestService_CreateUser_Failure_UsernameIsTooLong(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
@@ -114,19 +122,27 @@ func TestService_CreateUser_Failure_UsernameIsTooLong(t *testing.T) {
 		400)
 }
 
+// nolint:nosnakecase // We're using this naming for tests with underscore
 func TestService_CreateUser_Failure_UsernameWithSpecialCharacters(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
 		return
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), testDeadline)
-	defer cancel()
-
-	testCreateUser(ctx, t,
-		`{"email": "testuser@example.com", "username": "user%name"}`,
-		`{"error":"username: user%name is invalid, it should match regex: \^\[\-\\\\w\.\]\{4,20\}\$","code":"INVALID_USERNAME"}`, 400)
+	t.Cleanup(cancel)
+	specCharacters := "!#%',:;=@`|~"
+	for _, character := range specCharacters {
+		c := character
+		t.Run("test special character "+string(character), func(t *testing.T) {
+			t.Parallel()
+			testCreateUser(ctx, t,
+				fmt.Sprintf(`{"email": "testuser@example.com", "username": "user%v"}`, string(c)),
+				fmt.Sprintf(`{"error":"username: user%v is invalid, it should match regex: \^\[\-\\\\w\.\]\{4,20\}\$","code":"INVALID_USERNAME"}`, string(c)), 400)
+		})
+	}
 }
 
+// nolint:nosnakecase,funlen,paralleltest // We're using this naming for tests with underscore
 func TestService_CreateUser_Failure_Duplicate(t *testing.T) {
 	if testing.Short() {
 		return
@@ -136,7 +152,6 @@ func TestService_CreateUser_Failure_Duplicate(t *testing.T) {
 	// User creation -> 201.
 	testCreateUser(ctx, t,
 		`{"email": "testuser@example.com", "username": "test"}`,
-		// nolint:lll // Long response here.
 		fmt.Sprintf(`{
 			"createdAt":%[1]q,
 			"updatedAt":%[1]q,
@@ -151,20 +166,21 @@ func TestService_CreateUser_Failure_Duplicate(t *testing.T) {
 	// Duplicate user name -> 409.
 	testCreateUser(ctx, t,
 		`{"email": "testuser@example.com","username": "test"}`,
-		`{
+		fmt.Sprintf(`{
 			"data":{"field":"username"},
 			"error":"failed to create user: failed to insert user {
 				\\"createdAt\\":%[1]s,
 				\\"updatedAt\\":%[1]s,
-				\\"id\\":\\"did:ethr:0xbf6e4672B791185161185a0432aBE731cf4DbEb4\\",
+				\\"id\\":\\"did:ethr:0xDeb2A20363E9063ad521B3156304b9E12834644B\\",
 				\\"username\\":\\"test\\",
 				\\"profilePictureUrl\\":\\"default-user-image.jpg\\",
 				\\"country\\":\\"-\\",
 				\\"city\\":\\"This is DB24 demo BIN database. Please evaluate IP address from 0.0.0.0 to 99.255.255.255.\\",
 				\\"email\\":\\"testuser@example.com\\"
 			}: duplicate","code":"CONFLICT_WITH_ANOTHER_USER"
-		}`,
-		409, map[string]string{"Authorization": fmt.Sprintf("Bearer %v", testMagicToken2ndUser)}) // Another token to create user with another userID but same username
+		}`, strings.ReplaceAll(fmt.Sprintf("%q", timeRegex), `"`, "\\\\\"")),
+		// Another token to create user with another userID but same username.
+		409, map[string]string{"Authorization": fmt.Sprintf("Bearer %v", testMagicToken2ndUser)})
 	// Duplicate userID (cuz of the same auth header) -> 409.
 	testCreateUser(ctx, t,
 		`{"email": "testuser@example.com","username": "another_user_test"}`,
@@ -186,6 +202,7 @@ func TestService_CreateUser_Failure_Duplicate(t *testing.T) {
 	testDeleteUser(ctx, t, "did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2", 200)
 }
 
+// nolint:nosnakecase,paralleltest // We're using this naming for tests with underscore
 func TestService_CreateUser_Success_WithEmail(t *testing.T) {
 	if testing.Short() {
 		return
@@ -209,6 +226,7 @@ func TestService_CreateUser_Success_WithEmail(t *testing.T) {
 	testDeleteUser(ctx, t, "did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2", 200)
 }
 
+// nolint:nosnakecase,funlen,paralleltest // We're using this naming for tests with underscore
 func TestService_CreateUser_Success_WithReferral(t *testing.T) {
 	if testing.Short() {
 		return
@@ -218,7 +236,6 @@ func TestService_CreateUser_Success_WithReferral(t *testing.T) {
 	// T0.
 	testCreateUser(ctx, t,
 		`{"email": "testuser@example.com", "username": "test"}`,
-		// nolint:lll // Long response here.
 		fmt.Sprintf(`{
 			"createdAt":%[1]q,
 			"updatedAt":%[1]q,
@@ -232,21 +249,25 @@ func TestService_CreateUser_Success_WithReferral(t *testing.T) {
 		201)
 	// Referred user.
 	testCreateUser(ctx, t,
-		`{"referredBy": "did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2", "username": "test"}`,
+		`{"referredBy": "did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2", "username": "test_referred"}`,
 		fmt.Sprintf(`{
 			"createdAt":%[1]q,
 			"updatedAt":%[1]q,
-			"id":"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2",
-			"username":"test",
+			"id":"did:ethr:0xDeb2A20363E9063ad521B3156304b9E12834644B",
+			"username":"test_referred",
 			"profilePictureUrl":"https://ice-staging.b-cdn.net/profile/default-user-image.jpg",
 			"country":"-",
 			"city":"This is DB24 demo BIN database. Please evaluate IP address from 0.0.0.0 to 99.255.255.255.",
-			"email":"testuser@example.com"
+			"referredBy":"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"
 		}`, timeRegex),
 		201, map[string]string{"Authorization": fmt.Sprintf("Bearer %v", testMagicToken2ndUser)}) // Another token to create from another user.
+	testDeleteUser(ctx, t, "did:ethr:0xDeb2A20363E9063ad521B3156304b9E12834644B", 200,
+		map[string]string{"Authorization": fmt.Sprintf("Bearer %v", testMagicToken2ndUser)},
+	)
 	testDeleteUser(ctx, t, "did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2", 200)
 }
 
+// nolint:nosnakecase // We're using this naming for tests with underscore
 func TestService_CreateUser_Failure_NonExistingReferral(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
@@ -257,7 +278,7 @@ func TestService_CreateUser_Failure_NonExistingReferral(t *testing.T) {
 	testCreateUser(ctx, t,
 		`{"referredBy": "did:ethr:NON_EXISTING_USER", "username": "test"}`,
 		fmt.Sprintf(`{
-			"error":"failed to create user: failed to insert user{
+			"error":"failed to create user: failed to insert user {
 				\\"createdAt\\":%[1]s,
 				\\"updatedAt\\":%[1]s,
 				\\"id\\":\\"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2\\",
@@ -272,6 +293,7 @@ func TestService_CreateUser_Failure_NonExistingReferral(t *testing.T) {
 		404)
 }
 
+// nolint:nosnakecase // We're using this naming for tests with underscore
 func TestService_CreateUser_Failure_SelfReferred(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
@@ -285,6 +307,7 @@ func TestService_CreateUser_Failure_SelfReferred(t *testing.T) {
 		400)
 }
 
+// nolint:nosnakecase,paralleltest // We're using this naming for tests with underscore
 func TestService_CreateUser_Success(t *testing.T) {
 	if testing.Short() {
 		return
@@ -294,7 +317,6 @@ func TestService_CreateUser_Success(t *testing.T) {
 	// User creation -> 201.
 	testCreateUser(ctx, t,
 		`{"username": "test_no_email"}`,
-		// nolint:lll // Long response here.
 		fmt.Sprintf(`{
 			"createdAt":%[1]q,
 			"updatedAt":%[1]q,

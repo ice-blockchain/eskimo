@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: BUSL-1.1
+
 package main
 
 import (
@@ -11,8 +13,8 @@ import (
 	"github.com/ice-blockchain/eskimo/users"
 )
 
-// nolint:revive // We need those arguments to verify result.
-func testDeleteUser(ctx context.Context, tb testing.TB, userId users.UserID, expectedRespStatus int, extraHeaders ...map[string]string) {
+// nolint:revive,unparam // We need those arguments to verify result.
+func testDeleteUser(ctx context.Context, tb testing.TB, userID users.UserID, expectedRespStatus int, extraHeaders ...map[string]string) {
 	tb.Helper()
 	reqHeaders := http.Header{}
 	reqHeaders.Set("Authorization", fmt.Sprintf("Bearer %v", testMagicToken))
@@ -23,6 +25,6 @@ func testDeleteUser(ctx context.Context, tb testing.TB, userId users.UserID, exp
 			}
 		}
 	}
-	_, status, _ := serverConnector.Delete(ctx, tb, fmt.Sprintf(`/v1w/users/%v`, userId), reqHeaders)
+	_, status, _ := serverConnector.Delete(ctx, tb, fmt.Sprintf(`/v1w/users/%v`, userID), reqHeaders)
 	assert.Equal(tb, expectedRespStatus, status)
 }

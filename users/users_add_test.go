@@ -8,17 +8,16 @@ import (
 	"net"
 	"testing"
 
-	"github.com/ice-blockchain/wintr/time"
-
 	"github.com/framey-io/go-tarantool"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	messagebroker_fixture "github.com/ice-blockchain/wintr/connectors/message_broker/fixture"
+	messagebrokerfixture "github.com/ice-blockchain/wintr/connectors/message_broker/fixture"
+	"github.com/ice-blockchain/wintr/time"
 )
 
-// nolint:paralleltest // We cannot use parallel tests in case of empty (=random) referral, cuz of it can fetch referredBy-user from another test
+// nolint:paralleltest,nosnakecase // We cannot use parallel tests in case of empty (=random) referral, cuz of it can fetch referredBy-user from another test
 // and it cannot be deleted in this case because of reference in DDL.
 func TestUserProcessor_CreateUser_Success_NoReferral(t *testing.T) {
 	if testing.Short() {
@@ -41,6 +40,7 @@ func TestUserProcessor_CreateUser_Success_NoReferral(t *testing.T) {
 	require.NoError(t, usersProcessor.DeleteUser(ctx, user.ID))
 }
 
+// nolint:nosnakecase // We're using this naming for tests with underscore
 func TestUserProcessor_CreateUser_Success_WithReferral(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
@@ -60,6 +60,7 @@ func TestUserProcessor_CreateUser_Success_WithReferral(t *testing.T) {
 	require.NoError(t, usersProcessor.DeleteUser(ctx, t0.ID))
 }
 
+// nolint:nosnakecase // We're using this naming for tests with underscore
 func TestUserProcessor_CreateUser_Failure_NonExistingReferredBy(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
@@ -72,7 +73,7 @@ func TestUserProcessor_CreateUser_Failure_NonExistingReferredBy(t *testing.T) {
 		verifyCreateUser(ctx, t, ErrRelationNotFound)
 }
 
-// nolint:paralleltest // We cannot use parallel tests in case of empty (=random) referral, cuz of it can fetch referredBy-user from another test
+// nolint:paralleltest,nosnakecase // We cannot use parallel tests in case of empty (=random) referral, cuz of it can fetch referredBy-user from another test
 // and it cannot be deleted in this case because of reference in DDL.
 func TestUserProcessor_CreateUser_Failure_Duplicate(t *testing.T) {
 	if testing.Short() {
@@ -120,7 +121,7 @@ func verifyUserSnapshotMessages(ctx context.Context, t *testing.T, userSnapshots
 		} else {
 			id = userSnapshot.Before.ID
 		}
-		message := messagebroker_fixture.RawMessage{
+		message := messagebrokerfixture.RawMessage{
 			Key:   id,
 			Value: userSnapshot.requireMarshallJSON(t),
 			Topic: cfg.MessageBroker.Topics[0].Name, // | users-events.
