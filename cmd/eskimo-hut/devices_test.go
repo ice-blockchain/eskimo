@@ -126,6 +126,28 @@ func TestEskimoHut_CreateDeviceSettings_Failure_SyntaxFails(t *testing.T) {
 }
 
 //nolint:nosnakecase // Our code style allows to use underscores for test functions.
+func TestEskimoHut_CreateDeviceSettings_Failure_Fuzzing(t *testing.T) {
+	t.Parallel()
+	if testing.Short() {
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), testDeadline)
+	t.Cleanup(cancel)
+	repeatWithParallel(t, "CreateDeviceSettings failure fuzzing -> 422.", func() {
+		doCreateUserDevices(ctx, t, &testUserDevicesRequestDataArg{
+			reqUserID:             randomHex(t, 10000),
+			reqDeviceID:           randomHex(t, 10000),
+			reqBody:               ``,
+			expectedRespRegexpErr: `EOF`,
+			expectedRespCode:      `STRUCTURE_VALIDATION_FAILED`,
+			reqHeaders:            []http.Header{authHeader()},
+			expectedRespStatus:    http.StatusUnprocessableEntity,
+		})
+	})
+}
+
+//nolint:nosnakecase // Our code style allows to use underscores for test functions.
 func TestEskimoHut_CreateDeviceSettings_Failure_Forbidden(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
@@ -345,6 +367,28 @@ func TestEskimoHut_ModifyDeviceSettings_Failure_SyntaxFails(t *testing.T) {
 		doCreateUserDevices(ctx, t, &testUserDevicesRequestDataArg{
 			reqUserID:             testUserID,
 			reqDeviceID:           uuid.NewString(),
+			reqBody:               ``,
+			expectedRespRegexpErr: `EOF`,
+			expectedRespCode:      `STRUCTURE_VALIDATION_FAILED`,
+			reqHeaders:            []http.Header{authHeader()},
+			expectedRespStatus:    http.StatusUnprocessableEntity,
+		})
+	})
+}
+
+//nolint:nosnakecase // Our code style allows to use underscores for test functions.
+func TestEskimoHut_ModifyDeviceSettings_Failure_Fuzzing(t *testing.T) {
+	t.Parallel()
+	if testing.Short() {
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), testDeadline)
+	t.Cleanup(cancel)
+	repeatWithParallel(t, "ModifyDeviceSettings failure syntax fails -> 422.", func() {
+		doCreateUserDevices(ctx, t, &testUserDevicesRequestDataArg{
+			reqUserID:             randomHex(t, 10000),
+			reqDeviceID:           randomHex(t, 10000),
 			reqBody:               ``,
 			expectedRespRegexpErr: `EOF`,
 			expectedRespCode:      `STRUCTURE_VALIDATION_FAILED`,
