@@ -30,7 +30,7 @@ const (
 	ContactsReferrals = "CONTACTS"
 	Tier1Referrals    = "T1"
 	Tier2Referrals    = "T2"
-	UsernameRegex     = `^[\w\-.]{4,20}$`
+	UsernameRegex     = `^[-\w.]{4,20}$`
 )
 
 var (

@@ -158,6 +158,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/server.ErrorResponse"
                         }
                     },
+                    "404": {
+                        "description": "referredBy points to non-existing user",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    },
                     "409": {
                         "description": "user already exists with that ID or with that username",
                         "schema": {

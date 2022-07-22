@@ -34,6 +34,8 @@ var (
 	mbConnector     messagebrokerfixture.TestConnector
 	usersRepository Repository
 	usersProcessor  Processor
+	// Example address in US, New York City.
+	testClientIP = net.IPv4(72, 229, 28, 185)
 )
 
 func TestMain(m *testing.M) {
