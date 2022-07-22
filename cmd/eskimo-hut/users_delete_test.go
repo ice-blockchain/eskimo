@@ -13,7 +13,17 @@ import (
 	"github.com/ice-blockchain/eskimo/users"
 )
 
-// nolint:revive,unparam // We need those arguments to verify result.
+// nolint:nosnakecase // We're using this naming for tests with underscore
+func TestService_DeleteUser_Failure_Unauthorized(t *testing.T) {
+	t.Parallel()
+	if testing.Short() {
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), testDeadline)
+	defer cancel()
+	testDeleteUser(ctx, t, "did:ethr:user", 401, map[string]string{"Authorization": ""})
+}
+
 func testDeleteUser(ctx context.Context, tb testing.TB, userID users.UserID, expectedRespStatus int, extraHeaders ...map[string]string) {
 	tb.Helper()
 	reqHeaders := http.Header{}

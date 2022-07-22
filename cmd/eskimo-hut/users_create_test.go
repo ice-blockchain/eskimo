@@ -40,7 +40,7 @@ func TestService_CreateUser_Failure_NoPhoneHash(t *testing.T) {
 	defer cancel()
 	testCreateUser(ctx, t,
 		`{"email": "testuser@example.com", "phoneNumber": "+123456789","phoneNumberHash": "","username": "test"}`,
-		`{"error":"phoneNumber must be provided only together with phoneNumberHash","code":"INVALID_PROPERTIES"}`, 400)
+		`{"error":"phoneNumber must be provided only together with phoneNumberHash","code":"INVALID_PROPERTIES"}`, 422)
 }
 
 // nolint:nosnakecase // We're using this naming for tests with underscore
@@ -53,7 +53,7 @@ func TestService_CreateUser_Failure_PhoneHashWithoutPhoneNumber(t *testing.T) {
 	defer cancel()
 	testCreateUser(ctx, t,
 		`{"email": "testuser@example.com", "phoneNumber": "","phoneNumberHash": "25f9e794323b453885f5181f1b624d0b","username": "test"}`,
-		`{"error":"phoneNumberHash must be provided only together with phoneNumber","code":"INVALID_PROPERTIES"}`, 400)
+		`{"error":"phoneNumber must be provided only together with phoneNumberHash","code":"INVALID_PROPERTIES"}`, 422)
 }
 
 // nolint:nosnakecase // We're using this naming for tests with underscore
@@ -66,20 +66,7 @@ func TestService_CreateUser_Failure_NoUsername(t *testing.T) {
 	defer cancel()
 	testCreateUser(ctx, t,
 		`{"email": "testuser@example.com", "phoneNumber": "+123456789","phoneNumberHash": "25f9e794323b453885f5181f1b624d0b"}`,
-		"{\"error\":\"properties `username` are required\",\"code\":\"MISSING_PROPERTIES\"}", 400)
-}
-
-// nolint:nosnakecase // We're using this naming for tests with underscore
-func TestService_CreateUser_Failure_UserIsReferralOfItself(t *testing.T) {
-	t.Parallel()
-	if testing.Short() {
-		return
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), testDeadline)
-	defer cancel()
-	testCreateUser(ctx, t,
-		`{"email": "testuser@example.com", "username": "test", "referredBy":"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"}`,
-		`{"error":"you cannot use yourself as your own referral","code":"INVALID_PROPERTIES"}`, 400)
+		"{\"error\":\"properties `Username` are required\",\"code\":\"MISSING_PROPERTIES\"}", 422)
 }
 
 // nolint:nosnakecase // We're using this naming for tests with underscore
@@ -143,6 +130,49 @@ func TestService_CreateUser_Failure_UsernameWithSpecialCharacters(t *testing.T) 
 }
 
 // nolint:nosnakecase,funlen,paralleltest // We're using this naming for tests with underscore
+func TestService_CreateUser_Failure_DuplicateUserID(t *testing.T) {
+	if testing.Short() {
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), testDeadline)
+	defer cancel()
+	// User creation -> 201.
+	testCreateUser(ctx, t,
+		`{"email": "testuser@example.com", "username": "test"}`,
+		fmt.Sprintf(`{
+			"createdAt":%[1]q,
+			"updatedAt":%[1]q,
+			"id":"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2",
+			"username":"test",
+			"profilePictureUrl":"https://ice-staging.b-cdn.net/profile/default-user-image.jpg",
+			"country":"-",
+			"city":"This is DB24 demo BIN database. Please evaluate IP address from 0.0.0.0 to 99.255.255.255.",
+			"email":"testuser@example.com"
+		}`, timeRegex),
+		201)
+	// Duplicate userID (cuz of the same auth header) -> 409.
+	testCreateUser(ctx, t,
+		`{"email": "testuser@example.com","username": "another_user_test"}`,
+		fmt.Sprintf(`{
+			"data":{"field":"id"},
+			"error":"failed to create user \\u0026main.CreateUserArg{ReferredBy:\\"\\", Username:\\"another_user_test\\", PhoneNumber:\\"\\", PhoneNumberHash:\\"\\", Email:\\"testuser@example.com\\"}: 
+				failed to insert user {
+				\\"createdAt\\":%[1]s,
+				\\"updatedAt\\":%[1]s,
+				\\"id\\":\\"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2\\",
+				\\"username\\":\\"another_user_test\\",
+				\\"profilePictureUrl\\":\\"default-user-image.jpg\\",
+				\\"country\\":\\"-\\",
+				\\"city\\":\\"This is DB24 demo BIN database. Please evaluate IP address from 0.0.0.0 to 99.255.255.255.\\",
+				\\"email\\":\\"testuser@example.com\\"
+			}: duplicate","code":"CONFLICT_WITH_ANOTHER_USER"
+		}`,
+			strings.ReplaceAll(fmt.Sprintf("%q", timeRegex), `"`, "\\\\\"")),
+		409)
+	testDeleteUser(ctx, t, "did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2", 200)
+}
+
+// nolint:nosnakecase,funlen,paralleltest // We're using this naming for tests with underscore
 func TestService_CreateUser_Failure_Duplicate(t *testing.T) {
 	if testing.Short() {
 		return
@@ -168,7 +198,8 @@ func TestService_CreateUser_Failure_Duplicate(t *testing.T) {
 		`{"email": "testuser@example.com","username": "test"}`,
 		fmt.Sprintf(`{
 			"data":{"field":"username"},
-			"error":"failed to create user: failed to insert user {
+			"error":"failed to create user \\u0026main.CreateUserArg{ReferredBy:\\"\\", Username:\\"test\\", PhoneNumber:\\"\\", PhoneNumberHash:\\"\\", Email:\\"testuser@example.com\\"}: 
+				failed to insert user {
 				\\"createdAt\\":%[1]s,
 				\\"updatedAt\\":%[1]s,
 				\\"id\\":\\"did:ethr:0xDeb2A20363E9063ad521B3156304b9E12834644B\\",
@@ -181,24 +212,6 @@ func TestService_CreateUser_Failure_Duplicate(t *testing.T) {
 		}`, strings.ReplaceAll(fmt.Sprintf("%q", timeRegex), `"`, "\\\\\"")),
 		// Another token to create user with another userID but same username.
 		409, map[string]string{"Authorization": fmt.Sprintf("Bearer %v", testMagicToken2ndUser)})
-	// Duplicate userID (cuz of the same auth header) -> 409.
-	testCreateUser(ctx, t,
-		`{"email": "testuser@example.com","username": "another_user_test"}`,
-		fmt.Sprintf(`{
-			"data":{"field":"id"},
-			"error":"failed to create user: failed to insert user {
-				\\"createdAt\\":%[1]s,
-				\\"updatedAt\\":%[1]s,
-				\\"id\\":\\"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2\\",
-				\\"username\\":\\"another_user_test\\",
-				\\"profilePictureUrl\\":\\"default-user-image.jpg\\",
-				\\"country\\":\\"-\\",
-				\\"city\\":\\"This is DB24 demo BIN database. Please evaluate IP address from 0.0.0.0 to 99.255.255.255.\\",
-				\\"email\\":\\"testuser@example.com\\"
-			}: duplicate","code":"CONFLICT_WITH_ANOTHER_USER"
-		}`,
-			strings.ReplaceAll(fmt.Sprintf("%q", timeRegex), `"`, "\\\\\"")),
-		409)
 	testDeleteUser(ctx, t, "did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2", 200)
 }
 
@@ -278,7 +291,8 @@ func TestService_CreateUser_Failure_NonExistingReferral(t *testing.T) {
 	testCreateUser(ctx, t,
 		`{"referredBy": "did:ethr:NON_EXISTING_USER", "username": "test"}`,
 		fmt.Sprintf(`{
-			"error":"failed to create user: failed to insert user {
+			"error":"failed to create user \\u0026main.CreateUserArg{ReferredBy:\\"did:ethr:NON_EXISTING_USER\\", Username:\\"test\\", PhoneNumber:\\"\\", PhoneNumberHash:\\"\\", Email:\\"\\"}: 
+			failed to insert user {
 				\\"createdAt\\":%[1]s,
 				\\"updatedAt\\":%[1]s,
 				\\"id\\":\\"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2\\",
@@ -304,7 +318,7 @@ func TestService_CreateUser_Failure_SelfReferred(t *testing.T) {
 	testCreateUser(ctx, t,
 		`{"referredBy": "did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2", "username": "test"}`,
 		`{"error":"you cannot use yourself as your own referral","code":"INVALID_PROPERTIES"}`,
-		400)
+		422)
 }
 
 // nolint:nosnakecase,paralleltest // We're using this naming for tests with underscore

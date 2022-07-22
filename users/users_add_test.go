@@ -25,9 +25,7 @@ func TestUserProcessor_CreateUser_Success_NoReferral(t *testing.T) {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), testDeadline)
 	defer cancel()
-	user := bogusUser("did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376C1", "").
-		createUserArg(testClientIP).
-		verifyCreateUser(ctx, t, nil)
+	user := bogusUser("did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376C1", "").verifyCreateUser(ctx, t, testClientIP, nil)
 	verifyUserSnapshotMessages(ctx, t, &UserSnapshot{User: user, Before: nil})
 	// Additional fields are calculated before save.
 	assert.Equal(t, user.DeviceLocation, DeviceLocation{Country: "US", City: "New York City"})
@@ -40,7 +38,7 @@ func TestUserProcessor_CreateUser_Success_NoReferral(t *testing.T) {
 	require.NoError(t, usersProcessor.DeleteUser(ctx, user.ID))
 }
 
-// nolint:nosnakecase // We're using this naming for tests with underscore
+// nolint:nosnakecase // That's our test naming convention
 func TestUserProcessor_CreateUser_Success_WithReferral(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
@@ -48,19 +46,15 @@ func TestUserProcessor_CreateUser_Success_WithReferral(t *testing.T) {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), testDeadline)
 	defer cancel()
-	t0 := bogusUser("did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B4", "").
-		createUserArg(testClientIP).
-		verifyCreateUser(ctx, t, nil)
-	referralUser := bogusUser("did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B3", t0.ID).
-		createUserArg(testClientIP).
-		verifyCreateUser(ctx, t, nil)
+	t0 := bogusUser("did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B4", "").verifyCreateUser(ctx, t, testClientIP, nil)
+	referralUser := bogusUser("did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B3", t0.ID).verifyCreateUser(ctx, t, testClientIP, nil)
 	verifyUserSnapshotMessages(ctx, t, &UserSnapshot{User: referralUser, Before: nil})
 	assert.Equal(t, referralUser.ReferredBy, t0.ID)
 	require.NoError(t, usersProcessor.DeleteUser(ctx, referralUser.ID))
 	require.NoError(t, usersProcessor.DeleteUser(ctx, t0.ID))
 }
 
-// nolint:nosnakecase // We're using this naming for tests with underscore
+// nolint:nosnakecase // That's our test naming convention
 func TestUserProcessor_CreateUser_Failure_NonExistingReferredBy(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
@@ -69,8 +63,7 @@ func TestUserProcessor_CreateUser_Failure_NonExistingReferredBy(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), testDeadline)
 	defer cancel()
 	_ = bogusUser("did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B5", "did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B7").
-		createUserArg(testClientIP).
-		verifyCreateUser(ctx, t, ErrRelationNotFound)
+		verifyCreateUser(ctx, t, testClientIP, ErrRelationNotFound)
 }
 
 // nolint:paralleltest,nosnakecase // We cannot use parallel tests in case of empty (=random) referral, cuz of it can fetch referredBy-user from another test
@@ -84,19 +77,17 @@ func TestUserProcessor_CreateUser_Failure_Duplicate(t *testing.T) {
 
 	duplicatedUserID := "did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B6"
 	_ = bogusUser(duplicatedUserID, "").
-		createUserArg(testClientIP).
-		verifyCreateUser(ctx, t, nil)
+		verifyCreateUser(ctx, t, testClientIP, nil)
 
 	// Duplicated user with same ID.
 	_ = bogusUser(duplicatedUserID, "").
-		createUserArg(testClientIP).
-		verifyCreateUser(ctx, t, ErrDuplicate)
+		verifyCreateUser(ctx, t, testClientIP, ErrDuplicate)
 	require.NoError(t, usersProcessor.DeleteUser(ctx, duplicatedUserID))
 }
 
-func (arg *CreateUserArg) verifyCreateUser(ctx context.Context, t *testing.T, errorMatcher error) *User {
+func (u *User) verifyCreateUser(ctx context.Context, t *testing.T, clientIP net.IP, errorMatcher error) *User {
 	t.Helper()
-	err := usersProcessor.CreateUser(ctx, arg)
+	err := usersProcessor.CreateUser(ctx, u, clientIP)
 	if errorMatcher != nil {
 		require.Error(t, err, errorMatcher)
 		assert.True(t, errors.Is(err, errorMatcher))
@@ -105,8 +96,7 @@ func (arg *CreateUserArg) verifyCreateUser(ctx context.Context, t *testing.T, er
 	}
 	require.NoError(t, err)
 	user := new(User)
-	// nolint:forcetypeassert // We have only one implementation for now
-	err = usersRepository.(*repository).db.GetTyped("USERS", "pk_unnamed_USERS_1", tarantool.StringKey{S: arg.User.ID}, user)
+	err = dbConnector.GetTyped("USERS", "pk_unnamed_USERS_1", tarantool.StringKey{S: u.ID}, user)
 	require.NoError(t, err)
 
 	return user
@@ -127,18 +117,6 @@ func verifyUserSnapshotMessages(ctx context.Context, t *testing.T, userSnapshots
 			Topic: cfg.MessageBroker.Topics[0].Name, // | users-events.
 		}
 		require.NoError(t, mbConnector.VerifyMessages(ctx, message))
-	}
-}
-
-func (u *User) createUserArg(ip net.IP) *CreateUserArg {
-	return &CreateUserArg{
-		ReferredBy:      u.ReferredBy,
-		Username:        u.Username,
-		PhoneNumber:     u.PhoneNumber,
-		PhoneNumberHash: u.PhoneNumberHash,
-		Email:           u.Email,
-		User:            *u,
-		ClientIP:        ip,
 	}
 }
 
