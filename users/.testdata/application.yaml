@@ -47,6 +47,7 @@ users: &users
     consumingTopics:
       - users-events
       - mining-started-events
+      - user-device-settings-events
   ip2LocationBinaryPath: internal/device/metadata/.testdata/IP-COUNTRY-REGION-CITY-LATITUDE-LONGITUDE-ZIPCODE-TIMEZONE-ISP-DOMAIN-NETSPEED-AREACODE-WEATHER-MOBILE-ELEVATION-USAGETYPE-SAMPLE.BIN
   pictureStorage:
     urlUpload: https://storage.bunnycdn.com/ice-staging/profile
