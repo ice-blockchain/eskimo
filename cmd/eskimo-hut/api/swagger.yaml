@@ -1,0 +1,577 @@
+# SPDX-License-Identifier: ice License 1.0
+
+basePath: /v1w
+definitions:
+  main.CreateUserRequestBody:
+    properties:
+      clientData:
+        allOf:
+        - $ref: '#/definitions/users.JSON'
+        description: 'Optional. Example: `{"key1":{"something":"somethingElse"},"key2":"value"}`.'
+      email:
+        description: Optional.
+        example: jdoe@gmail.com
+        type: string
+      firstName:
+        description: Optional.
+        example: John
+        type: string
+      language:
+        description: Optional. Defaults to `en`.
+        example: en
+        type: string
+      lastName:
+        description: Optional.
+        example: Doe
+        type: string
+      phoneNumber:
+        description: Optional.
+        example: "+12099216581"
+        type: string
+      phoneNumberHash:
+        description: Optional. Required only if `phoneNumber` is set.
+        example: Ef86A6021afCDe5673511376B2
+        type: string
+    type: object
+  main.ReplaceDeviceMetadataRequestBody:
+    properties:
+      apiLevel:
+        type: integer
+      baseOs:
+        type: string
+      bootloader:
+        type: string
+      brand:
+        type: string
+      buildId:
+        type: string
+      carrier:
+        type: string
+      codename:
+        type: string
+      device:
+        type: string
+      deviceId:
+        type: string
+      deviceName:
+        type: string
+      deviceType:
+        type: string
+      deviceUniqueId:
+        example: FCDBD8EF-62FC-4ECB-B2F5-92C9E79AC7F9
+        type: string
+      emulator:
+        type: boolean
+      fingerprint:
+        type: string
+      firstInstallTime:
+        type: integer
+      hardware:
+        type: string
+      installerPackageName:
+        type: string
+      instanceId:
+        type: string
+      lastUpdateTime:
+        type: integer
+      manufacturer:
+        type: string
+      pinOrFingerprintSet:
+        type: boolean
+      product:
+        type: string
+      pushNotificationToken:
+        type: string
+      readableVersion:
+        type: string
+      systemName:
+        type: string
+      systemVersion:
+        type: string
+      tablet:
+        type: boolean
+      tags:
+        type: string
+      type:
+        type: string
+      tz:
+        type: string
+      updatedAt:
+        description: Read Only.
+        type: string
+      userAgent:
+        type: string
+      userId:
+        example: did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2
+        type: string
+    type: object
+  main.User:
+    properties:
+      agendaPhoneNumberHashes:
+        example: Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2
+        type: string
+      blockchainAccountAddress:
+        example: 0x4B73C58370AEfcEf86A6021afCDe5673511376B2
+        type: string
+      checksum:
+        example: "1232412415326543647657"
+        type: string
+      city:
+        example: New York
+        type: string
+      clientData:
+        $ref: '#/definitions/users.JSON'
+      country:
+        example: US
+        type: string
+      createdAt:
+        example: "2022-01-03T16:20:52.156534Z"
+        type: string
+      email:
+        example: jdoe@gmail.com
+        type: string
+      firstName:
+        example: John
+        type: string
+      hiddenProfileElements:
+        example:
+        - level
+        items:
+          enum:
+          - globalRank
+          - referralCount
+          - level
+          - role
+          - badges
+          type: string
+        type: array
+      id:
+        example: did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2
+        type: string
+      language:
+        example: en
+        type: string
+      lastName:
+        example: Doe
+        type: string
+      miningBlockchainAccountAddress:
+        example: 0x4B73C58370AEfcEf86A6021afCDe5673511376B2
+        type: string
+      phoneNumber:
+        example: "+12099216581"
+        type: string
+      profilePictureUrl:
+        example: https://somecdn.com/p1.jpg
+        type: string
+      referredBy:
+        example: did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2
+        type: string
+      updatedAt:
+        example: "2022-01-03T16:20:52.156534Z"
+        type: string
+      username:
+        example: jdoe
+        type: string
+    type: object
+  server.ErrorResponse:
+    properties:
+      code:
+        example: SOMETHING_NOT_FOUND
+        type: string
+      data:
+        additionalProperties: {}
+        type: object
+      error:
+        example: something is missing
+        type: string
+    type: object
+  users.DeviceLocation:
+    properties:
+      city:
+        example: New York
+        type: string
+      country:
+        example: US
+        type: string
+    type: object
+  users.JSON:
+    additionalProperties: {}
+    type: object
+info:
+  contact:
+    name: ice.io
+    url: https://ice.io
+  description: API that handles everything related to write only operations for user's
+    account, user's devices and statistics about those.
+  title: User Accounts, User Devices, User Statistics API
+  version: latest
+paths:
+  /users:
+    post:
+      consumes:
+      - application/json
+      description: Creates an user account
+      parameters:
+      - default: Bearer <Add access token here>
+        description: Insert your access token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - default: 1.1.1.1
+        description: Client IP
+        in: header
+        name: X-Forwarded-For
+        type: string
+      - description: Request params
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/main.CreateUserRequestBody'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/main.User'
+        "400":
+          description: if validations fail
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "401":
+          description: if not authorized
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "409":
+          description: user already exists with that ID, email or phone number
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "422":
+          description: if syntax fails
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "504":
+          description: if request times out
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+      tags:
+      - Accounts
+  /users/{userId}:
+    delete:
+      consumes:
+      - application/json
+      description: Deletes an user account
+      parameters:
+      - default: Bearer <Add access token here>
+        description: Insert your access token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: ID of the User
+        in: path
+        name: userId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK - found and deleted
+        "204":
+          description: No Content - already deleted
+        "400":
+          description: if validations fail
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "401":
+          description: if not authorized
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "403":
+          description: not allowed
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "422":
+          description: if syntax fails
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "504":
+          description: if request times out
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+      tags:
+      - Accounts
+    patch:
+      consumes:
+      - multipart/form-data
+      description: Modifies an user account
+      parameters:
+      - default: Bearer <Add access token here>
+        description: Insert your access token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: ID of the user
+        in: path
+        name: userId
+        required: true
+        type: string
+      - description: Optional. Example:`Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2`.
+        in: formData
+        name: agendaPhoneNumberHashes
+        type: string
+      - description: Optional. Example:`some hash`.
+        in: formData
+        name: blockchainAccountAddress
+        type: string
+      - description: Optional. Example:`1232412415326543647657`.
+        in: formData
+        name: checksum
+        type: string
+      - description: Optional. Example:`New York`.
+        in: formData
+        name: city
+        type: string
+      - in: formData
+        name: clearHiddenProfileElements
+        type: boolean
+      - description: 'Optional. Example: `{"key1":{"something":"somethingElse"},"key2":"value"}`.'
+        in: formData
+        name: clientData
+        type: string
+      - description: Optional. Example:`US`.
+        in: formData
+        name: country
+        type: string
+      - description: Optional. Example:`jdoe@gmail.com`.
+        in: formData
+        name: email
+        type: string
+      - description: Optional. Example:`John`.
+        in: formData
+        name: firstName
+        type: string
+      - collectionFormat: multi
+        description: 'Optional. Example: Array of [`globalRank`,`referralCount`,`level`,`role`,`badges`].'
+        in: formData
+        items:
+          type: string
+        name: hiddenProfileElements
+        type: array
+      - description: Optional. Example:`en`.
+        in: formData
+        name: language
+        type: string
+      - description: Optional. Example:`Doe`.
+        in: formData
+        name: lastName
+        type: string
+      - description: Optional. Example:`+12099216581`.
+        in: formData
+        name: phoneNumber
+        type: string
+      - description: Optional. Required only if `phoneNumber` is set. Example:`Ef86A6021afCDe5673511376B2`.
+        in: formData
+        name: phoneNumberHash
+        type: string
+      - description: Optional. Example:`did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2`.
+        in: formData
+        name: referredBy
+        type: string
+      - description: Optional. Example:`true`.
+        in: formData
+        name: resetProfilePicture
+        type: boolean
+      - description: Optional. Example:`jdoe`.
+        in: formData
+        name: username
+        type: string
+      - description: The new profile picture for the user
+        in: formData
+        name: profilePicture
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.User'
+        "400":
+          description: if validations fail
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "401":
+          description: if not authorized
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "403":
+          description: not allowed
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "404":
+          description: user is not found; or the referred by is not found
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "409":
+          description: if username, email or phoneNumber conflict with another other
+            user's
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "422":
+          description: if syntax fails
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "504":
+          description: if request times out
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+      tags:
+      - Accounts
+  /users/{userId}/devices/{deviceUniqueId}/metadata:
+    put:
+      consumes:
+      - application/json
+      description: Replaces existing device metadata with the provided one.
+      parameters:
+      - default: Bearer <Add access token here>
+        description: Insert your access token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - default: 1.1.1.1
+        description: Client IP
+        in: header
+        name: X-Forwarded-For
+        type: string
+      - description: ID of the user
+        in: path
+        name: userId
+        required: true
+        type: string
+      - description: ID of the device
+        in: path
+        name: deviceUniqueId
+        required: true
+        type: string
+      - description: Request params
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/main.ReplaceDeviceMetadataRequestBody'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: if validations fail
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "401":
+          description: if not authorized
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "403":
+          description: if not allowed
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "404":
+          description: if user not found
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "422":
+          description: if syntax fails
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "504":
+          description: if request times out
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+      tags:
+      - Devices
+  /users/{userId}/devices/{deviceUniqueId}/metadata/location:
+    put:
+      consumes:
+      - application/json
+      description: Returns the device's geolocation based on its IP or based on account
+        information if userId is also provided.
+      parameters:
+      - default: Bearer <Add access token here>
+        description: Insert your access token. Required only if userId is set
+        in: header
+        name: Authorization
+        type: string
+      - default: 1.1.1.1
+        description: Client IP
+        in: header
+        name: X-Forwarded-For
+        type: string
+      - description: ID of the user. Is optional, set an `-` if none.
+        in: path
+        name: userId
+        required: true
+        type: string
+      - description: ID of the device. Is optional, set an `-` if none.
+        in: path
+        name: deviceUniqueId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/users.DeviceLocation'
+        "400":
+          description: if validations fail
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "401":
+          description: if not authenticated
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "403":
+          description: if not allowed
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "422":
+          description: if syntax fails
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "504":
+          description: if request times out
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+      tags:
+      - Devices
+schemes:
+- https
+swagger: "2.0"

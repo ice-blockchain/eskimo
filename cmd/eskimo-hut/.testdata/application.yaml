@@ -1,0 +1,94 @@
+# SPDX-License-Identifier: ice License 1.0
+
+development: false
+logger:
+  encoder: console
+  level: info
+cmd/eskimo:
+  host: localhost
+  version: latest
+  defaultEndpointTimeout: 30s
+  httpServer:
+    port: 46443
+    certPath: .testdata/localhost.crt
+    keyPath: .testdata/localhost.key
+  defaultPagination:
+    limit: 20
+    maxLimit: 1000
+cmd/eskimo-hut:
+  host: localhost
+  version: latest
+  defaultEndpointTimeout: 30s
+  httpServer:
+    port: 45443
+    certPath: .testdata/localhost.crt
+    keyPath: .testdata/localhost.key
+users: &users
+  db: &usersDatabase
+    urls:
+      - localhost:3303
+    user: admin
+    password: pass
+  messageBroker: &usersMessageBroker
+    consumerGroup: eskimo-cmd-eskimo-hut-testing
+    createTopics: true
+    urls:
+      - localhost:9094
+    topics: &usersMessageBrokerTopics
+      - name: eskimo-health-check
+        partitions: 1
+        replicationFactor: 1
+        retention: 1000h
+      - name: users-table
+        partitions: 10
+        replicationFactor: 1
+        retention: 1000h
+      - name: user-device-metadata-table
+        partitions: 10
+        replicationFactor: 1
+        retention: 1000h
+      - name: global-table
+        partitions: 10
+        replicationFactor: 1
+        retention: 1000h
+      ### The next topics are not owned by this service, but are needed to be created for the local/test environment.
+      - name: mining-sessions-table
+        partitions: 10
+        replicationFactor: 1
+        retention: 1000h
+      - name: user-pings
+        partitions: 10
+        replicationFactor: 1
+        retention: 1000h
+    consumingTopics:
+      - name: users-table
+      - name: mining-sessions-table
+      - name: user-pings
+  ip2LocationBinaryPath: ./users/internal/device/metadata/.testdata/IP-COUNTRY-REGION-CITY-LATITUDE-LONGITUDE-ZIPCODE-TIMEZONE-ISP-DOMAIN-NETSPEED-AREACODE-WEATHER-MOBILE-ELEVATION-USAGETYPE-SAMPLE.BIN
+  requiredAppVersion: v0.0.1
+  wintr/multimedia/picture:
+    urlUpload: https://storage.bunnycdn.com/ice-staging/profile
+    urlDownload: https://ice-staging.b-cdn.net/profile
+  wintr/analytics/tracking:
+    baseUrl: https://api-02.moengage.com
+  phoneNumberValidation:
+    expirationTime: 30s
+    smsTemplate: '{{.code}} is your ice verification code. This code expires in {{.expirationTime}} minutes.'
+  emailValidation:
+    emailSubject: ICE email verification
+    emailBodyHTMLTemplate: |
+      <strong>{{.code}}<strong> is your ice verification code. This code expires in <strong>{{.expirationTime}}<strong> minutes.
+    fromEmailAddress: no-reply@ice.io
+    fromEmailName: ICE
+    expirationTime: 30s
+  globalAggregationInterval:
+    parent: 60m
+    child: 1m
+users_test:
+  <<: *users
+  messageBroker:
+    <<: *usersMessageBroker
+    consumingTopics: *usersMessageBrokerTopics
+    consumerGroup: eskimo-cmd-eskimo-hut-testing-test
+  db:
+    <<: *usersDatabase

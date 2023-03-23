@@ -1,0 +1,663 @@
+# SPDX-License-Identifier: ice License 1.0
+
+basePath: /v1r
+definitions:
+  main.User:
+    properties:
+      agendaPhoneNumberHashes:
+        example: Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2
+        type: string
+      blockchainAccountAddress:
+        example: 0x4B73C58370AEfcEf86A6021afCDe5673511376B2
+        type: string
+      checksum:
+        example: "1232412415326543647657"
+        type: string
+      city:
+        example: New York
+        type: string
+      clientData:
+        $ref: '#/definitions/users.JSON'
+      country:
+        example: US
+        type: string
+      createdAt:
+        example: "2022-01-03T16:20:52.156534Z"
+        type: string
+      email:
+        example: jdoe@gmail.com
+        type: string
+      firstName:
+        example: John
+        type: string
+      hiddenProfileElements:
+        example:
+        - level
+        items:
+          enum:
+          - globalRank
+          - referralCount
+          - level
+          - role
+          - badges
+          type: string
+        type: array
+      id:
+        example: did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2
+        type: string
+      language:
+        example: en
+        type: string
+      lastName:
+        example: Doe
+        type: string
+      miningBlockchainAccountAddress:
+        example: 0x4B73C58370AEfcEf86A6021afCDe5673511376B2
+        type: string
+      phoneNumber:
+        example: "+12099216581"
+        type: string
+      profilePictureUrl:
+        example: https://somecdn.com/p1.jpg
+        type: string
+      referredBy:
+        example: did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2
+        type: string
+      t1ReferralCount:
+        example: 100
+        type: integer
+      t2ReferralCount:
+        example: 100
+        type: integer
+      updatedAt:
+        example: "2022-01-03T16:20:52.156534Z"
+        type: string
+      username:
+        example: jdoe
+        type: string
+    type: object
+  server.ErrorResponse:
+    properties:
+      code:
+        example: SOMETHING_NOT_FOUND
+        type: string
+      data:
+        additionalProperties: {}
+        type: object
+      error:
+        example: something is missing
+        type: string
+    type: object
+  users.CountryStatistics:
+    properties:
+      country:
+        description: ISO 3166 country code.
+        example: US
+        type: string
+      userCount:
+        example: 12121212
+        type: integer
+    type: object
+  users.JSON:
+    additionalProperties: {}
+    type: object
+  users.MinimalUserProfile:
+    properties:
+      active:
+        example: true
+        type: boolean
+      city:
+        example: New York
+        type: string
+      country:
+        example: US
+        type: string
+      email:
+        example: jdoe@gmail.com
+        type: string
+      id:
+        example: did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2
+        type: string
+      phoneNumber:
+        example: "+12099216581"
+        type: string
+      pinged:
+        example: false
+        type: boolean
+      profilePictureUrl:
+        example: https://somecdn.com/p1.jpg
+        type: string
+      referralType:
+        allOf:
+        - $ref: '#/definitions/users.ReferralType'
+        enum:
+        - CONTACTS
+        - T0
+        - T1
+        - T2
+        example: T1
+      username:
+        example: jdoe
+        type: string
+    type: object
+  users.ReferralAcquisition:
+    properties:
+      date:
+        example: "2022-01-03"
+        type: string
+      t1:
+        example: 22
+        type: integer
+      t2:
+        example: 13
+        type: integer
+    type: object
+  users.ReferralType:
+    enum:
+    - CONTACTS
+    - T1
+    - T2
+    type: string
+    x-enum-varnames:
+    - ContactsReferrals
+    - Tier1Referrals
+    - Tier2Referrals
+  users.Referrals:
+    properties:
+      active:
+        example: 11
+        type: integer
+      referrals:
+        items:
+          $ref: '#/definitions/users.MinimalUserProfile'
+        type: array
+      total:
+        example: 11
+        type: integer
+    type: object
+  users.UserCountTimeSeriesDataPoint:
+    properties:
+      active:
+        example: 11
+        type: integer
+      date:
+        example: "2022-01-03T16:20:52.156534Z"
+        type: string
+      total:
+        example: 11
+        type: integer
+    type: object
+  users.UserGrowthStatistics:
+    properties:
+      active:
+        example: 11
+        type: integer
+      timeSeries:
+        items:
+          $ref: '#/definitions/users.UserCountTimeSeriesDataPoint'
+        type: array
+      total:
+        example: 11
+        type: integer
+    type: object
+  users.UserProfile:
+    properties:
+      agendaPhoneNumberHashes:
+        example: Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2
+        type: string
+      blockchainAccountAddress:
+        example: 0x4B73C58370AEfcEf86A6021afCDe5673511376B2
+        type: string
+      city:
+        example: New York
+        type: string
+      clientData:
+        $ref: '#/definitions/users.JSON'
+      country:
+        example: US
+        type: string
+      createdAt:
+        example: "2022-01-03T16:20:52.156534Z"
+        type: string
+      email:
+        example: jdoe@gmail.com
+        type: string
+      firstName:
+        example: John
+        type: string
+      hiddenProfileElements:
+        example:
+        - level
+        items:
+          enum:
+          - globalRank
+          - referralCount
+          - level
+          - role
+          - badges
+          type: string
+        type: array
+      id:
+        example: did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2
+        type: string
+      language:
+        example: en
+        type: string
+      lastName:
+        example: Doe
+        type: string
+      miningBlockchainAccountAddress:
+        example: 0x4B73C58370AEfcEf86A6021afCDe5673511376B2
+        type: string
+      phoneNumber:
+        example: "+12099216581"
+        type: string
+      profilePictureUrl:
+        example: https://somecdn.com/p1.jpg
+        type: string
+      referredBy:
+        example: did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2
+        type: string
+      t1ReferralCount:
+        example: 100
+        type: integer
+      t2ReferralCount:
+        example: 100
+        type: integer
+      updatedAt:
+        example: "2022-01-03T16:20:52.156534Z"
+        type: string
+      username:
+        example: jdoe
+        type: string
+    type: object
+info:
+  contact:
+    name: ice.io
+    url: https://ice.io
+  description: API that handles everything related to read only operations for user's
+    account, user's devices and statistics about accounts and devices.
+  title: User Accounts, User Devices, User Statistics API
+  version: latest
+paths:
+  /user-statistics/top-countries:
+    get:
+      consumes:
+      - application/json
+      description: Returns the paginated view of users per country.
+      parameters:
+      - default: Bearer <Add access token here>
+        description: Insert your access token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: a keyword to look for in all country codes or names
+        in: query
+        name: keyword
+        type: string
+      - description: Limit of elements to return. Defaults to 10
+        in: query
+        name: limit
+        type: integer
+      - description: Number of elements to skip before collecting elements to return
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/users.CountryStatistics'
+            type: array
+        "400":
+          description: if validations fail
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "401":
+          description: if not authorized
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "422":
+          description: if syntax fails
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "504":
+          description: if request times out
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+      tags:
+      - Statistics
+  /user-statistics/user-growth:
+    get:
+      consumes:
+      - application/json
+      description: Returns statistics about user growth.
+      parameters:
+      - default: Bearer <Add access token here>
+        description: Insert your access token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: number of days in the past to look for. Defaults to 3. Max is
+          90.
+        in: query
+        name: days
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/users.UserGrowthStatistics'
+        "400":
+          description: if validations fail
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "401":
+          description: if not authorized
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "422":
+          description: if syntax fails
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "504":
+          description: if request times out
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+      tags:
+      - Statistics
+  /user-views/username:
+    get:
+      consumes:
+      - application/json
+      description: Returns public information about an user account based on an username,
+        making sure the username is valid first.
+      parameters:
+      - default: Bearer <Add access token here>
+        description: Insert your access token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: username of the user. It will validate it first
+        in: query
+        name: username
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/users.UserProfile'
+        "400":
+          description: if validations fail
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "401":
+          description: if not authorized
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "404":
+          description: if not found
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "422":
+          description: if syntax fails
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "504":
+          description: if request times out
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+      tags:
+      - Accounts
+  /users:
+    get:
+      consumes:
+      - application/json
+      description: Returns a list of user account based on the provided query parameters.
+      parameters:
+      - default: Bearer <Add access token here>
+        description: Insert your access token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: A keyword to look for in the usernames and full names of users
+        in: query
+        name: keyword
+        required: true
+        type: string
+      - description: Limit of elements to return. Defaults to 10
+        in: query
+        name: limit
+        type: integer
+      - description: Elements to skip before starting to look for
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/users.MinimalUserProfile'
+            type: array
+        "400":
+          description: if validations fail
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "401":
+          description: if not authorized
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "422":
+          description: if syntax fails
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "504":
+          description: if request times out
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+      tags:
+      - Accounts
+  /users/{userId}:
+    get:
+      consumes:
+      - application/json
+      description: Returns an user's account.
+      parameters:
+      - default: Bearer <Add access token here>
+        description: Insert your access token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: ID of the user
+        in: path
+        name: userId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.User'
+        "400":
+          description: if validations fail
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "401":
+          description: if not authorized
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "404":
+          description: if not found
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "422":
+          description: if syntax fails
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "504":
+          description: if request times out
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+      tags:
+      - Accounts
+  /users/{userId}/referral-acquisition-history:
+    get:
+      consumes:
+      - application/json
+      description: Returns the history of referral acquisition for the provided user
+        id.
+      parameters:
+      - default: Bearer <Add access token here>
+        description: Insert your access token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: ID of the user
+        in: path
+        name: userId
+        required: true
+        type: string
+      - description: The number of days to look in the past. Defaults to 5.
+        in: query
+        name: days
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/users.ReferralAcquisition'
+            type: array
+        "400":
+          description: if validations fail
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "401":
+          description: if not authorized
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "403":
+          description: if not allowed
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "422":
+          description: if syntax fails
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "504":
+          description: if request times out
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+      tags:
+      - Referrals
+  /users/{userId}/referrals:
+    get:
+      consumes:
+      - application/json
+      description: Returns the referrals of an user.
+      parameters:
+      - default: Bearer <Add access token here>
+        description: Insert your access token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: ID of the user
+        in: path
+        name: userId
+        required: true
+        type: string
+      - description: 'Type of referrals: `CONTACTS` or `T1` or `T2`'
+        in: query
+        name: type
+        required: true
+        type: string
+      - description: Limit of elements to return. Defaults to 10
+        in: query
+        name: limit
+        type: integer
+      - description: Number of elements to skip before collecting elements to return
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/users.Referrals'
+        "400":
+          description: if validations fail
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "401":
+          description: if not authorized
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "403":
+          description: if not allowed
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "422":
+          description: if syntax fails
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "504":
+          description: if request times out
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+      tags:
+      - Referrals
+schemes:
+- https
+swagger: "2.0"
