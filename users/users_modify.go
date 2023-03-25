@@ -7,12 +7,14 @@ import (
 	"fmt"
 	"mime/multipart"
 	"strings"
+	stdlibtime "time"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 
 	"github.com/ice-blockchain/go-tarantool-client"
 	"github.com/ice-blockchain/wintr/connectors/storage"
+	"github.com/ice-blockchain/wintr/log"
 	"github.com/ice-blockchain/wintr/time"
 )
 
@@ -21,6 +23,12 @@ func (r *repository) ModifyUser(ctx context.Context, usr *User, profilePicture *
 	if ctx.Err() != nil {
 		return errors.Wrap(ctx.Err(), "update user failed because context failed")
 	}
+	before2 := time.Now()
+	defer func() {
+		if elapsed := stdlibtime.Since(*before2.Time); elapsed > 100*stdlibtime.Millisecond {
+			log.Info(fmt.Sprintf("[response]ModifyUser took: %v", elapsed))
+		}
+	}()
 	oldUsr, err := r.getUserByID(ctx, usr.ID)
 	if err != nil {
 		return errors.Wrapf(err, "get user %v failed", usr.ID)

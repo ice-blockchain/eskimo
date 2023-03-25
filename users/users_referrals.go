@@ -19,6 +19,12 @@ func (r *repository) GetReferrals(ctx context.Context, userID string, referralTy
 	if ctx.Err() != nil {
 		return nil, errors.Wrap(ctx.Err(), "failed to get referrals because of context failed")
 	}
+	before2 := time.Now()
+	defer func() {
+		if elapsed := stdlibtime.Since(*before2.Time); elapsed > 100*stdlibtime.Millisecond {
+			log.Info(fmt.Sprintf("[response]GetReferrals(%v) took: %v", referralType, elapsed))
+		}
+	}()
 	totalAndActiveColumns := `  CAST(SUM(1) AS STRING) 																   			AS total,
 								CAST(SUM(CASE 
 											WHEN COALESCE(referrals.last_mining_ended_at,0) > :nowNanos 
@@ -160,6 +166,12 @@ func (r *repository) GetReferralAcquisitionHistory(ctx context.Context, userID s
 		return nil, errors.Wrap(ctx.Err(), "failed to get acquisition history because context failed")
 	}
 
+	before2 := time.Now()
+	defer func() {
+		if elapsed := stdlibtime.Since(*before2.Time); elapsed > 100*stdlibtime.Millisecond {
+			log.Info(fmt.Sprintf("[response]GetReferralAcquisitionHistory took: %v", elapsed))
+		}
+	}()
 	days := stdlibtime.Duration(daysNumber)
 	now := time.Now()
 	nowNanos := now.UnixNano()

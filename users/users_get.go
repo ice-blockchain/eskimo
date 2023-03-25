@@ -6,10 +6,12 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	stdlibtime "time"
 
 	"github.com/pkg/errors"
 
 	"github.com/ice-blockchain/go-tarantool-client"
+	"github.com/ice-blockchain/wintr/log"
 	"github.com/ice-blockchain/wintr/time"
 )
 
@@ -152,6 +154,12 @@ func (r *repository) GetUsers(ctx context.Context, keyword string, limit, offset
 	if ctx.Err() != nil {
 		return nil, errors.Wrap(ctx.Err(), "get users failed because context failed")
 	}
+	before2 := time.Now()
+	defer func() {
+		if elapsed := stdlibtime.Since(*before2.Time); elapsed > 100*stdlibtime.Millisecond {
+			log.Info(fmt.Sprintf("[response]GetUsers took: %v", elapsed))
+		}
+	}()
 	sql := fmt.Sprintf(`
 			SELECT COALESCE(u.last_mining_ended_at,1)                                                              AS last_mining_ended_at,
 				   (CASE

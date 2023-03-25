@@ -4,7 +4,9 @@ package users
 
 import (
 	"context"
+	"fmt"
 	"net"
+	stdlibtime "time"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
@@ -22,6 +24,12 @@ func (r *repository) CreateUser(ctx context.Context, usr *User, clientIP net.IP)
 	if ctx.Err() != nil {
 		return errors.Wrap(ctx.Err(), "create user failed because context failed")
 	}
+	before2 := time.Now()
+	defer func() {
+		if elapsed := stdlibtime.Since(*before2.Time); elapsed > 100*stdlibtime.Millisecond {
+			log.Info(fmt.Sprintf("[response]CreateUser took: %v", elapsed))
+		}
+	}()
 	r.setCreateUserDefaults(ctx, usr, clientIP)
 	sql := `
 	INSERT INTO users 
