@@ -52,11 +52,6 @@ func (r *repository) GetReferrals(ctx context.Context, userID string, referralTy
                    			AND referrals.username != referrals.id
 						    AND referrals.referred_by != referrals.id`
 	case ContactsReferrals:
-		if true {
-			return &Referrals{
-				Referrals: make([]*MinimalUserProfile, 0, 0),
-			}, nil
-		}
 		referralTypeJoin = `
 			JOIN USERS referrals
 					ON NULLIF(referrals.phone_number_hash,'') IS NOT NULL
@@ -182,18 +177,6 @@ func (r *repository) GetReferralAcquisitionHistory(ctx context.Context, userID s
 	nowNanos := now.UnixNano()
 	nsSinceMidnight := NanosSinceMidnight(now)
 	pastNanos := stdlibtime.Unix(0, nowNanos).UTC().Add(-days * 24 * stdlibtime.Hour).Add(-nsSinceMidnight).UnixNano()
-	if true {
-		result := make([]*ReferralAcquisition, 0, daysNumber)
-		for i := 0; i < int(daysNumber); i++ {
-			result = append(result, &ReferralAcquisition{
-				Date: time.New(now.Add(-stdlibtime.Duration(i) * 24 * stdlibtime.Hour)),
-				T1:   0,
-				T2:   0,
-			})
-		}
-
-		return result, nil
-	}
 	sql := `
 SELECT * 
 FROM (		
