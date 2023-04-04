@@ -38,6 +38,7 @@ func New(ctx context.Context, _ context.CancelFunc) Repository {
 		cfg:                      &cfg,
 		shutdown:                 db.Close,
 		db:                       db,
+		dbV2:                     dbV2,
 		DeviceMetadataRepository: devicemetadata.New(db, nil),
 		pictureClient:            picture.New(applicationYamlKey),
 	}
@@ -53,6 +54,7 @@ func StartProcessor(ctx context.Context, cancel context.CancelFunc) Processor {
 	prc := &processor{repository: &repository{
 		cfg:                      &cfg,
 		db:                       db,
+		dbV2:                     dbV2,
 		mb:                       mbProducer,
 		DeviceMetadataRepository: devicemetadata.New(db, mbProducer),
 		pictureClient:            picture.New(applicationYamlKey, defaultProfilePictureNameRegex),
