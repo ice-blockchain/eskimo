@@ -20,6 +20,7 @@ import (
 	"github.com/ice-blockchain/wintr/analytics/tracking"
 	messagebroker "github.com/ice-blockchain/wintr/connectors/message_broker"
 	"github.com/ice-blockchain/wintr/connectors/storage"
+	storagev2 "github.com/ice-blockchain/wintr/connectors/storage/v2"
 	"github.com/ice-blockchain/wintr/multimedia/picture"
 	"github.com/ice-blockchain/wintr/time"
 )
@@ -232,11 +233,13 @@ const (
 var (
 	//go:embed DDL.lua
 	ddl string
-	_   msgpack.CustomDecoder = (*NotExpired)(nil)
-	_   msgpack.CustomEncoder = (*Enum[HiddenProfileElement])(nil)
-	_   msgpack.CustomDecoder = (*Enum[HiddenProfileElement])(nil)
-	_   msgpack.CustomEncoder = (*JSON)(nil)
-	_   msgpack.CustomDecoder = (*JSON)(nil)
+	//go:embed DDL.sql
+	ddlV2 string
+	_     msgpack.CustomDecoder = (*NotExpired)(nil)
+	_     msgpack.CustomEncoder = (*Enum[HiddenProfileElement])(nil)
+	_     msgpack.CustomDecoder = (*Enum[HiddenProfileElement])(nil)
+	_     msgpack.CustomEncoder = (*JSON)(nil)
+	_     msgpack.CustomDecoder = (*JSON)(nil)
 )
 
 type (
@@ -257,9 +260,10 @@ type (
 
 	// | repository implements the public API that this package exposes.
 	repository struct {
-		cfg *config
-		db  tarantool.Connector
-		mb  messagebroker.Client
+		cfg  *config
+		db   tarantool.Connector
+		dbV2 *storagev2.DB
+		mb   messagebroker.Client
 		devicemetadata.DeviceMetadataRepository
 		pictureClient  picture.Client
 		trackingClient tracking.Client
