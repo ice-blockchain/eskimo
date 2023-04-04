@@ -6,6 +6,7 @@ import (
 	"context"
 	"crypto/rand"
 	"fmt"
+	storagev2 "github.com/ice-blockchain/wintr/connectors/storage/v2"
 	"math"
 	"math/big"
 	"strconv"
@@ -35,11 +36,13 @@ func New(ctx context.Context, cancel context.CancelFunc) Repository {
 	appCfg.MustLoadFromKey(applicationYamlKey, &cfg)
 
 	db := storage.MustConnect(ctx, cancel, ddl, applicationYamlKey)
+	dbV2 := storagev2.MustConnect(ctx, ddl, applicationYamlKey)
 
 	return &repository{
 		cfg:                      &cfg,
 		shutdown:                 db.Close,
 		db:                       db,
+		dbV2:                     dbV2,
 		DeviceMetadataRepository: devicemetadata.New(db, nil),
 		pictureClient:            picture.New(applicationYamlKey),
 	}
@@ -56,10 +59,12 @@ func StartProcessor(ctx context.Context, cancel context.CancelFunc) Processor {
 		}
 		cancel()
 	}, ddl, applicationYamlKey)
+	dbV2 := storagev2.MustConnect(ctx, ddlV2, applicationYamlKey)
 	mbProducer := messagebroker.MustConnect(ctx, applicationYamlKey)
 	prc := &processor{repository: &repository{
 		cfg:                      &cfg,
 		db:                       db,
+		dbV2:                     dbV2,
 		mb:                       mbProducer,
 		DeviceMetadataRepository: devicemetadata.New(db, mbProducer),
 		pictureClient:            picture.New(applicationYamlKey, defaultProfilePictureNameRegex),
