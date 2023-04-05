@@ -77,11 +77,10 @@ func (r *repository) ModifyUser(ctx context.Context, usr *User, profilePicture *
 		return nil
 	}
 	if updatedRowsCount, err := storage.Exec(ctx, r.dbV2, sql, params...); err != nil {
-		if errors.Is(err, storage.ErrNotFound) || updatedRowsCount == 0 {
+		_, err = detectAndParseDuplicateDatabaseError(err)
+		if !errors.Is(err, storage.ErrDuplicate) && (errors.Is(err, storage.ErrNotFound) || updatedRowsCount == 0) {
 			return ErrRaceCondition
 		}
-		_, err = detectAndParseDuplicateDatabaseError(err)
-
 		return errors.Wrapf(err, "failed to update user %#v", usr)
 	}
 	bkpUsr := *oldUsr
@@ -132,10 +131,10 @@ func (u *User) override(user *User) *User {
 //nolint:funlen,gocognit,gocyclo,revive,cyclop // Because it's a big unitary SQL processing logic.
 func (u *User) genSQLUpdate(ctx context.Context) (sql string, params []any) {
 	params = make([]any, 0)
-	params = append(params, u.ID, u.UpdatedAt)
+	params = append(params, u.ID, u.UpdatedAt.Time)
 
 	sql = "UPDATE users SET updated_at = $2"
-	nextIndex := 2
+	nextIndex := 3
 	if u.LastMiningStartedAt != nil {
 		params = append(params, u.LastMiningStartedAt)
 		sql += fmt.Sprintf(", LAST_MINING_STARTED_AT = $%v", nextIndex)
@@ -169,7 +168,7 @@ func (u *User) genSQLUpdate(ctx context.Context) (sql string, params []any) {
 	}
 	if u.ClientData != nil {
 		params = append(params, u.ClientData)
-		sql += fmt.Sprintf(", CLIENT_DATA = $%v", nextIndex)
+		sql += fmt.Sprintf(", CLIENT_DATA = $%v::json", nextIndex)
 		nextIndex++
 	}
 	if u.FirstName != "" {

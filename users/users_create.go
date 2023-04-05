@@ -87,25 +87,30 @@ func (r *repository) setCreateUserDefaults(ctx context.Context, usr *User, clien
 }
 
 func detectAndParseDuplicateDatabaseError(err error) (field string, newErr error) { //nolint:revive // need to check all fields in this way.
-	if storage.IsErr(err, storage.ErrDuplicate, "pk") { //nolint:gocritic,nestif // .
-		field = "id"
-	} else if storage.IsErr(err, storage.ErrDuplicate, "phonenumber") {
-		field = "phone_number"
-	} else if storage.IsErr(err, storage.ErrDuplicate, "email") {
-		field = "email"
-	} else if storage.IsErr(err, storage.ErrDuplicate, usernameDBColumnName) {
-		field = usernameDBColumnName
-	} else if storage.IsErr(err, storage.ErrDuplicate, "phonenumberhash") {
-		field = "phone_number_hash"
-	} else if storage.IsErr(err, storage.ErrDuplicate, "miningblockchainaccountaddress") {
-		field = "mining_blockchain_account_address"
-	} else if storage.IsErr(err, storage.ErrDuplicate, "blockchainaccountaddress") {
-		field = "blockchain_account_address"
-	} else if storage.IsErr(err, storage.ErrDuplicate, "hashcode") {
-		field = hashCodeDBColumnName
-	} else {
-		log.Panic("unexpected duplicate field for users space: %v", err)
+	if storage.IsErr(err, storage.ErrDuplicate) {
+
+		if storage.IsErr(err, storage.ErrDuplicate, "pk") { //nolint:gocritic,nestif // .
+			field = "id"
+		} else if storage.IsErr(err, storage.ErrDuplicate, "phonenumber") {
+			field = "phone_number"
+		} else if storage.IsErr(err, storage.ErrDuplicate, "email") {
+			field = "email"
+		} else if storage.IsErr(err, storage.ErrDuplicate, usernameDBColumnName) {
+			field = usernameDBColumnName
+		} else if storage.IsErr(err, storage.ErrDuplicate, "phonenumberhash") {
+			field = "phone_number_hash"
+		} else if storage.IsErr(err, storage.ErrDuplicate, "miningblockchainaccountaddress") {
+			field = "mining_blockchain_account_address"
+		} else if storage.IsErr(err, storage.ErrDuplicate, "blockchainaccountaddress") {
+			field = "blockchain_account_address"
+		} else if storage.IsErr(err, storage.ErrDuplicate, "hashcode") {
+			field = hashCodeDBColumnName
+		} else {
+			log.Panic("unexpected duplicate field for users space: %v", err)
+		}
+
+		return field, terror.New(storage.ErrDuplicate, map[string]any{"field": field})
 	}
 
-	return field, terror.New(storage.ErrDuplicate, map[string]any{"field": field})
+	return "", err
 }
