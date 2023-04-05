@@ -76,11 +76,13 @@ func (r *repository) ModifyUser(ctx context.Context, usr *User, profilePicture *
 
 		return nil
 	}
-	if updatedRowsCount, err := storage.Exec(ctx, r.dbV2, sql, params...); err != nil {
+	var updatedRowsCount uint64
+	if updatedRowsCount, err = storage.Exec(ctx, r.dbV2, sql, params...); err != nil {
 		_, err = detectAndParseDuplicateDatabaseError(err)
 		if !errors.Is(err, storage.ErrDuplicate) && (errors.Is(err, storage.ErrNotFound) || updatedRowsCount == 0) {
 			return ErrRaceCondition
 		}
+
 		return errors.Wrapf(err, "failed to update user %#v", usr)
 	}
 	bkpUsr := *oldUsr
@@ -89,9 +91,12 @@ func (r *repository) ModifyUser(ctx context.Context, usr *User, profilePicture *
 	}
 	us := &UserSnapshot{User: r.sanitizeUser(oldUsr.override(usr)), Before: r.sanitizeUser(oldUsr)}
 	if err = r.sendUserSnapshotMessage(ctx, us); err != nil {
+		_, rollBackParams := bkpUsr.genSQLUpdate(ctx)
+		rollBackParams[1] = bkpUsr.UpdatedAt
+		_, rollbackErr := storage.Exec(ctx, r.dbV2, sql, rollBackParams)
 		return multierror.Append( //nolint:wrapcheck // Not needed.
 			errors.Wrapf(err, "failed to send updated user snapshot message %#v", us),
-			errors.Wrapf(r.db.ReplaceTyped("USERS", &bkpUsr, &[]*User{}), "failed to replace user to previous value, due to rollback, prev:%#v", bkpUsr),
+			errors.Wrapf(rollbackErr, "failed to replace user to previous value, due to rollback, prev:%#v", bkpUsr),
 		).ErrorOrNil()
 	}
 	*usr = *us.User
