@@ -12,8 +12,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 
-	"github.com/ice-blockchain/go-tarantool-client"
-	"github.com/ice-blockchain/wintr/connectors/storage"
+	storage "github.com/ice-blockchain/wintr/connectors/storage/v2"
 	"github.com/ice-blockchain/wintr/log"
 	"github.com/ice-blockchain/wintr/time"
 )
@@ -77,8 +76,8 @@ func (r *repository) ModifyUser(ctx context.Context, usr *User, profilePicture *
 
 		return nil
 	}
-	if err = storage.CheckSQLDMLErr(r.db.PrepareExecute(sql, params)); err != nil {
-		if errors.Is(err, storage.ErrNotFound) {
+	if updatedRowsCount, err := storage.Exec(ctx, r.dbV2, sql, params...); err != nil {
+		if errors.Is(err, storage.ErrNotFound) || updatedRowsCount == 0 {
 			return ErrRaceCondition
 		}
 		_, err = detectAndParseDuplicateDatabaseError(err)
@@ -131,97 +130,111 @@ func (u *User) override(user *User) *User {
 }
 
 //nolint:funlen,gocognit,gocyclo,revive,cyclop // Because it's a big unitary SQL processing logic.
-func (u *User) genSQLUpdate(ctx context.Context) (sql string, params map[string]any) {
-	params = make(map[string]any)
-	params["id"] = u.ID
-	params["updatedAt"] = u.UpdatedAt
+func (u *User) genSQLUpdate(ctx context.Context) (sql string, params []any) {
+	params = make([]any, 0)
+	params = append(params, u.ID, u.UpdatedAt)
 
-	sql = "UPDATE USERS set UPDATED_AT = :updatedAt"
-
+	sql = "UPDATE users SET updated_at = $2"
+	nextIndex := 2
 	if u.LastMiningStartedAt != nil {
-		params["lastMiningStartedAt"] = u.LastMiningStartedAt
-		sql += ", LAST_MINING_STARTED_AT = :lastMiningStartedAt"
+		params = append(params, u.LastMiningStartedAt)
+		sql += fmt.Sprintf(", LAST_MINING_STARTED_AT = $%v", nextIndex)
+		nextIndex++
 	}
 	if u.LastMiningEndedAt != nil {
-		params["lastMiningEndedAt"] = u.LastMiningEndedAt
-		sql += ", LAST_MINING_ENDED_AT = :lastMiningEndedAt"
+		params = append(params, u.LastMiningEndedAt)
+		sql += fmt.Sprintf(", LAST_MINING_ENDED_AT = $%v", nextIndex)
+		nextIndex++
 	}
 	if u.LastPingCooldownEndedAt != nil {
-		params["lastPingCooldownEndedAt"] = u.LastPingCooldownEndedAt
-		sql += ", LAST_PING_COOLDOWN_ENDED_AT = :lastPingCooldownEndedAt"
+		params = append(params, u.LastPingCooldownEndedAt)
+		sql += fmt.Sprintf(", LAST_PING_COOLDOWN_ENDED_AT = $%v", nextIndex)
+		nextIndex++
 	}
 	if u.HiddenProfileElements != nil {
-		params["hiddenProfileElements"] = u.HiddenProfileElements
-		sql += ", HIDDEN_PROFILE_ELEMENTS = :hiddenProfileElements"
+		params = append(params, u.HiddenProfileElements)
+		sql += fmt.Sprintf(", HIDDEN_PROFILE_ELEMENTS = $%v", nextIndex)
+		nextIndex++
 	}
 	if u.ReferredBy != "" {
-		params["referredBy"] = u.ReferredBy
-		sql += ", REFERRED_BY = :referredBy"
+		params = append(params, u.ReferredBy)
+		sql += fmt.Sprintf(", REFERRED_BY = $%v", nextIndex)
 		falseVal := false
 		u.RandomReferredBy = &falseVal
 	}
 	if u.RandomReferredBy != nil {
-		params["randomReferredBy"] = u.RandomReferredBy
-		sql += ", RANDOM_REFERRED_BY = :randomReferredBy"
+		params = append(params, u.RandomReferredBy)
+		sql += fmt.Sprintf(", RANDOM_REFERRED_BY = $%v", nextIndex)
+		nextIndex++
 	}
 	if u.ClientData != nil {
-		params["clientData"] = u.ClientData
-		sql += ", CLIENT_DATA = :clientData"
+		params = append(params, u.ClientData)
+		sql += fmt.Sprintf(", CLIENT_DATA = $%v", nextIndex)
+		nextIndex++
 	}
 	if u.FirstName != "" {
-		params["firstName"] = u.FirstName
-		sql += ", FIRST_NAME = :firstName"
+		params = append(params, u.FirstName)
+		sql += fmt.Sprintf(", FIRST_NAME = $%v", nextIndex)
+		nextIndex++
 	}
 	if u.LastName != "" {
-		params["lastName"] = u.LastName
-		sql += ", LAST_NAME = :lastName"
+		params = append(params, u.LastName)
+		sql += fmt.Sprintf(", LAST_NAME = $%v", nextIndex)
+		nextIndex++
 	}
 	if u.Username != "" {
-		params["username"] = u.Username
-		sql += ", USERNAME = :username"
+		params = append(params, u.Username)
+		sql += fmt.Sprintf(", USERNAME = $%v", nextIndex)
+		nextIndex++
 	}
 	if u.ProfilePictureURL != "" {
-		params["profilePictureName"] = u.ProfilePictureURL
-		sql += ", PROFILE_PICTURE_NAME = :profilePictureName"
+		params = append(params, u.ProfilePictureURL)
+		sql += fmt.Sprintf(", PROFILE_PICTURE_NAME = $%v", nextIndex)
+		nextIndex++
 	}
 	if u.Country != "" {
-		params["country"] = u.Country
-		sql += ", COUNTRY = :country"
+		params = append(params, u.Country)
+		sql += fmt.Sprintf(", COUNTRY = $%v", nextIndex)
+		nextIndex++
 	}
 	if u.City != "" {
-		params["city"] = u.City
-		sql += ", CITY = :city"
+		params = append(params, u.City)
+		sql += fmt.Sprintf(", CITY = $%v", nextIndex)
+		nextIndex++
 	}
 	if u.Language != "" {
-		params["language"] = u.Language
-		sql += ", LANGUAGE = :language"
+		params = append(params, u.Language)
+		sql += fmt.Sprintf(", LANGUAGE = $%v", nextIndex)
+		nextIndex++
 	}
 	if u.PhoneNumber != "" {
-		// Updating phone number.
-		params["phoneNumber"] = u.PhoneNumber
-		sql += ", PHONE_NUMBER = :phoneNumber"
-		// And its hash, we need hashes to know if users are in agenda for each other.
-		params["phoneNumberHash"] = u.PhoneNumberHash
-		sql += ", PHONE_NUMBER_HASH = :phoneNumberHash"
+		params = append(params, u.PhoneNumber)
+		sql += fmt.Sprintf(", PHONE_NUMBER = $%v", nextIndex)
+		params = append(params, u.PhoneNumberHash)
+		sql += fmt.Sprintf(", PHONE_NUMBER_HASH = $%v", nextIndex+1)
+		nextIndex += 2
 	}
 	if u.Email != "" {
-		params["email"] = u.Email
-		sql += ", EMAIL = :email"
+		params = append(params, u.Email)
+		sql += fmt.Sprintf(", EMAIL = $%v", nextIndex)
+		nextIndex++
 	}
 	// Agenda can be updated after user creation (in case if user granted permission to access contacts on the team screen after initial user created).
 	if u.AgendaPhoneNumberHashes != "" {
-		params["agendaPhoneNumberHashes"] = u.AgendaPhoneNumberHashes
-		sql += ", AGENDA_PHONE_NUMBER_HASHES = :agendaPhoneNumberHashes"
+		params = append(params, u.AgendaPhoneNumberHashes)
+		sql += fmt.Sprintf(", AGENDA_PHONE_NUMBER_HASHES = $%v", nextIndex)
+		nextIndex++
 	}
 	if u.BlockchainAccountAddress != "" {
-		params["blockchainAccountAddress"] = u.BlockchainAccountAddress
-		sql += ", BLOCKCHAIN_ACCOUNT_ADDRESS = :blockchainAccountAddress"
+		params = append(params, u.BlockchainAccountAddress)
+		sql += fmt.Sprintf(", BLOCKCHAIN_ACCOUNT_ADDRESS = $%v", nextIndex)
+		nextIndex++
 	}
-	sql += " WHERE ID = :id"
+	sql += " WHERE ID = $1"
 
 	if lu := lastUpdatedAt(ctx); lu != nil {
-		params["lastUpdatedAt"] = lu
-		sql += " AND UPDATED_AT = :lastUpdatedAt"
+		params = append(params, lu)
+		sql += fmt.Sprintf(" AND UPDATED_AT = $%v", nextIndex)
 	}
 
 	return sql, params
@@ -250,21 +263,26 @@ func (r *repository) updateReferredBy(ctx context.Context, usr *User, newReferre
 		return errors.Wrapf(err, "get user %v failed", newReferredBy)
 	}
 	now := time.Now()
-	ops := append(make([]tarantool.Op, 0, 1+1+1),
-		tarantool.Op{
-			Op:    "=",
-			Field: 6, //nolint:gomnd // random_referred_by.
-			Arg:   randomReferral,
-		}, tarantool.Op{
-			Op:    "=",
-			Field: 18, //nolint:gomnd // referred_by.
-			Arg:   newReferredBy,
-		}, tarantool.Op{
-			Op:    "=",
-			Field: 1, // It's updated_at.
-			Arg:   now,
-		})
-	if err := storage.CheckNoSQLDMLErr(r.db.UpdateTyped("USERS", "pk_unnamed_USERS_3", tarantool.StringKey{S: usr.ID}, ops, &[]*User{})); err != nil {
+	//ops := append(make([]tarantool.Op, 0, 1+1+1),
+	//	tarantool.Op{
+	//		Op:    "=",
+	//		Field: 6, //nolint:gomnd // random_referred_by.
+	//		Arg:   randomReferral,
+	//	}, tarantool.Op{
+	//		Op:    "=",
+	//		Field: 18, //nolint:gomnd // referred_by.
+	//		Arg:   newReferredBy,
+	//	}, tarantool.Op{
+	//		Op:    "=",
+	//		Field: 1, // It's updated_at.
+	//		Arg:   now,
+	//	})
+	sql := `UPDATE users 
+				SET random_referred_by = $1,
+                    referred_by = $2,
+                    updated_at = $3
+                WHERE id = $4`
+	if _, err := storage.Exec(ctx, r.dbV2, sql, randomReferral, newReferredBy, now.Time, usr.ID); err != nil {
 		return errors.Wrapf(err, "failed to update random:%v referred_by to %v for userID %v", randomReferral, newReferredBy, usr.ID)
 	}
 	bkpUsr := *usr
