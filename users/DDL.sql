@@ -28,7 +28,8 @@ CREATE TABLE IF NOT EXISTS users  (
                      );
 INSERT INTO users (created_at,updated_at,phone_number,phone_number_hash,email,id,username,profile_picture_name,referred_by,hash_code,city,country,mining_blockchain_account_address,blockchain_account_address)
                          VALUES (to_timestamp(0),to_timestamp(0),'bogus','bogus','bogus','bogus','bogus','bogus.jpg','bogus',0,'bogus','RO','bogus','bogus'),
-                                (to_timestamp(0),to_timestamp(0),'icenetwork','icenetwork','icenetwork','icenetwork','icenetwork','icenetwork.jpg','icenetwork',1,'icenetwork','RO','icenetwork','icenetwork');
+                                (to_timestamp(0),to_timestamp(0),'icenetwork','icenetwork','icenetwork','icenetwork','icenetwork','icenetwork.jpg','icenetwork',1,'icenetwork','RO','icenetwork','icenetwork')
+ON CONFLICT DO NOTHING;
 CREATE INDEX IF NOT EXISTS users_referred_by_ix ON users (referred_by);
 CREATE INDEX IF NOT EXISTS users_lookup_ix ON users (username,first_name,last_name);
 CREATE TABLE IF NOT EXISTS users_per_country  (
@@ -39,7 +40,8 @@ CREATE INDEX IF NOT EXISTS users_per_country_user_count_ix ON users_per_country 
 CREATE INDEX IF NOT EXISTS users_referral_acquisition_history_ix ON users (referred_by, created_at);
 CREATE TABLE IF NOT EXISTS days (day SMALLINT primary key);
 INSERT INTO DAYS (DAY) VALUES (0),(1),(2),(3),(4),(5),(6),(7),(8),(9),(10),(11),(12),(13),(14),(15),
-                                           (16),(17),(18),(19),(20),(21),(22),(23),(24),(25),(26),(27),(28),(29),(30);
+                                           (16),(17),(18),(19),(20),(21),(22),(23),(24),(25),(26),(27),(28),(29),(30)
+ON CONFLICT DO NOTHING;
 -- from [country_short,elevation] -inclusive at both ends- we have ip2location information,
 -- everything else (except user_id and updated_at) is from https://github.com/react-native-device-info/react-native-device-info#api
 CREATE TABLE IF NOT EXISTS device_metadata  (
@@ -103,4 +105,4 @@ CREATE TABLE IF NOT EXISTS global  (
                     key text primary key,
                     value bigint NOT NULL
                     );
-INSERT INTO global (key,value) VALUES ('TOTAL_USERS', 0)
+INSERT INTO global (key,value) VALUES ('TOTAL_USERS', 0) ON CONFLICT DO NOTHING;
