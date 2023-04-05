@@ -5,12 +5,12 @@ package users
 import (
 	"context"
 	"fmt"
-	"github.com/ice-blockchain/wintr/connectors/storage/v2"
 	"strings"
 	stdlibtime "time"
 
 	"github.com/pkg/errors"
 
+	"github.com/ice-blockchain/wintr/connectors/storage/v2"
 	"github.com/ice-blockchain/wintr/log"
 	"github.com/ice-blockchain/wintr/time"
 )

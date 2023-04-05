@@ -263,20 +263,6 @@ func (r *repository) updateReferredBy(ctx context.Context, usr *User, newReferre
 		return errors.Wrapf(err, "get user %v failed", newReferredBy)
 	}
 	now := time.Now()
-	//ops := append(make([]tarantool.Op, 0, 1+1+1),
-	//	tarantool.Op{
-	//		Op:    "=",
-	//		Field: 6, //nolint:gomnd // random_referred_by.
-	//		Arg:   randomReferral,
-	//	}, tarantool.Op{
-	//		Op:    "=",
-	//		Field: 18, //nolint:gomnd // referred_by.
-	//		Arg:   newReferredBy,
-	//	}, tarantool.Op{
-	//		Op:    "=",
-	//		Field: 1, // It's updated_at.
-	//		Arg:   now,
-	//	})
 	sql := `UPDATE users 
 				SET random_referred_by = $1,
                     referred_by = $2,

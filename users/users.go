@@ -6,7 +6,6 @@ import (
 	"context"
 	"crypto/rand"
 	"fmt"
-	storagev2 "github.com/ice-blockchain/wintr/connectors/storage/v2"
 	"math"
 	"math/big"
 	"strconv"
@@ -26,6 +25,7 @@ import (
 	appCfg "github.com/ice-blockchain/wintr/config"
 	messagebroker "github.com/ice-blockchain/wintr/connectors/message_broker"
 	"github.com/ice-blockchain/wintr/connectors/storage"
+	storagev2 "github.com/ice-blockchain/wintr/connectors/storage/v2"
 	"github.com/ice-blockchain/wintr/log"
 	"github.com/ice-blockchain/wintr/multimedia/picture"
 	"github.com/ice-blockchain/wintr/time"
@@ -189,11 +189,13 @@ func (n *NotExpired) DecodeMsgpack(dec *msgpack.Decoder) error {
 
 	return nil
 }
+
 func (n *NotExpired) Scan(src any) error {
 	date, ok := src.(stdlibtime.Time)
 	if ok {
 		date = date.UTC()
 		*n = NotExpired(time.Now().Before(date))
+
 		return nil
 	}
 
@@ -222,6 +224,7 @@ func (e *Enum[T]) DecodeMsgpack(decoder *msgpack.Decoder) error {
 
 	return nil
 }
+
 func (e *Enum[T]) Scan(src any) error {
 	enumStr, isStr := src.(string)
 	if isStr {
@@ -271,6 +274,7 @@ func (j *JSON) Scan(src any) error {
 
 		return errors.Wrapf(json.UnmarshalContext(context.Background(), []byte(val), j), "failed to json.Unmarshall(%v,*JSON)", val)
 	}
+
 	return errors.Errorf("unexpected type for src:%#v(%T)", src, src)
 }
 

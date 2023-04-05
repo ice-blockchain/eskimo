@@ -9,7 +9,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 
-	"github.com/ice-blockchain/wintr/connectors/storage"
+	"github.com/ice-blockchain/wintr/connectors/storage/v2"
 )
 
 func (r *repository) DeleteUser(ctx context.Context, userID UserID) error {
@@ -54,14 +54,13 @@ func (r *repository) deleteUser(ctx context.Context, usr *User) error { //nolint
 		return errors.Wrapf(err, "failed to get user for userID:%v", usr.ID)
 	}
 	*usr = *gUser
-	sql := `DELETE FROM users WHERE id = :user_id`
-	args := map[string]any{"user_id": usr.ID}
-	if err = storage.CheckSQLDMLErr(r.db.PrepareExecute(sql, args)); err != nil {
-		if errors.Is(err, storage.ErrRelationNotFound) {
+	sql := `DELETE FROM users WHERE id = $1`
+	if _, tErr := storage.Exec(ctx, r.dbV2, sql, usr.ID); tErr != nil {
+		if errors.Is(tErr, storage.ErrRelationNotFound) {
 			return r.deleteUser(ctx, usr)
 		}
 
-		return errors.Wrapf(err, "failed to delete user with id %v", usr.ID)
+		return errors.Wrapf(tErr, "failed to delete user with id %v", usr.ID)
 	}
 
 	return nil
@@ -98,12 +97,12 @@ func (r *repository) updateReferredByForAllT1Referrals(ctx context.Context, user
 								FROM (  SELECT r.id 
 										FROM users r
 										WHERE 1=1
-											  AND r.id != :user_id 
+											  AND r.id != $1
 											  AND r.id != u.id 
 											  AND r.referred_by != u.id 
 											  AND r.referred_by != r.id 
 											  AND r.username != r.id 
-											  AND r.referred_by != :user_id
+											  AND r.referred_by != $1
 										ORDER BY RANDOM() 
 										LIMIT 1
 									 ) X
@@ -114,31 +113,56 @@ func (r *repository) updateReferredByForAllT1Referrals(ctx context.Context, user
 							  ) X
 						LIMIT 1
 				   ) new_referred_by,
-				   u.*
+				   u.created_at,
+				   u.updated_at,
+				   u.last_mining_started_at,
+				   u.last_mining_ended_at,
+				   u.last_ping_cooldown_ended_at,
+				   COALESCE(u.hidden_profile_elements, '') AS hidden_profile_elements,
+				   u.random_referred_by,
+				   u.verified,
+				   COALESCE(u.client_data, '') AS client_data,
+				   COALESCE(u.phone_number, '') AS phone_number,
+				   COALESCE(u.email, '') AS email,
+				   COALESCE(u.first_name, '') AS first_name,
+				   COALESCE(u.last_name, '') AS last_name,
+				   u.country,
+				   u.city,
+				   u.id,
+				   COALESCE(u.username, '') AS username,
+				   u.profile_picture_name AS profile_picture_url,
+				   u.referred_by,
+				   COALESCE(u.phone_number_hash, '') AS phone_number_hash,
+				   COALESCE(u.agenda_phone_number_hashes, '') AS agenda_phone_number_hashes,
+				   u.mining_blockchain_account_address,
+				   u.blockchain_account_address,
+				   u.language,
+				   u.hash_code
 			FROM users u
-			WHERE u.referred_by = :user_id
-			  AND u.id != :user_id`
-	var resp []*struct {
+			WHERE u.referred_by = $1
+			  AND u.id != $1`
+	type resp struct {
 		NewReferredBy UserID
 		User
 	}
-	if err := r.db.PrepareExecuteTyped(sql, map[string]any{"user_id": userID}, &resp); err != nil {
+	res, err := storage.Select[resp](ctx, r.dbV2, sql, userID)
+	if err != nil {
 		return errors.Wrapf(err, "failed to select for all t1 referrals of userID:%v + their new random referralID", userID)
 	}
 
 	wg := new(sync.WaitGroup)
-	wg.Add(len(resp))
-	errChan := make(chan error, len(resp))
-	for ii := range resp {
+	wg.Add(len(res))
+	errChan := make(chan error, len(res))
+	for ii := range res {
 		go func(ix int) {
 			defer wg.Done()
-			errChan <- errors.Wrapf(r.updateReferredBy(ctx, &resp[ix].User, resp[ix].NewReferredBy, true),
-				"failed to update referred by for userID:%v", resp[ix].User.ID)
+			errChan <- errors.Wrapf(r.updateReferredBy(ctx, &res[ix].User, res[ix].NewReferredBy, true),
+				"failed to update referred by for userID:%v", res[ix].User.ID)
 		}(ii)
 	}
 	wg.Wait()
 	close(errChan)
-	errs := make([]error, 0, len(resp))
+	errs := make([]error, 0, len(res))
 	for err := range errChan {
 		errs = append(errs, err)
 	}
