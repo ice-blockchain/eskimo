@@ -55,7 +55,7 @@ func (s *miningSessionSource) updateMiningSession(ctx context.Context, now *time
 	        WHERE id = $4
 	          AND ((last_mining_started_at IS NULL OR last_mining_started_at != $2)
 				   OR (last_mining_ended_at IS NULL OR last_mining_ended_at != $3))`
-	_, err := storage.Exec(ctx, s.dbV2, sql, time.Now().Time, now.Time, ses.EndedAt.Time, ses.UserID)
+	_, err := storage.Exec(ctx, s.db, sql, time.Now().Time, now.Time, ses.EndedAt.Time, ses.UserID)
 
 	return errors.Wrapf(err,
 		"failed to update users.last_mining_started_at to %v, users.last_mining_ended_at to %v, for userID: %v", now, ses.EndedAt, ses.UserID)

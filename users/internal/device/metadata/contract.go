@@ -12,8 +12,8 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/ice-blockchain/eskimo/users/internal/device"
-	"github.com/ice-blockchain/go-tarantool-client"
 	messagebroker "github.com/ice-blockchain/wintr/connectors/message_broker"
+	storage "github.com/ice-blockchain/wintr/connectors/storage/v2"
 	"github.com/ice-blockchain/wintr/time"
 )
 
@@ -137,7 +137,7 @@ type (
 	}
 	repository struct {
 		cfg           *config
-		db            tarantool.Connector
+		db            *storage.DB
 		mb            messagebroker.Client
 		ip2LocationDB *ip2location.DB
 	}

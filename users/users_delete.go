@@ -55,7 +55,7 @@ func (r *repository) deleteUser(ctx context.Context, usr *User) error { //nolint
 	}
 	*usr = *gUser
 	sql := `DELETE FROM users WHERE id = $1`
-	if _, tErr := storage.Exec(ctx, r.dbV2, sql, usr.ID); tErr != nil {
+	if _, tErr := storage.Exec(ctx, r.db, sql, usr.ID); tErr != nil {
 		if errors.Is(tErr, storage.ErrRelationNotFound) {
 			return r.deleteUser(ctx, usr)
 		}
@@ -145,7 +145,7 @@ func (r *repository) updateReferredByForAllT1Referrals(ctx context.Context, user
 		NewReferredBy UserID
 		User
 	}
-	res, err := storage.Select[resp](ctx, r.dbV2, sql, userID)
+	res, err := storage.Select[resp](ctx, r.db, sql, userID)
 	if err != nil {
 		return errors.Wrapf(err, "failed to select for all t1 referrals of userID:%v + their new random referralID", userID)
 	}

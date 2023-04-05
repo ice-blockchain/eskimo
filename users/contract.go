@@ -16,10 +16,9 @@ import (
 
 	"github.com/ice-blockchain/eskimo/users/internal/device"
 	devicemetadata "github.com/ice-blockchain/eskimo/users/internal/device/metadata"
-	"github.com/ice-blockchain/go-tarantool-client"
 	"github.com/ice-blockchain/wintr/analytics/tracking"
 	messagebroker "github.com/ice-blockchain/wintr/connectors/message_broker"
-	storagev2 "github.com/ice-blockchain/wintr/connectors/storage/v2"
+	storage "github.com/ice-blockchain/wintr/connectors/storage/v2"
 	"github.com/ice-blockchain/wintr/multimedia/picture"
 	"github.com/ice-blockchain/wintr/time"
 )
@@ -45,9 +44,9 @@ const (
 )
 
 var (
-	ErrNotFound           = storagev2.ErrNotFound
-	ErrRelationNotFound   = storagev2.ErrRelationNotFound
-	ErrDuplicate          = storagev2.ErrDuplicate
+	ErrNotFound           = storage.ErrNotFound
+	ErrRelationNotFound   = storage.ErrRelationNotFound
+	ErrDuplicate          = storage.ErrDuplicate
 	ErrInvalidAppVersion  = devicemetadata.ErrInvalidAppVersion
 	ErrOutdatedAppVersion = devicemetadata.ErrOutdatedAppVersion
 	ErrInvalidCountry     = errors.New("country invalid")
@@ -259,10 +258,9 @@ type (
 
 	// | repository implements the public API that this package exposes.
 	repository struct {
-		cfg  *config
-		db   tarantool.Connector
-		dbV2 *storagev2.DB
-		mb   messagebroker.Client
+		cfg *config
+		db  *storage.DB
+		mb  messagebroker.Client
 		devicemetadata.DeviceMetadataRepository
 		pictureClient  picture.Client
 		trackingClient tracking.Client
