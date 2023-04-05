@@ -34,13 +34,13 @@ func (r *repository) CreateUser(ctx context.Context, usr *User, clientIP net.IP)
 	INSERT INTO users 
 		(ID, MINING_BLOCKCHAIN_ACCOUNT_ADDRESS, BLOCKCHAIN_ACCOUNT_ADDRESS, HASH_CODE, EMAIL, FIRST_NAME, LAST_NAME, PHONE_NUMBER, PHONE_NUMBER_HASH, USERNAME, REFERRED_BY, RANDOM_REFERRED_BY, CLIENT_DATA, PROFILE_PICTURE_NAME, COUNTRY, CITY, LANGUAGE, CREATED_AT, UPDATED_AT)
 	VALUES
-		($1,                                $2,                         $3,        $4,    $5,         $6,        $7,           $8,                $9,      $10,         $11,                $12,  $13::json,                   $14,     $15,  $16,      $17,        $18,        $19)`
+		($1,                                $2,                         $3,        $4,    $5,         $6,        $7,           $8,                $9,      $10,         $11,                $12,   $13::json,                  $14,     $15,  $16,      $17,        $18,        $19)`
 	args := []any{
 		usr.ID, usr.MiningBlockchainAccountAddress, usr.BlockchainAccountAddress, usr.HashCode, usr.Email, usr.FirstName, usr.LastName,
 		usr.PhoneNumber, usr.PhoneNumberHash, usr.Username, usr.ReferredBy, usr.RandomReferredBy, usr.ClientData, usr.ProfilePictureURL, usr.Country,
 		usr.City, usr.Language, usr.CreatedAt.Time, usr.UpdatedAt.Time,
 	}
-	if _, err := storage.Exec(ctx, r.dbV2, sql, args...); err != nil {
+	if _, err := storage.Exec(ctx, r.db, sql, args...); err != nil {
 		field, tErr := detectAndParseDuplicateDatabaseError(err)
 		if field == hashCodeDBColumnName || field == usernameDBColumnName || errors.Is(err, storage.ErrRelationNotFound) {
 			return r.CreateUser(ctx, usr, clientIP)
@@ -88,7 +88,6 @@ func (r *repository) setCreateUserDefaults(ctx context.Context, usr *User, clien
 
 func detectAndParseDuplicateDatabaseError(err error) (field string, newErr error) { //nolint:revive // need to check all fields in this way.
 	if storage.IsErr(err, storage.ErrDuplicate) {
-
 		if storage.IsErr(err, storage.ErrDuplicate, "pk") { //nolint:gocritic,nestif // .
 			field = "id"
 		} else if storage.IsErr(err, storage.ErrDuplicate, "phonenumber") {

@@ -19,7 +19,7 @@ func (r *repository) getUserByID(ctx context.Context, id UserID) (*User, error) 
 	if ctx.Err() != nil {
 		return nil, errors.Wrap(ctx.Err(), "get user failed because context failed")
 	}
-	result, err := storage.Get[User](ctx, r.dbV2, `
+	result, err := storage.Get[User](ctx, r.db, `
     SELECT      u.CREATED_AT,
 				u.UPDATED_AT,
 				u.LAST_MINING_STARTED_AT,
@@ -101,7 +101,7 @@ func (r *repository) GetUserByID(ctx context.Context, userID string) (*UserProfi
 								AND t2.username != t2.id
 	WHERE u.id = $1
 	GROUP BY u.id`
-	res, err := storage.Get[UserProfile](ctx, r.dbV2, sql, userID)
+	res, err := storage.Get[UserProfile](ctx, r.db, sql, userID)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to select user by id %v", userID)
 	}
@@ -160,7 +160,7 @@ func (r *repository) getOtherUserByID(ctx context.Context, userID string) (*User
 		T1ReferralCount uint64
 		T2ReferralCount uint64
 	}
-	dbRes, err := storage.Get[result](ctx, r.dbV2, sql, userID)
+	dbRes, err := storage.Get[result](ctx, r.db, sql, userID)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to select referralCount for user by id %v", userID)
 	}
@@ -177,7 +177,7 @@ func (r *repository) GetUserByUsername(ctx context.Context, username string) (*U
 	if ctx.Err() != nil {
 		return nil, errors.Wrap(ctx.Err(), "get user failed because context failed")
 	}
-	result, err := storage.Get[UserProfile](ctx, r.dbV2, `
+	result, err := storage.Get[UserProfile](ctx, r.db, `
 SELECT          u.CREATED_AT,
 				u.UPDATED_AT,
 				u.LAST_MINING_STARTED_AT,
@@ -302,7 +302,7 @@ func (r *repository) GetUsers(ctx context.Context, keyword string, limit, offset
 		offset,
 		requestingUserID(ctx),
 	}
-	result, err = storage.Select[MinimalUserProfile](ctx, r.dbV2, sql, params...)
+	result, err = storage.Select[MinimalUserProfile](ctx, r.db, sql, params...)
 	if result == nil {
 		result = []*MinimalUserProfile{}
 	}

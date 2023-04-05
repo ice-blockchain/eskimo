@@ -9,7 +9,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	storagev2 "github.com/ice-blockchain/wintr/connectors/storage/v2"
+	storage "github.com/ice-blockchain/wintr/connectors/storage/v2"
 )
 
 func (r *repository) GetTopCountries(ctx context.Context, keyword string, limit, offset uint64) (cs []*CountryStatistics, err error) {
@@ -25,7 +25,7 @@ func (r *repository) GetTopCountries(ctx context.Context, keyword string, limit,
 						WHERE lower(country) in (%v)
 						ORDER BY user_count desc 
 						LIMIT $1 OFFSET $2`, countries)
-	cs, err = storagev2.Select[CountryStatistics](ctx, r.dbV2, sql, params...)
+	cs, err = storage.Select[CountryStatistics](ctx, r.db, sql, params...)
 	if err != nil {
 		return nil, errors.Wrapf(err, "get top countries failed for %v %v %v", keyword, limit, offset)
 	}
@@ -60,14 +60,14 @@ INSERT INTO users_per_country (country, user_count)
 VALUES ($1, 1) ON CONFLICT (country) DO UPDATE
 	SET user_count = users_per_country.user_count %v 1
 `
-	return errors.Wrapf(storagev2.DoInTransaction(ctx, r.dbV2, func(conn storagev2.QueryExecer) error {
+	return errors.Wrapf(storage.DoInTransaction(ctx, r.db, func(conn storage.QueryExecer) error {
 		if usr.User != nil {
-			if _, err := storagev2.Exec(ctx, r.dbV2, fmt.Sprintf(sqlTemplate, "+"), usr.User.Country); err != nil {
+			if _, err := storage.Exec(ctx, r.db, fmt.Sprintf(sqlTemplate, "+"), usr.User.Country); err != nil {
 				return errors.Wrapf(err, "error increasing country count for country:%v", usr.User.Country)
 			}
 		}
 		if usr.Before != nil {
-			if _, err := storagev2.Exec(ctx, r.dbV2, fmt.Sprintf(sqlTemplate, "-"), usr.Before.Country); err != nil {
+			if _, err := storage.Exec(ctx, r.db, fmt.Sprintf(sqlTemplate, "-"), usr.Before.Country); err != nil {
 				return errors.Wrapf(err, "error decreasing country count for country:%v", usr.Before.Country)
 			}
 		}

@@ -10,6 +10,7 @@ import (
 
 	"github.com/pkg/errors"
 
+	storage "github.com/ice-blockchain/wintr/connectors/storage/v2"
 	"github.com/ice-blockchain/wintr/log"
 	"github.com/ice-blockchain/wintr/time"
 )
@@ -25,12 +26,12 @@ func (r *repository) GetReferrals(ctx context.Context, userID string, referralTy
 			log.Info(fmt.Sprintf("[response]GetReferrals(%v) took: %v", referralType, elapsed))
 		}
 	}()
-	totalAndActiveColumns := `  CAST(SUM(1) AS STRING) 																   			AS total,
+	totalAndActiveColumns := `  CAST(SUM(1) AS text) 																   		AS id,
 								CAST(SUM(CASE 
-											WHEN COALESCE(referrals.last_mining_ended_at,0) > :nowNanos 
+											WHEN COALESCE(referrals.last_mining_ended_at, to_timestamp(0)) > $4 
 												THEN 1 
 											ELSE 0 
-										 END) AS STRING) 	 														   			AS active,`
+										 END) AS text) 	 														   			AS username,`
 	var referralTypeJoin, referralTypeJoinSumAgg string
 	switch referralType {
 	case Tier1Referrals:
@@ -60,12 +61,12 @@ func (r *repository) GetReferrals(ctx context.Context, userID string, referralTy
 		referralTypeJoin = `
 			JOIN USERS referrals
 					ON NULLIF(referrals.phone_number_hash,'') IS NOT NULL
-					AND POSITION(referrals.phone_number_hash, u.agenda_phone_number_hashes) > 0
+					AND POSITION(referrals.phone_number_hash IN u.agenda_phone_number_hashes) > 0
                     AND referrals.username != referrals.id
 					AND referrals.referred_by != referrals.id
 					AND u.id != referrals.id`
-		totalAndActiveColumns = `'0' AS total,
-								 '0' AS active,`
+		totalAndActiveColumns = `'0' AS id,
+								 '0' AS username,`
 	default:
 		log.Panic(errors.Errorf("referral type: '%v' not supported", referralType))
 	}
@@ -73,9 +74,9 @@ func (r *repository) GetReferrals(ctx context.Context, userID string, referralTy
 		referralTypeJoinSumAgg = referralTypeJoin
 	}
 	sql := fmt.Sprintf(`
-		SELECT  0 																					   AS last_mining_ended_at, 
-				0 																					   AS last_ping_cooldown_ended_at,
-				'' 																					   AS phone_number_,
+		SELECT  to_timestamp(0)																		   AS 	   active, 
+				to_timestamp(0)																		   AS 	   pinged,
+				'' 																					   AS phone_number,
 				'' 																					   AS email,
 				%[4]v	 
 				''																					   AS profile_picture_url, 
@@ -84,28 +85,28 @@ func (r *repository) GetReferrals(ctx context.Context, userID string, referralTy
 				''																					   AS referral_type 
 		FROM USERS u
 				%[5]v
-		WHERE u.id = :userId
+		WHERE u.id = $1
 
 		UNION ALL
 
-		SELECT X.last_mining_ended_at,
-			   X.last_ping_cooldown_ended_at,
-			   X.phone_number_,
+		SELECT X.last_mining_ended_at  		 			 AS active,
+			   X.last_ping_cooldown_ended_at  			 AS pinged,
+			   X.phone_number_ 							 AS phone_number,
 			   '' AS email,
 			   X.id,
 			   X.username,
-			   X.profile_picture_url,
+			   X.profile_picture_url 					 AS profile_picture_name,
 			   X.country,
 			   '' AS city,
-			   :referralType AS referral_type
+			   $2 AS referral_type
 		FROM (SELECT  
-				COALESCE(referrals.last_mining_ended_at,1)                                             AS last_mining_ended_at,
+				COALESCE(referrals.last_mining_ended_at, to_timestamp(0))              				   AS last_mining_ended_at,
 				(CASE
 					WHEN u.id = referrals.referred_by OR u.referred_by = referrals.id
 						THEN (CASE 
-									WHEN COALESCE(referrals.last_mining_ended_at,0) < :nowNanos 
-									    THEN COALESCE(referrals.last_ping_cooldown_ended_at,1) 
-								   	ELSE :nowNanos 
+									WHEN COALESCE(referrals.last_mining_ended_at,to_timestamp(0)) < $4 
+									    THEN COALESCE(referrals.last_ping_cooldown_ended_at,to_timestamp(0)) 
+								   	ELSE $4 
 							  END)
 					ELSE null
 				 END)                                                                                  AS last_ping_cooldown_ended_at,
@@ -113,28 +114,31 @@ func (r *repository) GetReferrals(ctx context.Context, userID string, referralTy
 				referrals.username                                                                     AS username,
 				referrals.country                                                                      AS country,
 				(CASE
-					WHEN NULLIF(referrals.phone_number_hash,'') IS NOT NULL AND POSITION(referrals.phone_number_hash, u.agenda_phone_number_hashes) > 0
+					WHEN NULLIF(referrals.phone_number_hash,'') IS NOT NULL AND POSITION(referrals.phone_number_hash IN u.agenda_phone_number_hashes) > 0
 						THEN referrals.phone_number
 					ELSE ''
-				 END)                                                                                   AS phone_number_,
-				%[1]v                                              										AS profile_picture_url,
-				referrals.created_at                                                                    AS created_at
+				 END)                                                                                  AS phone_number_,
+				%[1]v                                              									   AS profile_picture_url,
+				referrals.created_at                                                                   AS created_at
 				FROM USERS u
 						%[2]v
-				WHERE u.id = :userId
-				ORDER BY (phone_number_ != '' AND phone_number_ != null) DESC,
+				WHERE u.id = $1
+				ORDER BY ((CASE WHEN NULLIF(referrals.phone_number_hash,'') IS NOT NULL AND POSITION(referrals.phone_number_hash IN u.agenda_phone_number_hashes) > 0
+								THEN referrals.phone_number
+								ELSE ''
+				 		   END) != ''
+						  AND 
+						  (CASE WHEN NULLIF(referrals.phone_number_hash,'') IS NOT NULL AND POSITION(referrals.phone_number_hash IN u.agenda_phone_number_hashes) > 0
+						  		THEN referrals.phone_number
+					  			ELSE ''
+					 	   END) != null) DESC,
 						 referrals.created_at DESC
-				LIMIT %[3]v OFFSET :offset
+				LIMIT %[3]v OFFSET $3
 			 ) X`, r.pictureClient.SQLAliasDownloadURL(`referrals.profile_picture_name`), referralTypeJoin, limit, totalAndActiveColumns, referralTypeJoinSumAgg) //nolint:lll // .
-	params := map[string]any{
-		"userId":       userID,
-		"referralType": referralType,
-		"offset":       offset,
-		"nowNanos":     time.Now(),
-	}
-	var result []*MinimalUserProfile
-	if err := r.db.PrepareExecuteTyped(sql, params, &result); err != nil {
-		return nil, errors.Wrapf(err, "failed to get referrals for userID:%v,referralType:%v,limit:%v,offset:%v", userID, referralType, limit, offset)
+	args := []any{userID, referralType, offset, time.Now().Time}
+	result, err := storage.Select[MinimalUserProfile](ctx, r.db, sql, args...)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to select for all t1 referrals of userID:%v + their new random referralID", userID)
 	}
 	if len(result) == 0 {
 		return &Referrals{
@@ -145,7 +149,6 @@ func (r *repository) GetReferrals(ctx context.Context, userID string, referralTy
 			Referrals: make([]*MinimalUserProfile, 0),
 		}, nil
 	}
-	var err error
 	var total, active uint64
 	if result[0].ID != "" {
 		total, err = strconv.ParseUint(result[0].ID, 10, 64)
@@ -181,7 +184,7 @@ func (r *repository) GetReferralAcquisitionHistory(ctx context.Context, userID s
 	now := time.Now()
 	nowNanos := now.UnixNano()
 	nsSinceMidnight := NanosSinceMidnight(now)
-	pastNanos := stdlibtime.Unix(0, nowNanos).UTC().Add(-days * 24 * stdlibtime.Hour).Add(-nsSinceMidnight).UnixNano()
+	past := stdlibtime.Unix(0, nowNanos).UTC().Add(-days * 24 * stdlibtime.Hour).Add(-nsSinceMidnight)
 	if true {
 		result := make([]*ReferralAcquisition, 0, daysNumber)
 		for i := 0; i < int(daysNumber); i++ {
@@ -195,28 +198,28 @@ func (r *repository) GetReferralAcquisitionHistory(ctx context.Context, userID s
 		return result, nil
 	}
 	sql := `
-SELECT * 
+SELECT X.* 
 FROM (		
 		WITH RECURSIVE referrals AS 
 		(
 			SELECT  id,
-					(:nowNanos - created_at) / 86400000000000 AS past_day,
+					($2::DATE - created_at::DATE) 	          AS past_day,
 					1                                         AS t1,
 					0                                         AS t2,
 					1                                         AS tier
 			FROM users
 			WHERE 1 = 1
-				AND referred_by = :userId
-				AND id != :userId
+				AND referred_by = $1
+				AND id != $1
 				AND username != id
 				AND referred_by != id
-				AND created_at >= :pastNanos
-				AND created_at <= :nowNanos
+				AND created_at >= $3
+				AND created_at <= $2
 		
 			UNION ALL
 		
 			SELECT  i.id,
-					(:nowNanos - i.created_at) / 86400000000000 AS past_day,
+					($2::DATE - i.created_at::DATE) 	        AS past_day,
 					0                                           AS t1,
 					1                                           AS t2,
 					tier + 1                                    AS tier
@@ -226,38 +229,33 @@ FROM (
 						AND referrals.id != i.id
 						AND i.referred_by != i.id
 						AND i.username != i.id
-						AND i.created_at >= :pastNanos
-						AND i.created_at <= :nowNanos
+						AND i.created_at >= $3
+						AND i.created_at <= $2
 			WHERE tier < 3
 		)
 		SELECT
-			CAST(TOTAL(referrals.t1) AS INT) AS t1_referrals_acquired,
-			CAST(TOTAL(referrals.t2) AS INT) AS t2_referrals_acquired,
+			COALESCE(SUM(referrals.t1), 0) AS count_t1,
+			COALESCE(SUM(referrals.t2), 0) AS count_t2,
 			days.day AS past_day
 		FROM days
 			LEFT JOIN referrals
 				ON days.day = referrals.past_day	
-		WHERE days.day < :days
+		WHERE days.day < $4
 		GROUP BY days.day
 		ORDER BY days.day
-     )`
-	params := map[string]any{
-		"userId":    userID,
-		"nowNanos":  nowNanos,
-		"pastNanos": pastNanos,
-		"days":      daysNumber,
-	}
-	var resultFromQuery []*struct {
+     ) X`
+	type resultFromQuery struct {
 		CountT1 uint64
 		CountT2 uint64
 		PastDay uint64
 	}
-	if err := r.db.PrepareExecuteTyped(sql, params, &resultFromQuery); err != nil {
+	args := []any{userID, now.Time, past, daysNumber}
+	res, err := storage.Select[resultFromQuery](ctx, r.db, sql, args...)
+	if err != nil {
 		return nil, errors.Wrapf(err, "failed to select ReferralAcquisition history for userID:%v,days:%v", userID, daysNumber)
 	}
-
 	result := make([]*ReferralAcquisition, 0, daysNumber)
-	for i, row := range resultFromQuery {
+	for i, row := range res {
 		tmp := new(ReferralAcquisition)
 		var date *time.Time
 

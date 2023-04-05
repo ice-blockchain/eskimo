@@ -12,8 +12,7 @@ import (
 	"github.com/pkg/errors"
 
 	messagebroker "github.com/ice-blockchain/wintr/connectors/message_broker"
-	"github.com/ice-blockchain/wintr/connectors/storage"
-	storagev2 "github.com/ice-blockchain/wintr/connectors/storage/v2"
+	storage "github.com/ice-blockchain/wintr/connectors/storage/v2"
 	"github.com/ice-blockchain/wintr/time"
 )
 
@@ -89,7 +88,7 @@ func (r *repository) getGlobalValues(ctx context.Context, keys ...string) ([]*Gl
 						FROM global
 						WHERE key in (%v)
 						ORDER BY POSITION(key in $1)`, strings.Join(placeholders, ","))
-	vals, err := storagev2.Select[GlobalUnsigned](ctx, r.dbV2, sql, params...)
+	vals, err := storage.Select[GlobalUnsigned](ctx, r.db, sql, params...)
 
 	return vals, errors.Wrapf(err, "failed to select global vals for keys:%#v", keys)
 }
@@ -124,7 +123,7 @@ func (r *repository) incrementOrDecrementTotalUsers(ctx context.Context, date *t
 									VALUES %[2]v
 								ON CONFLICT (key) DO UPDATE    
 						SET value = (select GREATEST(total.value %[1]v 1,0) FROM global total WHERE total.key = '%[3]v')`, operation, strings.Join(sqlParams, ","), params[0])
-	if _, err := storagev2.Exec(ctx, r.dbV2, sql, params...); err != nil && !errors.Is(err, storage.ErrNotFound) {
+	if _, err := storage.Exec(ctx, r.db, sql, params...); err != nil && !errors.Is(err, storage.ErrNotFound) {
 		return errors.Wrapf(err, "failed to update global.value to global.value%v1 of key='%v', for params:%#v ", operation, totalUsersGlobalKey, params)
 	}
 	keys := make([]string, 0, len(params))
@@ -162,7 +161,7 @@ func (r *repository) incrementTotalActiveUsers(ctx context.Context, prev, next *
 				ON CONFLICT (key) DO UPDATE   
 						SET value = global.value + 1`, strings.Join(sqlParams, ","))
 
-	if _, err := storagev2.Exec(ctx, r.dbV2, sql, params...); err != nil && !errors.Is(err, storage.ErrNotFound) {
+	if _, err := storage.Exec(ctx, r.db, sql, params...); err != nil && !errors.Is(err, storage.ErrNotFound) {
 		return errors.Wrapf(err, "failed to update global.value to global.value+1 for params:%#v ", params)
 	}
 
