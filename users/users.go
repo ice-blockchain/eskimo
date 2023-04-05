@@ -5,6 +5,7 @@ package users
 import (
 	"context"
 	"crypto/rand"
+	"database/sql/driver"
 	"fmt"
 	"math"
 	"math/big"
@@ -260,6 +261,18 @@ func (e *Enum[T]) EncodeMsgpack(encoder *msgpack.Encoder) error {
 	}
 
 	return errors.Wrap(encoder.EncodeString(strings.Join(enum, ",")), "failed to encode string")
+}
+func (e *Enum[T]) Value() (driver.Value, error) {
+	if e == nil || len(*e) == 0 {
+		return "", nil
+	}
+	eDeref := *e
+	enum := make([]string, 0, len(eDeref))
+	for _, elem := range eDeref {
+		enum = append(enum, string(elem))
+	}
+
+	return strings.Join(enum, ","), nil
 }
 
 func (j *JSON) Scan(src any) error {
