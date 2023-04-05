@@ -36,7 +36,7 @@ func New(ctx context.Context, cancel context.CancelFunc) Repository {
 	appCfg.MustLoadFromKey(applicationYamlKey, &cfg)
 
 	db := storage.MustConnect(ctx, cancel, ddl, applicationYamlKey)
-	dbV2 := storagev2.MustConnect(ctx, ddl, applicationYamlKey)
+	dbV2 := storagev2.MustConnect(ctx, ddlV2, applicationYamlKey)
 
 	return &repository{
 		cfg:                      &cfg,
@@ -189,6 +189,16 @@ func (n *NotExpired) DecodeMsgpack(dec *msgpack.Decoder) error {
 
 	return nil
 }
+func (n *NotExpired) Scan(src any) error {
+	date, ok := src.(stdlibtime.Time)
+	if ok {
+		date = date.UTC()
+		*n = NotExpired(time.Now().Before(date))
+		return nil
+	}
+
+	return errors.Errorf("unexpected type for src:%#v(%T)", src, src)
+}
 
 func (e *Enum[T]) DecodeMsgpack(decoder *msgpack.Decoder) error {
 	enumStr, err := decoder.DecodeString()
@@ -212,6 +222,29 @@ func (e *Enum[T]) DecodeMsgpack(decoder *msgpack.Decoder) error {
 
 	return nil
 }
+func (e *Enum[T]) Scan(src any) error {
+	enumStr, isStr := src.(string)
+	if isStr {
+		if enumStr == "" {
+			*e = nil
+
+			return nil
+		}
+		eDeref := *e
+		parts := strings.Split(enumStr, ",")
+		if len(eDeref) == 0 {
+			eDeref = make(Enum[T], 0, len(parts))
+		}
+		for _, elem := range parts {
+			eDeref = append(eDeref, T(elem))
+		}
+		*e = eDeref
+
+		return nil
+	}
+
+	return errors.Errorf("unexpected type for src:%#v(%T)", src, src)
+}
 
 func (e *Enum[T]) EncodeMsgpack(encoder *msgpack.Encoder) error {
 	if e == nil || len(*e) == 0 {
@@ -224,6 +257,21 @@ func (e *Enum[T]) EncodeMsgpack(encoder *msgpack.Encoder) error {
 	}
 
 	return errors.Wrap(encoder.EncodeString(strings.Join(enum, ",")), "failed to encode string")
+}
+
+func (j *JSON) Scan(src any) error {
+	val, isStr := src.(string)
+	if isStr {
+		if val == "" {
+			return nil
+		}
+		if val == "{}" {
+			*j = make(JSON, 0)
+		}
+
+		return errors.Wrapf(json.UnmarshalContext(context.Background(), []byte(val), j), "failed to json.Unmarshall(%v,*JSON)", val)
+	}
+	return errors.Errorf("unexpected type for src:%#v(%T)", src, src)
 }
 
 func (j *JSON) DecodeMsgpack(dec *msgpack.Decoder) error {
