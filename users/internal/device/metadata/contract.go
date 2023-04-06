@@ -48,8 +48,6 @@ type (
 		Before *DeviceMetadata `json:"before,omitempty"`
 	}
 	DeviceMetadata struct {
-		//nolint:unused,revive,tagliatelle,nosnakecase // Wrong. It's a marker for marshalling/unmarshalling to/from db.
-		_msgpack struct{} `msgpack:",asArray"`
 		// Read Only.
 		UpdatedAt        *time.Time `json:"updatedAt,omitempty" swaggertype:"string"`
 		FirstInstallTime *time.Time `json:"firstInstallTime,omitempty" swaggertype:"integer"`

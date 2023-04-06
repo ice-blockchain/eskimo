@@ -5,11 +5,14 @@ logger:
   encoder: console
   level: info
 users: &users
-  db: &usersDatabase
-    urls:
-      - localhost:3304
-    user: admin
-    password: pass
+  wintr/connectors/storage/v2:
+    runDDL: true
+    primaryURL: postgresql://root:pass@localhost:5432/ice
+    credentials:
+      user: root
+      password: pass
+    replicaURLs:
+      - postgresql://root:pass@localhost:5432/ice
   messageBroker: &usersMessageBroker
     consumerGroup: eskimo-users-testing
     createTopics: true
@@ -71,6 +74,3 @@ users_test:
     <<: *usersMessageBroker
     consumingTopics: *usersMessageBrokerTopics
     consumerGroup: eskimo-users-testing-test
-  db:
-    <<: *usersDatabase
-    schemaPath: users/DDL.lua

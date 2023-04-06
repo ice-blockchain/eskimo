@@ -8,6 +8,7 @@ import (
 	"net"
 	stdlibtime "time"
 
+	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	"github.com/zeebo/xxh3"
 
@@ -50,7 +51,11 @@ func (r *repository) CreateUser(ctx context.Context, usr *User, clientIP net.IP)
 	}
 	us := &UserSnapshot{User: r.sanitizeUser(usr), Before: nil}
 	if err := errors.Wrapf(r.sendUserSnapshotMessage(ctx, us), "failed to send user created message for %#v", usr); err != nil {
-		return errors.Wrapf(err, "failed to send user created message for %#v", usr)
+		revertCtx, revertCancel := context.WithTimeout(context.Background(), requestDeadline)
+		defer revertCancel()
+
+		return multierror.Append(errors.Wrapf(err, "failed to send user created message for %#v", usr), //nolint:wrapcheck // Not needed.
+			errors.Wrapf(r.deleteUser(revertCtx, usr), "failed to delete user due to rollback, for userID:%v", usr.ID)).ErrorOrNil() //nolint:contextcheck // .
 	}
 	hashCode := usr.HashCode
 	usr.sanitizeForUI()
@@ -87,8 +92,8 @@ func (r *repository) setCreateUserDefaults(ctx context.Context, usr *User, clien
 }
 
 func detectAndParseDuplicateDatabaseError(err error) (field string, newErr error) { //nolint:revive // need to check all fields in this way.
-	if storage.IsErr(err, storage.ErrDuplicate) {
-		if storage.IsErr(err, storage.ErrDuplicate, "pk") { //nolint:gocritic,nestif // .
+	if storage.IsErr(err, storage.ErrDuplicate) { //nolint:nestif // .
+		if storage.IsErr(err, storage.ErrDuplicate, "pk") { //nolint:gocritic // .
 			field = "id"
 		} else if storage.IsErr(err, storage.ErrDuplicate, "phonenumber") {
 			field = "phone_number"

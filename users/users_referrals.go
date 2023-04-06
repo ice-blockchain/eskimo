@@ -26,12 +26,12 @@ func (r *repository) GetReferrals(ctx context.Context, userID string, referralTy
 			log.Info(fmt.Sprintf("[response]GetReferrals(%v) took: %v", referralType, elapsed))
 		}
 	}()
-	totalAndActiveColumns := `  CAST(SUM(1) AS text) 																   		AS id,
-								CAST(SUM(CASE 
+	totalAndActiveColumns := `  CAST(COALESCE(SUM(1), 0) AS text) 												   	AS id,
+								CAST(COALESCE(SUM(CASE 
 											WHEN COALESCE(referrals.last_mining_ended_at, to_timestamp(0)) > $4 
 												THEN 1 
 											ELSE 0 
-										 END) AS text) 	 														   			AS username,`
+										 END), 0) AS text) 	 														AS username,`
 	var referralTypeJoin, referralTypeJoinSumAgg string
 	switch referralType {
 	case Tier1Referrals:
@@ -65,8 +65,8 @@ func (r *repository) GetReferrals(ctx context.Context, userID string, referralTy
                     AND referrals.username != referrals.id
 					AND referrals.referred_by != referrals.id
 					AND u.id != referrals.id`
-		totalAndActiveColumns = `'0' AS id,
-								 '0' AS username,`
+		totalAndActiveColumns = `'0' 																   				AS id,
+								 '0' 																   				AS username,`
 	default:
 		log.Panic(errors.Errorf("referral type: '%v' not supported", referralType))
 	}
@@ -74,33 +74,33 @@ func (r *repository) GetReferrals(ctx context.Context, userID string, referralTy
 		referralTypeJoinSumAgg = referralTypeJoin
 	}
 	sql := fmt.Sprintf(`
-		SELECT  to_timestamp(0)																		   AS 	   active, 
-				to_timestamp(0)																		   AS 	   pinged,
-				'' 																					   AS phone_number,
-				'' 																					   AS email,
+		SELECT  to_timestamp(0)																		   				AS active, 
+				to_timestamp(0)																		   				AS pinged,
+				'' 																					   				AS phone_number,
+				'' 																					   				AS email,
 				%[4]v	 
-				''																					   AS profile_picture_url, 
-				''																					   AS country, 
-				''																					   AS city, 
-				''																					   AS referral_type 
+				''																					   				AS profile_picture_url, 
+				''																					   				AS country, 
+				''																					   				AS city, 
+				''																					   				AS referral_type 
 		FROM USERS u
 				%[5]v
 		WHERE u.id = $1
 
 		UNION ALL
 
-		SELECT X.last_mining_ended_at  		 			 AS active,
-			   X.last_ping_cooldown_ended_at  			 AS pinged,
-			   X.phone_number_ 							 AS phone_number,
+		SELECT X.last_mining_ended_at  		 			 											   				AS active,
+			   X.last_ping_cooldown_ended_at  			 											   				AS pinged,
+			   X.phone_number_ 							 											   				AS phone_number,
 			   '' AS email,
 			   X.id,
 			   X.username,
-			   X.profile_picture_url 					 AS profile_picture_name,
+			   X.profile_picture_url 					 											   				AS profile_picture_name,
 			   X.country,
 			   '' AS city,
 			   $2 AS referral_type
 		FROM (SELECT  
-				COALESCE(referrals.last_mining_ended_at, to_timestamp(0))              				   AS last_mining_ended_at,
+				COALESCE(referrals.last_mining_ended_at, to_timestamp(0))              				   				AS last_mining_ended_at,
 				(CASE
 					WHEN u.id = referrals.referred_by OR u.referred_by = referrals.id
 						THEN (CASE 
@@ -109,17 +109,17 @@ func (r *repository) GetReferrals(ctx context.Context, userID string, referralTy
 								   	ELSE $4 
 							  END)
 					ELSE null
-				 END)                                                                                  AS last_ping_cooldown_ended_at,
-				referrals.ID                                                                           AS id,
-				referrals.username                                                                     AS username,
-				referrals.country                                                                      AS country,
+				 END)                                                                                  				AS last_ping_cooldown_ended_at,
+				referrals.ID                                                                           				AS id,
+				referrals.username                                                                     				AS username,
+				referrals.country                                                                      				AS country,
 				(CASE
 					WHEN NULLIF(referrals.phone_number_hash,'') IS NOT NULL AND POSITION(referrals.phone_number_hash IN u.agenda_phone_number_hashes) > 0
 						THEN referrals.phone_number
 					ELSE ''
-				 END)                                                                                  AS phone_number_,
-				%[1]v                                              									   AS profile_picture_url,
-				referrals.created_at                                                                   AS created_at
+				 END)                                                                                  				AS phone_number_,
+				%[1]v                                              									   				AS profile_picture_url,
+				referrals.created_at                                                                   				AS created_at
 				FROM USERS u
 						%[2]v
 				WHERE u.id = $1
@@ -203,10 +203,10 @@ FROM (
 		WITH RECURSIVE referrals AS 
 		(
 			SELECT  id,
-					($2::DATE - created_at::DATE) 	          AS past_day,
-					1                                         AS t1,
-					0                                         AS t2,
-					1                                         AS tier
+					($2::DATE - created_at::DATE) 	          	AS past_day,
+					1                                         	AS t1,
+					0                                        	AS t2,
+					1                                         	AS tier
 			FROM users
 			WHERE 1 = 1
 				AND referred_by = $1
@@ -234,8 +234,8 @@ FROM (
 			WHERE tier < 3
 		)
 		SELECT
-			COALESCE(SUM(referrals.t1), 0) AS count_t1,
-			COALESCE(SUM(referrals.t2), 0) AS count_t2,
+			COALESCE(SUM(referrals.t1), 0) 						AS count_t1,
+			COALESCE(SUM(referrals.t2), 0) 						AS count_t2,
 			days.day AS past_day
 		FROM days
 			LEFT JOIN referrals

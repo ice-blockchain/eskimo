@@ -14,7 +14,6 @@ require (
 	github.com/stretchr/testify v1.8.2
 	github.com/swaggo/swag v1.8.12
 	github.com/testcontainers/testcontainers-go v0.19.0
-	github.com/vmihailenco/msgpack/v5 v5.3.5
 	github.com/zeebo/xxh3 v1.0.2
 	golang.org/x/mod v0.10.0
 	golang.org/x/net v0.9.0
@@ -40,7 +39,7 @@ require (
 	github.com/containerd/containerd v1.7.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/docker/distribution v2.8.1+incompatible // indirect
-	github.com/docker/docker v23.0.1+incompatible // indirect
+	github.com/docker/docker v23.0.3+incompatible // indirect
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
@@ -116,6 +115,7 @@ require (
 	github.com/twmb/franz-go/pkg/kadm v1.8.0 // indirect
 	github.com/twmb/franz-go/pkg/kmsg v1.5.0 // indirect
 	github.com/ugorji/go/codec v1.2.11 // indirect
+	github.com/vmihailenco/msgpack/v5 v5.3.5 // indirect
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	golang.org/x/arch v0.3.0 // indirect

@@ -76,10 +76,9 @@ func (r *repository) ModifyUser(ctx context.Context, usr *User, profilePicture *
 
 		return nil
 	}
-	var updatedRowsCount uint64
-	if updatedRowsCount, err = storage.Exec(ctx, r.db, sql, params...); err != nil {
-		_, err = detectAndParseDuplicateDatabaseError(err)
-		if !errors.Is(err, storage.ErrDuplicate) && (errors.Is(err, storage.ErrNotFound) || updatedRowsCount == 0) {
+	if updatedRowsCount, tErr := storage.Exec(ctx, r.db, sql, params...); tErr != nil {
+		_, tErr = detectAndParseDuplicateDatabaseError(tErr)
+		if !errors.Is(tErr, storage.ErrDuplicate) && (errors.Is(tErr, storage.ErrNotFound) || updatedRowsCount == 0) {
 			return ErrRaceCondition
 		}
 
@@ -93,7 +92,8 @@ func (r *repository) ModifyUser(ctx context.Context, usr *User, profilePicture *
 	if err = r.sendUserSnapshotMessage(ctx, us); err != nil {
 		_, rollBackParams := bkpUsr.genSQLUpdate(ctx)
 		rollBackParams[1] = bkpUsr.UpdatedAt
-		_, rollbackErr := storage.Exec(ctx, r.db, sql, rollBackParams)
+		_, rollbackErr := storage.Exec(ctx, r.db, sql, rollBackParams...)
+
 		return multierror.Append( //nolint:wrapcheck // Not needed.
 			errors.Wrapf(err, "failed to send updated user snapshot message %#v", us),
 			errors.Wrapf(rollbackErr, "failed to replace user to previous value, due to rollback, prev:%#v", bkpUsr),
@@ -284,7 +284,8 @@ func (r *repository) updateReferredBy(ctx context.Context, usr *User, newReferre
 	if err := r.sendUserSnapshotMessage(ctx, us); err != nil {
 		_, rollBackParams := bkpUsr.genSQLUpdate(ctx)
 		rollBackParams[1] = bkpUsr.UpdatedAt
-		_, rollbackErr := storage.Exec(ctx, r.db, sql, rollBackParams)
+		_, rollbackErr := storage.Exec(ctx, r.db, sql, rollBackParams...)
+
 		return multierror.Append( //nolint:wrapcheck // Not needed.
 			errors.Wrapf(err, "failed to send updated user message for %#v", us),
 			errors.Wrapf(rollbackErr, "failed to replace user to previous value, due to rollback, prev:%#v", bkpUsr),
