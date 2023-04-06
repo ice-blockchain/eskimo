@@ -282,9 +282,12 @@ func (r *repository) updateReferredBy(ctx context.Context, usr *User, newReferre
 	newUsr.RandomReferredBy = &randomReferral
 	us := &UserSnapshot{User: r.sanitizeUser(&newUsr), Before: r.sanitizeUser(usr)}
 	if err := r.sendUserSnapshotMessage(ctx, us); err != nil {
+		_, rollBackParams := bkpUsr.genSQLUpdate(ctx)
+		rollBackParams[1] = bkpUsr.UpdatedAt
+		_, rollbackErr := storage.Exec(ctx, r.db, sql, rollBackParams)
 		return multierror.Append( //nolint:wrapcheck // Not needed.
 			errors.Wrapf(err, "failed to send updated user message for %#v", us),
-			errors.Wrapf(r.db.ReplaceTyped("USERS", &bkpUsr, &[]*User{}), "failed to replace user to previous value, due to rollback, prev:%#v", bkpUsr),
+			errors.Wrapf(rollbackErr, "failed to replace user to previous value, due to rollback, prev:%#v", bkpUsr),
 		).ErrorOrNil()
 	}
 	*usr = *us.User
