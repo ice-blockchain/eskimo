@@ -151,7 +151,7 @@ func (r *repository) GetDeviceMetadata(ctx context.Context, id *device.ID) (*Dev
 	return dm, nil
 }
 
-func (r *repository) ReplaceDeviceMetadata(ctx context.Context, input *DeviceMetadata, clientIP net.IP) (err error) { //nolint:funlen // Big rollback logic.
+func (r *repository) ReplaceDeviceMetadata(ctx context.Context, input *DeviceMetadata, clientIP net.IP) (err error) {
 	if ctx.Err() != nil {
 		return errors.Wrap(ctx.Err(), "context failed")
 	}

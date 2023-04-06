@@ -15,7 +15,7 @@ import (
 	"github.com/ice-blockchain/wintr/time"
 )
 
-func (r *repository) getUserByID(ctx context.Context, id UserID) (*User, error) {
+func (r *repository) getUserByID(ctx context.Context, id UserID) (*User, error) { //nolint:funlen // Big SQL query.
 	if ctx.Err() != nil {
 		return nil, errors.Wrap(ctx.Err(), "get user failed because context failed")
 	}
