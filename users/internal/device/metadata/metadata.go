@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	stdlibtime "time"
 
 	"github.com/goccy/go-json"
 	"github.com/hashicorp/go-multierror"
@@ -219,6 +220,14 @@ func (r *repository) verifyDeviceAppNanosVersion(readableParts []string) error {
 
 //nolint:funlen // A lot of fields here.
 func (dm *DeviceMetadata) replaceSQL() (string, []any) {
+	var firstInstallTime, lastUpdateTime *stdlibtime.Time
+	if dm.FirstInstallTime != nil {
+		firstInstallTime = dm.FirstInstallTime.Time
+	}
+	if dm.LastUpdateTime != nil {
+		lastUpdateTime = dm.LastUpdateTime.Time
+	}
+
 	sql := `INSERT INTO DEVICE_METADATA (
 				country_short,
 				country_long,
@@ -455,8 +464,8 @@ func (dm *DeviceMetadata) replaceSQL() (string, []any) {
 		dm.Elevation,
 		dm.Usagetype,
 		dm.UpdatedAt.Time,
-		dm.FirstInstallTime.Time,
-		dm.LastUpdateTime.Time,
+		firstInstallTime,
+		lastUpdateTime,
 		dm.UserID,
 		dm.DeviceUniqueID,
 		dm.ReadableVersion,
