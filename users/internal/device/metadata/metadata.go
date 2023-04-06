@@ -59,7 +59,7 @@ func (r *repository) DeleteAllDeviceMetadata(ctx context.Context, userID string)
 	if ctx.Err() != nil {
 		return errors.Wrap(ctx.Err(), "unexpected deadline ")
 	}
-	sql := `SELECT * FROM device_metadata WHERE user_id = $1`
+	sql := fmt.Sprintf(`SELECT %v FROM device_metadata WHERE user_id = $1`, selectDeviceMetadataFields())
 	res, err := storage.Select[DeviceMetadata](ctx, r.db, sql, userID)
 	if err != nil {
 		return errors.Wrapf(err, "failed to select all device metadata for userID:%v", userID)
@@ -151,7 +151,63 @@ func (r *repository) GetDeviceMetadata(ctx context.Context, id *device.ID) (*Dev
 	return dm, nil
 }
 
-func (r *repository) ReplaceDeviceMetadata(ctx context.Context, input *DeviceMetadata, clientIP net.IP) (err error) { //nolint:funlen // Big rollback logic.
+func selectDeviceMetadataFields() string { //nolint:funlen // A lot of SQL fields.
+	return `updated_at,
+			first_install_time,
+			last_update_time,
+			user_id,
+			device_unique_id,
+			readable_version,
+			fingerprint,
+			instance_id,
+			hardware,
+			product,
+			device,
+			type,
+			tags,
+			device_id,
+			device_type,
+			device_name,
+			brand,
+			carrier,
+			manufacturer,
+			user_agent,
+			system_name,
+			system_version,
+			base_os,
+			build_id,
+			bootloader,
+			codename,
+			installer_package_name,
+			push_notification_token,
+			device_timezone 			AS tz,
+			country_short,
+			country_long,
+			region,
+			city,
+			isp,
+			domain,
+			zipcode,
+			timezone,
+			net_speed 					AS netspeed,
+			idd_code					AS iddcode,
+			area_code					AS areacode,
+			weather_station_code		AS weatherstationcode,
+			weather_station_name		AS weatherstationname,
+			mcc,
+			mnc,
+			mobile_brand				AS mobilebrand,
+			usage_type					AS usagetype,
+			latitude,
+			longitude,
+			elevation,
+			api_level,
+			tablet,
+			pin_or_fingerprint_set,
+			emulator`
+}
+
+func (r *repository) ReplaceDeviceMetadata(ctx context.Context, input *DeviceMetadata, clientIP net.IP) (err error) {
 	if ctx.Err() != nil {
 		return errors.Wrap(ctx.Err(), "context failed")
 	}
