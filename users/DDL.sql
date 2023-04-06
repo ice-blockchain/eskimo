@@ -41,7 +41,7 @@ CREATE INDEX IF NOT EXISTS users_per_country_user_count_ix ON users_per_country 
 CREATE INDEX IF NOT EXISTS users_referral_acquisition_history_ix ON users (referred_by, created_at);
 CREATE TABLE IF NOT EXISTS days (day SMALLINT primary key);
 INSERT INTO DAYS (DAY) VALUES (0),(1),(2),(3),(4),(5),(6),(7),(8),(9),(10),(11),(12),(13),(14),(15),
-                                           (16),(17),(18),(19),(20),(21),(22),(23),(24),(25),(26),(27),(28),(29),(30)
+                              (16),(17),(18),(19),(20),(21),(22),(23),(24),(25),(26),(27),(28),(29),(30)
 ON CONFLICT DO NOTHING;
 -- from [country_short,elevation] -inclusive at both ends- we have ip2location information,
 -- everything else (except user_id and updated_at) is from https://github.com/react-native-device-info/react-native-device-info#api

@@ -21,11 +21,6 @@ cmd/eskimo-hut:
     certPath: cmd/eskimo-hut/.testdata/localhost.crt
     keyPath: cmd/eskimo-hut/.testdata/localhost.key
 users: &users
-  db: &usersDatabase
-    urls:
-      - localhost:3301
-    user: admin
-    password: pass
   wintr/connectors/storage/v2:
     runDDL: true
     primaryURL: postgresql://root:pass@localhost:5432/ice
@@ -95,5 +90,3 @@ users_test:
     <<: *usersMessageBroker
     consumingTopics: *usersMessageBrokerTopics
     consumerGroup: eskimo-local-test
-  db:
-    <<: *usersDatabase

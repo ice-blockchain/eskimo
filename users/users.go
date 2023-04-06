@@ -18,7 +18,6 @@ import (
 	"github.com/goccy/go-json"
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
-	"github.com/vmihailenco/msgpack/v5"
 
 	devicemetadata "github.com/ice-blockchain/eskimo/users/internal/device/metadata"
 	"github.com/ice-blockchain/wintr/analytics/tracking"
@@ -30,11 +29,11 @@ import (
 	"github.com/ice-blockchain/wintr/time"
 )
 
-func New(ctx context.Context, cancel context.CancelFunc) Repository {
+func New(ctx context.Context, _ context.CancelFunc) Repository {
 	var cfg config
 	appCfg.MustLoadFromKey(applicationYamlKey, &cfg)
 
-	db := storage.MustConnect(ctx, ddlV2, applicationYamlKey)
+	db := storage.MustConnect(ctx, ddl, applicationYamlKey)
 
 	return &repository{
 		cfg:                      &cfg,
@@ -50,7 +49,7 @@ func StartProcessor(ctx context.Context, cancel context.CancelFunc) Processor {
 	appCfg.MustLoadFromKey(applicationYamlKey, &cfg)
 
 	var mbConsumer messagebroker.Client
-	db := storage.MustConnect(ctx, ddlV2, applicationYamlKey)
+	db := storage.MustConnect(ctx, ddl, applicationYamlKey)
 	mbProducer := messagebroker.MustConnect(ctx, applicationYamlKey)
 	prc := &processor{repository: &repository{
 		cfg:                      &cfg,
@@ -170,16 +169,6 @@ func ContextWithChecksum(ctx context.Context, checksum string) context.Context {
 	return context.WithValue(ctx, checksumCtxValueKey, checksum) //nolint:revive,staticcheck // Not an issue.
 }
 
-func (n *NotExpired) DecodeMsgpack(dec *msgpack.Decoder) error {
-	v := new(time.Time)
-	if err := v.DecodeMsgpack(dec); err != nil {
-		return errors.Wrap(err, "failed to decode time based struct for NotExpired")
-	}
-	*n = NotExpired(time.Now().Before(*v.Time))
-
-	return nil
-}
-
 func (n *NotExpired) Scan(src any) error {
 	date, ok := src.(stdlibtime.Time)
 	if ok {
@@ -190,29 +179,6 @@ func (n *NotExpired) Scan(src any) error {
 	}
 
 	return errors.Errorf("unexpected type for src:%#v(%T)", src, src)
-}
-
-func (e *Enum[T]) DecodeMsgpack(decoder *msgpack.Decoder) error {
-	enumStr, err := decoder.DecodeString()
-	if err != nil {
-		return errors.Wrap(err, "failed to decode string")
-	}
-	if enumStr == "" {
-		*e = nil
-
-		return nil
-	}
-	eDeref := *e
-	parts := strings.Split(enumStr, ",")
-	if len(eDeref) == 0 {
-		eDeref = make(Enum[T], 0, len(parts))
-	}
-	for _, elem := range parts {
-		eDeref = append(eDeref, T(elem))
-	}
-	*e = eDeref
-
-	return nil
 }
 
 func (e *Enum[T]) Scan(src any) error {
@@ -239,18 +205,6 @@ func (e *Enum[T]) Scan(src any) error {
 	return errors.Errorf("unexpected type for src:%#v(%T)", src, src)
 }
 
-func (e *Enum[T]) EncodeMsgpack(encoder *msgpack.Encoder) error {
-	if e == nil || len(*e) == 0 {
-		return errors.Wrap(encoder.EncodeNil(), "failed to encode nil")
-	}
-	eDeref := *e
-	enum := make([]string, 0, len(eDeref))
-	for _, elem := range eDeref {
-		enum = append(enum, string(elem))
-	}
-
-	return errors.Wrap(encoder.EncodeString(strings.Join(enum, ",")), "failed to encode string")
-}
 func (e *Enum[T]) Value() (driver.Value, error) {
 	if e == nil || len(*e) == 0 {
 		return "", nil
@@ -278,34 +232,6 @@ func (j *JSON) Scan(src any) error {
 	}
 
 	return errors.Errorf("unexpected type for src:%#v(%T)", src, src)
-}
-
-func (j *JSON) DecodeMsgpack(dec *msgpack.Decoder) error {
-	val, err := dec.DecodeString()
-	if err != nil {
-		return errors.Wrap(err, "failed to DecodeString")
-	}
-	if val == "" {
-		return nil
-	}
-	if val == "{}" {
-		*j = make(JSON, 0)
-	}
-
-	return errors.Wrapf(json.UnmarshalContext(context.Background(), []byte(val), j), "failed to json.Unmarshall(%v,*JSON)", val)
-}
-
-func (j *JSON) EncodeMsgpack(enc *msgpack.Encoder) error {
-	if j == nil || len(*j) == 0 {
-		return errors.Wrap(enc.EncodeNil(), "failed to encode nil")
-	}
-	bytes, err := json.MarshalContext(context.Background(), *j)
-	if err != nil {
-		return errors.Wrapf(err, "failed to json.Marshal(%#v)", *j)
-	}
-	v := string(bytes)
-
-	return errors.Wrapf(enc.EncodeString(v), "failed to EncodeString(%v)", v)
 }
 
 func (u *User) Checksum() string {

@@ -77,11 +77,11 @@ func (r *repository) getGlobalValues(ctx context.Context, keys ...string) ([]*Gl
 		return nil, errors.Wrap(ctx.Err(), "context failed")
 	}
 	placeholders := make([]string, 0, len(keys))
-	params := make([]any, len(keys)+1)
+	params := make([]any, len(keys)+1) //nolint:makezero // .
 	params[0] = ""
 	for i, key := range keys {
 		params[i+1] = key
-		placeholders = append(placeholders, fmt.Sprintf("$%v", i+2))
+		placeholders = append(placeholders, fmt.Sprintf("$%v", i+2)) //nolint:gomnd // Not a magic number.
 		params[0] = fmt.Sprintf("%v,%v", params[0], key)
 	}
 	sql := fmt.Sprintf(`SELECT *
@@ -105,7 +105,7 @@ func (r *repository) incrementTotalUsers(ctx context.Context, usr *UserSnapshot)
 	return r.incrementOrDecrementTotalUsers(ctx, time.Now(), false)
 }
 
-//nolint:funlen,gocognit,gocyclo,revive,cyclop // .
+//nolint:revive // .
 func (r *repository) incrementOrDecrementTotalUsers(ctx context.Context, date *time.Time, increment bool) error {
 	if ctx.Err() != nil {
 		return errors.Wrap(ctx.Err(), "unexpected deadline")
@@ -134,7 +134,7 @@ func (r *repository) incrementOrDecrementTotalUsers(ctx context.Context, date *t
 	return errors.Wrapf(r.notifyGlobalValueUpdateMessage(ctx, keys...), "failed to notifyGlobalValueUpdateMessage, keys:%#v", keys)
 }
 
-func (r *repository) incrementTotalActiveUsers(ctx context.Context, prev, next *time.Time) error { //nolint:funlen,gocognit,gocyclo,revive,cyclop // .
+func (r *repository) incrementTotalActiveUsers(ctx context.Context, prev, next *time.Time) error { //nolint:funlen,gocognit // .
 	if ctx.Err() != nil {
 		return errors.Wrap(ctx.Err(), "unexpected deadline")
 	}
@@ -162,7 +162,7 @@ func (r *repository) incrementTotalActiveUsers(ctx context.Context, prev, next *
 						SET value = global.value + 1`, strings.Join(sqlParams, ","))
 
 	if _, err := storage.Exec(ctx, r.db, sql, params...); err != nil && !errors.Is(err, storage.ErrNotFound) {
-		return errors.Wrapf(err, "failed to update global.value to global.value+1 for params:%#v ", params)
+		return errors.Wrapf(err, "failed to update global.value to global.value+1 for params:%#v", params...)
 	}
 
 	keys := make([]string, 0, len(params))

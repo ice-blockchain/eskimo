@@ -12,7 +12,6 @@ import (
 	stdlibtime "time"
 
 	"github.com/pkg/errors"
-	"github.com/vmihailenco/msgpack/v5"
 
 	"github.com/ice-blockchain/eskimo/users/internal/device"
 	devicemetadata "github.com/ice-blockchain/eskimo/users/internal/device/metadata"
@@ -87,7 +86,6 @@ type (
 		ProfilePictureURL string `json:"profilePictureUrl,omitempty" example:"https://somecdn.com/p1.jpg"`
 	}
 	User struct {
-		_msgpack                struct{}                    `msgpack:",asArray"` //nolint:unused,tagliatelle,revive,nosnakecase // To insert we need asArray
 		CreatedAt               *time.Time                  `json:"createdAt,omitempty" example:"2022-01-03T16:20:52.156534Z"`
 		UpdatedAt               *time.Time                  `json:"updatedAt,omitempty" example:"2022-01-03T16:20:52.156534Z"`
 		LastMiningStartedAt     *time.Time                  `json:"lastMiningStartedAt,omitempty" example:"2022-01-03T16:20:52.156534Z" swaggerignore:"true"`
@@ -134,7 +132,6 @@ type (
 		T2   uint64     `json:"t2" example:"13"`
 	}
 	CountryStatistics struct {
-		_msgpack struct{} `msgpack:",asArray"` //nolint:unused,revive,tagliatelle,nosnakecase // To insert we need asArray
 		// ISO 3166 country code.
 		Country   devicemetadata.Country `json:"country" example:"US"`
 		UserCount uint64                 `json:"userCount" example:"12121212"`
@@ -152,7 +149,6 @@ type (
 		UserCount
 	}
 	PhoneNumberValidation struct {
-		_msgpack struct{} `msgpack:",asArray"` //nolint:unused,revive,tagliatelle,nosnakecase // To insert we need asArray
 		// `Read Only`.
 		CreatedAt       *time.Time `json:"createdAt,omitempty" example:"2022-01-03T16:20:52.156534Z"`
 		UserID          UserID     `json:"userId,omitempty" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
@@ -161,7 +157,6 @@ type (
 		ValidationCode  string     `json:"validationCode,omitempty" example:"1234"`
 	}
 	EmailValidation struct {
-		_msgpack struct{} `msgpack:",asArray"` //nolint:unused,revive,tagliatelle,nosnakecase // To insert we need asArray
 		// `Read Only`.
 		CreatedAt      *time.Time `json:"createdAt,omitempty" example:"2022-01-03T16:20:52.156534Z"`
 		UserID         UserID     `json:"userId,omitempty" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
@@ -169,9 +164,8 @@ type (
 		ValidationCode string     `json:"validationCode,omitempty" example:"1234"`
 	}
 	GlobalUnsigned struct {
-		_msgpack struct{} `msgpack:",asArray"` //nolint:unused,revive,tagliatelle,nosnakecase // To insert we need asArray
-		Key      string   `json:"key" example:"TOTAL_USERS_2022-01-22:16"`
-		Value    uint64   `json:"value" example:"123676"`
+		Key   string `json:"key" example:"TOTAL_USERS_2022-01-22:16"`
+		Value uint64 `json:"value" example:"123676"`
 	}
 	ReadRepository interface {
 		GetUsers(ctx context.Context, keyword string, limit, offset uint64) ([]*MinimalUserProfile, error)
@@ -228,17 +222,8 @@ const (
 	requestDeadline                     = 25 * stdlibtime.Second
 )
 
-var (
-	//go:embed DDL.lua
-	ddl string
-	//go:embed DDL.sql
-	ddlV2 string
-	_     msgpack.CustomDecoder = (*NotExpired)(nil)
-	_     msgpack.CustomEncoder = (*Enum[HiddenProfileElement])(nil)
-	_     msgpack.CustomDecoder = (*Enum[HiddenProfileElement])(nil)
-	_     msgpack.CustomEncoder = (*JSON)(nil)
-	_     msgpack.CustomDecoder = (*JSON)(nil)
-)
+//go:embed DDL.sql
+var ddl string //nolint:grouper // .
 
 type (
 	miningSession struct {
