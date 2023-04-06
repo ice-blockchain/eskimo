@@ -141,17 +141,17 @@ func (u *User) genSQLUpdate(ctx context.Context) (sql string, params []any) {
 	sql = "UPDATE users SET updated_at = $2"
 	nextIndex := 3
 	if u.LastMiningStartedAt != nil {
-		params = append(params, u.LastMiningStartedAt)
+		params = append(params, u.LastMiningStartedAt.Time)
 		sql += fmt.Sprintf(", LAST_MINING_STARTED_AT = $%v", nextIndex)
 		nextIndex++
 	}
 	if u.LastMiningEndedAt != nil {
-		params = append(params, u.LastMiningEndedAt)
+		params = append(params, u.LastMiningEndedAt.Time)
 		sql += fmt.Sprintf(", LAST_MINING_ENDED_AT = $%v", nextIndex)
 		nextIndex++
 	}
 	if u.LastPingCooldownEndedAt != nil {
-		params = append(params, u.LastPingCooldownEndedAt)
+		params = append(params, u.LastPingCooldownEndedAt.Time)
 		sql += fmt.Sprintf(", LAST_PING_COOLDOWN_ENDED_AT = $%v", nextIndex)
 		nextIndex++
 	}
@@ -237,7 +237,7 @@ func (u *User) genSQLUpdate(ctx context.Context) (sql string, params []any) {
 	sql += " WHERE ID = $1"
 
 	if lu := lastUpdatedAt(ctx); lu != nil {
-		params = append(params, lu)
+		params = append(params, lu.Time)
 		sql += fmt.Sprintf(" AND UPDATED_AT = $%v", nextIndex)
 	}
 

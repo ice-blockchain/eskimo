@@ -17,7 +17,8 @@ func (r *repository) GetTopCountries(ctx context.Context, keyword string, limit,
 		return nil, errors.Wrap(ctx.Err(), "get top countries failed because context failed")
 	}
 	countries, countryParams := r.getTopCountriesParams(keyword)
-	params := []any{limit, offset, countryParams}
+	params := []any{limit, offset}
+	params = append(params, countryParams...)
 	sql := fmt.Sprintf(`
 						SELECT  country, 
 								user_count 
@@ -36,13 +37,14 @@ func (r *repository) GetTopCountries(ctx context.Context, keyword string, limit,
 func (r *repository) getTopCountriesParams(countryKeyword string) (countriesSQLEnumeration string, params []any) {
 	countriesSQLEnumeration = "''"
 	params = make([]any, 0)
+	const initialParamIdx = 3 // 1 and 2 are limit and offset.
 	keyword := strings.ToLower(countryKeyword)
 	if keyword == "" {
 		countriesSQLEnumeration = "lower(country)"
 	} else if countries := r.LookupCountries(keyword); len(countries) != 0 {
 		var countryParams []string
 		for i, country := range countries {
-			countryParams = append(countryParams, fmt.Sprintf("$%v", i))
+			countryParams = append(countryParams, fmt.Sprintf("$%v", i+initialParamIdx))
 			params = append(params, strings.ToLower(country))
 		}
 		countriesSQLEnumeration = strings.Join(countryParams, ",")
@@ -58,7 +60,7 @@ func (r *repository) incrementOrDecrementCountryUserCount(ctx context.Context, u
 	sqlTemplate := `
 INSERT INTO users_per_country (country, user_count) 
 VALUES ($1, 1) ON CONFLICT (country) DO UPDATE
-	SET user_count = users_per_country.user_count %v 1
+	SET user_count = GREATEST(users_per_country.user_count %v 1, 0)
 `
 	return errors.Wrapf(storage.DoInTransaction(ctx, r.db, func(conn storage.QueryExecer) error {
 		if usr.User != nil {

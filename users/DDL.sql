@@ -31,6 +31,7 @@ INSERT INTO users (created_at,updated_at,phone_number,phone_number_hash,email,id
                                 (to_timestamp(0),to_timestamp(0),'icenetwork','icenetwork','icenetwork','icenetwork','icenetwork','icenetwork.jpg','icenetwork',1,'icenetwork','RO','icenetwork','icenetwork')
 ON CONFLICT DO NOTHING;
 CREATE INDEX IF NOT EXISTS users_referred_by_ix ON users (referred_by);
+CREATE INDEX IF NOT EXISTS users_username_ix ON users (username);
 CREATE INDEX IF NOT EXISTS users_lookup_ix ON users (username,first_name,last_name);
 CREATE TABLE IF NOT EXISTS users_per_country  (
                     country text primary key,
