@@ -54,7 +54,7 @@ func (r *repository) GetReferrals(ctx context.Context, userID string, referralTy
 	case ContactsReferrals:
 		if true {
 			return &Referrals{
-				Referrals: make([]*MinimalUserProfile, 0, 0),
+				Referrals: make([]*MinimalUserProfile, 0),
 			}, nil
 		}
 		referralTypeJoin = `
