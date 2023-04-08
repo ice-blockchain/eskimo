@@ -193,7 +193,7 @@ func validateHiddenProfileElements(req *server.Request[ModifyUserRequestBody, Us
 	return nil
 }
 
-func buildUserForModification(req *server.Request[ModifyUserRequestBody, User]) *users.User { //nolint:funlen,gocognit,gocyclo,revive,cyclop // .
+func buildUserForModification(req *server.Request[ModifyUserRequestBody, User]) *users.User { //nolint:funlen // .
 	usr := new(users.User)
 	usr.ID = req.Data.UserID
 	usr.ReferredBy = req.Data.ReferredBy
@@ -214,30 +214,20 @@ func buildUserForModification(req *server.Request[ModifyUserRequestBody, User]) 
 	} else {
 		usr.HiddenProfileElements = req.Data.HiddenProfileElements
 	}
-	if req.Data.clientData != nil { //nolint:nestif // .
+	if req.Data.clientData != nil {
 		usr.ClientData = req.Data.clientData
-		if strings.TrimSpace(req.Data.ReferredBy) == "" {
-			if val, found := (*req.Data.clientData)["registrationProcessFinalizedSteps"]; found {
-				if steps, ok := val.([]any); ok {
-					if len(steps) == 3 && steps[0] == "email" && steps[1] == "username" && steps[2] == "referral" { //nolint:revive,goconst // Nope.
-						log.Warn(fmt.Sprintf("SET_REFERRAL_BYPASSED> userID:`%v`, email:`%v`", usr.ID, req.AuthenticatedUser.Email))
-					}
-				}
-			}
-		}
-		if strings.TrimSpace(req.Data.Username) == "" {
-			if val, found := (*req.Data.clientData)["registrationProcessFinalizedSteps"]; found {
-				if steps, ok := val.([]any); ok {
-					if len(steps) == 2 && steps[0] == "email" && steps[1] == "username" { //nolint:revive // Nope.
-						log.Warn(fmt.Sprintf("SET_USERNAME_BYPASSED> userID:`%v`, email:`%v`", usr.ID, req.AuthenticatedUser.Email))
-					}
-				}
-			}
-		}
 	}
 	if req.Data.ResetProfilePicture != nil && *req.Data.ResetProfilePicture {
 		req.Data.ProfilePicture = new(multipart.FileHeader)
 		req.Data.ProfilePicture.Header = textproto.MIMEHeader{"Reset": []string{"true"}}
+	}
+	if strings.TrimSpace(req.Data.ReferredBy) != "" {
+		log.Info("user(id:%v,email:%v) attempted to set referredBy to %v",
+			req.AuthenticatedUser.UserID, req.AuthenticatedUser.Email, req.Data.ReferredBy)
+	}
+	if strings.TrimSpace(req.Data.Username) != "" {
+		log.Info("user(id:%v,email:%v) attempted to set username to %v",
+			req.AuthenticatedUser.UserID, req.AuthenticatedUser.Email, req.Data.Username)
 	}
 
 	return usr
