@@ -222,12 +222,12 @@ func buildUserForModification(req *server.Request[ModifyUserRequestBody, User]) 
 		req.Data.ProfilePicture.Header = textproto.MIMEHeader{"Reset": []string{"true"}}
 	}
 	if strings.TrimSpace(req.Data.ReferredBy) != "" {
-		log.Info("user(id:%v,email:%v) attempted to set referredBy to %v",
-			req.AuthenticatedUser.UserID, req.AuthenticatedUser.Email, req.Data.ReferredBy)
+		log.Info(fmt.Sprintf("user(id:`%v`,email:`%v`) attempted to set referredBy to `%v`",
+			req.AuthenticatedUser.UserID, req.AuthenticatedUser.Email, req.Data.ReferredBy))
 	}
 	if strings.TrimSpace(req.Data.Username) != "" {
-		log.Info("user(id:%v,email:%v) attempted to set username to %v",
-			req.AuthenticatedUser.UserID, req.AuthenticatedUser.Email, req.Data.Username)
+		log.Info(fmt.Sprintf("user(id:`%v`,email:`%v`) attempted to set username to `%v`",
+			req.AuthenticatedUser.UserID, req.AuthenticatedUser.Email, req.Data.Username))
 	}
 
 	return usr
