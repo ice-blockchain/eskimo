@@ -42,7 +42,7 @@ func (r *repository) deleteUser(ctx context.Context, usr *User) error { //nolint
 		return errors.Wrapf(err, "failed to deleteUserReferences for userID:%v", usr.ID)
 	}
 	if err := r.updateReferredByForAllT1Referrals(ctx, usr.ID); err != nil {
-		for err != nil && (errors.Is(err, storage.ErrRelationNotFound) || errors.Is(err, storage.ErrNotFound)) {
+		for err != nil && (storage.IsErr(err, storage.ErrRelationNotFound) || storage.IsErr(err, storage.ErrNotFound)) {
 			err = r.updateReferredByForAllT1Referrals(ctx, usr.ID)
 		}
 		if err != nil {
@@ -56,7 +56,7 @@ func (r *repository) deleteUser(ctx context.Context, usr *User) error { //nolint
 	*usr = *gUser
 	sql := `DELETE FROM users WHERE id = $1`
 	if _, tErr := storage.Exec(ctx, r.db, sql, usr.ID); tErr != nil {
-		if errors.Is(tErr, storage.ErrRelationNotFound) {
+		if storage.IsErr(tErr, storage.ErrRelationNotFound) {
 			return r.deleteUser(ctx, usr)
 		}
 
