@@ -78,7 +78,7 @@ func (r *repository) ModifyUser(ctx context.Context, usr *User, profilePicture *
 	}
 	if updatedRowsCount, tErr := storage.Exec(ctx, r.db, sql, params...); tErr != nil {
 		_, tErr = detectAndParseDuplicateDatabaseError(tErr)
-		if !errors.Is(tErr, storage.ErrDuplicate) && (errors.Is(tErr, storage.ErrNotFound) || updatedRowsCount == 0) {
+		if !storage.IsErr(tErr, storage.ErrDuplicate) && (storage.IsErr(tErr, storage.ErrNotFound) || updatedRowsCount == 0) {
 			return ErrRaceCondition
 		}
 
@@ -165,6 +165,7 @@ func (u *User) genSQLUpdate(ctx context.Context) (sql string, params []any) {
 		sql += fmt.Sprintf(", REFERRED_BY = $%v", nextIndex)
 		falseVal := false
 		u.RandomReferredBy = &falseVal
+		nextIndex++
 	}
 	if u.RandomReferredBy != nil {
 		params = append(params, u.RandomReferredBy)
@@ -260,7 +261,7 @@ func (r *repository) updateReferredBy(ctx context.Context, usr *User, newReferre
 		return errors.Wrap(ctx.Err(), "context failed")
 	}
 	if _, err := r.getUserByID(ctx, newReferredBy); err != nil {
-		if errors.Is(err, storage.ErrNotFound) {
+		if storage.IsErr(err, storage.ErrNotFound) {
 			err = storage.ErrRelationNotFound
 		}
 

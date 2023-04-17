@@ -43,7 +43,7 @@ func (r *repository) CreateUser(ctx context.Context, usr *User, clientIP net.IP)
 	}
 	if _, err := storage.Exec(ctx, r.db, sql, args...); err != nil {
 		field, tErr := detectAndParseDuplicateDatabaseError(err)
-		if field == hashCodeDBColumnName || field == usernameDBColumnName || errors.Is(err, storage.ErrRelationNotFound) {
+		if field == hashCodeDBColumnName || field == usernameDBColumnName || storage.IsErr(err, storage.ErrRelationNotFound) {
 			return r.CreateUser(ctx, usr, clientIP)
 		}
 
@@ -102,11 +102,11 @@ func detectAndParseDuplicateDatabaseError(err error) (field string, newErr error
 		} else if storage.IsErr(err, storage.ErrDuplicate, usernameDBColumnName) {
 			field = usernameDBColumnName
 		} else if storage.IsErr(err, storage.ErrDuplicate, "phonenumberhash") {
-			field = "phone_number_hash"
+			field = "phoneNumberHash"
 		} else if storage.IsErr(err, storage.ErrDuplicate, "miningblockchainaccountaddress") {
 			field = "mining_blockchain_account_address"
 		} else if storage.IsErr(err, storage.ErrDuplicate, "blockchainaccountaddress") {
-			field = "blockchain_account_address"
+			field = "blockchainAccountAddress"
 		} else if storage.IsErr(err, storage.ErrDuplicate, "hashcode") {
 			field = hashCodeDBColumnName
 		} else {

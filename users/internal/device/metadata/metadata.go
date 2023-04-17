@@ -224,7 +224,7 @@ func (r *repository) ReplaceDeviceMetadata(ctx context.Context, input *DeviceMet
 	}
 	(&input.ip2LocationRecord).convertIP2Location(&ip2locationRecord)
 	before, err := r.GetDeviceMetadata(ctx, &input.ID)
-	if err != nil && !errors.Is(err, storage.ErrNotFound) {
+	if err != nil && !storage.IsErr(err, storage.ErrNotFound) {
 		return errors.Wrapf(err, "failed to get current device metadata for %#v", input.ID)
 	}
 

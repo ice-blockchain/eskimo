@@ -123,7 +123,7 @@ func (r *repository) incrementOrDecrementTotalUsers(ctx context.Context, date *t
 									VALUES %[2]v
 								ON CONFLICT (key) DO UPDATE    
 						SET value = (select GREATEST(total.value %[1]v 1,0) FROM global total WHERE total.key = '%[3]v')`, operation, strings.Join(sqlParams, ","), params[0])
-	if _, err := storage.Exec(ctx, r.db, sql, params...); err != nil && !errors.Is(err, storage.ErrNotFound) {
+	if _, err := storage.Exec(ctx, r.db, sql, params...); err != nil && !storage.IsErr(err, storage.ErrNotFound) {
 		return errors.Wrapf(err, "failed to update global.value to global.value%v1 of key='%v', for params:%#v ", operation, totalUsersGlobalKey, params)
 	}
 	keys := make([]string, 0, len(params))
@@ -161,10 +161,9 @@ func (r *repository) incrementTotalActiveUsers(ctx context.Context, prev, next *
 				ON CONFLICT (key) DO UPDATE   
 						SET value = global.value + 1`, strings.Join(sqlParams, ","))
 
-	if _, err := storage.Exec(ctx, r.db, sql, params...); err != nil && !errors.Is(err, storage.ErrNotFound) {
+	if _, err := storage.Exec(ctx, r.db, sql, params...); err != nil && !storage.IsErr(err, storage.ErrNotFound) {
 		return errors.Wrapf(err, "failed to update global.value to global.value+1 for params:%#v", params...)
 	}
-
 	keys := make([]string, 0, len(params))
 	for _, v := range params {
 		keys = append(keys, v.(string)) //nolint:forcetypeassert // We know for sure.

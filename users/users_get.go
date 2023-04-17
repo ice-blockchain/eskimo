@@ -231,17 +231,17 @@ func (r *repository) GetUsers(ctx context.Context, keyword string, limit, offset
 	}()
 	sql := fmt.Sprintf(`
 			SELECT 
-			    u.last_mining_ended_at AS active,
-			    u.last_ping_cooldown_ended_at AS pinged,
-			    u.phone_number_ AS phone_number,
-			    u.email AS email,
-			    u.id AS id,
-				u.username AS username,
-				u.profile_picture_url AS profile_picture_url,
-				u.country AS country,
-				u.city AS city,
-			    u.referral_type as referral_type
-			FROM (SELECT COALESCE(u.last_mining_ended_at,to_timestamp(1)) AS last_mining_ended_at,
+			    u.last_mining_ended_at 									 	 	  AS active,
+			    u.last_ping_cooldown_ended_at 							 	 	  AS pinged,
+			    u.phone_number_ 										  		  AS phone_number,
+			    u.email 												  		  AS email,
+			    u.id 												 	  		  AS id,
+				u.username 												  		  AS username,
+				u.profile_picture_url 									  		  AS profile_picture_url,
+				u.country 											  	  		  AS country,
+				u.city 													  		  AS city,
+			    u.referral_type 										  		  AS referral_type
+			FROM (SELECT COALESCE(u.last_mining_ended_at,to_timestamp(1)) 		  AS last_mining_ended_at,
 				   (CASE
 						WHEN user_requesting_this.id != u.id AND (u.referred_by = user_requesting_this.id OR u.id = user_requesting_this.referred_by)
 							THEN (CASE 
