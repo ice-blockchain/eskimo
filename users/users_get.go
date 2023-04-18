@@ -41,7 +41,7 @@ func (r *repository) getUserByID(ctx context.Context, id UserID) (*User, error) 
 			u.PROFILE_PICTURE_NAME 					  as profile_picture_url,
 			COALESCE(u.REFERRED_BY, '') 			  as REFERRED_BY,
 			COALESCE(u.PHONE_NUMBER_HASH,'') 		  as PHONE_NUMBER_HASH,
-			COALESCE(u.AGENDA_PHONE_NUMBER_HASHES,'') as AGENDA_PHONE_NUMBER_HASHES,
+			COALESCE((SELECT string_agg(agenda_phone_number_hash,',') from agenda_phone_number_hashes where user_id = $1),'') as AGENDA_PHONE_NUMBER_HASHES,
 			u.MINING_BLOCKCHAIN_ACCOUNT_ADDRESS,
 			u.BLOCKCHAIN_ACCOUNT_ADDRESS,
 			u.LANGUAGE,
@@ -83,7 +83,7 @@ func (r *repository) GetUserByID(ctx context.Context, userID string) (*UserProfi
 			u.PROFILE_PICTURE_NAME 					  as profile_picture_url,
 			COALESCE(u.REFERRED_BY, '') 			  as REFERRED_BY,
 			COALESCE(u.PHONE_NUMBER_HASH,'') 		  as PHONE_NUMBER_HASH,
-			COALESCE(u.AGENDA_PHONE_NUMBER_HASHES,'') as AGENDA_PHONE_NUMBER_HASHES,
+			COALESCE((SELECT string_agg(agenda_phone_number_hash,',') from agenda_phone_number_hashes where user_id = $1),'') as AGENDA_PHONE_NUMBER_HASHES,
 			u.MINING_BLOCKCHAIN_ACCOUNT_ADDRESS,
 			u.BLOCKCHAIN_ACCOUNT_ADDRESS,
 			u.LANGUAGE,
@@ -201,7 +201,7 @@ func (r *repository) GetUserByUsername(ctx context.Context, username string) (*U
 				u.PROFILE_PICTURE_NAME 					  as profile_picture_url,
 				COALESCE(u.REFERRED_BY, '') 			  as REFERRED_BY,
 				COALESCE(u.PHONE_NUMBER_HASH,'') 		  as PHONE_NUMBER_HASH,
-				COALESCE(u.AGENDA_PHONE_NUMBER_HASHES,'') as AGENDA_PHONE_NUMBER_HASHES,
+				COALESCE((SELECT string_agg(agenda_phone_number_hash,',') from agenda_phone_number_hashes where user_id = $1),'') as AGENDA_PHONE_NUMBER_HASHES,
 				u.MINING_BLOCKCHAIN_ACCOUNT_ADDRESS,
 				u.BLOCKCHAIN_ACCOUNT_ADDRESS,
 				u.LANGUAGE,
@@ -256,7 +256,7 @@ func (r *repository) GetUsers(ctx context.Context, keyword string, limit, offset
 								OR (
 									NULLIF(u.phone_number_hash,'') IS NOT NULL
 									AND 
-									POSITION(u.phone_number_hash in user_requesting_this.agenda_phone_number_hashes) > 0
+									ag.agenda_phone_number_hash IS NOT NULL 
 								   )
 							THEN u.phone_number
 						ELSE ''
@@ -271,7 +271,7 @@ func (r *repository) GetUsers(ctx context.Context, keyword string, limit, offset
 				   (CASE
 						WHEN NULLIF(u.phone_number_hash,'') IS NOT NULL
 				  				AND user_requesting_this.id != u.id
-								AND POSITION(u.phone_number_hash in user_requesting_this.agenda_phone_number_hashes) > 0
+								AND ag.agenda_phone_number_hash IS NOT NULL
 							THEN 'CONTACTS'
 						WHEN u.id = user_requesting_this.referred_by OR u.referred_by = user_requesting_this.id 
 							THEN 'T1'
@@ -288,6 +288,8 @@ func (r *repository) GetUsers(ctx context.Context, keyword string, limit, offset
 						  ON user_requesting_this.id = $5
 						 AND user_requesting_this.username != user_requesting_this.id
 						 AND user_requesting_this.referred_by != user_requesting_this.id
+					 LEFT JOIN agenda_phone_number_hashes ag
+                         ON user_requesting_this.id = ag.user_id and u.phone_number_hash = ag.agenda_phone_number_hash
 			WHERE (
 					(u.username != u.id AND u.username LIKE $2 ESCAPE '\')
 					OR

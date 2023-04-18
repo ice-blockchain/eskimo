@@ -32,14 +32,16 @@ func (r *repository) GetReferrals(ctx context.Context, userID string, referralTy
 												THEN 1 
 											ELSE 0 
 										 END), 0) AS text) 	 														AS username,`
-	var referralTypeJoin, referralTypeJoinSumAgg string
+	var referralTypeJoin, referralTypeJoinSumAgg, wherePresentedInAgenda string
 	switch referralType {
 	case Tier1Referrals:
 		referralTypeJoin = `
 			 JOIN USERS referrals
 					ON (referrals.referred_by = u.id OR u.referred_by = referrals.id)
                    AND referrals.username != referrals.id
-                   AND referrals.referred_by != referrals.id`
+                   AND referrals.referred_by != referrals.id
+			 LEFT JOIN agenda_phone_number_hashes ag
+				   ON ag.user_id = u.id AND referrals.phone_number_hash = ag.agenda_phone_number_hash`
 	case Tier2Referrals:
 		referralTypeJoin = `
 			 JOIN USERS t1
@@ -51,7 +53,9 @@ func (r *repository) GetReferrals(ctx context.Context, userID string, referralTy
 							ON referrals.referred_by = t1.ID
 							AND referrals.id != t1.id
                    			AND referrals.username != referrals.id
-						    AND referrals.referred_by != referrals.id`
+						    AND referrals.referred_by != referrals.id
+						LEFT JOIN agenda_phone_number_hashes ag
+							ON ag.user_id = u.id AND referrals.phone_number_hash = ag.agenda_phone_number_hash`
 	case ContactsReferrals:
 		if true {
 			return &Referrals{
@@ -61,12 +65,15 @@ func (r *repository) GetReferrals(ctx context.Context, userID string, referralTy
 		referralTypeJoin = `
 			JOIN USERS referrals
 					ON NULLIF(referrals.phone_number_hash,'') IS NOT NULL
-					AND POSITION(referrals.phone_number_hash IN u.agenda_phone_number_hashes) > 0
                     AND referrals.username != referrals.id
 					AND referrals.referred_by != referrals.id
-					AND u.id != referrals.id`
+					AND u.id != referrals.id
+			LEFT JOIN agenda_phone_number_hashes ag
+				ON ag.user_id = u.id AND referrals.phone_number_hash = ag.agenda_phone_number_hash
+		`
 		totalAndActiveColumns = `'0' 																   				AS id,
 								 '0' 																   				AS username,`
+		wherePresentedInAgenda = `AND ag.agenda_phone_number_hash IS NOT NULL`
 	default:
 		log.Panic(errors.Errorf("referral type: '%v' not supported", referralType))
 	}
@@ -114,7 +121,7 @@ func (r *repository) GetReferrals(ctx context.Context, userID string, referralTy
 				referrals.username                                                                     				AS username,
 				referrals.country                                                                      				AS country,
 				(CASE
-					WHEN NULLIF(referrals.phone_number_hash,'') IS NOT NULL AND POSITION(referrals.phone_number_hash IN u.agenda_phone_number_hashes) > 0
+					WHEN ag.agenda_phone_number_hash IS NOT NULL
 						THEN referrals.phone_number
 					ELSE ''
 				 END)                                                                                  				AS phone_number_,
@@ -122,19 +129,19 @@ func (r *repository) GetReferrals(ctx context.Context, userID string, referralTy
 				referrals.created_at                                                                   				AS created_at
 				FROM USERS u
 						%[2]v
-				WHERE u.id = $1
-				ORDER BY ((CASE WHEN NULLIF(referrals.phone_number_hash,'') IS NOT NULL AND POSITION(referrals.phone_number_hash IN u.agenda_phone_number_hashes) > 0
+				WHERE u.id = $1 %[6]v
+				ORDER BY ((CASE WHEN ag.agenda_phone_number_hash IS NOT NULL
 								THEN referrals.phone_number
 								ELSE ''
 				 		   END) != ''
 						  AND 
-						  (CASE WHEN NULLIF(referrals.phone_number_hash,'') IS NOT NULL AND POSITION(referrals.phone_number_hash IN u.agenda_phone_number_hashes) > 0
+						  (CASE WHEN ag.agenda_phone_number_hash IS NOT NULL
 						  		THEN referrals.phone_number
 					  			ELSE ''
 					 	   END) != null) DESC,
 						 referrals.created_at DESC
 				LIMIT %[3]v OFFSET $3
-			 ) X`, r.pictureClient.SQLAliasDownloadURL(`referrals.profile_picture_name`), referralTypeJoin, limit, totalAndActiveColumns, referralTypeJoinSumAgg) //nolint:lll // .
+			 ) X`, r.pictureClient.SQLAliasDownloadURL(`referrals.profile_picture_name`), referralTypeJoin, limit, totalAndActiveColumns, referralTypeJoinSumAgg, wherePresentedInAgenda) //nolint:lll // .
 	args := []any{userID, referralType, offset, time.Now().Time}
 	result, err := storage.Select[MinimalUserProfile](ctx, r.db, sql, args...)
 	if err != nil {

@@ -77,6 +77,10 @@ func (r *repository) deleteUserReferences(ctx context.Context, userID UserID) er
 		defer wg.Done()
 		errChan <- errors.Wrapf(r.DeleteAllDeviceMetadata(ctx, userID), "failed to DeleteAllDeviceMetadata for userID:%v", userID)
 	}()
+	go func() {
+		defer wg.Done()
+		errChan <- errors.Wrapf(r.deleteUserAgenda(ctx, userID), "failed to delete agenda contacts for userID:%v", userID)
+	}()
 	wg.Wait()
 	close(errChan)
 	errs := make([]error, 0, 1)
@@ -176,4 +180,10 @@ func (r *repository) deleteUserTracking(ctx context.Context, usr *UserSnapshot) 
 	}
 
 	return nil
+}
+
+func (r *repository) deleteUserAgenda(ctx context.Context, userID UserID) error {
+	_, err := storage.Exec(ctx, r.db, `DELETE from agenda_phone_number_hashes WHERE user_id = $1`, userID)
+
+	return errors.Wrapf(err, "failed to delete user's agenda for userID %v", userID)
 }

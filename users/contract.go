@@ -220,6 +220,8 @@ const (
 	hashCodeDBColumnName                = "hash_code"
 	usernameDBColumnName                = "username"
 	requestDeadline                     = 25 * stdlibtime.Second
+
+	agendaPhoneNumberHashesBatchSize = 500
 )
 
 //go:embed DDL.sql

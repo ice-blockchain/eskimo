@@ -5,6 +5,7 @@ package users
 import (
 	"context"
 	"fmt"
+	"math"
 	"mime/multipart"
 	"strings"
 	stdlibtime "time"
@@ -84,6 +85,13 @@ func (r *repository) ModifyUser(ctx context.Context, usr *User, profilePicture *
 
 		return errors.Wrapf(err, "failed to update user %#v", usr)
 	}
+
+	if usr.AgendaPhoneNumberHashes != "" {
+		if err = r.updateAgendaPhoneNumberHashes(ctx, usr, oldUsr); err != nil {
+			return errors.Wrapf(err, "failed to insert agenda phone number hashes for userID:%v", usr.ID)
+		}
+	}
+
 	bkpUsr := *oldUsr
 	if profilePicture != nil {
 		bkpUsr.ProfilePictureURL = RandomDefaultProfilePictureName()
@@ -165,7 +173,6 @@ func (u *User) genSQLUpdate(ctx context.Context) (sql string, params []any) {
 		sql += fmt.Sprintf(", REFERRED_BY = $%v", nextIndex)
 		falseVal := false
 		u.RandomReferredBy = &falseVal
-		nextIndex++
 	}
 	if u.RandomReferredBy != nil {
 		params = append(params, u.RandomReferredBy)
@@ -245,6 +252,106 @@ func (u *User) genSQLUpdate(ctx context.Context) (sql string, params []any) {
 	return sql, params
 }
 
+func (r *repository) updateAgendaPhoneNumberHashes(ctx context.Context, user, userBefore *User) error {
+	removedContacts := userBefore.newlyAddedAgendaContacts(user)
+	if len(removedContacts) == 0 {
+		return r.processNewContacts(ctx, user, userBefore)
+	}
+	//nolint:makezero // We're know for sure.
+	placeholders, values := make([]string, len(removedContacts)), make([]any, len(removedContacts)+1)
+	idx := 0
+	values[0] = user.ID
+	const initialFields = 2
+	for contact := range removedContacts {
+		placeholders[idx] = fmt.Sprintf("$%v", idx+initialFields)
+		values[idx+1] = contact
+		idx++
+	}
+	sql := fmt.Sprintf("DELETE FROM agenda_phone_number_hashes WHERE user_id = $1 AND agenda_phone_number_hash in (%v)", strings.Join(placeholders, ","))
+	if _, err := storage.Exec(ctx, r.db, sql, values...); err != nil {
+		return errors.Wrapf(err, "failed to delete removed contacts for userId %v %#v", user.ID, removedContacts)
+	}
+
+	return r.processNewContacts(ctx, user, userBefore)
+}
+
+func (r *repository) processNewContacts(ctx context.Context, user, userBefore *User) error {
+	newContacts := user.newlyAddedAgendaContacts(userBefore)
+	if len(newContacts) == 0 {
+		return nil
+	}
+	var (
+		jx                     = 0
+		allContactsBatches     = make([][]string, 0, (len(newContacts)/agendaPhoneNumberHashesBatchSize)+1)
+		currentContactsBatches = make([]string, int(math.Min(float64(len(newContacts)), agendaPhoneNumberHashesBatchSize)))
+	)
+	for contact := range newContacts {
+		if jx != 0 && jx%agendaPhoneNumberHashesBatchSize == 0 {
+			allContactsBatches = append(allContactsBatches, append([]string{}, currentContactsBatches...))
+		}
+		currentContactsBatches[jx%agendaPhoneNumberHashesBatchSize] = contact
+		jx++
+	}
+	allContactsBatches = append(allContactsBatches, currentContactsBatches)
+	var mErr *multierror.Error
+
+	for _, batch := range allContactsBatches {
+		mErr = multierror.Append(mErr, r.insertAgendaContactsBatch(ctx, user.ID, batch))
+	}
+
+	return errors.Wrapf(mErr.ErrorOrNil(), "failed to insert new contacts in agenda for userID %v %#v", user.ID, newContacts)
+}
+
+func (r *repository) insertAgendaContactsBatch(ctx context.Context, userID UserID, contactsBatch []string) error {
+	const fields = 2
+	placeholders := make([]string, 0, len(contactsBatch))
+	params := make([]any, len(contactsBatch)+1) //nolint:makezero // We're sure about size
+	params[0] = userID
+	for ix, contact := range contactsBatch {
+		placeholders = append(placeholders, fmt.Sprintf("($1,$%v)", ix+fields))
+		params[ix+1] = contact
+	}
+	sql := fmt.Sprintf(`INSERT INTO agenda_phone_number_hashes(user_id, agenda_phone_number_hash) VALUES %v
+                                                                          ON CONFLICT(user_id, agenda_phone_number_hash) DO NOTHING`,
+		strings.Join(placeholders, ","))
+	_, err := storage.Exec(ctx, r.db, sql, params...)
+
+	return errors.Wrapf(err, "failed to INSERT agenda_phone_number_hashes, params:%#v", params...)
+}
+
+func (u *User) newlyAddedAgendaContacts(beforeUser *User) map[string]struct{} { //nolint:gocognit,revive // .
+	if u == nil || u.AgendaPhoneNumberHashes == "" || u.AgendaPhoneNumberHashes == u.ID {
+		return nil
+	}
+	after := strings.Split(u.AgendaPhoneNumberHashes, ",")
+	newlyAdded := make(map[string]struct{}, len(after))
+	if beforeUser == nil || beforeUser.ID == "" || beforeUser.AgendaPhoneNumberHashes == "" || beforeUser.AgendaPhoneNumberHashes == beforeUser.ID {
+		for _, agendaPhoneNumberHash := range after {
+			if agendaPhoneNumberHash == "" {
+				continue
+			}
+			newlyAdded[agendaPhoneNumberHash] = struct{}{}
+		}
+
+		return newlyAdded
+	}
+	before := strings.Split(beforeUser.AgendaPhoneNumberHashes, ",")
+outer:
+	for _, afterAgendaPhoneNumberHash := range after {
+		if afterAgendaPhoneNumberHash == "" || strings.EqualFold(afterAgendaPhoneNumberHash, u.PhoneNumberHash) {
+			continue
+		}
+		for _, beforeAgendaPhoneNumberHash := range before {
+			if strings.EqualFold(beforeAgendaPhoneNumberHash, afterAgendaPhoneNumberHash) {
+				continue outer
+			}
+		}
+		newlyAdded[afterAgendaPhoneNumberHash] = struct{}{}
+	}
+
+	return newlyAdded
+}
+
 func resolveProfilePictureExtension(fileName string) string {
 	lastDotIdx := strings.LastIndex(fileName, ".")
 	var ext string
@@ -261,7 +368,7 @@ func (r *repository) updateReferredBy(ctx context.Context, usr *User, newReferre
 		return errors.Wrap(ctx.Err(), "context failed")
 	}
 	if _, err := r.getUserByID(ctx, newReferredBy); err != nil {
-		if storage.IsErr(err, storage.ErrNotFound) {
+		if errors.Is(err, storage.ErrNotFound) {
 			err = storage.ErrRelationNotFound
 		}
 

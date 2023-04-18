@@ -33,6 +33,14 @@ ON CONFLICT DO NOTHING;
 CREATE INDEX IF NOT EXISTS users_referred_by_ix ON users (referred_by);
 CREATE INDEX IF NOT EXISTS users_username_ix ON users (username);
 CREATE INDEX IF NOT EXISTS users_lookup_ix ON users (username,first_name,last_name);
+CREATE INDEX IF NOT EXISTS users_created_at_ix on users(created_at);
+
+CREATE TABLE IF NOT EXISTS agenda_phone_number_hashes (
+      user_id                     TEXT NOT NULL REFERENCES users(id),
+      agenda_phone_number_hash    TEXT NOT NULL,
+      PRIMARY KEY(user_id, agenda_phone_number_hash)
+);
+
 CREATE TABLE IF NOT EXISTS users_per_country  (
                     country text primary key,
                     user_count BIGINT NOT NULL DEFAULT 0
