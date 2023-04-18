@@ -209,13 +209,9 @@ func (r *repository) GetUsers(ctx context.Context, keyword string, limit, offset
 						  ON user_requesting_this.id = $5
 						 AND user_requesting_this.username != user_requesting_this.id
 						 AND user_requesting_this.referred_by != user_requesting_this.id
-			WHERE (
-					(u.username != u.id AND u.username LIKE $2 ESCAPE '\')
-					OR
-					(u.first_name IS NOT NULL AND LOWER(u.first_name) LIKE $2 ESCAPE '\')
-					OR
-					(u.last_name IS NOT NULL AND LOWER(u.last_name) LIKE $2 ESCAPE '\')
-				  )) u 
+			WHERE 
+					u.lookup_key LIKE $2 ESCAPE '\'
+				  ) u 
 				  JOIN users user_requesting_this
                        ON user_requesting_this.id = $5
                   JOIN USERS t0

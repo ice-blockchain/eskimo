@@ -185,6 +185,11 @@ func (u *User) genSQLUpdate(ctx context.Context) (sql string, params []any) {
 		sql += fmt.Sprintf(", USERNAME = $%v", nextIndex)
 		nextIndex++
 	}
+	if u.Username != "" || u.LastName != "" || u.FirstName != "" {
+		params = append(params, u.lookupKey())
+		sql += fmt.Sprintf(", LOOKUP_KEY = $%v", nextIndex)
+		nextIndex++
+	}
 	if u.ProfilePictureURL != "" {
 		params = append(params, u.ProfilePictureURL)
 		sql += fmt.Sprintf(", PROFILE_PICTURE_NAME = $%v", nextIndex)
@@ -236,6 +241,10 @@ func (u *User) genSQLUpdate(ctx context.Context) (sql string, params []any) {
 	}
 
 	return sql, params
+}
+
+func (u *User) lookupKey() string {
+	return strings.ToLower(fmt.Sprintf("%v%v%v", u.Username, u.FirstName, u.LastName))
 }
 
 func resolveProfilePictureExtension(fileName string) string {

@@ -24,13 +24,18 @@ CREATE TABLE IF NOT EXISTS users  (
                     agenda_phone_number_hashes text,
                     mining_blockchain_account_address text NOT NULL UNIQUE,
                     blockchain_account_address text NOT NULL UNIQUE,
-                    language text NOT NULL DEFAULT 'en')
+                    language text NOT NULL DEFAULT 'en',
+                    lookup_key TEXT NOT NULL UNIQUE)
                     WITH (FILLFACTOR = 70);
-INSERT INTO users (created_at,updated_at,phone_number,phone_number_hash,email,id,username,profile_picture_name,referred_by,city,country,mining_blockchain_account_address,blockchain_account_address)
-                         VALUES (current_timestamp,current_timestamp,'bogus','bogus','bogus','bogus','bogus','bogus.jpg','bogus','bogus','RO','bogus','bogus'),
-                                (current_timestamp,current_timestamp,'icenetwork','icenetwork','icenetwork','icenetwork','icenetwork','icenetwork.jpg','icenetwork','icenetwork','RO','icenetwork','icenetwork')
+INSERT INTO users (created_at,updated_at,phone_number,phone_number_hash,email,id,username,profile_picture_name,referred_by,city,country,mining_blockchain_account_address,blockchain_account_address, lookup_key)
+                         VALUES (current_timestamp,current_timestamp,'bogus','bogus','bogus','bogus','bogus','bogus.jpg','bogus','bogus','RO','bogus','bogus','bogus'),
+                                (current_timestamp,current_timestamp,'icenetwork','icenetwork','icenetwork','icenetwork','icenetwork','icenetwork.jpg','icenetwork','icenetwork','RO','icenetwork','icenetwork','icenetwork')
 ON CONFLICT DO NOTHING;
 CREATE INDEX IF NOT EXISTS users_referred_by_ix ON users (referred_by);
+CREATE INDEX IF NOT EXISTS users_referred_by_username_id ON users (referred_by, id, username);
+CREATE INDEX IF NOT EXISTS users_referred_by_id ON users (referred_by, id);
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+CREATE INDEX IF NOT EXISTS users_lookup_gin ON users USING gin (lookup_key gin_trgm_ops);
 CREATE TABLE IF NOT EXISTS users_per_country  (
                     user_count BIGINT NOT NULL DEFAULT 0,
                     country text primary key
