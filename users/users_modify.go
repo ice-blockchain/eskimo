@@ -187,7 +187,7 @@ func (u *User) genSQLUpdate(ctx context.Context) (sql string, params []any) {
 	}
 	if u.Username != "" || u.LastName != "" || u.FirstName != "" {
 		params = append(params, u.lookupKey())
-		sql += fmt.Sprintf(", LOOKUP_KEY = $%v", nextIndex)
+		sql += fmt.Sprintf(", LOOKUP_KEY = $%v::tsvector", nextIndex)
 		nextIndex++
 	}
 	if u.ProfilePictureURL != "" {
@@ -244,7 +244,7 @@ func (u *User) genSQLUpdate(ctx context.Context) (sql string, params []any) {
 }
 
 func (u *User) lookupKey() string {
-	return strings.ToLower(fmt.Sprintf("%v%v%v", u.Username, u.FirstName, u.LastName))
+	return strings.ToLower(fmt.Sprintf("%v %v %v", tokenize(u.Username), tokenize(u.FirstName), tokenize(u.LastName)))
 }
 
 func resolveProfilePictureExtension(fileName string) string {

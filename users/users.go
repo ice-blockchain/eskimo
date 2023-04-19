@@ -413,3 +413,16 @@ func sendMessagesConcurrently[M any](ctx context.Context, sendMessage func(conte
 
 	return errors.Wrap(multierror.Append(nil, errs...).ErrorOrNil(), "at least one message sends failed")
 }
+
+func tokenize(strVal string) string {
+	chars := strings.Split(strVal, "")
+	if strVal == "" {
+		return ""
+	}
+	tokenized := chars[0]
+	for i := 1; i < len(chars); i++ {
+		tokenized += " " + strings.Join(chars[0:i+1], "")
+	}
+
+	return tokenized
+}

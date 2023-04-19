@@ -210,7 +210,7 @@ func (r *repository) GetUsers(ctx context.Context, keyword string, limit, offset
 						 AND user_requesting_this.username != user_requesting_this.id
 						 AND user_requesting_this.referred_by != user_requesting_this.id
 			WHERE 
-					u.lookup_key LIKE $2 ESCAPE '\'
+					u.lookup_key @@ to_tsquery($2)
 				  ) u 
 				  JOIN users user_requesting_this
                        ON user_requesting_this.id = $5
@@ -228,7 +228,7 @@ func (r *repository) GetUsers(ctx context.Context, keyword string, limit, offset
 			LIMIT $3 OFFSET $4`, r.pictureClient.SQLAliasDownloadURL(`u.profile_picture_name`))
 	params := []any{
 		time.Now().Time,
-		fmt.Sprintf("%v%%", strings.ReplaceAll(strings.ReplaceAll(strings.ToLower(keyword), "_", "\\_"), "%", "\\%")),
+		strings.ReplaceAll(strings.ReplaceAll(strings.ToLower(keyword), "_", "\\_"), "%", "\\%"),
 		limit,
 		offset,
 		requestingUserID(ctx),
