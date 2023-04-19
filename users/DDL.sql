@@ -101,3 +101,18 @@ CREATE TABLE IF NOT EXISTS global  (
                     key text primary key)
                     WITH (FILLFACTOR = 70);
 INSERT INTO global (key,value) VALUES ('TOTAL_USERS', 0) ON CONFLICT DO NOTHING;
+
+CREATE TABLE IF NOT EXISTS referral_acquisition_history (
+     user_id          text primary key,
+     date             date not null,
+     T1_TODAY         BIGINT DEFAULT 0,
+     T1_TODAY_MINUS_1 BIGINT DEFAULT 0,
+     T1_TODAY_MINUS_2 BIGINT DEFAULT 0,
+     T1_TODAY_MINUS_3 BIGINT DEFAULT 0,
+     T1_TODAY_MINUS_4 BIGINT DEFAULT 0,
+     T2_TODAY         BIGINT DEFAULT 0,
+     T2_TODAY_MINUS_1 BIGINT DEFAULT 0,
+     T2_TODAY_MINUS_2 BIGINT DEFAULT 0,
+     T2_TODAY_MINUS_3 BIGINT DEFAULT 0,
+     T2_TODAY_MINUS_4 BIGINT DEFAULT 0
+);

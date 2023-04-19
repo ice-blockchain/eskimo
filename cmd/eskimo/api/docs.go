@@ -434,7 +434,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "integer",
-                        "description": "The number of days to look in the past. Defaults to 5.",
+                        "description": "Always is 5, cannot be changed due to DB schema",
                         "name": "days",
                         "in": "query"
                     }
