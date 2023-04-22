@@ -28,6 +28,14 @@ func (r *repository) GetReferrals(ctx context.Context, userID string, referralTy
 			log.Info(fmt.Sprintf("[response]GetReferrals(%v) took: %v", referralType, elapsed))
 		}
 	}()
+	var contacts []UserID
+	cont, err := r.getContacts(ctx, userID)
+	if err != nil && !storage.IsErr(err, storage.ErrNotFound) {
+		return nil, errors.Wrapf(err, "can't get contacts for userID:%v", userID)
+	}
+	if cont != nil {
+		contacts = append(contacts, strings.Split(cont.ContactUserIDs, ",")...)
+	}
 	totalAndActiveColumns := `  CAST(COALESCE(SUM(1), 0) AS text) 												   	AS id,
 								CAST(COALESCE(SUM(CASE 
 											WHEN COALESCE(referrals.last_mining_ended_at, to_timestamp(0)) > $4 
@@ -63,7 +71,7 @@ func (r *repository) GetReferrals(ctx context.Context, userID string, referralTy
 		referralTypeJoin = `
 			JOIN USERS referrals
 					ON NULLIF(referrals.phone_number_hash,'') IS NOT NULL
-					AND POSITION(referrals.phone_number_hash IN u.agenda_phone_number_hashes) > 0
+					AND referrals.id = ANY($5)
                     AND referrals.username != referrals.id
 					AND referrals.referred_by != referrals.id
 					AND u.id != referrals.id`
@@ -116,7 +124,7 @@ func (r *repository) GetReferrals(ctx context.Context, userID string, referralTy
 				referrals.username                                                                     				AS username,
 				referrals.country                                                                      				AS country,
 				(CASE
-					WHEN NULLIF(referrals.phone_number_hash,'') IS NOT NULL AND POSITION(referrals.phone_number_hash IN u.agenda_phone_number_hashes) > 0
+					WHEN NULLIF(referrals.phone_number_hash,'') IS NOT NULL AND referrals.id = ANY($5)
 						THEN referrals.phone_number
 					ELSE ''
 				 END)                                                                                  				AS phone_number_,
@@ -125,12 +133,12 @@ func (r *repository) GetReferrals(ctx context.Context, userID string, referralTy
 				FROM USERS u
 						%[2]v
 				WHERE u.id = $1
-				ORDER BY ((CASE WHEN NULLIF(referrals.phone_number_hash,'') IS NOT NULL AND POSITION(referrals.phone_number_hash IN u.agenda_phone_number_hashes) > 0
+				ORDER BY ((CASE WHEN NULLIF(referrals.phone_number_hash,'') IS NOT NULL AND referrals.id = ANY($5)
 								THEN referrals.phone_number
 								ELSE ''
 				 		   END) != ''
 						  AND 
-						  (CASE WHEN NULLIF(referrals.phone_number_hash,'') IS NOT NULL AND POSITION(referrals.phone_number_hash IN u.agenda_phone_number_hashes) > 0
+						  (CASE WHEN NULLIF(referrals.phone_number_hash,'') IS NOT NULL AND referrals.id = ANY($5)
 						  		THEN referrals.phone_number
 					  			ELSE ''
 					 	   END) != null) DESC,

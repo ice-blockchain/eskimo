@@ -170,6 +170,10 @@ type (
 		Key   string `json:"key" example:"TOTAL_USERS_2022-01-22:16"`
 		Value uint64 `json:"value" example:"123676"`
 	}
+	Contact struct {
+		UserID        UserID `json:"userId,omitempty" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
+		ContactUserID UserID `json:"contactUserId,omitempty" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
+	}
 	ReadRepository interface {
 		GetUsers(ctx context.Context, keyword string, limit, offset uint64) ([]*MinimalUserProfile, error)
 		GetUserByUsername(ctx context.Context, username string) (*UserProfile, error)
@@ -240,6 +244,10 @@ type (
 	miningSession struct {
 		EndedAt *time.Time `json:"endedAt,omitempty" example:"2022-01-03T16:20:52.156534Z"`
 		UserID  string     `json:"userId,omitempty" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
+	}
+	contacts struct {
+		UserID         UserID `json:"userId,omitempty" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
+		ContactUserIDs string `json:"contactUserIds,omitempty" db:"contact_user_ids" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2,did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B3"` //nolint:lll // .
 	}
 
 	userSnapshotSource struct {

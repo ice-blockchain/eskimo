@@ -60,7 +60,7 @@ func (r *repository) ModifyUser(ctx context.Context, usr *User, profilePicture *
 	}
 	sql, params := usr.genSQLUpdate(ctx)
 	noOpNoOfParams := 1 + 1
-	if lu != nil {
+	if lu != nil || usr.AgendaPhoneNumberHashes != "" {
 		noOpNoOfParams++
 	}
 	if len(params) == noOpNoOfParams {
@@ -77,6 +77,19 @@ func (r *repository) ModifyUser(ctx context.Context, usr *User, profilePicture *
 
 		return errors.Wrapf(err, "failed to update user %#v", usr)
 	}
+	// Agenda can be updated after user creation (in case if user granted permission to access contacts on the team screen after initial user created).
+	if usr.AgendaPhoneNumberHashes != "" {
+		if uErr := r.upsertContacts(ctx, usr); uErr != nil {
+			_, rollBackParams := usr.genSQLUpdate(ctx)
+			rollBackParams[1] = usr.UpdatedAt.Time
+			_, rollbackErr := storage.Exec(ctx, r.db, sql, rollBackParams...)
+
+			return multierror.Append( //nolint:wrapcheck // Not needed.
+				errors.Wrapf(uErr, "failed to update agenda phone number hashes"),
+				errors.Wrapf(rollbackErr, "failed to replace user to previous value, due to rollback, prev:%#v", usr),
+			).ErrorOrNil()
+		}
+	}
 	bkpUsr := *oldUsr
 	if profilePicture != nil {
 		bkpUsr.ProfilePictureURL = RandomDefaultProfilePictureName()
@@ -84,7 +97,7 @@ func (r *repository) ModifyUser(ctx context.Context, usr *User, profilePicture *
 	us := &UserSnapshot{User: r.sanitizeUser(oldUsr.override(usr)), Before: r.sanitizeUser(oldUsr)}
 	if err = r.sendUserSnapshotMessage(ctx, us); err != nil {
 		_, rollBackParams := bkpUsr.genSQLUpdate(ctx)
-		rollBackParams[1] = bkpUsr.UpdatedAt
+		rollBackParams[1] = bkpUsr.UpdatedAt.Time
 		_, rollbackErr := storage.Exec(ctx, r.db, sql, rollBackParams...)
 
 		return multierror.Append( //nolint:wrapcheck // Not needed.
@@ -120,7 +133,6 @@ func (u *User) override(user *User) *User {
 	usr.Language = mergeStringField(u.Language, user.Language)
 	usr.PhoneNumber = mergeStringField(u.PhoneNumber, user.PhoneNumber)
 	usr.PhoneNumberHash = mergeStringField(u.PhoneNumberHash, user.PhoneNumberHash)
-	usr.AgendaPhoneNumberHashes = mergePointerField(u.AgendaPhoneNumberHashes, user.AgendaPhoneNumberHashes)
 	usr.BlockchainAccountAddress = mergeStringField(u.BlockchainAccountAddress, user.BlockchainAccountAddress)
 
 	return usr
@@ -217,12 +229,6 @@ func (u *User) genSQLUpdate(ctx context.Context) (sql string, params []any) {
 	if u.Email != "" {
 		params = append(params, u.Email)
 		sql += fmt.Sprintf(", EMAIL = $%v", nextIndex)
-		nextIndex++
-	}
-	// Agenda can be updated after user creation (in case if user granted permission to access contacts on the team screen after initial user created).
-	if u.AgendaPhoneNumberHashes != nil && *u.AgendaPhoneNumberHashes != "" {
-		params = append(params, u.AgendaPhoneNumberHashes)
-		sql += fmt.Sprintf(", AGENDA_PHONE_NUMBER_HASHES = $%v", nextIndex)
 		nextIndex++
 	}
 	if u.BlockchainAccountAddress != "" {
