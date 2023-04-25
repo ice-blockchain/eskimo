@@ -37,8 +37,8 @@ func (r *repository) GetUserByID(ctx context.Context, userID string) (*UserProfi
 	sql := `
 		SELECT  	
 			u.*,
-			COALESCE(refs.t1_today, 0) 					  as t1_referral_count,
-			COALESCE(refs.t2_today, 0)		  as t2_referral_count
+			COALESCE(refs.t1, 0) 		  as t1_referral_count,
+			COALESCE(refs.t2, 0)		  as t2_referral_count
 		FROM users u 
 				LEFT JOIN referral_acquisition_history refs
 						ON refs.user_id = u.id
@@ -82,8 +82,8 @@ func (r *repository) getOtherUserByID(ctx context.Context, userID string) (*User
 	}
 
 	sql := `SELECT  u.id,
-					COALESCE(refs.t1_today, 0) AS t1_referral_count,
-					COALESCE(refs.t2_today, 0) AS t2_referral_count
+					COALESCE(refs.t1, 0) AS t1_referral_count,
+					COALESCE(refs.t2, 0) 		  AS t2_referral_count
 			FROM users u 
 				LEFT JOIN referral_acquisition_history refs
 						ON refs.user_id = u.id
