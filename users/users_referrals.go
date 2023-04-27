@@ -5,6 +5,7 @@ package users
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"strconv"
 	"strings"
 	stdlibtime "time"
@@ -184,33 +185,25 @@ func (r *repository) GetReferralAcquisitionHistory(ctx context.Context, userID s
 	now := time.Now()
 	nowMidnight := time.New(time.Now().In(stdlibtime.UTC).Truncate(hoursInOneDay * stdlibtime.Hour))
 	sql := `
-	SELECT 
-		date,
-		t1_today,
-		t1_today_minus_1,
-		t1_today_minus_2,
-		t1_today_minus_3,
-		t1_today_minus_4,
-		t2_today,
-		t2_today_minus_1,
-		t2_today_minus_2,
-		t2_today_minus_3,
-		t2_today_minus_4
+	SELECT *
     from referral_acquisition_history
 		where user_id = $1
 `
 	type resultFromQuery struct {
-		Date          *time.Time
-		T1Today       int64 `db:"t1_today"`
-		T2Today       int64 `db:"t2_today"`
-		T1TodayMinus1 int64 `db:"t1_today_minus_1"`
-		T2TodayMinus1 int64 `db:"t2_today_minus_1"`
-		T1TodayMinus2 int64 `db:"t1_today_minus_2"`
-		T2TodayMinus2 int64 `db:"t2_today_minus_2"`
-		T1TodayMinus3 int64 `db:"t1_today_minus_3"`
-		T2TodayMinus3 int64 `db:"t2_today_minus_3"`
-		T1TodayMinus4 int64 `db:"t1_today_minus_4"`
-		T2TodayMinus4 int64 `db:"t2_today_minus_4"`
+		Date          *time.Time `db:"date"`
+		UserID        UserID     `db:"user_id"`
+		T1            int64      `db:"t1"`
+		T2            int64      `db:"t2"`
+		T1Today       int64      `db:"t1_today"`
+		T2Today       int64      `db:"t2_today"`
+		T1TodayMinus1 int64      `db:"t1_today_minus_1"`
+		T2TodayMinus1 int64      `db:"t2_today_minus_1"`
+		T1TodayMinus2 int64      `db:"t1_today_minus_2"`
+		T2TodayMinus2 int64      `db:"t2_today_minus_2"`
+		T1TodayMinus3 int64      `db:"t1_today_minus_3"`
+		T2TodayMinus3 int64      `db:"t2_today_minus_3"`
+		T1TodayMinus4 int64      `db:"t1_today_minus_4"`
+		T2TodayMinus4 int64      `db:"t2_today_minus_4"`
 	}
 	res, err := storage.Get[resultFromQuery](ctx, r.db, sql, userID)
 	if err != nil {
@@ -248,154 +241,160 @@ func (r *repository) GetReferralAcquisitionHistory(ctx context.Context, userID s
 	return result, nil
 }
 
-func (r *repository) updateReferralCount(ctx context.Context, us *UserSnapshot) error {
-	if us.Before == nil {
-		return errors.Wrapf(r.insertReferralAcquisitionHistory(ctx, us.ID), "failed to insert referral counts for %#v", us)
-	}
+func (r *repository) updateReferralCount(ctx context.Context, msgTimestamp stdlibtime.Time, us *UserSnapshot) error {
 	if us.ReferredBy == us.ID || us.ReferredBy == "" || us.Before == nil || us.User == nil || us.Before.ReferredBy == us.ReferredBy {
 		return nil
 	}
+	_, err := storage.Exec(ctx, r.db, `INSERT INTO processed_referrals(user_id, referred_by, processed_at) VALUES ($1, $2, $3)`,
+		us.User.ID, us.User.ReferredBy, msgTimestamp)
+	if storage.IsErr(err, storage.ErrDuplicate) {
+		return nil
+	} else if err != nil {
+		return errors.Wrapf(err, "failed to verify uniqueness of user referral message")
+	}
 
-	return errors.Wrapf(r.incrementReferralCount(ctx, us.ReferredBy, us.ID), "failed to increment referrals count for userID:%v", us.ID)
-}
-
-func (r *repository) insertReferralAcquisitionHistory(ctx context.Context, userID UserID) error {
-	sql := `
-		INSERT INTO referral_acquisition_history(user_id, date)
-			VALUES ($1, $2)
-		ON CONFLICT (user_id) DO NOTHING`
-	now := time.Now().In(stdlibtime.UTC).Truncate(hoursInOneDay * stdlibtime.Hour)
-	_, err := storage.Exec(ctx, r.db, sql, userID, now)
-
-	return errors.Wrapf(err, "failed to insert initial referral_acquisition_history for userID %v", userID)
+	return errors.Wrapf(r.incrementReferralCount(ctx, us.ReferredBy), "failed to increment referrals count for userID:%v", us.ID)
 }
 
 //nolint:gocritic,revive // Struct is private, so we return values from it.
-func (r *repository) getCurrentReferralCount(ctx context.Context, userID UserID) (t1, t2 int64, date *time.Time, lastProcessedRef string, err error) {
+func (r *repository) getCurrentReferralCount(ctx context.Context, userID UserID) (t1, t2 int64, date *time.Time, T0UserID UserID, err error) {
 	type refCount struct {
-		Date                  *time.Time
-		LastProcessedReferral string
-		T1                    int64
-		T2                    int64
+		Date     *time.Time `db:"date"`
+		T0UserID UserID     `db:"t0_user_id"`
+		T1       int64
+		T2       int64
 	}
 	sql := `
-		WITH t0 AS (
-			SELECT id FROM (SELECT referred_by AS id FROM users WHERE id = $1 AND referred_by != id
-            UNION SELECT NULL as id) tmp LIMIT 1
-		) SELECT t1_today AS t1,
-			   COALESCE((SELECT t2_today from referral_acquisition_history where user_id = t0.id),0) AS t2,
-			   date,
-               COALESCE(last_processed_referral,'') as last_processed_referral
-		FROM referral_acquisition_history, t0 WHERE user_id = $1
+	WITH t0 AS (
+		SELECT id FROM (SELECT referred_by AS id FROM users WHERE id = $1 AND referred_by != id
+						UNION SELECT NULL as id) tmp LIMIT 1
+	) SELECT
+		  COALESCE(t1_today,0) AS t1,
+		  COALESCE((SELECT t2_today from referral_acquisition_history where user_id = t0.id),0) AS t2,
+		  date,
+		  COALESCE(t0.id,'') as t0_user_id
+	FROM t0
+		LEFT JOIN referral_acquisition_history ON user_id = $1
 	`
 	count, err := storage.Get[refCount](ctx, r.db, sql, userID)
 	if err != nil {
 		return 0, 0, nil, "", errors.Wrapf(err, "failed to read current referral count for userID:%v", userID)
 	}
+	if count.Date == nil {
+		return 0, count.T2, nil, count.T0UserID, errors.Wrapf(storage.ErrNotFound, "failed to read current referral count for userID:%v", userID)
+	}
 
-	return count.T1, count.T2, count.Date, count.LastProcessedReferral, nil
+	return count.T1, count.T2, count.Date, count.T0UserID, nil
 }
 
 //nolint:funlen // Long SQL.
-func (r *repository) incrementReferralCount(ctx context.Context, userID, t1Referral UserID) error {
+func (r *repository) incrementReferralCount(ctx context.Context, userID UserID) error {
 	if ctx.Err() != nil {
 		return errors.Wrapf(ctx.Err(), "ctx failed: ")
 	}
 	nowMidnight := time.New(time.Now().In(stdlibtime.UTC).Truncate(hoursInOneDay * stdlibtime.Hour))
-	t1, t2, storedDate, lastProcessedReferralID, err := r.getCurrentReferralCount(ctx, userID)
-	if err != nil {
-		if storage.IsErr(err, storage.ErrNotFound) {
-			if insErr := r.insertReferralAcquisitionHistory(ctx, userID); insErr != nil {
-				return errors.Wrapf(insErr, "failed to update / insert referrals counts for userID %v", userID)
-			}
-
-			return r.incrementReferralCount(ctx, userID, t1Referral)
-		}
-
+	t1, t2, storedDate, t0UserID, err := r.getCurrentReferralCount(ctx, userID)
+	if err != nil && !storage.IsErr(err, storage.ErrNotFound) {
 		return errors.Wrapf(err, "failed to read current value")
 	}
-	if !nowMidnight.Equal(*storedDate.Time) {
-		if err = r.shiftReferralAcquisitionDaysForUserID(ctx, userID, storedDate, nowMidnight); err != nil {
-			return errors.Wrapf(err, "failed to shift dates for referral acquisition, from %v to %v (userID %v)", storedDate, nowMidnight, userID)
-		}
+	if storedDate == nil {
+		storedDate = nowMidnight
 	}
-	if lastProcessedReferralID == t1Referral {
-		return nil
+	shiftDays := nowMidnight.Sub(*storedDate.Time).Nanoseconds() / int64(hoursInOneDay*stdlibtime.Hour)
+	if shiftDays > maxDaysReferralsHistory {
+		shiftDays = maxDaysReferralsHistory
 	}
-	sql := `
-		WITH t0 AS (
-			SELECT id FROM (SELECT referred_by AS id FROM users WHERE id = $1 AND referred_by != id
-            UNION SELECT NULL as id) tmp LIMIT 1
-		) UPDATE referral_acquisition_history
+	shiftDatesFields := r.genShiftDaysSQLFields(shiftDays)
+	t0UpdateTrigger := ""
+	if t0UserID != "" {
+		t0UpdateTrigger = ",\n\t\t\t       ($6, $5, 1, 1, 1, 1)"
+	}
+	sql := fmt.Sprintf(`INSERT INTO referral_acquisition_history(user_id, date, t1, t1_today, t2, t2_today)
+			VALUES ($1, $5, 1, 1, 0, 0)
+			%[2]v
+		ON CONFLICT (user_id) DO UPDATE 
 		SET
 			t1_today = (CASE
-				WHEN user_id = $1 THEN t1_today + 1
-				ELSE t1_today END),
+				WHEN referral_acquisition_history.user_id = $1 and referral_acquisition_history.date = $5 THEN referral_acquisition_history.t1_today + 1
+				WHEN referral_acquisition_history.user_id = $1 and referral_acquisition_history.date != $5 THEN 1
+				ELSE referral_acquisition_history.t1_today END),
 			t1 = (CASE
-				WHEN user_id = $1 THEN t1 + 1
-				ELSE t1 END),
+				WHEN referral_acquisition_history.user_id = $1 THEN referral_acquisition_history.t1 + 1
+				ELSE referral_acquisition_history.t1 END),
 			t2_today = (CASE
-			WHEN user_id = t0.id THEN t2_today +1
-			ELSE t2_today END),
+			WHEN referral_acquisition_history.user_id = $6 AND referral_acquisition_history.date = $5 THEN referral_acquisition_history.t2_today + 1
+			WHEN referral_acquisition_history.user_id = $6 AND referral_acquisition_history.date != $5 THEN 1
+			ELSE referral_acquisition_history.t2_today END),
 			t2 = (CASE
-			WHEN user_id = t0.id THEN t2 +1
-			ELSE t2 END),
-			date = $5,
-			last_processed_referral = (CASE
-				WHEN user_id = $1 THEN $6
-				ELSE last_processed_referral END)
-		FROM t0
-		WHERE date = $2 AND ((user_id = $1 AND t1_today = $3)
-  				     		or (user_id = t0.id AND t2_today = $4))`
-	rowsUpdated, err := storage.Exec(ctx, r.db, sql, userID, storedDate.Time, t1, t2, nowMidnight.Time, t1Referral)
+			WHEN referral_acquisition_history.user_id = $6 THEN referral_acquisition_history.t2 +1
+			ELSE referral_acquisition_history.t2 END),
+			date = $5
+		    %[1]v
+		WHERE referral_acquisition_history.date = $2 AND ((referral_acquisition_history.user_id = $1 AND referral_acquisition_history.t1_today = $3)
+  				     		or (referral_acquisition_history.user_id = $6 AND referral_acquisition_history.t2_today = $4))`,
+		shiftDatesFields,
+		t0UpdateTrigger,
+	)
+	rowsUpdated, err := storage.Exec(ctx, r.db, sql, userID, storedDate.Time, t1, t2, nowMidnight.Time, t0UserID)
 	if rowsUpdated == 0 || storage.IsErr(err, storage.ErrNotFound) {
-		return r.incrementReferralCount(ctx, userID, t1Referral)
+		return r.incrementReferralCount(ctx, userID)
 	}
 
 	return errors.Wrapf(err, "failed to increment referral counts for userID %v", userID)
 }
 
-func (r *repository) shiftReferralAcquisitionDaysForUserID(ctx context.Context, userID UserID, prevDate, now *time.Time) error {
-	shiftDays := now.Sub(*prevDate.Time).Nanoseconds() / int64(hoursInOneDay*stdlibtime.Hour)
+func (r *repository) genShiftDaysSQLFields(shiftDays int64) string {
 	if shiftDays == 0 {
-		return nil
+		return ""
 	}
-	if shiftDays > maxDaysReferralsHistory {
-		shiftDays = maxDaysReferralsHistory
-	}
-	sql := fmt.Sprintf(`
-			WITH t0 AS (
-				SELECT id FROM (SELECT referred_by AS id FROM users WHERE id = $2 AND referred_by != id
-				UNION SELECT NULL as id) tmp LIMIT 1)
-            UPDATE referral_acquisition_history SET
-			   %v,
-			   %v,
-			   date = $3
-			   FROM t0
-			   WHERE ((user_id = $2 AND date = $1) OR user_id = t0.id)
-			`,
+
+	return fmt.Sprintf(", %v,\n %v",
 		r.generateReferralsShiftDaysSQL(Tier1Referrals, shiftDays),
 		r.generateReferralsShiftDaysSQL(Tier2Referrals, shiftDays),
 	)
-	rowsUpdated, err := storage.Exec(ctx, r.db, sql, prevDate.Time, userID, now.Time)
-	if rowsUpdated == 0 || storage.IsErr(err, storage.ErrNotFound) {
-		return nil // Already updated?
-	}
-
-	return errors.Wrapf(err, "failed to shift the dates of referrals acquisition for userID %v", userID)
 }
 
 func (*repository) generateReferralsShiftDaysSQL(refType ReferralType, daysLag int64) string {
 	updateStatements := []string{}
 	for currDay := 1; currDay <= maxDaysReferralsHistory-1; currDay++ {
 		diff := int64(currDay) - daysLag
-		targetField := fmt.Sprintf("%v_today_minus_%v", refType, diff)
-		if diff <= 0 {
-			targetField = fmt.Sprintf("%v_today", refType)
+		targetField := fmt.Sprintf("referral_acquisition_history.%v_today_minus_%v", refType, diff)
+		if diff == 0 {
+			targetField = fmt.Sprintf("referral_acquisition_history.%v_today", refType)
+		} else if diff < 0 {
+			targetField = "0"
 		}
 		updateStatements = append(updateStatements, fmt.Sprintf("%v_today_minus_%v = %v", refType, currDay, targetField))
 	}
-	updateStatements = append(updateStatements, fmt.Sprintf("%v_today = 0", refType))
 
 	return strings.Join(updateStatements, ",\n")
+}
+
+func (p *processor) startOldProcessedReferralsCleaner(ctx context.Context) {
+	ticker := stdlibtime.NewTicker(stdlibtime.Duration(1+rand.Intn(24)) * stdlibtime.Minute) //nolint:gosec,gomnd // Not an  issue.
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			const deadline = 30 * stdlibtime.Second
+			reqCtx, cancel := context.WithTimeout(ctx, deadline)
+			log.Error(errors.Wrap(p.deleteOldProcessedReferrals(reqCtx), "failed to deleteOldTrackedActions"))
+			cancel()
+		case <-ctx.Done():
+			return
+		}
+	}
+}
+
+func (p *processor) deleteOldProcessedReferrals(ctx context.Context) error {
+	if ctx.Err() != nil {
+		return errors.Wrap(ctx.Err(), "unexpected deadline")
+	}
+	sql := `DELETE FROM processed_referrals WHERE processed_at < $1`
+	if _, err := storage.Exec(ctx, p.db, sql, time.Now().Add(-24*stdlibtime.Hour)); err != nil {
+		return errors.Wrap(err, "failed to delete old data from processed_referrals")
+	}
+
+	return nil
 }

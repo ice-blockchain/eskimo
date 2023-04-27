@@ -65,6 +65,7 @@ func StartProcessor(ctx context.Context, cancel context.CancelFunc) Processor {
 		&userPingSource{processor: prc},
 	)
 	prc.shutdown = closeAll(mbConsumer, prc.mb, prc.db, prc.DeviceMetadataRepository.Close)
+	go prc.startOldProcessedReferralsCleaner(ctx)
 
 	return prc
 }
