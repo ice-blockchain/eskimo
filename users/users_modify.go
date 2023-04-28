@@ -58,7 +58,8 @@ func (r *repository) ModifyUser(ctx context.Context, usr *User, profilePicture *
 			return errors.Wrapf(err, "failed to upload profile picture for userID:%v", usr.ID)
 		}
 	}
-	sql, params := usr.genSQLUpdate(ctx)
+	agendaBefore, agendaContactIDsForUpdate, uniqueAgendaContactIDsForSend, err := r.findAgendaContactIDs(ctx, usr)
+	sql, params := usr.genSQLUpdate(ctx, agendaContactIDsForUpdate)
 	noOpNoOfParams := 1 + 1
 	if lu != nil || usr.AgendaPhoneNumberHashes != "" {
 		noOpNoOfParams++
@@ -77,26 +78,21 @@ func (r *repository) ModifyUser(ctx context.Context, usr *User, profilePicture *
 
 		return errors.Wrapf(err, "failed to update user %#v", usr)
 	}
-	// Agenda can be updated after user creation (in case if user granted permission to access contacts on the team screen after initial user created).
-	if usr.AgendaPhoneNumberHashes != "" {
-		if uErr := r.upsertContacts(ctx, usr); uErr != nil {
-			_, rollBackParams := usr.genSQLUpdate(ctx)
-			rollBackParams[1] = usr.UpdatedAt.Time
-			_, rollbackErr := storage.Exec(ctx, r.db, sql, rollBackParams...)
-
-			return multierror.Append( //nolint:wrapcheck // Not needed.
-				errors.Wrapf(uErr, "failed to update agenda phone number hashes"),
-				errors.Wrapf(rollbackErr, "failed to replace user to previous value, due to rollback, prev:%#v", usr),
-			).ErrorOrNil()
-		}
-	}
 	bkpUsr := *oldUsr
 	if profilePicture != nil {
 		bkpUsr.ProfilePictureURL = RandomDefaultProfilePictureName()
 	}
+	if sErr := runConcurrently(ctx, r.sendContactMessage, uniqueAgendaContactIDsForSend); sErr != nil {
+		_, rollBackParams := bkpUsr.genSQLUpdate(ctx, agendaBefore)
+		rollBackParams[1] = bkpUsr.UpdatedAt.Time
+		_, rErr := storage.Exec(ctx, r.db, sql, rollBackParams...)
+
+		return errors.Wrapf(multierror.Append(rErr, sErr).ErrorOrNil(), "can't send contacts message for userID:%v", usr.ID)
+	}
+
 	us := &UserSnapshot{User: r.sanitizeUser(oldUsr.override(usr)), Before: r.sanitizeUser(oldUsr)}
 	if err = r.sendUserSnapshotMessage(ctx, us); err != nil {
-		_, rollBackParams := bkpUsr.genSQLUpdate(ctx)
+		_, rollBackParams := bkpUsr.genSQLUpdate(ctx, agendaBefore)
 		rollBackParams[1] = bkpUsr.UpdatedAt.Time
 		_, rollbackErr := storage.Exec(ctx, r.db, sql, rollBackParams...)
 
@@ -139,7 +135,7 @@ func (u *User) override(user *User) *User {
 }
 
 //nolint:funlen,gocognit,gocyclo,revive,cyclop // Because it's a big unitary SQL processing logic.
-func (u *User) genSQLUpdate(ctx context.Context) (sql string, params []any) {
+func (u *User) genSQLUpdate(ctx context.Context, agendaUserIDs []UserID) (sql string, params []any) {
 	params = make([]any, 0)
 	params = append(params, u.ID, u.UpdatedAt.Time)
 
@@ -236,6 +232,12 @@ func (u *User) genSQLUpdate(ctx context.Context) (sql string, params []any) {
 		sql += fmt.Sprintf(", BLOCKCHAIN_ACCOUNT_ADDRESS = $%v", nextIndex)
 		nextIndex++
 	}
+	if u.AgendaPhoneNumberHashes != "" {
+		params = append(params, agendaUserIDs)
+		sql += fmt.Sprintf(", agenda_contact_user_ids = $%v", nextIndex)
+		nextIndex++
+	}
+
 	sql += " WHERE ID = $1"
 
 	if lu := lastUpdatedAt(ctx); lu != nil {

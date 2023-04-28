@@ -132,13 +132,9 @@ func (r *repository) GetUsers(ctx context.Context, keyword string, limit, offset
 			log.Info(fmt.Sprintf("[response]GetUsers took: %v", elapsed))
 		}
 	}()
-	var contacts []UserID
-	cont, err := r.getContacts(ctx, requestingUserID(ctx))
+	contacts, err := r.getAgendaContacts(ctx, requestingUserID(ctx))
 	if err != nil && !storage.IsErr(err, storage.ErrNotFound) {
 		return nil, errors.Wrapf(err, "can't get contacts for userID:%v", requestingUserID(ctx))
-	}
-	if cont != nil {
-		contacts = append(contacts, strings.Split(cont.ContactUserIDs, ",")...)
 	}
 	sql := fmt.Sprintf(`
 			SELECT 

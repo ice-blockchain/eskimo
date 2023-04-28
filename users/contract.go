@@ -97,6 +97,7 @@ type (
 		RandomReferredBy        *bool                       `json:"randomReferredBy,omitempty" example:"true" swaggerignore:"true"`
 		KYCPassed               *bool                       `json:"-" example:"true" swaggerignore:"true"`
 		ClientData              *JSON                       `json:"clientData,omitempty"`
+		AgendaContactUserIDs    []string                    `json:"agendaContactUserIDs,omitempty" swaggerignore:"true" db:"agenda_contact_user_ids"`
 		PrivateUserInformation
 		PublicUserInformation
 		ReferredBy                     UserID  `json:"referredBy,omitempty" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2" `
@@ -244,10 +245,6 @@ type (
 	miningSession struct {
 		EndedAt *time.Time `json:"endedAt,omitempty" example:"2022-01-03T16:20:52.156534Z"`
 		UserID  string     `json:"userId,omitempty" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
-	}
-	contacts struct {
-		UserID         UserID `json:"userId,omitempty" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
-		ContactUserIDs string `json:"contactUserIds,omitempty" db:"contact_user_ids" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2,did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B3"` //nolint:lll // .
 	}
 
 	userSnapshotSource struct {

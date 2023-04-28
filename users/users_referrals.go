@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"math/rand"
 	"strconv"
-	"strings"
 	stdlibtime "time"
 
 	"github.com/pkg/errors"
@@ -28,13 +27,9 @@ func (r *repository) GetReferrals(ctx context.Context, userID string, referralTy
 			log.Info(fmt.Sprintf("[response]GetReferrals(%v) took: %v", referralType, elapsed))
 		}
 	}()
-	var contacts []UserID
-	cont, err := r.getContacts(ctx, userID)
+	contacts, err := r.getAgendaContacts(ctx, userID)
 	if err != nil && !storage.IsErr(err, storage.ErrNotFound) {
 		return nil, errors.Wrapf(err, "can't get contacts for userID:%v", userID)
-	}
-	if cont != nil {
-		contacts = append(contacts, strings.Split(cont.ContactUserIDs, ",")...)
 	}
 	totalAndActiveColumns := `  CAST(COALESCE(SUM(1), 0) AS text) 												   	AS id,
 								CAST(COALESCE(SUM(CASE 

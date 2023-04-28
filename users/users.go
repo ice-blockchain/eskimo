@@ -133,6 +133,32 @@ func retry(ctx context.Context, op func() error) error {
 		})
 }
 
+func runConcurrently[ARG any](ctx context.Context, run func(context.Context, ARG) error, args []ARG) error {
+	if ctx.Err() != nil {
+		return errors.Wrap(ctx.Err(), "unexpected deadline")
+	}
+	if len(args) == 0 {
+		return nil
+	}
+	wg := new(sync.WaitGroup)
+	wg.Add(len(args))
+	errChan := make(chan error, len(args))
+	for i := range args {
+		go func(ix int) {
+			defer wg.Done()
+			errChan <- errors.Wrapf(run(ctx, args[ix]), "failed to run:%#v", args[ix])
+		}(i)
+	}
+	wg.Wait()
+	close(errChan)
+	errs := make([]error, 0, len(args))
+	for err := range errChan {
+		errs = append(errs, err)
+	}
+
+	return errors.Wrap(multierror.Append(nil, errs...).ErrorOrNil(), "at least one execution failed")
+}
+
 func randomBetween(left, right uint64) uint64 {
 	n, err := rand.Int(rand.Reader, big.NewInt(int64(right)-int64(left)))
 	log.Panic(errors.Wrap(err, "crypto random generator failed"))
