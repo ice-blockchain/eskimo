@@ -61,7 +61,7 @@ func (r *repository) ModifyUser(ctx context.Context, usr *User, profilePicture *
 	agendaBefore, agendaContactIDsForUpdate, uniqueAgendaContactIDsForSend, err := r.findAgendaContactIDs(ctx, usr)
 	sql, params := usr.genSQLUpdate(ctx, agendaContactIDsForUpdate)
 	noOpNoOfParams := 1 + 1
-	if lu != nil || usr.AgendaPhoneNumberHashes != "" {
+	if lu != nil {
 		noOpNoOfParams++
 	}
 	if len(params) == noOpNoOfParams {

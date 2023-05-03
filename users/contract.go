@@ -97,17 +97,17 @@ type (
 		RandomReferredBy        *bool                       `json:"randomReferredBy,omitempty" example:"true" swaggerignore:"true"`
 		KYCPassed               *bool                       `json:"-" example:"true" swaggerignore:"true"`
 		ClientData              *JSON                       `json:"clientData,omitempty"`
-		AgendaContactUserIDs    []string                    `json:"agendaContactUserIDs,omitempty" swaggerignore:"true" db:"agenda_contact_user_ids"`
 		PrivateUserInformation
 		PublicUserInformation
-		ReferredBy                     UserID  `json:"referredBy,omitempty" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2" `
-		PhoneNumberHash                string  `json:"phoneNumberHash,omitempty" example:"Ef86A6021afCDe5673511376B2" swaggerignore:"true"`
-		AgendaPhoneNumberHashes        *string `json:"agendaPhoneNumberHashes,omitempty" example:"Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2"` //nolint:lll // .
-		MiningBlockchainAccountAddress string  `json:"miningBlockchainAccountAddress,omitempty" example:"0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
-		BlockchainAccountAddress       string  `json:"blockchainAccountAddress,omitempty" example:"0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
-		Language                       string  `json:"language,omitempty" example:"en"`
-		Lookup                         string  `json:"-" example:"username"`
-		HashCode                       int64   `json:"hashCode,omitempty" example:"43453546464576547" swaggerignore:"true"`
+		ReferredBy                     UserID   `json:"referredBy,omitempty" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2" `
+		PhoneNumberHash                string   `json:"phoneNumberHash,omitempty" example:"Ef86A6021afCDe5673511376B2" swaggerignore:"true"`
+		AgendaPhoneNumberHashes        *string  `json:"agendaPhoneNumberHashes,omitempty" example:"Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2"` //nolint:lll // .
+		MiningBlockchainAccountAddress string   `json:"miningBlockchainAccountAddress,omitempty" example:"0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
+		BlockchainAccountAddress       string   `json:"blockchainAccountAddress,omitempty" example:"0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
+		Language                       string   `json:"language,omitempty" example:"en"`
+		AgendaContactUserIDs           []string `json:"agendaContactUserIDs,omitempty" swaggerignore:"true" db:"agenda_contact_user_ids"`
+		Lookup                         string   `json:"-" example:"username"`
+		HashCode                       int64    `json:"hashCode,omitempty" example:"43453546464576547" swaggerignore:"true"`
 	}
 	MinimalUserProfile struct {
 		Active *NotExpired `json:"active,omitempty" example:"true"`

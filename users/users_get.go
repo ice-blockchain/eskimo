@@ -132,10 +132,6 @@ func (r *repository) GetUsers(ctx context.Context, keyword string, limit, offset
 			log.Info(fmt.Sprintf("[response]GetUsers took: %v", elapsed))
 		}
 	}()
-	contacts, err := r.getAgendaContacts(ctx, requestingUserID(ctx))
-	if err != nil && !storage.IsErr(err, storage.ErrNotFound) {
-		return nil, errors.Wrapf(err, "can't get contacts for userID:%v", requestingUserID(ctx))
-	}
 	sql := fmt.Sprintf(`
 			SELECT 
 			    u.last_mining_ended_at 									 	 	  AS active,
@@ -163,7 +159,7 @@ func (r *repository) GetUsers(ctx context.Context, keyword string, limit, offset
 								OR (
 									NULLIF(u.phone_number_hash,'') IS NOT NULL
 									AND 
-									u.id = ANY($6)
+									u.id = ANY(user_requesting_this.agenda_contact_user_ids)
 								   )
 							THEN u.phone_number
 						ELSE ''
@@ -178,7 +174,7 @@ func (r *repository) GetUsers(ctx context.Context, keyword string, limit, offset
 				   (CASE
 						WHEN NULLIF(u.phone_number_hash,'') IS NOT NULL
 				  				AND user_requesting_this.id != u.id
-								AND u.id = ANY($6)
+								AND u.id = ANY(user_requesting_this.agenda_contact_user_ids)
 							THEN 'CONTACTS'
 						WHEN u.id = user_requesting_this.referred_by OR u.referred_by = user_requesting_this.id 
 							THEN 'T1'
@@ -218,7 +214,6 @@ func (r *repository) GetUsers(ctx context.Context, keyword string, limit, offset
 		limit,
 		offset,
 		requestingUserID(ctx),
-		contacts,
 	}
 	result, err = storage.Select[MinimalUserProfile](ctx, r.db, sql, params...)
 	if result == nil {

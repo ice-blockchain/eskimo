@@ -4,15 +4,16 @@ package users
 
 import (
 	"context"
+	"strings"
+
 	"github.com/goccy/go-json"
 	"github.com/pkg/errors"
-	"strings"
 
 	messagebroker "github.com/ice-blockchain/wintr/connectors/message_broker"
 	storage "github.com/ice-blockchain/wintr/connectors/storage/v2"
 )
 
-//nolint:funlen // It needs a better breakdown.
+//nolint:funlen,gocritic,revive // It needs a better breakdown.
 func (r *repository) findAgendaContactIDs(ctx context.Context, usr *User) ([]UserID, []UserID, []*Contact, error) {
 	before, err := r.getAgendaContacts(ctx, usr.ID)
 	if err != nil && !storage.IsErr(err, storage.ErrNotFound) {

@@ -145,6 +145,5 @@ require (
 replace (
 	github.com/containerd/containerd => github.com/containerd/containerd v1.6.19
 	github.com/docker/docker => github.com/docker/docker v20.10.22+incompatible
-	github.com/quic-go/quic-go => github.com/quic-go/quic-go v0.33.0
 	github.com/testcontainers/testcontainers-go => github.com/testcontainers/testcontainers-go v0.15.0
 )
