@@ -15,14 +15,17 @@ import (
 
 //nolint:funlen,gocritic,revive // It needs a better breakdown.
 func (r *repository) findAgendaContactIDs(ctx context.Context, usr *User) ([]UserID, []UserID, []*Contact, error) {
+	if usr.AgendaPhoneNumberHashes == nil || *usr.AgendaPhoneNumberHashes == "" {
+		return nil, nil, nil, nil
+	}
 	before, err := r.getAgendaContacts(ctx, usr.ID)
 	if err != nil && !storage.IsErr(err, storage.ErrNotFound) {
 		return nil, nil, nil, errors.Wrapf(err, "can't get contacts for user id: %v", usr.ID)
 	}
 	sql := `SELECT id FROM users WHERE phone_number_hash = ANY($1)`
-	contactIDs, err := storage.Select[UserID](ctx, r.db, sql, strings.Split(usr.AgendaPhoneNumberHashes, ","))
+	contactIDs, err := storage.Select[UserID](ctx, r.db, sql, strings.Split(*usr.AgendaPhoneNumberHashes, ","))
 	if err != nil {
-		return nil, nil, nil, errors.Wrapf(err, "can't get user ids by agenda hashes:%#v for userID:%v", usr.AgendaPhoneNumberHashes, usr.ID)
+		return nil, nil, nil, errors.Wrapf(err, "can't get user ids by agenda hashes:%#v for userID:%v", *usr.AgendaPhoneNumberHashes, usr.ID)
 	}
 	if len(contactIDs) == 0 {
 		return before, nil, nil, nil
