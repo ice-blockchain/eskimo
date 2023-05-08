@@ -105,6 +105,7 @@ type (
 		MiningBlockchainAccountAddress string  `json:"miningBlockchainAccountAddress,omitempty" example:"0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
 		BlockchainAccountAddress       string  `json:"blockchainAccountAddress,omitempty" example:"0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
 		Language                       string  `json:"language,omitempty" example:"en"`
+		Lookup                         string  `json:"-" example:"username"`
 		HashCode                       int64   `json:"hashCode,omitempty" example:"43453546464576547" swaggerignore:"true"`
 	}
 	MinimalUserProfile struct {

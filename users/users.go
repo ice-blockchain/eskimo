@@ -38,7 +38,6 @@ func New(ctx context.Context, _ context.CancelFunc) Repository {
 		cfg:                      &cfg,
 		shutdown:                 db.Close,
 		db:                       db,
-		dbV2:                     dbV2,
 		DeviceMetadataRepository: devicemetadata.New(db, nil),
 		pictureClient:            picture.New(applicationYamlKey),
 	}
@@ -54,7 +53,6 @@ func StartProcessor(ctx context.Context, cancel context.CancelFunc) Processor {
 	prc := &processor{repository: &repository{
 		cfg:                      &cfg,
 		db:                       db,
-		dbV2:                     dbV2,
 		mb:                       mbProducer,
 		DeviceMetadataRepository: devicemetadata.New(db, mbProducer),
 		pictureClient:            picture.New(applicationYamlKey, defaultProfilePictureNameRegex),
@@ -414,14 +412,15 @@ func sendMessagesConcurrently[M any](ctx context.Context, sendMessage func(conte
 	return errors.Wrap(multierror.Append(nil, errs...).ErrorOrNil(), "at least one message sends failed")
 }
 
-func tokenize(strVal string) string {
+func tokenize(strVal string) []string {
+	var tokenized []string
 	chars := strings.Split(strVal, "")
 	if strVal == "" {
-		return ""
+		return nil
 	}
-	tokenized := chars[0]
+	tokenized = append(tokenized, chars[0])
 	for i := 1; i < len(chars); i++ {
-		tokenized += " " + strings.Join(chars[0:i+1], "")
+		tokenized = append(tokenized, strings.Join(chars[0:i+1], ""))
 	}
 
 	return tokenized

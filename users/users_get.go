@@ -15,7 +15,7 @@ import (
 	"github.com/ice-blockchain/wintr/time"
 )
 
-func (r *repository) getUserByID(ctx context.Context, id UserID) (*User, error) { //nolint:funlen // Big SQL query.
+func (r *repository) getUserByID(ctx context.Context, id UserID) (*User, error) {
 	if ctx.Err() != nil {
 		return nil, errors.Wrap(ctx.Err(), "get user failed because context failed")
 	}
@@ -158,7 +158,7 @@ func (r *repository) GetUsers(ctx context.Context, keyword string, limit, offset
 			    u.email 												  		  AS email,
 			    u.id 												 	  		  AS id,
 				u.username 												  		  AS username,
-				u.profile_picture_url 									  		  AS profile_picture_url,
+				u.profile_picture_url 									  		  AS profile_picture_name,
 				u.country 											  	  		  AS country,
 				u.city 													  		  AS city,
 			    u.referral_type 										  		  AS referral_type
@@ -210,7 +210,7 @@ func (r *repository) GetUsers(ctx context.Context, keyword string, limit, offset
 						 AND user_requesting_this.username != user_requesting_this.id
 						 AND user_requesting_this.referred_by != user_requesting_this.id
 			WHERE 
-					u.lookup_key @@ to_tsquery($2)
+					u.lookup @@ $2::tsquery
 				  ) u 
 				  JOIN users user_requesting_this
                        ON user_requesting_this.id = $5
