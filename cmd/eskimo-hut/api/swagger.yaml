@@ -367,6 +367,12 @@ paths:
         description: 'Optional. Example: Array of [`globalRank`,`referralCount`,`level`,`role`,`badges`].'
         in: formData
         items:
+          enum:
+          - globalRank
+          - referralCount
+          - level
+          - role
+          - badges
           type: string
         name: hiddenProfileElements
         type: array

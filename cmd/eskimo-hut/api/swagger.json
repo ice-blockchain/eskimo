@@ -255,6 +255,13 @@
                     {
                         "type": "array",
                         "items": {
+                            "enum": [
+                                "globalRank",
+                                "referralCount",
+                                "level",
+                                "role",
+                                "badges"
+                            ],
                             "type": "string"
                         },
                         "collectionFormat": "multi",
