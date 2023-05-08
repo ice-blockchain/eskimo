@@ -59,7 +59,7 @@ func (r *repository) DeleteAllDeviceMetadata(ctx context.Context, userID string)
 	if ctx.Err() != nil {
 		return errors.Wrap(ctx.Err(), "unexpected deadline ")
 	}
-	sql := fmt.Sprintf(`SELECT %v FROM device_metadata WHERE user_id = $1`, selectDeviceMetadataFields())
+	sql := `SELECT * FROM device_metadata WHERE user_id = $1`
 	res, err := storage.Select[DeviceMetadata](ctx, r.db, sql, userID)
 	if err != nil {
 		return errors.Wrapf(err, "failed to select all device metadata for userID:%v", userID)
@@ -90,7 +90,7 @@ func (r *repository) deleteDeviceMetadata(ctx context.Context, dm *DeviceMetadat
 	if ctx.Err() != nil {
 		return errors.Wrap(ctx.Err(), "context failed")
 	}
-	sql := `DELETE FROM device_metadata WHERE user_id = $1 AND device_unique_id = $2`
+	sql := `DELETE FROM device_metadata WHERE user_id = $1 AND device_unique_id = $2` //nolint:goconst // No need to make a constant SQL query.
 	if _, err := storage.Exec(ctx, r.db, sql, dm.UserID, dm.DeviceUniqueID); err != nil {
 		return errors.Wrapf(err, "failed to delete device_metadata for id:%#v", &dm.ID)
 	}
@@ -139,7 +139,7 @@ func (r *repository) GetDeviceMetadata(ctx context.Context, id *device.ID) (*Dev
 	if ctx.Err() != nil {
 		return nil, errors.Wrap(ctx.Err(), "context failed")
 	}
-	sql := fmt.Sprintf(`SELECT %v FROM device_metadata WHERE user_id = $1 AND device_unique_id = $2`, selectDeviceMetadataFields())
+	sql := `SELECT * FROM device_metadata WHERE user_id = $1 AND device_unique_id = $2`
 	dm, err := storage.Get[DeviceMetadata](ctx, r.db, sql, id.UserID, id.DeviceUniqueID)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to get device metadata by id: %#v", id)
@@ -151,63 +151,7 @@ func (r *repository) GetDeviceMetadata(ctx context.Context, id *device.ID) (*Dev
 	return dm, nil
 }
 
-func selectDeviceMetadataFields() string { //nolint:funlen // A lot of SQL fields.
-	return `updated_at,
-			first_install_time,
-			last_update_time,
-			user_id,
-			device_unique_id,
-			readable_version,
-			fingerprint,
-			instance_id,
-			hardware,
-			product,
-			device,
-			type,
-			tags,
-			device_id,
-			device_type,
-			device_name,
-			brand,
-			carrier,
-			manufacturer,
-			user_agent,
-			system_name,
-			system_version,
-			base_os,
-			build_id,
-			bootloader,
-			codename,
-			installer_package_name,
-			push_notification_token,
-			device_timezone 			AS tz,
-			country_short,
-			country_long,
-			region,
-			city,
-			isp,
-			domain,
-			zipcode,
-			timezone,
-			net_speed 					AS netspeed,
-			idd_code					AS iddcode,
-			area_code					AS areacode,
-			weather_station_code		AS weatherstationcode,
-			weather_station_name		AS weatherstationname,
-			mcc,
-			mnc,
-			mobile_brand				AS mobilebrand,
-			usage_type					AS usagetype,
-			latitude,
-			longitude,
-			elevation,
-			api_level,
-			tablet,
-			pin_or_fingerprint_set,
-			emulator`
-}
-
-func (r *repository) ReplaceDeviceMetadata(ctx context.Context, input *DeviceMetadata, clientIP net.IP) (err error) {
+func (r *repository) ReplaceDeviceMetadata(ctx context.Context, input *DeviceMetadata, clientIP net.IP) (err error) { //nolint:funlen // Big rollback logic.
 	if ctx.Err() != nil {
 		return errors.Wrap(ctx.Err(), "context failed")
 	}
@@ -228,15 +172,27 @@ func (r *repository) ReplaceDeviceMetadata(ctx context.Context, input *DeviceMet
 		return errors.Wrapf(err, "failed to get current device metadata for %#v", input.ID)
 	}
 
-	return errors.Wrapf(storage.DoInTransaction(ctx, r.db, func(conn storage.QueryExecer) error {
-		sql, args := input.replaceSQL()
-		if _, err = storage.Exec(ctx, r.db, sql, args...); err != nil {
-			return errors.Wrapf(err, "failed to replace device's %#v metadata", input.ID)
+	sql, args := input.replaceSQL()
+	if _, err = storage.Exec(ctx, r.db, sql, args...); err != nil {
+		return errors.Wrapf(err, "failed to replace device's %#v metadata", input.ID)
+	}
+	dm := deviceMetadataSnapshot(before, input)
+	if err = r.sendDeviceMetadataSnapshotMessage(ctx, dm); err != nil {
+		var revertErr error
+		if before == nil {
+			sql = "DELETE FROM device_metadata WHERE user_id = $1 AND device_unique_id = $2"
+			_, revertErr = storage.Exec(ctx, r.db, sql, input.UserID, input.DeviceUniqueID)
+			revertErr = errors.Wrapf(revertErr, "failed to delete device metadata due to rollback for %#v", input)
+		} else {
+			sql, args = before.replaceSQL()
+			_, revertErr = storage.Exec(ctx, r.db, sql, args...)
+			revertErr = errors.Wrapf(revertErr, "failed to replace to before, due to a rollback for %#v", input)
 		}
-		dm := deviceMetadataSnapshot(before, input)
 
-		return errors.Wrapf(r.sendDeviceMetadataSnapshotMessage(ctx, dm), "failed to send device metadata snapshot message %#v", dm)
-	}), "can't execute replace metadata transaction for %#v", input.ID)
+		return multierror.Append(errors.Wrapf(err, "failed to send device metadata snapshot message %#v", dm), revertErr).ErrorOrNil() //nolint:wrapcheck // .
+	}
+
+	return nil
 }
 
 func (r *repository) verifyDeviceAppVersion(metadata *DeviceMetadata) error {

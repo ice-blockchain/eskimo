@@ -10,7 +10,6 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
-	"github.com/zeebo/xxh3"
 
 	"github.com/ice-blockchain/eskimo/users/internal/device"
 	"github.com/ice-blockchain/wintr/connectors/storage/v2"
@@ -33,17 +32,17 @@ func (r *repository) CreateUser(ctx context.Context, usr *User, clientIP net.IP)
 	r.setCreateUserDefaults(ctx, usr, clientIP)
 	sql := `
 	INSERT INTO users 
-		(ID, MINING_BLOCKCHAIN_ACCOUNT_ADDRESS, BLOCKCHAIN_ACCOUNT_ADDRESS, HASH_CODE, EMAIL, FIRST_NAME, LAST_NAME, PHONE_NUMBER, PHONE_NUMBER_HASH, USERNAME, REFERRED_BY, RANDOM_REFERRED_BY, CLIENT_DATA, PROFILE_PICTURE_NAME, COUNTRY, CITY, LANGUAGE, CREATED_AT, UPDATED_AT)
+		(ID, MINING_BLOCKCHAIN_ACCOUNT_ADDRESS, BLOCKCHAIN_ACCOUNT_ADDRESS, EMAIL, FIRST_NAME, LAST_NAME, PHONE_NUMBER, PHONE_NUMBER_HASH, USERNAME, REFERRED_BY, RANDOM_REFERRED_BY, CLIENT_DATA, PROFILE_PICTURE_NAME, COUNTRY, CITY, LANGUAGE, CREATED_AT, UPDATED_AT)
 	VALUES
-		($1,                                $2,                         $3,        $4,    $5,         $6,        $7,           $8,                $9,      $10,         $11,                $12,   $13::json,                  $14,     $15,  $16,      $17,        $18,        $19)`
+		($1,                                $2,                         $3,    $4,         $5,        $6,           $7,                $8,       $9,         $10,                $11,   $12::json,                  $13,     $14,  $15,      $16,        $17,        $18)`
 	args := []any{
-		usr.ID, usr.MiningBlockchainAccountAddress, usr.BlockchainAccountAddress, usr.HashCode, usr.Email, usr.FirstName, usr.LastName,
+		usr.ID, usr.MiningBlockchainAccountAddress, usr.BlockchainAccountAddress, usr.Email, usr.FirstName, usr.LastName,
 		usr.PhoneNumber, usr.PhoneNumberHash, usr.Username, usr.ReferredBy, usr.RandomReferredBy, usr.ClientData, usr.ProfilePictureURL, usr.Country,
 		usr.City, usr.Language, usr.CreatedAt.Time, usr.UpdatedAt.Time,
 	}
 	if _, err := storage.Exec(ctx, r.db, sql, args...); err != nil {
 		field, tErr := detectAndParseDuplicateDatabaseError(err)
-		if field == hashCodeDBColumnName || field == usernameDBColumnName || storage.IsErr(err, storage.ErrRelationNotFound) {
+		if field == usernameDBColumnName || storage.IsErr(err, storage.ErrRelationNotFound) {
 			return r.CreateUser(ctx, usr, clientIP)
 		}
 
@@ -68,7 +67,6 @@ func (r *repository) setCreateUserDefaults(ctx context.Context, usr *User, clien
 	usr.CreatedAt = time.Now()
 	usr.UpdatedAt = usr.CreatedAt
 	usr.DeviceLocation = *r.GetDeviceMetadataLocation(ctx, &device.ID{UserID: usr.ID}, clientIP)
-	usr.HashCode = int64(xxh3.HashStringSeed(usr.ID, uint64(usr.CreatedAt.UnixNano())))
 	usr.ProfilePictureURL = RandomDefaultProfilePictureName()
 	usr.Username = usr.ID
 	usr.ReferredBy = usr.ID
@@ -107,8 +105,6 @@ func detectAndParseDuplicateDatabaseError(err error) (field string, newErr error
 			field = "mining_blockchain_account_address"
 		} else if storage.IsErr(err, storage.ErrDuplicate, "blockchainaccountaddress") {
 			field = "blockchainAccountAddress"
-		} else if storage.IsErr(err, storage.ErrDuplicate, "hashcode") {
-			field = hashCodeDBColumnName
 		} else {
 			log.Panic("unexpected duplicate field for users space: %v", err)
 		}

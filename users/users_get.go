@@ -15,38 +15,11 @@ import (
 	"github.com/ice-blockchain/wintr/time"
 )
 
-func (r *repository) getUserByID(ctx context.Context, id UserID) (*User, error) { //nolint:funlen // Big SQL query.
+func (r *repository) getUserByID(ctx context.Context, id UserID) (*User, error) {
 	if ctx.Err() != nil {
 		return nil, errors.Wrap(ctx.Err(), "get user failed because context failed")
 	}
-	result, err := storage.Get[User](ctx, r.db, `
-    SELECT      
-			u.CREATED_AT,
-			u.UPDATED_AT,
-			u.LAST_MINING_STARTED_AT,
-			u.LAST_MINING_ENDED_AT,
-			u.LAST_PING_COOLDOWN_ENDED_AT,
-			COALESCE(u.HIDDEN_PROFILE_ELEMENTS, '')   as HIDDEN_PROFILE_ELEMENTS,
-			u.RANDOM_REFERRED_BY,
-			u.VERIFIED,
-			COALESCE(u.CLIENT_DATA,'') 				  as CLIENT_DATA,
-			COALESCE(u.PHONE_NUMBER, '') 			  as PHONE_NUMBER,
-			COALESCE(u.EMAIL,'') 					  as EMAIL,
-			COALESCE(u.FIRST_NAME,'') 				  as FIRST_NAME,
-			COALESCE(u.LAST_NAME,'') 				  as LAST_NAME,
-			u.COUNTRY,
-			u.CITY,
-			u.ID,
-			COALESCE(u.USERNAME, '') 				  as USERNAME,
-			u.PROFILE_PICTURE_NAME 					  as profile_picture_url,
-			COALESCE(u.REFERRED_BY, '') 			  as REFERRED_BY,
-			COALESCE(u.PHONE_NUMBER_HASH,'') 		  as PHONE_NUMBER_HASH,
-			COALESCE(u.AGENDA_PHONE_NUMBER_HASHES,'') as AGENDA_PHONE_NUMBER_HASHES,
-			u.MINING_BLOCKCHAIN_ACCOUNT_ADDRESS,
-			u.BLOCKCHAIN_ACCOUNT_ADDRESS,
-			u.LANGUAGE,
-			u.HASH_CODE
-    FROM users u WHERE id = $1`, id)
+	result, err := storage.Get[User](ctx, r.db, `SELECT * FROM users u WHERE id = $1`, id)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to get user by id %v", id)
 	}
@@ -63,31 +36,7 @@ func (r *repository) GetUserByID(ctx context.Context, userID string) (*UserProfi
 	}
 	sql := `
 		SELECT  	
-			u.CREATED_AT,
-			u.UPDATED_AT,
-			u.LAST_MINING_STARTED_AT,
-			u.LAST_MINING_ENDED_AT,
-			u.LAST_PING_COOLDOWN_ENDED_AT,
-			COALESCE(u.HIDDEN_PROFILE_ELEMENTS, '')   as HIDDEN_PROFILE_ELEMENTS,
-			u.RANDOM_REFERRED_BY,
-			u.VERIFIED,
-			COALESCE(u.CLIENT_DATA,'') 				  as CLIENT_DATA,
-			COALESCE(u.PHONE_NUMBER, '') 			  as PHONE_NUMBER,
-			COALESCE(u.EMAIL,'') 					  as EMAIL,
-			COALESCE(u.FIRST_NAME,'') 				  as FIRST_NAME,
-			COALESCE(u.LAST_NAME,'') 				  as LAST_NAME,
-			u.COUNTRY,
-			u.CITY,
-			u.ID,
-			COALESCE(u.USERNAME, '') 				  as USERNAME,
-			u.PROFILE_PICTURE_NAME 					  as profile_picture_url,
-			COALESCE(u.REFERRED_BY, '') 			  as REFERRED_BY,
-			COALESCE(u.PHONE_NUMBER_HASH,'') 		  as PHONE_NUMBER_HASH,
-			COALESCE(u.AGENDA_PHONE_NUMBER_HASHES,'') as AGENDA_PHONE_NUMBER_HASHES,
-			u.MINING_BLOCKCHAIN_ACCOUNT_ADDRESS,
-			u.BLOCKCHAIN_ACCOUNT_ADDRESS,
-			u.LANGUAGE,
-			u.HASH_CODE,
+			u.*,
 			count(distinct t1.id) 					  as t1_referral_count,
 			count(t2.id) 							  as t2_referral_count
 		FROM users u 
@@ -174,39 +123,11 @@ func (r *repository) getOtherUserByID(ctx context.Context, userID string) (*User
 	return resp, nil
 }
 
-//nolint:funlen // A lot of fields in SQL.
 func (r *repository) GetUserByUsername(ctx context.Context, username string) (*UserProfile, error) {
 	if ctx.Err() != nil {
 		return nil, errors.Wrap(ctx.Err(), "get user failed because context failed")
 	}
-	result, err := storage.Get[UserProfile](ctx, r.db, `
-			SELECT          
-				u.CREATED_AT,
-				u.UPDATED_AT,
-				u.LAST_MINING_STARTED_AT,
-				u.LAST_MINING_ENDED_AT,
-				u.LAST_PING_COOLDOWN_ENDED_AT,
-				COALESCE(u.HIDDEN_PROFILE_ELEMENTS, '')   as HIDDEN_PROFILE_ELEMENTS,
-				u.RANDOM_REFERRED_BY,
-				u.VERIFIED,
-				COALESCE(u.CLIENT_DATA,'') 				  as CLIENT_DATA,
-				COALESCE(u.PHONE_NUMBER, '') 			  as PHONE_NUMBER,
-				COALESCE(u.EMAIL,'') 					  as EMAIL,
-				COALESCE(u.FIRST_NAME,'') 				  as FIRST_NAME,
-				COALESCE(u.LAST_NAME,'') 				  as LAST_NAME,
-				u.COUNTRY,
-				u.CITY,
-				u.ID,
-				COALESCE(u.USERNAME, '') 				  as USERNAME,
-				u.PROFILE_PICTURE_NAME 					  as profile_picture_url,
-				COALESCE(u.REFERRED_BY, '') 			  as REFERRED_BY,
-				COALESCE(u.PHONE_NUMBER_HASH,'') 		  as PHONE_NUMBER_HASH,
-				COALESCE(u.AGENDA_PHONE_NUMBER_HASHES,'') as AGENDA_PHONE_NUMBER_HASHES,
-				u.MINING_BLOCKCHAIN_ACCOUNT_ADDRESS,
-				u.BLOCKCHAIN_ACCOUNT_ADDRESS,
-				u.LANGUAGE,
-				u.HASH_CODE
-			FROM users u WHERE username = $1`, username)
+	result, err := storage.Get[UserProfile](ctx, r.db, `SELECT * FROM users WHERE username = $1`, username)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to get user by username %v", username)
 	}

@@ -113,31 +113,7 @@ func (r *repository) updateReferredByForAllT1Referrals(ctx context.Context, user
 							  ) X
 						LIMIT 1
 				   ) new_referred_by,
-				   u.created_at,
-				   u.updated_at,
-				   u.last_mining_started_at,
-				   u.last_mining_ended_at,
-				   u.last_ping_cooldown_ended_at,
-				   COALESCE(u.hidden_profile_elements, '') 	  AS hidden_profile_elements,
-				   u.random_referred_by,
-				   u.verified,
-				   COALESCE(u.client_data, '') 				  AS client_data,
-				   COALESCE(u.phone_number, '') 			  AS phone_number,
-				   COALESCE(u.email, '') 					  AS email,
-				   COALESCE(u.first_name, '') 				  AS first_name,
-				   COALESCE(u.last_name, '') 				  AS last_name,
-				   u.country,
-				   u.city,
-				   u.id,
-				   COALESCE(u.username, '') 				  AS username,
-				   u.profile_picture_name 					  AS profile_picture_url,
-				   u.referred_by,
-				   COALESCE(u.phone_number_hash, '') 		  AS phone_number_hash,
-				   COALESCE(u.agenda_phone_number_hashes, '') AS agenda_phone_number_hashes,
-				   u.mining_blockchain_account_address,
-				   u.blockchain_account_address,
-				   u.language,
-				   u.hash_code
+				   u.*
 			FROM users u
 			WHERE u.referred_by = $1
 			  AND u.id != $1`
@@ -156,7 +132,10 @@ func (r *repository) updateReferredByForAllT1Referrals(ctx context.Context, user
 	for ii := range res {
 		go func(ix int) {
 			defer wg.Done()
-			errChan <- errors.Wrapf(r.updateReferredBy(ctx, &res[ix].User, res[ix].NewReferredBy, true),
+			res[ix].User.ReferredBy = res[ix].NewReferredBy
+			valTrue := true
+			res[ix].User.RandomReferredBy = &valTrue
+			errChan <- errors.Wrapf(r.ModifyUser(ctx, &res[ix].User, nil),
 				"failed to update referred by for userID:%v", res[ix].User.ID)
 		}(ii)
 	}

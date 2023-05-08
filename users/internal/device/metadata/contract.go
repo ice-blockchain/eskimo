@@ -49,39 +49,39 @@ type (
 	}
 	DeviceMetadata struct {
 		// Read Only.
-		UpdatedAt        *time.Time `json:"updatedAt,omitempty" swaggertype:"string"`
-		FirstInstallTime *time.Time `json:"firstInstallTime,omitempty" swaggertype:"integer"`
-		LastUpdateTime   *time.Time `json:"lastUpdateTime,omitempty" swaggertype:"integer"`
+		UpdatedAt        *time.Time `json:"updatedAt,omitempty" swaggertype:"string" db:"updated_at"`
+		FirstInstallTime *time.Time `json:"firstInstallTime,omitempty" swaggertype:"integer" db:"first_install_time"`
+		LastUpdateTime   *time.Time `json:"lastUpdateTime,omitempty" swaggertype:"integer" db:"last_update_time"`
 		device.ID
-		ReadableVersion       string `json:"readableVersion,omitempty"`
-		Fingerprint           string `json:"fingerprint,omitempty"`
-		InstanceID            string `json:"instanceId,omitempty"`
-		Hardware              string `json:"hardware,omitempty"`
-		Product               string `json:"product,omitempty"`
-		Device                string `json:"device,omitempty"`
-		Type                  string `json:"type,omitempty"`
-		Tags                  string `json:"tags,omitempty"`
-		DeviceID              string `json:"deviceId,omitempty"`
-		DeviceType            string `json:"deviceType,omitempty"`
-		DeviceName            string `json:"deviceName,omitempty"`
-		Brand                 string `json:"brand,omitempty"`
-		Carrier               string `json:"carrier,omitempty"`
-		Manufacturer          string `json:"manufacturer,omitempty"`
-		UserAgent             string `json:"userAgent,omitempty"`
-		SystemName            string `json:"systemName,omitempty"`
-		SystemVersion         string `json:"systemVersion,omitempty"`
-		BaseOS                string `json:"baseOs,omitempty"`
-		BuildID               string `json:"buildId,omitempty"`
-		Bootloader            string `json:"bootloader,omitempty"`
-		Codename              string `json:"codename,omitempty"`
-		InstallerPackageName  string `json:"installerPackageName,omitempty"`
-		PushNotificationToken string `json:"pushNotificationToken,omitempty"`
-		TZ                    string `json:"tz,omitempty"`
+		ReadableVersion       string `json:"readableVersion,omitempty" db:"readable_version"`
+		Fingerprint           string `json:"fingerprint,omitempty" db:"fingerprint"`
+		InstanceID            string `json:"instanceId,omitempty" db:"instance_id"`
+		Hardware              string `json:"hardware,omitempty" db:"hardware"`
+		Product               string `json:"product,omitempty" db:"product"`
+		Device                string `json:"device,omitempty" db:"device"`
+		Type                  string `json:"type,omitempty" db:"type"`
+		Tags                  string `json:"tags,omitempty" db:"tags"`
+		DeviceID              string `json:"deviceId,omitempty" db:"device_id"`
+		DeviceType            string `json:"deviceType,omitempty" db:"device_type"`
+		DeviceName            string `json:"deviceName,omitempty" db:"device_name"`
+		Brand                 string `json:"brand,omitempty" db:"brand"`
+		Carrier               string `json:"carrier,omitempty" db:"carrier"`
+		Manufacturer          string `json:"manufacturer,omitempty" db:"manufacturer"`
+		UserAgent             string `json:"userAgent,omitempty" db:"user_agent"`
+		SystemName            string `json:"systemName,omitempty" db:"system_name"`
+		SystemVersion         string `json:"systemVersion,omitempty" db:"system_version"`
+		BaseOS                string `json:"baseOs,omitempty" db:"base_os"`
+		BuildID               string `json:"buildId,omitempty" db:"build_id"`
+		Bootloader            string `json:"bootloader,omitempty" db:"bootloader"`
+		Codename              string `json:"codename,omitempty" db:"codename"`
+		InstallerPackageName  string `json:"installerPackageName,omitempty" db:"installer_package_name"`
+		PushNotificationToken string `json:"pushNotificationToken,omitempty" db:"push_notification_token"`
+		TZ                    string `json:"tz,omitempty" db:"device_timezone"`
 		ip2LocationRecord
-		APILevel            uint64 `json:"apiLevel,omitempty"`
-		Tablet              bool   `json:"tablet,omitempty"`
-		PinOrFingerprintSet bool   `json:"pinOrFingerprintSet,omitempty"`
-		Emulator            bool   `json:"emulator,omitempty"`
+		APILevel            uint64 `json:"apiLevel,omitempty" db:"api_level"`
+		Tablet              bool   `json:"tablet,omitempty" db:"tablet"`
+		PinOrFingerprintSet bool   `json:"pinOrFingerprintSet,omitempty" db:"pin_or_fingerprint_set"`
+		Emulator            bool   `json:"emulator,omitempty" db:"emulator"`
 	}
 )
 
@@ -100,26 +100,26 @@ var (
 
 type (
 	ip2LocationRecord struct {
-		CountryShort       string  `json:"-" swaggerignore:"true"`
-		CountryLong        string  `json:"-" swaggerignore:"true"`
-		Region             string  `json:"-" swaggerignore:"true"`
-		City               string  `json:"-" swaggerignore:"true"`
-		Isp                string  `json:"-" swaggerignore:"true"`
-		Domain             string  `json:"-" swaggerignore:"true"`
-		Zipcode            string  `json:"-" swaggerignore:"true"`
-		Timezone           string  `json:"-" swaggerignore:"true"`
-		Netspeed           string  `json:"-" swaggerignore:"true"`
-		Iddcode            string  `json:"-" swaggerignore:"true"`
-		Areacode           string  `json:"-" swaggerignore:"true"`
-		Weatherstationcode string  `json:"-" swaggerignore:"true"`
-		Weatherstationname string  `json:"-" swaggerignore:"true"`
-		Mcc                string  `json:"-" swaggerignore:"true"`
-		Mnc                string  `json:"-" swaggerignore:"true"`
-		Mobilebrand        string  `json:"-" swaggerignore:"true"`
-		Usagetype          string  `json:"-" swaggerignore:"true"`
-		Latitude           float64 `json:"-" swaggerignore:"true"`
-		Longitude          float64 `json:"-" swaggerignore:"true"`
-		Elevation          float64 `json:"-" swaggerignore:"true"`
+		CountryShort       string  `json:"-" swaggerignore:"true" db:"country_short"`
+		CountryLong        string  `json:"-" swaggerignore:"true" db:"country_long"`
+		Region             string  `json:"-" swaggerignore:"true" db:"region"`
+		City               string  `json:"-" swaggerignore:"true" db:"city"`
+		Isp                string  `json:"-" swaggerignore:"true" db:"isp"`
+		Domain             string  `json:"-" swaggerignore:"true" db:"domain"`
+		Zipcode            string  `json:"-" swaggerignore:"true" db:"zipcode"`
+		Timezone           string  `json:"-" swaggerignore:"true" db:"timezone"`
+		Netspeed           string  `json:"-" swaggerignore:"true" db:"net_speed"`
+		Iddcode            string  `json:"-" swaggerignore:"true" db:"idd_code"`
+		Areacode           string  `json:"-" swaggerignore:"true" db:"area_code"`
+		Weatherstationcode string  `json:"-" swaggerignore:"true" db:"weather_station_code"`
+		Weatherstationname string  `json:"-" swaggerignore:"true" db:"weather_station_name"`
+		Mcc                string  `json:"-" swaggerignore:"true" db:"mcc"`
+		Mnc                string  `json:"-" swaggerignore:"true" db:"mnc"`
+		Mobilebrand        string  `json:"-" swaggerignore:"true" db:"mobile_brand"`
+		Usagetype          string  `json:"-" swaggerignore:"true" db:"usage_type"`
+		Latitude           float64 `json:"-" swaggerignore:"true" db:"latitude"`
+		Longitude          float64 `json:"-" swaggerignore:"true" db:"longitude"`
+		Elevation          float64 `json:"-" swaggerignore:"true" db:"elevation"`
 	}
 	country struct {
 		Name    string `json:"name"`

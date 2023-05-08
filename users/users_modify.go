@@ -45,13 +45,6 @@ func (r *repository) ModifyUser(ctx context.Context, usr *User, profilePicture *
 	if usr.LastPingCooldownEndedAt != nil && oldUsr.LastPingCooldownEndedAt != nil && oldUsr.LastPingCooldownEndedAt.Equal(*usr.LastPingCooldownEndedAt.Time) {
 		usr.LastPingCooldownEndedAt = nil
 	}
-	if usr.ReferredBy != "" { // TO.DO::Remove this once the issue mentioned in `updateReferredBy` gets fixed.
-		if err = r.updateReferredBy(ctx, oldUsr, usr.ReferredBy, false); err != nil {
-			return errors.Wrapf(err, "failed to updateReferredBy to %v for userID %v", usr.ReferredBy, oldUsr.ID)
-		}
-		usr.ReferredBy = ""
-		ctx = ContextWithChecksum(ctx, oldUsr.Checksum()) //nolint:revive // Not an issue here.
-	}
 	usr.UpdatedAt = time.Now()
 	if profilePicture != nil {
 		if profilePicture.Header.Get("Reset") == "true" {
@@ -114,12 +107,12 @@ func (u *User) override(user *User) *User {
 	usr.LastPingCooldownEndedAt = mergeTimeField(u.LastPingCooldownEndedAt, user.LastPingCooldownEndedAt)
 	usr.HiddenProfileElements = mergePointerToArrayField(u.HiddenProfileElements, user.HiddenProfileElements)
 	usr.RandomReferredBy = mergePointerField(u.RandomReferredBy, user.RandomReferredBy)
-	usr.Verified = mergePointerField(u.Verified, user.Verified)
+	usr.KYCPassed = mergePointerField(u.KYCPassed, user.KYCPassed)
 	usr.ClientData = mergePointerToMapField(u.ClientData, user.ClientData)
 	usr.ReferredBy = mergeStringField(u.ReferredBy, user.ReferredBy)
 	usr.Email = mergeStringField(u.Email, user.Email)
-	usr.FirstName = mergeStringField(u.FirstName, user.FirstName)
-	usr.LastName = mergeStringField(u.LastName, user.LastName)
+	usr.FirstName = mergePointerField(u.FirstName, user.FirstName)
+	usr.LastName = mergePointerField(u.LastName, user.LastName)
 	usr.Username = mergeStringField(u.Username, user.Username)
 	usr.ProfilePictureURL = mergeStringField(u.ProfilePictureURL, user.ProfilePictureURL)
 	usr.Country = mergeStringField(u.Country, user.Country)
@@ -127,7 +120,7 @@ func (u *User) override(user *User) *User {
 	usr.Language = mergeStringField(u.Language, user.Language)
 	usr.PhoneNumber = mergeStringField(u.PhoneNumber, user.PhoneNumber)
 	usr.PhoneNumberHash = mergeStringField(u.PhoneNumberHash, user.PhoneNumberHash)
-	usr.AgendaPhoneNumberHashes = mergeStringField(u.AgendaPhoneNumberHashes, user.AgendaPhoneNumberHashes)
+	usr.AgendaPhoneNumberHashes = mergePointerField(u.AgendaPhoneNumberHashes, user.AgendaPhoneNumberHashes)
 	usr.BlockchainAccountAddress = mergeStringField(u.BlockchainAccountAddress, user.BlockchainAccountAddress)
 
 	return usr
@@ -177,12 +170,12 @@ func (u *User) genSQLUpdate(ctx context.Context) (sql string, params []any) {
 		sql += fmt.Sprintf(", CLIENT_DATA = $%v::json", nextIndex)
 		nextIndex++
 	}
-	if u.FirstName != "" {
+	if u.FirstName != nil && *u.FirstName != "" {
 		params = append(params, u.FirstName)
 		sql += fmt.Sprintf(", FIRST_NAME = $%v", nextIndex)
 		nextIndex++
 	}
-	if u.LastName != "" {
+	if u.LastName != nil && *u.LastName != "" {
 		params = append(params, u.LastName)
 		sql += fmt.Sprintf(", LAST_NAME = $%v", nextIndex)
 		nextIndex++
@@ -225,7 +218,7 @@ func (u *User) genSQLUpdate(ctx context.Context) (sql string, params []any) {
 		nextIndex++
 	}
 	// Agenda can be updated after user creation (in case if user granted permission to access contacts on the team screen after initial user created).
-	if u.AgendaPhoneNumberHashes != "" {
+	if u.AgendaPhoneNumberHashes != nil && *u.AgendaPhoneNumberHashes != "" {
 		params = append(params, u.AgendaPhoneNumberHashes)
 		sql += fmt.Sprintf(", AGENDA_PHONE_NUMBER_HASHES = $%v", nextIndex)
 		nextIndex++
@@ -253,46 +246,4 @@ func resolveProfilePictureExtension(fileName string) string {
 	}
 
 	return ext
-}
-
-//nolint:funlen // . TODO. replace this with `modifyUser` after this (https://github.com/tarantool/tarantool/issues/4661) gets resolved.
-func (r *repository) updateReferredBy(ctx context.Context, usr *User, newReferredBy UserID, randomReferral bool) error {
-	if ctx.Err() != nil {
-		return errors.Wrap(ctx.Err(), "context failed")
-	}
-	if _, err := r.getUserByID(ctx, newReferredBy); err != nil {
-		if storage.IsErr(err, storage.ErrNotFound) {
-			err = storage.ErrRelationNotFound
-		}
-
-		return errors.Wrapf(err, "get user %v failed", newReferredBy)
-	}
-	now := time.Now()
-	sql := `UPDATE users 
-				SET random_referred_by = $1,
-                    referred_by = 		 $2,
-                    updated_at = 		 $3
-                WHERE id = $4`
-	if _, err := storage.Exec(ctx, r.db, sql, randomReferral, newReferredBy, now.Time, usr.ID); err != nil {
-		return errors.Wrapf(err, "failed to update random:%v referred_by to %v for userID %v", randomReferral, newReferredBy, usr.ID)
-	}
-	bkpUsr := *usr
-	newUsr := *usr
-	newUsr.ReferredBy = newReferredBy
-	newUsr.UpdatedAt = now
-	newUsr.RandomReferredBy = &randomReferral
-	us := &UserSnapshot{User: r.sanitizeUser(&newUsr), Before: r.sanitizeUser(usr)}
-	if err := r.sendUserSnapshotMessage(ctx, us); err != nil {
-		_, rollBackParams := bkpUsr.genSQLUpdate(ctx)
-		rollBackParams[1] = bkpUsr.UpdatedAt
-		_, rollbackErr := storage.Exec(ctx, r.db, sql, rollBackParams...)
-
-		return multierror.Append( //nolint:wrapcheck // Not needed.
-			errors.Wrapf(err, "failed to send updated user message for %#v", us),
-			errors.Wrapf(rollbackErr, "failed to replace user to previous value, due to rollback, prev:%#v", bkpUsr),
-		).ErrorOrNil()
-	}
-	*usr = *us.User
-
-	return nil
 }

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 
 	storage "github.com/ice-blockchain/wintr/connectors/storage/v2"
@@ -58,22 +59,29 @@ func (r *repository) incrementOrDecrementCountryUserCount(ctx context.Context, u
 		return errors.Wrap(ctx.Err(), "context failed")
 	}
 	sqlTemplate := `
-INSERT INTO users_per_country (country, user_count) 
-VALUES ($1, 1) ON CONFLICT (country) DO UPDATE
-	SET user_count = GREATEST(users_per_country.user_count %v 1, 0)`
-
-	return errors.Wrapf(storage.DoInTransaction(ctx, r.db, func(conn storage.QueryExecer) error {
-		if usr.User != nil {
-			if _, err := storage.Exec(ctx, r.db, fmt.Sprintf(sqlTemplate, "+"), usr.User.Country); err != nil {
-				return errors.Wrapf(err, "error increasing country count for country:%v", usr.User.Country)
-			}
+		INSERT INTO users_per_country (country, user_count) 
+					VALUES ($1, 1)
+					ON CONFLICT (country) DO UPDATE
+						SET user_count = GREATEST(users_per_country.user_count %v 1, 0)`
+	if usr.User != nil {
+		if _, err := storage.Exec(ctx, r.db, fmt.Sprintf(sqlTemplate, "+"), usr.User.Country); err != nil {
+			return errors.Wrapf(err, "error increasing country count for country:%v", usr.User.Country)
 		}
-		if usr.Before != nil {
-			if _, err := storage.Exec(ctx, r.db, fmt.Sprintf(sqlTemplate, "-"), usr.Before.Country); err != nil {
-				return errors.Wrapf(err, "error decreasing country count for country:%v", usr.Before.Country)
+	}
+	if usr.Before != nil {
+		if _, err := storage.Exec(ctx, r.db, fmt.Sprintf(sqlTemplate, "-"), usr.Before.Country); err != nil {
+			var revertErr error
+			if usr.User != nil {
+				sql := `UPDATE users_per_country SET user_count = 0 WHERE country = $1`
+				_, err = storage.Exec(ctx, r.db, sql, usr.User.Country)
+				revertErr = errors.Wrapf(err, "failed to decrement USERS_PER_COUNTRY due to rollback for incrementing for %v", usr.User.Country)
 			}
-		}
 
-		return nil
-	}), "failed to execute transaction updating users_per_countries")
+			return multierror.Append( //nolint:wrapcheck // Not needed.
+				errors.Wrapf(err, "error decreasing country count for country:%v", usr.Before.Country),
+				revertErr).ErrorOrNil()
+		}
+	}
+
+	return nil
 }

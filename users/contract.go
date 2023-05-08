@@ -4,6 +4,8 @@ package users
 
 import (
 	"context"
+	"database/sql"
+	"database/sql/driver"
 	_ "embed"
 	"io"
 	"mime/multipart"
@@ -76,14 +78,14 @@ type (
 	}
 	PrivateUserInformation struct {
 		SensitiveUserInformation
-		FirstName string `json:"firstName,omitempty" example:"John" `
-		LastName  string `json:"lastName,omitempty" example:"Doe"`
+		FirstName *string `json:"firstName,omitempty" example:"John" `
+		LastName  *string `json:"lastName,omitempty" example:"Doe"`
 		devicemetadata.DeviceLocation
 	}
 	PublicUserInformation struct {
 		ID                UserID `json:"id,omitempty" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
 		Username          string `json:"username,omitempty" example:"jdoe"`
-		ProfilePictureURL string `json:"profilePictureUrl,omitempty" example:"https://somecdn.com/p1.jpg"`
+		ProfilePictureURL string `json:"profilePictureUrl,omitempty" example:"https://somecdn.com/p1.jpg" db:"profile_picture_name"`
 	}
 	User struct {
 		CreatedAt               *time.Time                  `json:"createdAt,omitempty" example:"2022-01-03T16:20:52.156534Z"`
@@ -93,17 +95,17 @@ type (
 		LastPingCooldownEndedAt *time.Time                  `json:"lastPingCooldownEndedAt,omitempty" example:"2022-01-03T16:20:52.156534Z" swaggerignore:"true"`
 		HiddenProfileElements   *Enum[HiddenProfileElement] `json:"hiddenProfileElements,omitempty" swaggertype:"array,string" example:"level" enums:"globalRank,referralCount,level,role,badges"` //nolint:lll // .
 		RandomReferredBy        *bool                       `json:"randomReferredBy,omitempty" example:"true" swaggerignore:"true"`
-		Verified                *bool                       `json:"-" example:"true" swaggerignore:"true"`
+		KYCPassed               *bool                       `json:"-" example:"true" swaggerignore:"true"`
 		ClientData              *JSON                       `json:"clientData,omitempty"`
 		PrivateUserInformation
 		PublicUserInformation
-		ReferredBy                     UserID `json:"referredBy,omitempty" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2" `
-		PhoneNumberHash                string `json:"phoneNumberHash,omitempty" example:"Ef86A6021afCDe5673511376B2" swaggerignore:"true"`
-		AgendaPhoneNumberHashes        string `json:"agendaPhoneNumberHashes,omitempty" example:"Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2"` //nolint:lll // .
-		MiningBlockchainAccountAddress string `json:"miningBlockchainAccountAddress,omitempty" example:"0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
-		BlockchainAccountAddress       string `json:"blockchainAccountAddress,omitempty" example:"0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
-		Language                       string `json:"language,omitempty" example:"en"`
-		HashCode                       int64  `json:"hashCode,omitempty" example:"43453546464576547" swaggerignore:"true"`
+		ReferredBy                     UserID  `json:"referredBy,omitempty" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2" `
+		PhoneNumberHash                string  `json:"phoneNumberHash,omitempty" example:"Ef86A6021afCDe5673511376B2" swaggerignore:"true"`
+		AgendaPhoneNumberHashes        *string `json:"agendaPhoneNumberHashes,omitempty" example:"Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2"` //nolint:lll // .
+		MiningBlockchainAccountAddress string  `json:"miningBlockchainAccountAddress,omitempty" example:"0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
+		BlockchainAccountAddress       string  `json:"blockchainAccountAddress,omitempty" example:"0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
+		Language                       string  `json:"language,omitempty" example:"en"`
+		HashCode                       int64   `json:"hashCode,omitempty" example:"43453546464576547" swaggerignore:"true"`
 	}
 	MinimalUserProfile struct {
 		Active *NotExpired `json:"active,omitempty" example:"true"`
@@ -217,13 +219,20 @@ const (
 	totalNoOfDefaultProfilePictures     = 20
 	defaultProfilePictureName           = "default-profile-picture-%v.png"
 	defaultProfilePictureNameRegex      = "default-profile-picture-\\d+[.]png"
-	hashCodeDBColumnName                = "hash_code"
 	usernameDBColumnName                = "username"
 	requestDeadline                     = 25 * stdlibtime.Second
 )
 
-//go:embed DDL.sql
-var ddl string //nolint:grouper // .
+var (
+	//go:embed DDL.sql
+	ddl string
+
+	_ sql.Scanner = (*JSON)(nil)
+	_ sql.Scanner = (*NotExpired)(nil)
+	_ sql.Scanner = (*Enum[HiddenProfileElement])(nil)
+
+	_ driver.Value = (*Enum[HiddenProfileElement])(nil)
+)
 
 type (
 	miningSession struct {
