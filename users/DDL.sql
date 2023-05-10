@@ -32,8 +32,6 @@ INSERT INTO users (created_at,updated_at,phone_number,phone_number_hash,email,id
                                 (current_timestamp,current_timestamp,'icenetwork','icenetwork','icenetwork','icenetwork','icenetwork','icenetwork.jpg','icenetwork','icenetwork','RO','icenetwork','icenetwork',to_tsvector('icenetwork'))
 ON CONFLICT DO NOTHING;
 CREATE INDEX IF NOT EXISTS users_referred_by_ix ON users (referred_by);
-CREATE INDEX IF NOT EXISTS users_referred_by_username_id ON users (referred_by, id, username);
-CREATE INDEX IF NOT EXISTS users_referred_by_id ON users (referred_by, id);
 CREATE EXTENSION IF NOT EXISTS btree_gin;
 CREATE INDEX IF NOT EXISTS users_lookup_gin_idx ON users USING GIN (lookup,referred_by, id, username);
 CREATE TABLE IF NOT EXISTS users_per_country  (
