@@ -27,7 +27,7 @@ func (r *repository) getUserByID(ctx context.Context, id UserID) (*User, error) 
 	return result, nil
 }
 
-func (r *repository) GetUserByID(ctx context.Context, userID string) (*UserProfile, error) { //nolint:revive,funlen // Its fine.
+func (r *repository) GetUserByID(ctx context.Context, userID string) (*UserProfile, error) { //nolint:revive // Its fine.
 	if ctx.Err() != nil {
 		return nil, errors.Wrap(ctx.Err(), "get user failed because context failed")
 	}

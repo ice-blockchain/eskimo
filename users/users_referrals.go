@@ -80,13 +80,13 @@ func (r *repository) GetReferrals(ctx context.Context, userID string, referralTy
 				to_timestamp(0)																		   				AS pinged,
 				'' 																					   				AS phone_number,
 				'' 																					   				AS email,
-				%[4]v	 
-				''																					   				AS profile_picture_url, 
+				%[3]v	 
+				''																					   				AS profile_picture_name, 
 				''																					   				AS country, 
 				''																					   				AS city, 
 				''																					   				AS referral_type 
 		FROM USERS u
-				%[5]v
+				%[4]v
 		WHERE u.id = $1
 
 		UNION ALL
@@ -97,7 +97,7 @@ func (r *repository) GetReferrals(ctx context.Context, userID string, referralTy
 			   '' AS email,
 			   X.id,
 			   X.username,
-			   X.profile_picture_url 					 											   				AS profile_picture_name,
+			   X.profile_picture_name 					 											   				AS profile_picture_name,
 			   X.country,
 			   '' AS city,
 			   $2 AS referral_type
@@ -120,7 +120,7 @@ func (r *repository) GetReferrals(ctx context.Context, userID string, referralTy
 						THEN referrals.phone_number
 					ELSE ''
 				 END)                                                                                  				AS phone_number_,
-				%[1]v                                              									   				AS profile_picture_url,
+				%[1]v                                              									   				AS profile_picture_name,
 				referrals.created_at                                                                   				AS created_at
 				FROM USERS u
 						%[2]v
@@ -135,9 +135,9 @@ func (r *repository) GetReferrals(ctx context.Context, userID string, referralTy
 					  			ELSE ''
 					 	   END) != null) DESC,
 						 referrals.created_at DESC
-				LIMIT %[3]v OFFSET $3
-			 ) X`, r.pictureClient.SQLAliasDownloadURL(`referrals.profile_picture_name`), referralTypeJoin, limit, totalAndActiveColumns, referralTypeJoinSumAgg) //nolint:lll // .
-	args := []any{userID, referralType, offset, time.Now().Time}
+				LIMIT $5 OFFSET $3
+			 ) X`, r.pictureClient.SQLAliasDownloadURL(`referrals.profile_picture_name`), referralTypeJoin, totalAndActiveColumns, referralTypeJoinSumAgg) //nolint:lll // .
+	args := []any{userID, referralType, offset, time.Now().Time, limit}
 	result, err := storage.Select[MinimalUserProfile](ctx, r.db, sql, args...)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to select for all t1 referrals of userID:%v + their new random referralID", userID)
