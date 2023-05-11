@@ -181,7 +181,7 @@ func (n *NotExpired) Scan(src any) error {
 }
 
 func (e *Enum[T]) SetDimensions(dimensions []pgtype.ArrayDimension) error {
-	if dimensions == nil {
+	if len(dimensions) == 0 {
 		*e = nil
 
 		return nil
