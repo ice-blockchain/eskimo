@@ -5,18 +5,17 @@ package users
 import (
 	"context"
 	"crypto/rand"
-	"database/sql/driver"
 	"fmt"
 	"math"
 	"math/big"
 	"strconv"
-	"strings"
 	"sync"
 	stdlibtime "time"
 
 	"github.com/cenkalti/backoff/v4"
 	"github.com/goccy/go-json"
 	"github.com/hashicorp/go-multierror"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/pkg/errors"
 
 	devicemetadata "github.com/ice-blockchain/eskimo/users/internal/device/metadata"
@@ -181,41 +180,24 @@ func (n *NotExpired) Scan(src any) error {
 	return errors.Errorf("unexpected type for src:%#v(%T)", src, src)
 }
 
-func (e *Enum[T]) Scan(src any) error {
-	enumStr, isStr := src.(string)
-	if isStr {
-		if enumStr == "" {
-			*e = nil
-
-			return nil
-		}
-		eDeref := *e
-		parts := strings.Split(enumStr, ",")
-		if len(eDeref) == 0 {
-			eDeref = make(Enum[T], 0, len(parts))
-		}
-		for _, elem := range parts {
-			eDeref = append(eDeref, T(elem))
-		}
-		*e = eDeref
+func (e *Enum[T]) SetDimensions(dimensions []pgtype.ArrayDimension) error {
+	if dimensions == nil {
+		*e = nil
 
 		return nil
 	}
 
-	return errors.Errorf("unexpected type for src:%#v(%T)", src, src)
+	*e = make(Enum[T], dimensions[0].Length)
+
+	return nil
 }
 
-func (e *Enum[T]) Value() (driver.Value, error) {
-	if e == nil || len(*e) == 0 {
-		return "", nil
-	}
-	eDeref := *e
-	enum := make([]string, 0, len(eDeref))
-	for _, elem := range eDeref {
-		enum = append(enum, string(elem))
-	}
+func (e Enum[T]) ScanIndex(i int) any {
+	return &e[i]
+}
 
-	return strings.Join(enum, ","), nil
+func (Enum[T]) ScanIndexType() any {
+	return new(T)
 }
 
 func (j *JSON) Scan(src any) error {

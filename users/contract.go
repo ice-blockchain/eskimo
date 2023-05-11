@@ -5,7 +5,6 @@ package users
 import (
 	"context"
 	"database/sql"
-	"database/sql/driver"
 	_ "embed"
 	"io"
 	"mime/multipart"
@@ -13,6 +12,7 @@ import (
 	"regexp"
 	stdlibtime "time"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/pkg/errors"
 
 	"github.com/ice-blockchain/eskimo/users/internal/device"
@@ -227,11 +227,9 @@ var (
 	//go:embed DDL.sql
 	ddl string
 
-	_ sql.Scanner = (*JSON)(nil)
-	_ sql.Scanner = (*NotExpired)(nil)
-	_ sql.Scanner = (*Enum[HiddenProfileElement])(nil)
-
-	_ driver.Value = (*Enum[HiddenProfileElement])(nil)
+	_ sql.Scanner        = (*JSON)(nil)
+	_ sql.Scanner        = (*NotExpired)(nil)
+	_ pgtype.ArraySetter = (*Enum[HiddenProfileElement])(nil)
 )
 
 type (

@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS users  (
                     random_referred_by BOOLEAN NOT NULL DEFAULT FALSE,
                     kyc_passed BOOLEAN NOT NULL DEFAULT FALSE,
                     client_data text,
-                    hidden_profile_elements text,
+                    hidden_profile_elements text[],
                     phone_number text NOT NULL UNIQUE,
                     email text NOT NULL UNIQUE,
                     first_name text,
