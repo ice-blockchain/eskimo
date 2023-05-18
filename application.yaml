@@ -20,6 +20,15 @@ cmd/eskimo-hut:
     port: 1443
     certPath: cmd/eskimo-hut/.testdata/localhost.crt
     keyPath: cmd/eskimo-hut/.testdata/localhost.key
+auth/email-link:
+  wintr/connectors/storage/v2:
+    runDDL: true
+    primaryURL: postgresql://root:pass@localhost:5433/eskimo
+    credentials:
+      user: root
+      password: pass
+    replicaURLs:
+      - postgresql://root:pass@localhost:5433/eskimo
 users: &users
   wintr/connectors/storage/v2:
     runDDL: true

@@ -4,6 +4,7 @@ package main
 
 import (
 	_ "embed"
+	emaillink "github.com/ice-blockchain/eskimo/auth/email_link"
 	"mime/multipart"
 
 	"github.com/ice-blockchain/eskimo/users"
@@ -115,7 +116,8 @@ var (
 type (
 	// | service implements server.State and is responsible for managing the state and lifecycle of the package.
 	service struct {
-		usersProcessor users.Processor
+		usersProcessor         users.Processor
+		authEmailLinkProcessor emaillink.Processor
 	}
 	config struct {
 		Host    string `yaml:"host"`
