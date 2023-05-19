@@ -99,14 +99,15 @@ type (
 		ClientData              *JSON                       `json:"clientData,omitempty"`
 		PrivateUserInformation
 		PublicUserInformation
-		ReferredBy                     UserID  `json:"referredBy,omitempty" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2" `
-		PhoneNumberHash                string  `json:"phoneNumberHash,omitempty" example:"Ef86A6021afCDe5673511376B2" swaggerignore:"true"`
-		AgendaPhoneNumberHashes        *string `json:"agendaPhoneNumberHashes,omitempty" example:"Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2"` //nolint:lll // .
-		MiningBlockchainAccountAddress string  `json:"miningBlockchainAccountAddress,omitempty" example:"0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
-		BlockchainAccountAddress       string  `json:"blockchainAccountAddress,omitempty" example:"0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
-		Language                       string  `json:"language,omitempty" example:"en"`
-		Lookup                         string  `json:"-" example:"username"`
-		HashCode                       int64   `json:"hashCode,omitempty" example:"43453546464576547" swaggerignore:"true"`
+		ReferredBy                     UserID   `json:"referredBy,omitempty" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2" `
+		PhoneNumberHash                string   `json:"phoneNumberHash,omitempty" example:"Ef86A6021afCDe5673511376B2" swaggerignore:"true"`
+		AgendaPhoneNumberHashes        *string  `json:"agendaPhoneNumberHashes,omitempty" example:"Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2"` //nolint:lll // .
+		MiningBlockchainAccountAddress string   `json:"miningBlockchainAccountAddress,omitempty" example:"0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
+		BlockchainAccountAddress       string   `json:"blockchainAccountAddress,omitempty" example:"0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
+		Language                       string   `json:"language,omitempty" example:"en"`
+		Lookup                         string   `json:"-" example:"username"`
+		AgendaContactUserIDs           []string `json:"agendaContactUserIDs,omitempty" swaggerignore:"true" db:"agenda_contact_user_ids"`
+		HashCode                       int64    `json:"hashCode,omitempty" example:"43453546464576547" swaggerignore:"true"`
 	}
 	MinimalUserProfile struct {
 		Active *NotExpired `json:"active,omitempty" example:"true"`
@@ -169,6 +170,10 @@ type (
 	GlobalUnsigned struct {
 		Key   string `json:"key" example:"TOTAL_USERS_2022-01-22:16"`
 		Value uint64 `json:"value" example:"123676"`
+	}
+	Contact struct {
+		UserID        UserID `json:"userId,omitempty" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
+		ContactUserID UserID `json:"contactUserId,omitempty" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
 	}
 	ReadRepository interface {
 		GetUsers(ctx context.Context, keyword string, limit, offset uint64) ([]*MinimalUserProfile, error)

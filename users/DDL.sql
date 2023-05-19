@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS users  (
                     profile_picture_name text NOT NULL,
                     referred_by text NOT NULL REFERENCES users(id),
                     phone_number_hash text NOT NULL UNIQUE,
-                    agenda_phone_number_hashes text,
+                    agenda_contact_user_ids text[],
                     mining_blockchain_account_address text NOT NULL UNIQUE,
                     blockchain_account_address text NOT NULL UNIQUE,
                     language text NOT NULL DEFAULT 'en',

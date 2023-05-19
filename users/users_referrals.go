@@ -63,7 +63,7 @@ func (r *repository) GetReferrals(ctx context.Context, userID string, referralTy
 		referralTypeJoin = `
 			JOIN USERS referrals
 					ON NULLIF(referrals.phone_number_hash,'') IS NOT NULL
-					AND POSITION(referrals.phone_number_hash IN u.agenda_phone_number_hashes) > 0
+					AND referrals.id = ANY(u.agenda_contact_user_ids)
                     AND referrals.username != referrals.id
 					AND referrals.referred_by != referrals.id
 					AND u.id != referrals.id`
@@ -116,7 +116,7 @@ func (r *repository) GetReferrals(ctx context.Context, userID string, referralTy
 				referrals.username                                                                     				AS username,
 				referrals.country                                                                      				AS country,
 				(CASE
-					WHEN NULLIF(referrals.phone_number_hash,'') IS NOT NULL AND POSITION(referrals.phone_number_hash IN u.agenda_phone_number_hashes) > 0
+					WHEN NULLIF(referrals.phone_number_hash,'') IS NOT NULL AND referrals.id = ANY(u.agenda_contact_user_ids)
 						THEN referrals.phone_number
 					ELSE ''
 				 END)                                                                                  				AS phone_number_,
@@ -125,12 +125,12 @@ func (r *repository) GetReferrals(ctx context.Context, userID string, referralTy
 				FROM USERS u
 						%[2]v
 				WHERE u.id = $1
-				ORDER BY ((CASE WHEN NULLIF(referrals.phone_number_hash,'') IS NOT NULL AND POSITION(referrals.phone_number_hash IN u.agenda_phone_number_hashes) > 0
+				ORDER BY ((CASE WHEN NULLIF(referrals.phone_number_hash,'') IS NOT NULL AND referrals.id = ANY(u.agenda_contact_user_ids)
 								THEN referrals.phone_number
 								ELSE ''
 				 		   END) != ''
 						  AND 
-						  (CASE WHEN NULLIF(referrals.phone_number_hash,'') IS NOT NULL AND POSITION(referrals.phone_number_hash IN u.agenda_phone_number_hashes) > 0
+						  (CASE WHEN NULLIF(referrals.phone_number_hash,'') IS NOT NULL AND referrals.id = ANY(u.agenda_contact_user_ids)
 						  		THEN referrals.phone_number
 					  			ELSE ''
 					 	   END) != null) DESC,

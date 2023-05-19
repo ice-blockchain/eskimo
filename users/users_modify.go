@@ -58,7 +58,8 @@ func (r *repository) ModifyUser(ctx context.Context, usr *User, profilePicture *
 			return errors.Wrapf(err, "failed to upload profile picture for userID:%v", usr.ID)
 		}
 	}
-	sql, params := usr.genSQLUpdate(ctx)
+	agendaBefore, agendaContactIDsForUpdate, uniqueAgendaContactIDsForSend, err := r.findAgendaContactIDs(ctx, usr)
+	sql, params := usr.genSQLUpdate(ctx, agendaContactIDsForUpdate)
 	noOpNoOfParams := 1 + 1
 	if lu != nil {
 		noOpNoOfParams++
@@ -81,10 +82,18 @@ func (r *repository) ModifyUser(ctx context.Context, usr *User, profilePicture *
 	if profilePicture != nil {
 		bkpUsr.ProfilePictureURL = RandomDefaultProfilePictureName()
 	}
+	if sErr := runConcurrently(ctx, r.sendContactMessage, uniqueAgendaContactIDsForSend); sErr != nil {
+		_, rollBackParams := bkpUsr.genSQLUpdate(ctx, agendaBefore)
+		rollBackParams[1] = bkpUsr.UpdatedAt.Time
+		_, rErr := storage.Exec(ctx, r.db, sql, rollBackParams...)
+
+		return errors.Wrapf(multierror.Append(rErr, sErr).ErrorOrNil(), "can't send contacts message for userID:%v", usr.ID)
+	}
+
 	us := &UserSnapshot{User: r.sanitizeUser(oldUsr.override(usr)), Before: r.sanitizeUser(oldUsr)}
 	if err = r.sendUserSnapshotMessage(ctx, us); err != nil {
-		_, rollBackParams := bkpUsr.genSQLUpdate(ctx)
-		rollBackParams[1] = bkpUsr.UpdatedAt
+		_, rollBackParams := bkpUsr.genSQLUpdate(ctx, agendaBefore)
+		rollBackParams[1] = bkpUsr.UpdatedAt.Time
 		_, rollbackErr := storage.Exec(ctx, r.db, sql, rollBackParams...)
 
 		return multierror.Append( //nolint:wrapcheck // Not needed.
@@ -120,14 +129,13 @@ func (u *User) override(user *User) *User {
 	usr.Language = mergeStringField(u.Language, user.Language)
 	usr.PhoneNumber = mergeStringField(u.PhoneNumber, user.PhoneNumber)
 	usr.PhoneNumberHash = mergeStringField(u.PhoneNumberHash, user.PhoneNumberHash)
-	usr.AgendaPhoneNumberHashes = mergePointerField(u.AgendaPhoneNumberHashes, user.AgendaPhoneNumberHashes)
 	usr.BlockchainAccountAddress = mergeStringField(u.BlockchainAccountAddress, user.BlockchainAccountAddress)
 
 	return usr
 }
 
 //nolint:funlen,gocognit,gocyclo,revive,cyclop // Because it's a big unitary SQL processing logic.
-func (u *User) genSQLUpdate(ctx context.Context) (sql string, params []any) {
+func (u *User) genSQLUpdate(ctx context.Context, agendaUserIDs []UserID) (sql string, params []any) {
 	params = make([]any, 0)
 	params = append(params, u.ID, u.UpdatedAt.Time)
 
@@ -219,17 +227,17 @@ func (u *User) genSQLUpdate(ctx context.Context) (sql string, params []any) {
 		sql += fmt.Sprintf(", EMAIL = $%v", nextIndex)
 		nextIndex++
 	}
-	// Agenda can be updated after user creation (in case if user granted permission to access contacts on the team screen after initial user created).
-	if u.AgendaPhoneNumberHashes != nil && *u.AgendaPhoneNumberHashes != "" {
-		params = append(params, u.AgendaPhoneNumberHashes)
-		sql += fmt.Sprintf(", AGENDA_PHONE_NUMBER_HASHES = $%v", nextIndex)
-		nextIndex++
-	}
 	if u.BlockchainAccountAddress != "" {
 		params = append(params, u.BlockchainAccountAddress)
 		sql += fmt.Sprintf(", BLOCKCHAIN_ACCOUNT_ADDRESS = $%v", nextIndex)
 		nextIndex++
 	}
+	if u.AgendaPhoneNumberHashes != nil && *u.AgendaPhoneNumberHashes != "" {
+		params = append(params, agendaUserIDs)
+		sql += fmt.Sprintf(", agenda_contact_user_ids = $%v", nextIndex)
+		nextIndex++
+	}
+
 	sql += " WHERE ID = $1"
 
 	if lu := lastUpdatedAt(ctx); lu != nil {
