@@ -6,12 +6,10 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	stdlibtime "time"
 
 	"github.com/pkg/errors"
 
 	"github.com/ice-blockchain/wintr/connectors/storage/v2"
-	"github.com/ice-blockchain/wintr/log"
 	"github.com/ice-blockchain/wintr/time"
 )
 
@@ -126,12 +124,6 @@ func (r *repository) GetUsers(ctx context.Context, keyword string, limit, offset
 	if ctx.Err() != nil {
 		return nil, errors.Wrap(ctx.Err(), "get users failed because context failed")
 	}
-	before2 := time.Now()
-	defer func() {
-		if elapsed := stdlibtime.Since(*before2.Time); elapsed > 100*stdlibtime.Millisecond {
-			log.Info(fmt.Sprintf("[response]GetUsers took: %v", elapsed))
-		}
-	}()
 	sql := fmt.Sprintf(`
 			SELECT 
 			    u.last_mining_ended_at 									 	 	  AS active,
@@ -181,7 +173,11 @@ func (r *repository) GetUsers(ctx context.Context, keyword string, limit, offset
 						WHEN t0.referred_by = user_requesting_this.id and t0.id != t0.referred_by
 							THEN 'T2'
 						ELSE ''
-					END) 														  AS referral_type
+					END) 														  AS referral_type,
+			        user_requesting_this.id                                       AS user_requesting_this_id,
+				    user_requesting_this.referred_by                              AS user_requesting_this_referred_by,
+				    t0.referred_by                                                AS t0_referred_by,
+				    t0.id                                                         AS t0_id
 			FROM users u
 					 JOIN USERS t0
 						  ON t0.id = u.referred_by
@@ -194,19 +190,13 @@ func (r *repository) GetUsers(ctx context.Context, keyword string, limit, offset
 			WHERE 
 					u.lookup @@ $2::tsquery
 				  ) u 
-				  JOIN users user_requesting_this
-                       ON user_requesting_this.id = $5
-                  JOIN USERS t0
-                       ON t0.id = u.referred_by
-                           AND t0.referred_by != t0.id
-                           AND t0.username != t0.id
 				  WHERE referral_type != '' AND u.username != u.id AND u.referred_by != u.id
-			ORDER BY
-				u.id = user_requesting_this.referred_by DESC,
-				(phone_number_ != '' AND phone_number_ is not null) DESC,
-				t0.id = user_requesting_this.id DESC,
-				t0.referred_by = user_requesting_this.id DESC,
-				u.username DESC
+				  ORDER BY
+							u.id = u.user_requesting_this_referred_by DESC,
+							(phone_number_ != '' AND phone_number_ is not null) DESC,
+							u.t0_id = u.user_requesting_this_id DESC,
+							u.t0_referred_by = u.user_requesting_this_id DESC,
+							u.username DESC
 			LIMIT $3 OFFSET $4`, r.pictureClient.SQLAliasDownloadURL(`u.profile_picture_name`))
 	params := []any{
 		time.Now().Time,

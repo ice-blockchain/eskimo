@@ -22,12 +22,6 @@ func (r *repository) GetReferrals(ctx context.Context, userID string, referralTy
 	if ctx.Err() != nil {
 		return nil, errors.Wrap(ctx.Err(), "failed to get referrals because of context failed")
 	}
-	before2 := time.Now()
-	defer func() {
-		if elapsed := stdlibtime.Since(*before2.Time); elapsed > 100*stdlibtime.Millisecond {
-			log.Info(fmt.Sprintf("[response]GetReferrals(%v) took: %v", referralType, elapsed))
-		}
-	}()
 	totalAndActiveColumns := `  CAST(COALESCE(SUM(1), 0) AS text) 												   	AS id,
 								CAST(COALESCE(SUM(CASE 
 											WHEN COALESCE(referrals.last_mining_ended_at, to_timestamp(0)) > $4 
@@ -176,12 +170,6 @@ func (r *repository) GetReferralAcquisitionHistory(ctx context.Context, userID s
 		return nil, errors.Wrap(ctx.Err(), "failed to get acquisition history because context failed")
 	}
 
-	before2 := time.Now()
-	defer func() {
-		if elapsed := stdlibtime.Since(*before2.Time); elapsed > 100*stdlibtime.Millisecond {
-			log.Info(fmt.Sprintf("[response]GetReferralAcquisitionHistory took: %v", elapsed))
-		}
-	}()
 	now := time.Now()
 	nowMidnight := time.New(time.Now().In(stdlibtime.UTC).Truncate(hoursInOneDay * stdlibtime.Hour))
 	sql := `

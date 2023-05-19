@@ -38,8 +38,8 @@ CREATE TABLE IF NOT EXISTS users_per_country  (
                     user_count BIGINT NOT NULL DEFAULT 0,
                     country text primary key
                      );
--- from [country_short,elevation] -inclusive at both ends- we have ip2location information,
--- everything else (except user_id and updated_at) is from https://github.com/react-native-device-info/react-native-device-info#api
+
+
 CREATE TABLE IF NOT EXISTS device_metadata  (
                     updated_at              timestamp NOT NULL,
                     first_install_time      timestamp,
