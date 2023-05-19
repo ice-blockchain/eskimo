@@ -173,10 +173,9 @@ func (r *repository) GetReferralAcquisitionHistory(ctx context.Context, userID s
 	now := time.Now()
 	nowMidnight := time.New(time.Now().In(stdlibtime.UTC).Truncate(hoursInOneDay * stdlibtime.Hour))
 	sql := `
-	SELECT *
-    from referral_acquisition_history
-		where user_id = $1
-`
+		SELECT *
+		from referral_acquisition_history
+			where user_id = $1`
 	type resultFromQuery struct {
 		Date          *time.Time `db:"date"`
 		UserID        UserID     `db:"user_id"`
@@ -195,6 +194,10 @@ func (r *repository) GetReferralAcquisitionHistory(ctx context.Context, userID s
 	}
 	res, err := storage.Get[resultFromQuery](ctx, r.db, sql, userID)
 	if err != nil {
+		if storage.IsErr(err, storage.ErrNotFound) {
+			return []*ReferralAcquisition{}, nil
+		}
+
 		return nil, errors.Wrapf(err, "failed to select ReferralAcquisition history for userID:%v", userID)
 	}
 	elapsedDaysSinceLastRefCountsUpdate := int(nowMidnight.Sub(*res.Date.Time).Nanoseconds() / int64(hoursInOneDay*stdlibtime.Hour))
