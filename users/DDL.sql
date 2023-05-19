@@ -120,9 +120,9 @@ CREATE TABLE IF NOT EXISTS referral_acquisition_history (
 );
 
 CREATE TABLE IF NOT EXISTS processed_referrals (
+                            processed_at            TIMESTAMP,
                             user_id                 TEXT,
                             referred_by             TEXT,
-                            processed_at            TIMESTAMP,
                             primary key (user_id, referred_by)
 );
 CREATE INDEX IF NOT EXISTS processed_referrals_processed_at_ix ON processed_referrals (processed_at);
