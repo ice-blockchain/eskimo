@@ -33,7 +33,7 @@ INSERT INTO users (created_at,updated_at,phone_number,phone_number_hash,email,id
 ON CONFLICT DO NOTHING;
 CREATE INDEX IF NOT EXISTS users_referred_by_ix ON users (referred_by);
 CREATE EXTENSION IF NOT EXISTS btree_gin;
-CREATE INDEX IF NOT EXISTS users_lookup_gin_idx ON users USING GIN (lookup,referred_by, id, username);
+CREATE INDEX IF NOT EXISTS users_lookup_gin_idx ON users USING GIN (lookup);
 CREATE TABLE IF NOT EXISTS users_per_country  (
                     user_count BIGINT NOT NULL DEFAULT 0,
                     country text primary key
