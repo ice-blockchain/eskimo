@@ -9,6 +9,7 @@ import (
 	"math"
 	"math/big"
 	"strconv"
+	"strings"
 	"sync"
 	stdlibtime "time"
 
@@ -410,4 +411,23 @@ func sendMessagesConcurrently[M any](ctx context.Context, sendMessage func(conte
 	}
 
 	return errors.Wrap(multierror.Append(nil, errs...).ErrorOrNil(), "at least one message sends failed")
+}
+
+func generateUsernameKeywords(username string) []string {
+	if username == "" {
+		return nil
+	}
+	keywordsMap := make(map[string]struct{})
+	for _, part := range append(strings.Split(username, "."), username) {
+		for i := 0; i < len(part); i++ {
+			keywordsMap[part[:i+1]] = struct{}{}
+			keywordsMap[part[len(part)-1-i:]] = struct{}{}
+		}
+	}
+	keywords := make([]string, 0, len(keywordsMap))
+	for keyword := range keywordsMap {
+		keywords = append(keywords, keyword)
+	}
+
+	return keywords
 }

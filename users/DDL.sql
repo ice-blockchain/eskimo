@@ -24,13 +24,16 @@ CREATE TABLE IF NOT EXISTS users  (
                     agenda_phone_number_hashes text,
                     mining_blockchain_account_address text NOT NULL UNIQUE,
                     blockchain_account_address text NOT NULL UNIQUE,
-                    language text NOT NULL DEFAULT 'en')
+                    language text NOT NULL DEFAULT 'en',
+                    lookup tsvector NOT NULL)
                     WITH (FILLFACTOR = 70);
-INSERT INTO users (created_at,updated_at,phone_number,phone_number_hash,email,id,username,profile_picture_name,referred_by,city,country,mining_blockchain_account_address,blockchain_account_address)
-                         VALUES (current_timestamp,current_timestamp,'bogus','bogus','bogus','bogus','bogus','bogus.jpg','bogus','bogus','RO','bogus','bogus'),
-                                (current_timestamp,current_timestamp,'icenetwork','icenetwork','icenetwork','icenetwork','icenetwork','icenetwork.jpg','icenetwork','icenetwork','RO','icenetwork','icenetwork')
+INSERT INTO users (created_at,updated_at,phone_number,phone_number_hash,email,id,username,profile_picture_name,referred_by,city,country,mining_blockchain_account_address,blockchain_account_address, lookup)
+                         VALUES (current_timestamp,current_timestamp,'bogus','bogus','bogus','bogus','bogus','bogus.jpg','bogus','bogus','RO','bogus','bogus',to_tsvector('bogus')),
+                                (current_timestamp,current_timestamp,'icenetwork','icenetwork','icenetwork','icenetwork','icenetwork','icenetwork.jpg','icenetwork','icenetwork','RO','icenetwork','icenetwork',to_tsvector('icenetwork'))
 ON CONFLICT DO NOTHING;
 CREATE INDEX IF NOT EXISTS users_referred_by_ix ON users (referred_by);
+CREATE EXTENSION IF NOT EXISTS btree_gin;
+CREATE INDEX IF NOT EXISTS users_lookup_gin_idx ON users USING GIN (lookup);
 CREATE TABLE IF NOT EXISTS users_per_country  (
                     user_count BIGINT NOT NULL DEFAULT 0,
                     country text primary key

@@ -158,7 +158,7 @@ func (r *repository) GetUsers(ctx context.Context, keyword string, limit, offset
 			    u.email 												  		  AS email,
 			    u.id 												 	  		  AS id,
 				u.username 												  		  AS username,
-				u.profile_picture_url 									  		  AS profile_picture_url,
+				u.profile_picture_url 									  		  AS profile_picture_name,
 				u.country 											  	  		  AS country,
 				u.city 													  		  AS city,
 			    u.referral_type 										  		  AS referral_type
@@ -209,13 +209,9 @@ func (r *repository) GetUsers(ctx context.Context, keyword string, limit, offset
 						  ON user_requesting_this.id = $5
 						 AND user_requesting_this.username != user_requesting_this.id
 						 AND user_requesting_this.referred_by != user_requesting_this.id
-			WHERE (
-					(u.username != u.id AND u.username LIKE $2 ESCAPE '\')
-					OR
-					(u.first_name IS NOT NULL AND LOWER(u.first_name) LIKE $2 ESCAPE '\')
-					OR
-					(u.last_name IS NOT NULL AND LOWER(u.last_name) LIKE $2 ESCAPE '\')
-				  )) u 
+			WHERE 
+					u.lookup @@ $2::tsquery
+				  ) u 
 				  JOIN users user_requesting_this
                        ON user_requesting_this.id = $5
                   JOIN USERS t0
@@ -232,7 +228,7 @@ func (r *repository) GetUsers(ctx context.Context, keyword string, limit, offset
 			LIMIT $3 OFFSET $4`, r.pictureClient.SQLAliasDownloadURL(`u.profile_picture_name`))
 	params := []any{
 		time.Now().Time,
-		fmt.Sprintf("%v%%", strings.ReplaceAll(strings.ReplaceAll(strings.ToLower(keyword), "_", "\\_"), "%", "\\%")),
+		strings.ReplaceAll(strings.ReplaceAll(strings.ToLower(keyword), "_", "\\_"), "%", "\\%"),
 		limit,
 		offset,
 		requestingUserID(ctx),

@@ -23,12 +23,12 @@ cmd/eskimo-hut:
 users: &users
   wintr/connectors/storage/v2:
     runDDL: true
-    primaryURL: postgresql://root:pass@localhost:5432/ice
+    primaryURL: postgresql://root:pass@localhost:5433/eskimo
     credentials:
       user: root
       password: pass
     replicaURLs:
-      - postgresql://root:pass@localhost:5432/ice
+      - postgresql://root:pass@localhost:5433/eskimo
   messageBroker: &usersMessageBroker
     consumerGroup: eskimo-local
     createTopics: true
