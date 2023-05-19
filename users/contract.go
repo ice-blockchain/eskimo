@@ -179,7 +179,7 @@ type (
 		GetUserGrowth(ctx context.Context, days uint64) (*UserGrowthStatistics, error)
 
 		GetReferrals(ctx context.Context, userID string, referralType ReferralType, limit, offset uint64) (*Referrals, error)
-		GetReferralAcquisitionHistory(ctx context.Context, userID string, days uint64) ([]*ReferralAcquisition, error)
+		GetReferralAcquisitionHistory(ctx context.Context, userID string) ([]*ReferralAcquisition, error)
 	}
 	WriteRepository interface {
 		CreateUser(ctx context.Context, usr *User, clientIP net.IP) error
@@ -211,6 +211,7 @@ type (
 // Private API.
 
 const (
+	hoursInOneDay                       = 24
 	applicationYamlKey                  = "users"
 	dayFormat, hourFormat, minuteFormat = "2006-01-02", "2006-01-02T15", "2006-01-02T15:04"
 	totalUsersGlobalKey                 = "TOTAL_USERS"
@@ -222,6 +223,8 @@ const (
 	defaultProfilePictureNameRegex      = "default-profile-picture-\\d+[.]png"
 	usernameDBColumnName                = "username"
 	requestDeadline                     = 25 * stdlibtime.Second
+
+	maxDaysReferralsHistory = 5
 )
 
 var (

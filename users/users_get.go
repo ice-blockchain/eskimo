@@ -27,7 +27,7 @@ func (r *repository) getUserByID(ctx context.Context, id UserID) (*User, error) 
 	return result, nil
 }
 
-func (r *repository) GetUserByID(ctx context.Context, userID string) (*UserProfile, error) { //nolint:revive,funlen // Its fine.
+func (r *repository) GetUserByID(ctx context.Context, userID string) (*UserProfile, error) { //nolint:revive // Its fine.
 	if ctx.Err() != nil {
 		return nil, errors.Wrap(ctx.Err(), "get user failed because context failed")
 	}
@@ -37,21 +37,12 @@ func (r *repository) GetUserByID(ctx context.Context, userID string) (*UserProfi
 	sql := `
 		SELECT  	
 			u.*,
-			count(distinct t1.id) 					  as t1_referral_count,
-			count(t2.id) 							  as t2_referral_count
+			COALESCE(refs.t1, 0) 		  as t1_referral_count,
+			COALESCE(refs.t2, 0)		  as t2_referral_count
 		FROM users u 
-				LEFT JOIN USERS t1
-						ON t1.referred_by = u.id
-						AND t1.id != u.id
-						AND t1.referred_by != t1.id
-						AND t1.username != t1.id
-							LEFT JOIN USERS t2
-									ON t2.referred_by = t1.id
-									AND t2.id != t1.id
-									AND t2.referred_by != t2.id
-									AND t2.username != t2.id
-		WHERE u.id = $1
-		GROUP BY u.id`
+				LEFT JOIN referral_acquisition_history refs
+						ON refs.user_id = u.id
+		WHERE u.id = $1`
 	res, err := storage.Get[UserProfile](ctx, r.db, sql, userID)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to select user by id %v", userID)
@@ -91,21 +82,12 @@ func (r *repository) getOtherUserByID(ctx context.Context, userID string) (*User
 	}
 
 	sql := `SELECT  u.id,
-					count(distinct t1.id) AS t1_referral_count,
-					count(t2.id) 		  AS t2_referral_count
+					COALESCE(refs.t1, 0) AS t1_referral_count,
+					COALESCE(refs.t2, 0) 		  AS t2_referral_count
 			FROM users u 
-					LEFT JOIN USERS t1
-							ON t1.referred_by = u.id
-							AND t1.id != u.id
-							AND t1.referred_by != t1.id
-							AND t1.username != t1.id
-								LEFT JOIN USERS t2
-										ON t2.referred_by = t1.id
-										AND t2.id != t1.id
-										AND t2.username != t2.id
-										AND t2.referred_by != t2.id
-			WHERE u.id = $1
-			GROUP BY u.id`
+				LEFT JOIN referral_acquisition_history refs
+						ON refs.user_id = u.id
+			WHERE u.id = $1`
 	type result struct {
 		ID              string
 		T1ReferralCount uint64

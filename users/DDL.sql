@@ -101,3 +101,28 @@ CREATE TABLE IF NOT EXISTS global  (
                     key text primary key)
                     WITH (FILLFACTOR = 70);
 INSERT INTO global (key,value) VALUES ('TOTAL_USERS', 0) ON CONFLICT DO NOTHING;
+
+CREATE TABLE IF NOT EXISTS referral_acquisition_history (
+     T1                      BIGINT DEFAULT 0,
+     T1_TODAY                BIGINT DEFAULT 0,
+     T1_TODAY_MINUS_1        BIGINT DEFAULT 0,
+     T1_TODAY_MINUS_2        BIGINT DEFAULT 0,
+     T1_TODAY_MINUS_3        BIGINT DEFAULT 0,
+     T1_TODAY_MINUS_4        BIGINT DEFAULT 0,
+     T2                      BIGINT DEFAULT 0,
+     T2_TODAY                BIGINT DEFAULT 0,
+     T2_TODAY_MINUS_1        BIGINT DEFAULT 0,
+     T2_TODAY_MINUS_2        BIGINT DEFAULT 0,
+     T2_TODAY_MINUS_3        BIGINT DEFAULT 0,
+     T2_TODAY_MINUS_4        BIGINT DEFAULT 0,
+     DATE                    DATE NOT NULL,
+     USER_ID                 TEXT PRIMARY KEY
+);
+
+CREATE TABLE IF NOT EXISTS processed_referrals (
+                            processed_at            TIMESTAMP,
+                            user_id                 TEXT,
+                            referred_by             TEXT,
+                            primary key (user_id, referred_by)
+);
+CREATE INDEX IF NOT EXISTS processed_referrals_processed_at_ix ON processed_referrals (processed_at);
