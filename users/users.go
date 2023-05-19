@@ -413,16 +413,21 @@ func sendMessagesConcurrently[M any](ctx context.Context, sendMessage func(conte
 	return errors.Wrap(multierror.Append(nil, errs...).ErrorOrNil(), "at least one message sends failed")
 }
 
-func tokenize(strVal string) []string {
-	var tokenized []string
-	chars := strings.Split(strVal, "")
-	if strVal == "" {
+func generateUsernameKeywords(username string) []string {
+	if username == "" {
 		return nil
 	}
-	tokenized = append(tokenized, chars[0])
-	for i := 1; i < len(chars); i++ {
-		tokenized = append(tokenized, strings.Join(chars[0:i+1], ""))
+	keywordsMap := make(map[string]struct{})
+	for _, part := range append(strings.Split(username, "."), username) {
+		for i := 0; i < len(part); i++ {
+			keywordsMap[part[:i+1]] = struct{}{}
+			keywordsMap[part[len(part)-1-i:]] = struct{}{}
+		}
+	}
+	keywords := make([]string, 0, len(keywordsMap))
+	for keyword := range keywordsMap {
+		keywords = append(keywords, keyword)
 	}
 
-	return tokenized
+	return keywords
 }

@@ -241,7 +241,7 @@ func (u *User) genSQLUpdate(ctx context.Context) (sql string, params []any) {
 }
 
 func (u *User) lookup() string {
-	return strings.ToLower(strings.Join(tokenize(u.Username), " "))
+	return strings.ToLower(strings.Join(generateUsernameKeywords(u.Username), " "))
 }
 
 func resolveProfilePictureExtension(fileName string) string {
