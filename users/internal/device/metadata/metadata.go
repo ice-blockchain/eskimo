@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	stdlibtime "time"
 
 	"github.com/goccy/go-json"
 	"github.com/hashicorp/go-multierror"
@@ -19,10 +20,9 @@ import (
 	"golang.org/x/mod/semver"
 
 	"github.com/ice-blockchain/eskimo/users/internal/device"
-	"github.com/ice-blockchain/go-tarantool-client"
 	appCfg "github.com/ice-blockchain/wintr/config"
 	messagebroker "github.com/ice-blockchain/wintr/connectors/message_broker"
-	"github.com/ice-blockchain/wintr/connectors/storage"
+	storage "github.com/ice-blockchain/wintr/connectors/storage/v2"
 	"github.com/ice-blockchain/wintr/log"
 	"github.com/ice-blockchain/wintr/time"
 )
@@ -42,7 +42,7 @@ func init() {
 	}
 }
 
-func New(db tarantool.Connector, mb messagebroker.Client) DeviceMetadataRepository {
+func New(db *storage.DB, mb messagebroker.Client) DeviceMetadataRepository {
 	var cfg config
 	appCfg.MustLoadFromKey(applicationYamlKey, &cfg)
 	repo := &repository{db: db, mb: mb, cfg: &cfg}
@@ -59,10 +59,9 @@ func (r *repository) DeleteAllDeviceMetadata(ctx context.Context, userID string)
 	if ctx.Err() != nil {
 		return errors.Wrap(ctx.Err(), "unexpected deadline ")
 	}
-	sql := `SELECT * FROM device_metadata WHERE user_id = :user_id`
-	params := map[string]any{"user_id": userID}
-	var res []*DeviceMetadata
-	if err := r.db.PrepareExecuteTyped(sql, params, &res); err != nil {
+	sql := `SELECT * FROM device_metadata WHERE user_id = $1`
+	res, err := storage.Select[DeviceMetadata](ctx, r.db, sql, userID)
+	if err != nil {
 		return errors.Wrapf(err, "failed to select all device metadata for userID:%v", userID)
 	}
 	if len(res) == 0 {
@@ -91,7 +90,8 @@ func (r *repository) deleteDeviceMetadata(ctx context.Context, dm *DeviceMetadat
 	if ctx.Err() != nil {
 		return errors.Wrap(ctx.Err(), "context failed")
 	}
-	if err := r.db.DeleteTyped("DEVICE_METADATA", "pk_unnamed_DEVICE_METADATA_1", &dm.ID, &[]*DeviceMetadata{}); err != nil {
+	sql := `DELETE FROM device_metadata WHERE user_id = $1 AND device_unique_id = $2` //nolint:goconst // No need to make a constant SQL query.
+	if _, err := storage.Exec(ctx, r.db, sql, dm.UserID, dm.DeviceUniqueID); err != nil {
 		return errors.Wrapf(err, "failed to delete device_metadata for id:%#v", &dm.ID)
 	}
 	snapshot := deviceMetadataSnapshot(dm, nil)
@@ -139,8 +139,9 @@ func (r *repository) GetDeviceMetadata(ctx context.Context, id *device.ID) (*Dev
 	if ctx.Err() != nil {
 		return nil, errors.Wrap(ctx.Err(), "context failed")
 	}
-	dm := new(DeviceMetadata)
-	if err := r.db.GetTyped("DEVICE_METADATA", "pk_unnamed_DEVICE_METADATA_1", id, dm); err != nil {
+	sql := `SELECT * FROM device_metadata WHERE user_id = $1 AND device_unique_id = $2`
+	dm, err := storage.Get[DeviceMetadata](ctx, r.db, sql, id.UserID, id.DeviceUniqueID)
+	if err != nil {
 		return nil, errors.Wrapf(err, "failed to get device metadata by id: %#v", id)
 	}
 	if dm.ID.UserID == "" {
@@ -167,21 +168,25 @@ func (r *repository) ReplaceDeviceMetadata(ctx context.Context, input *DeviceMet
 	}
 	(&input.ip2LocationRecord).convertIP2Location(&ip2locationRecord)
 	before, err := r.GetDeviceMetadata(ctx, &input.ID)
-	if err != nil && !errors.Is(err, storage.ErrNotFound) {
+	if err != nil && !storage.IsErr(err, storage.ErrNotFound) {
 		return errors.Wrapf(err, "failed to get current device metadata for %#v", input.ID)
 	}
-	if err = storage.CheckSQLDMLErr(r.db.PrepareExecute(input.replaceSQL())); err != nil {
+
+	sql, args := input.replaceSQL()
+	if _, err = storage.Exec(ctx, r.db, sql, args...); err != nil {
 		return errors.Wrapf(err, "failed to replace device's %#v metadata", input.ID)
 	}
 	dm := deviceMetadataSnapshot(before, input)
 	if err = r.sendDeviceMetadataSnapshotMessage(ctx, dm); err != nil {
 		var revertErr error
 		if before == nil {
-			revertErr = errors.Wrapf(r.db.DeleteTyped("DEVICE_METADATA", "pk_unnamed_DEVICE_METADATA_1", &input.ID, &[]*DeviceMetadata{}),
-				"failed to delete device metadata due to rollback for %#v", input)
+			sql = "DELETE FROM device_metadata WHERE user_id = $1 AND device_unique_id = $2"
+			_, revertErr = storage.Exec(ctx, r.db, sql, input.UserID, input.DeviceUniqueID)
+			revertErr = errors.Wrapf(revertErr, "failed to delete device metadata due to rollback for %#v", input)
 		} else {
-			revertErr = errors.Wrapf(storage.CheckSQLDMLErr(r.db.PrepareExecute(before.replaceSQL())),
-				"failed to replace to before, due to a rollback for %#v", input)
+			sql, args = before.replaceSQL()
+			_, revertErr = storage.Exec(ctx, r.db, sql, args...)
+			revertErr = errors.Wrapf(revertErr, "failed to replace to before, due to a rollback for %#v", input)
 		}
 
 		return multierror.Append(errors.Wrapf(err, "failed to send device metadata snapshot message %#v", dm), revertErr).ErrorOrNil() //nolint:wrapcheck // .
@@ -227,8 +232,16 @@ func (r *repository) verifyDeviceAppNanosVersion(readableParts []string) error {
 }
 
 //nolint:funlen // A lot of fields here.
-func (dm *DeviceMetadata) replaceSQL() (string, map[string]any) {
-	sql := `REPLACE INTO DEVICE_METADATA (
+func (dm *DeviceMetadata) replaceSQL() (string, []any) {
+	var firstInstallTime, lastUpdateTime *stdlibtime.Time
+	if dm.FirstInstallTime != nil {
+		firstInstallTime = dm.FirstInstallTime.Time
+	}
+	if dm.LastUpdateTime != nil {
+		lastUpdateTime = dm.LastUpdateTime.Time
+	}
+
+	sql := `INSERT INTO DEVICE_METADATA (
 				country_short,
 				country_long,
 				region,
@@ -283,117 +296,222 @@ func (dm *DeviceMetadata) replaceSQL() (string, map[string]any) {
 				pin_or_fingerprint_set,
 				emulator
 			) VALUES (
-				:country_short,
-				:country_long,
-				:region,
-				:city,
-				:isp,
-				:latitude,
-				:longitude,
-				:domain,
-				:zipcode,
-				:timezone,
-				:net_speed,
-				:idd_code,
-				:area_code,
-				:weather_station_code,
-				:weather_station_name,
-				:mcc,
-				:mnc,
-				:mobile_brand,
-				:elevation,
-				:usage_type,
-				:updated_at,
-				:first_install_time,
-				:last_update_time,
-				:user_id,
-				:device_unique_id,
-				:readable_version,
-				:fingerprint,
-				:instance_id,
-				:hardware,
-				:product,
-				:device,
-				:type,
-				:tags,
-				:device_id,
-				:device_type,
-				:device_name,
-				:brand,
-				:carrier,
-				:manufacturer,
-				:user_agent,
-				:system_name,
-				:system_version,
-				:base_os,
-				:build_id,
-				:bootloader,
-				:codename,
-				:installer_package_name,
-				:push_notification_token,
-				:device_timezone,
-				:api_level,
-				:tablet,
-				:pin_or_fingerprint_set,
-				:emulator
-			)`
-	params := map[string]any{
-		"country_short":           dm.CountryShort,
-		"country_long":            dm.CountryLong,
-		"region":                  dm.Region,
-		"city":                    dm.City,
-		"isp":                     dm.Isp,
-		"latitude":                dm.Latitude,
-		"longitude":               dm.Longitude,
-		"domain":                  dm.Domain,
-		"zipcode":                 dm.Zipcode,
-		"timezone":                dm.Timezone,
-		"net_speed":               dm.Netspeed,
-		"idd_code":                dm.Iddcode,
-		"area_code":               dm.Areacode,
-		"weather_station_code":    dm.Weatherstationcode,
-		"weather_station_name":    dm.Weatherstationname,
-		"mcc":                     dm.Mcc,
-		"mnc":                     dm.Mnc,
-		"mobile_brand":            dm.Mobilebrand,
-		"elevation":               dm.Elevation,
-		"usage_type":              dm.Usagetype,
-		"updated_at":              dm.UpdatedAt,
-		"first_install_time":      dm.FirstInstallTime,
-		"last_update_time":        dm.LastUpdateTime,
-		"user_id":                 dm.UserID,
-		"device_unique_id":        dm.DeviceUniqueID,
-		"readable_version":        dm.ReadableVersion,
-		"fingerprint":             dm.Fingerprint,
-		"instance_id":             dm.InstanceID,
-		"hardware":                dm.Hardware,
-		"product":                 dm.Product,
-		"device":                  dm.Device,
-		"type":                    dm.Type,
-		"tags":                    dm.Tags,
-		"device_id":               dm.DeviceID,
-		"device_type":             dm.DeviceType,
-		"device_name":             dm.DeviceName,
-		"brand":                   dm.Brand,
-		"carrier":                 dm.Carrier,
-		"manufacturer":            dm.Manufacturer,
-		"user_agent":              dm.UserAgent,
-		"system_name":             dm.SystemName,
-		"system_version":          dm.SystemVersion,
-		"base_os":                 dm.BaseOS,
-		"build_id":                dm.BuildID,
-		"bootloader":              dm.Bootloader,
-		"codename":                dm.Codename,
-		"installer_package_name":  dm.InstallerPackageName,
-		"push_notification_token": dm.PushNotificationToken,
-		"device_timezone":         dm.TZ,
-		"api_level":               dm.APILevel,
-		"tablet":                  dm.Tablet,
-		"pin_or_fingerprint_set":  dm.PinOrFingerprintSet,
-		"emulator":                dm.Emulator,
+				$1,
+				$2,
+				$3,
+				$4,
+				$5,
+				$6,
+				$7,
+				$8,
+				$9,
+				$10,
+				$11,
+				$12,
+				$13,
+				$14,
+				$15,
+				$16,
+				$17,
+				$18,
+				$19,
+				$20,
+				$21,
+				$22,
+				$23,
+				$24,
+				$25,
+				$26,
+				$27,
+				$28,
+				$29,
+				$30,
+				$31,
+				$32,
+				$33,
+				$34,
+				$35,
+				$36,
+				$37,
+				$38,
+				$39,
+				$40,
+				$41,
+				$42,
+				$43,
+				$44,
+				$45,
+				$46,
+				$47,
+				$48,
+				$49,
+				$50,
+				$51,
+				$52,
+				$53
+			)
+			ON CONFLICT(user_id, device_unique_id)
+				DO UPDATE
+					SET 
+						country_short 			= EXCLUDED.country_short,
+						country_long 			= EXCLUDED.country_long,
+						region 					= EXCLUDED.region,
+						city 					= EXCLUDED.city,
+						isp 					= EXCLUDED.isp,
+						latitude 				= EXCLUDED.latitude,
+						longitude 				= EXCLUDED.longitude,
+						domain 					= EXCLUDED.domain,
+						zipcode 				= EXCLUDED.zipcode,
+						timezone 				= EXCLUDED.timezone,
+						net_speed 				= EXCLUDED.net_speed,
+						idd_code 				= EXCLUDED.idd_code,
+						area_code 				= EXCLUDED.area_code,
+						weather_station_code 	= EXCLUDED.weather_station_code,
+						weather_station_name 	= EXCLUDED.weather_station_name,
+						mcc 					= EXCLUDED.mcc,
+						mnc 					= EXCLUDED.mnc,
+						mobile_brand 			= EXCLUDED.mobile_brand,
+						elevation 				= EXCLUDED.elevation,
+						usage_type 				= EXCLUDED.usage_type,
+						updated_at 				= EXCLUDED.updated_at,
+						first_install_time 		= EXCLUDED.first_install_time,
+						last_update_time 		= EXCLUDED.last_update_time,
+						readable_version 		= EXCLUDED.readable_version,
+						fingerprint 			= EXCLUDED.fingerprint,
+						instance_id 			= EXCLUDED.instance_id,
+						hardware 				= EXCLUDED.hardware,
+						product 				= EXCLUDED.product,
+						device 					= EXCLUDED.device,
+						type 					= EXCLUDED.type,
+						tags 					= EXCLUDED.tags,
+						device_id 				= EXCLUDED.device_id,
+						device_type 			= EXCLUDED.device_type,
+						device_name 			= EXCLUDED.device_name,
+						brand 					= EXCLUDED.brand,
+						carrier 				= EXCLUDED.carrier,
+						manufacturer 			= EXCLUDED.manufacturer,
+						user_agent 				= EXCLUDED.user_agent,
+						system_name 			= EXCLUDED.system_name,
+						system_version 			= EXCLUDED.system_version,
+						base_os 				= EXCLUDED.base_os,
+						build_id 				= EXCLUDED.build_id,
+						bootloader 				= EXCLUDED.bootloader,
+						codename 				= EXCLUDED.codename,
+						installer_package_name 	= EXCLUDED.installer_package_name,
+						push_notification_token = EXCLUDED.push_notification_token,
+						device_timezone 		= EXCLUDED.device_timezone,
+						api_level 				= EXCLUDED.api_level,
+						tablet 					= EXCLUDED.tablet,
+						pin_or_fingerprint_set 	= EXCLUDED.pin_or_fingerprint_set,
+						emulator 				= EXCLUDED.emulator
+				WHERE 	 COALESCE(DEVICE_METADATA.country_short, '') 				   != coalesce(EXCLUDED.country_short, '')
+					  OR COALESCE(DEVICE_METADATA.country_long, '') 			 	   != coalesce(EXCLUDED.country_long, '')
+					  OR COALESCE(DEVICE_METADATA.region, '') 					 	   != coalesce(EXCLUDED.region, '')
+					  OR COALESCE(DEVICE_METADATA.city, '') 					 	   != coalesce(EXCLUDED.city, '')
+					  OR COALESCE(DEVICE_METADATA.isp, '') 						 	   != coalesce(EXCLUDED.isp, '')
+					  OR COALESCE(DEVICE_METADATA.latitude, 0)	 				 	   != coalesce(EXCLUDED.latitude, 0)
+					  OR COALESCE(DEVICE_METADATA.longitude, 0) 				 	   != coalesce(EXCLUDED.longitude, 0)
+					  OR COALESCE(DEVICE_METADATA.domain, '') 					 	   != coalesce(EXCLUDED.domain, '')
+					  OR COALESCE(DEVICE_METADATA.zipcode, '') 					 	   != coalesce(EXCLUDED.zipcode, '')
+					  OR COALESCE(DEVICE_METADATA.timezone, '') 				 	   != coalesce(EXCLUDED.timezone, '')
+					  OR COALESCE(DEVICE_METADATA.net_speed, '') 				 	   != coalesce(EXCLUDED.net_speed, '')
+					  OR COALESCE(DEVICE_METADATA.idd_code, '') 				 	   != coalesce(EXCLUDED.idd_code, '')
+					  OR COALESCE(DEVICE_METADATA.area_code, '') 				 	   != coalesce(EXCLUDED.area_code, '')
+					  OR COALESCE(DEVICE_METADATA.weather_station_code, '') 	 	   != coalesce(EXCLUDED.weather_station_code, '')
+					  OR COALESCE(DEVICE_METADATA.weather_station_name, '') 	 	   != coalesce(EXCLUDED.weather_station_name, '')
+					  OR COALESCE(DEVICE_METADATA.mcc, '') 						 	   != coalesce(EXCLUDED.mcc, '')
+					  OR COALESCE(DEVICE_METADATA.mnc, '') 						 	   != coalesce(EXCLUDED.mnc, '')
+					  OR COALESCE(DEVICE_METADATA.mobile_brand, '') 			 	   != coalesce(EXCLUDED.mobile_brand, '')
+					  OR COALESCE(DEVICE_METADATA.elevation, 0) 				  	   != coalesce(EXCLUDED.elevation, 0)
+					  OR COALESCE(DEVICE_METADATA.usage_type, '') 				 	   != coalesce(EXCLUDED.usage_type, '')
+					  OR COALESCE(DEVICE_METADATA.updated_at, to_timestamp(0)) 	 	   != coalesce(EXCLUDED.updated_at, to_timestamp(0))
+					  OR COALESCE(DEVICE_METADATA.first_install_time, to_timestamp(0)) != coalesce(EXCLUDED.first_install_time, to_timestamp(0))
+					  OR COALESCE(DEVICE_METADATA.last_update_time, to_timestamp(0))   != coalesce(EXCLUDED.last_update_time, to_timestamp(0))
+					  OR COALESCE(DEVICE_METADATA.readable_version, '') 			   != coalesce(EXCLUDED.readable_version, '')
+					  OR COALESCE(DEVICE_METADATA.fingerprint, '') 				 	   != coalesce(EXCLUDED.fingerprint, '')
+					  OR COALESCE(DEVICE_METADATA.instance_id, '') 				 	   != coalesce(EXCLUDED.instance_id, '')
+					  OR COALESCE(DEVICE_METADATA.hardware, '') 				 	   != coalesce(EXCLUDED.hardware, '')
+					  OR COALESCE(DEVICE_METADATA.product, '') 					 	   != coalesce(EXCLUDED.product, '')
+					  OR COALESCE(DEVICE_METADATA.device, '') 					 	   != coalesce(EXCLUDED.device, '')
+					  OR COALESCE(DEVICE_METADATA.type, '') 					 	   != coalesce(EXCLUDED.type, '')
+					  OR COALESCE(DEVICE_METADATA.tags, '') 					 	   != coalesce(EXCLUDED.tags, '')
+					  OR COALESCE(DEVICE_METADATA.device_id, '') 				 	   != coalesce(EXCLUDED.device_id, '')
+					  OR COALESCE(DEVICE_METADATA.device_type, '') 				 	   != coalesce(EXCLUDED.device_type, '')
+					  OR COALESCE(DEVICE_METADATA.device_name, '') 				 	   != coalesce(EXCLUDED.device_name, '')
+					  OR COALESCE(DEVICE_METADATA.brand, '') 					 	   != coalesce(EXCLUDED.brand, '')
+					  OR COALESCE(DEVICE_METADATA.carrier, '') 					 	   != coalesce(EXCLUDED.carrier, '')
+					  OR COALESCE(DEVICE_METADATA.manufacturer, '') 			 	   != coalesce(EXCLUDED.manufacturer, '')
+					  OR COALESCE(DEVICE_METADATA.user_agent, '') 				 	   != coalesce(EXCLUDED.user_agent, '')
+					  OR COALESCE(DEVICE_METADATA.system_name, '') 				 	   != coalesce(EXCLUDED.system_name, '')
+					  OR COALESCE(DEVICE_METADATA.system_version, '') 			 	   != coalesce(EXCLUDED.system_version, '')
+					  OR COALESCE(DEVICE_METADATA.base_os, '') 					 	   != coalesce(EXCLUDED.base_os, '')
+					  OR COALESCE(DEVICE_METADATA.build_id, '') 				 	   != coalesce(EXCLUDED.build_id, '')
+					  OR COALESCE(DEVICE_METADATA.bootloader, '') 				 	   != coalesce(EXCLUDED.bootloader, '')
+					  OR COALESCE(DEVICE_METADATA.codename, '') 				 	   != coalesce(EXCLUDED.codename, '')
+					  OR COALESCE(DEVICE_METADATA.installer_package_name, '') 	 	   != coalesce(EXCLUDED.installer_package_name, '')
+					  OR COALESCE(DEVICE_METADATA.push_notification_token, '') 	 	   != coalesce(EXCLUDED.push_notification_token, '')
+					  OR COALESCE(DEVICE_METADATA.device_timezone, '') 			 	   != coalesce(EXCLUDED.device_timezone, '')
+					  OR COALESCE(DEVICE_METADATA.api_level, 0) 				 	   != coalesce(EXCLUDED.api_level, 0)
+					  OR COALESCE(DEVICE_METADATA.tablet, FALSE) 				 	   != coalesce(EXCLUDED.tablet, FALSE)
+					  OR COALESCE(DEVICE_METADATA.pin_or_fingerprint_set, FALSE) 	   != coalesce(EXCLUDED.pin_or_fingerprint_set, FALSE)
+					  OR COALESCE(DEVICE_METADATA.emulator, FALSE) 				 	   != coalesce(EXCLUDED.emulator, FALSE)`
+	args := []any{
+		dm.CountryShort,
+		dm.CountryLong,
+		dm.Region,
+		dm.City,
+		dm.Isp,
+		dm.Latitude,
+		dm.Longitude,
+		dm.Domain,
+		dm.Zipcode,
+		dm.Timezone,
+		dm.Netspeed,
+		dm.Iddcode,
+		dm.Areacode,
+		dm.Weatherstationcode,
+		dm.Weatherstationname,
+		dm.Mcc,
+		dm.Mnc,
+		dm.Mobilebrand,
+		dm.Elevation,
+		dm.Usagetype,
+		dm.UpdatedAt.Time,
+		firstInstallTime,
+		lastUpdateTime,
+		dm.UserID,
+		dm.DeviceUniqueID,
+		dm.ReadableVersion,
+		dm.Fingerprint,
+		dm.InstanceID,
+		dm.Hardware,
+		dm.Product,
+		dm.Device,
+		dm.Type,
+		dm.Tags,
+		dm.DeviceID,
+		dm.DeviceType,
+		dm.DeviceName,
+		dm.Brand,
+		dm.Carrier,
+		dm.Manufacturer,
+		dm.UserAgent,
+		dm.SystemName,
+		dm.SystemVersion,
+		dm.BaseOS,
+		dm.BuildID,
+		dm.Bootloader,
+		dm.Codename,
+		dm.InstallerPackageName,
+		dm.PushNotificationToken,
+		dm.TZ,
+		dm.APILevel,
+		dm.Tablet,
+		dm.PinOrFingerprintSet,
+		dm.Emulator,
 	}
 
-	return sql, params
+	return sql, args
 }
 
 func (rec *ip2LocationRecord) convertIP2Location(ip *ip2location.IP2Locationrecord) {

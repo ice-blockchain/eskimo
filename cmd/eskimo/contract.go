@@ -3,6 +3,8 @@
 package main
 
 import (
+	"regexp"
+
 	"github.com/ice-blockchain/eskimo/users"
 )
 
@@ -47,21 +49,23 @@ type (
 // Private API.
 
 const (
-	applicationYamlKey = "cmd/eskimo"
-	swaggerRoot        = "/users/r"
+	applicationYamlKey                  = "cmd/eskimo"
+	swaggerRoot                         = "/users/r"
+	everythingNotAllowedInUsernameRegex = `[^.a-zA-Z0-9]+`
 )
 
 // Values for server.ErrorResponse#Code.
 const (
 	userNotFoundErrorCode      = "USER_NOT_FOUND"
 	invalidUsernameErrorCode   = "INVALID_USERNAME"
+	invalidKeywordErrorCode    = "INVALID_KEYWORD"
 	invalidPropertiesErrorCode = "INVALID_PROPERTIES"
 )
 
-// .
 var (
 	//nolint:gochecknoglobals // Because its loaded once, at runtime.
-	cfg config
+	cfg                                   config
+	everythingNotAllowedInUsernamePattern = regexp.MustCompile(everythingNotAllowedInUsernameRegex)
 )
 
 type (

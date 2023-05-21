@@ -260,6 +260,13 @@ const docTemplate = `{
                     {
                         "type": "array",
                         "items": {
+                            "enum": [
+                                "globalRank",
+                                "referralCount",
+                                "level",
+                                "role",
+                                "badges"
+                            ],
                             "type": "string"
                         },
                         "collectionFormat": "multi",
@@ -854,6 +861,8 @@ var SwaggerInfo = &swag.Spec{
 	Description:      "API that handles everything related to write only operations for user's account, user's devices and statistics about those.",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
+	LeftDelim:        "{{",
+	RightDelim:       "}}",
 }
 
 func init() {

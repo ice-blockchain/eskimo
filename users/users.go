@@ -16,25 +16,24 @@ import (
 	"github.com/cenkalti/backoff/v4"
 	"github.com/goccy/go-json"
 	"github.com/hashicorp/go-multierror"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/pkg/errors"
-	"github.com/vmihailenco/msgpack/v5"
 
 	devicemetadata "github.com/ice-blockchain/eskimo/users/internal/device/metadata"
-	"github.com/ice-blockchain/go-tarantool-client"
 	"github.com/ice-blockchain/wintr/analytics/tracking"
 	appCfg "github.com/ice-blockchain/wintr/config"
 	messagebroker "github.com/ice-blockchain/wintr/connectors/message_broker"
-	"github.com/ice-blockchain/wintr/connectors/storage"
+	storage "github.com/ice-blockchain/wintr/connectors/storage/v2"
 	"github.com/ice-blockchain/wintr/log"
 	"github.com/ice-blockchain/wintr/multimedia/picture"
 	"github.com/ice-blockchain/wintr/time"
 )
 
-func New(ctx context.Context, cancel context.CancelFunc) Repository {
+func New(ctx context.Context, _ context.CancelFunc) Repository {
 	var cfg config
 	appCfg.MustLoadFromKey(applicationYamlKey, &cfg)
 
-	db := storage.MustConnect(ctx, cancel, ddl, applicationYamlKey)
+	db := storage.MustConnect(ctx, ddl, applicationYamlKey)
 
 	return &repository{
 		cfg:                      &cfg,
@@ -50,12 +49,7 @@ func StartProcessor(ctx context.Context, cancel context.CancelFunc) Processor {
 	appCfg.MustLoadFromKey(applicationYamlKey, &cfg)
 
 	var mbConsumer messagebroker.Client
-	db := storage.MustConnect(context.Background(), func() { //nolint:contextcheck // It's intended. Cuz we want to close everything gracefully.
-		if mbConsumer != nil {
-			log.Error(errors.Wrap(mbConsumer.Close(), "failed to close mbConsumer due to db premature cancellation"))
-		}
-		cancel()
-	}, ddl, applicationYamlKey)
+	db := storage.MustConnect(ctx, ddl, applicationYamlKey)
 	mbProducer := messagebroker.MustConnect(ctx, applicationYamlKey)
 	prc := &processor{repository: &repository{
 		cfg:                      &cfg,
@@ -71,6 +65,7 @@ func StartProcessor(ctx context.Context, cancel context.CancelFunc) Processor {
 		&userPingSource{processor: prc},
 	)
 	prc.shutdown = closeAll(mbConsumer, prc.mb, prc.db, prc.DeviceMetadataRepository.Close)
+	go prc.startOldProcessedReferralsCleaner(ctx)
 
 	return prc
 }
@@ -79,7 +74,7 @@ func (r *repository) Close() error {
 	return errors.Wrap(r.shutdown(), "closing users repository failed")
 }
 
-func closeAll(mbConsumer, mbProducer messagebroker.Client, db tarantool.Connector, otherClosers ...func() error) func() error {
+func closeAll(mbConsumer, mbProducer messagebroker.Client, db *storage.DB, otherClosers ...func() error) func() error {
 	return func() error {
 		err1 := errors.Wrap(mbConsumer.Close(), "closing message broker consumer connection failed")
 		err2 := errors.Wrap(db.Close(), "closing db connection failed")
@@ -97,7 +92,7 @@ func closeAll(mbConsumer, mbProducer messagebroker.Client, db tarantool.Connecto
 }
 
 func (p *processor) CheckHealth(ctx context.Context) error {
-	if _, err := p.db.Ping(); err != nil {
+	if err := p.db.Ping(ctx); err != nil {
 		return errors.Wrap(err, "[health-check] failed to ping DB")
 	}
 	type ts struct {
@@ -138,6 +133,32 @@ func retry(ctx context.Context, op func() error) error {
 		})
 }
 
+func runConcurrently[ARG any](ctx context.Context, run func(context.Context, ARG) error, args []ARG) error {
+	if ctx.Err() != nil {
+		return errors.Wrap(ctx.Err(), "unexpected deadline")
+	}
+	if len(args) == 0 {
+		return nil
+	}
+	wg := new(sync.WaitGroup)
+	wg.Add(len(args))
+	errChan := make(chan error, len(args))
+	for i := range args {
+		go func(ix int) {
+			defer wg.Done()
+			errChan <- errors.Wrapf(run(ctx, args[ix]), "failed to run:%#v", args[ix])
+		}(i)
+	}
+	wg.Wait()
+	close(errChan)
+	errs := make([]error, 0, len(args))
+	for err := range errChan {
+		errs = append(errs, err)
+	}
+
+	return errors.Wrap(multierror.Append(nil, errs...).ErrorOrNil(), "at least one execution failed")
+}
+
 func randomBetween(left, right uint64) uint64 {
 	n, err := rand.Int(rand.Reader, big.NewInt(int64(right)-int64(left)))
 	log.Panic(errors.Wrap(err, "crypto random generator failed"))
@@ -175,78 +196,52 @@ func ContextWithChecksum(ctx context.Context, checksum string) context.Context {
 	return context.WithValue(ctx, checksumCtxValueKey, checksum) //nolint:revive,staticcheck // Not an issue.
 }
 
-func (n *NotExpired) DecodeMsgpack(dec *msgpack.Decoder) error {
-	v := new(time.Time)
-	if err := v.DecodeMsgpack(dec); err != nil {
-		return errors.Wrap(err, "failed to decode time based struct for NotExpired")
-	}
-	*n = NotExpired(time.Now().Before(*v.Time))
+func (n *NotExpired) Scan(src any) error {
+	date, ok := src.(stdlibtime.Time)
+	if ok {
+		date = date.UTC()
+		*n = NotExpired(time.Now().Before(date))
 
-	return nil
+		return nil
+	}
+
+	return errors.Errorf("unexpected type for src:%#v(%T)", src, src)
 }
 
-func (e *Enum[T]) DecodeMsgpack(decoder *msgpack.Decoder) error {
-	enumStr, err := decoder.DecodeString()
-	if err != nil {
-		return errors.Wrap(err, "failed to decode string")
-	}
-	if enumStr == "" {
+func (e *Enum[T]) SetDimensions(dimensions []pgtype.ArrayDimension) error {
+	if len(dimensions) == 0 {
 		*e = nil
 
 		return nil
 	}
-	eDeref := *e
-	parts := strings.Split(enumStr, ",")
-	if len(eDeref) == 0 {
-		eDeref = make(Enum[T], 0, len(parts))
-	}
-	for _, elem := range parts {
-		eDeref = append(eDeref, T(elem))
-	}
-	*e = eDeref
+
+	*e = make(Enum[T], dimensions[0].Length)
 
 	return nil
 }
 
-func (e *Enum[T]) EncodeMsgpack(encoder *msgpack.Encoder) error {
-	if e == nil || len(*e) == 0 {
-		return errors.Wrap(encoder.EncodeNil(), "failed to encode nil")
-	}
-	eDeref := *e
-	enum := make([]string, 0, len(eDeref))
-	for _, elem := range eDeref {
-		enum = append(enum, string(elem))
-	}
-
-	return errors.Wrap(encoder.EncodeString(strings.Join(enum, ",")), "failed to encode string")
+func (e Enum[T]) ScanIndex(i int) any {
+	return &e[i]
 }
 
-func (j *JSON) DecodeMsgpack(dec *msgpack.Decoder) error {
-	val, err := dec.DecodeString()
-	if err != nil {
-		return errors.Wrap(err, "failed to DecodeString")
-	}
-	if val == "" {
-		return nil
-	}
-	if val == "{}" {
-		*j = make(JSON, 0)
-	}
-
-	return errors.Wrapf(json.UnmarshalContext(context.Background(), []byte(val), j), "failed to json.Unmarshall(%v,*JSON)", val)
+func (Enum[T]) ScanIndexType() any {
+	return new(T)
 }
 
-func (j *JSON) EncodeMsgpack(enc *msgpack.Encoder) error {
-	if j == nil || len(*j) == 0 {
-		return errors.Wrap(enc.EncodeNil(), "failed to encode nil")
-	}
-	bytes, err := json.MarshalContext(context.Background(), *j)
-	if err != nil {
-		return errors.Wrapf(err, "failed to json.Marshal(%#v)", *j)
-	}
-	v := string(bytes)
+func (j *JSON) Scan(src any) error {
+	val, isStr := src.(string)
+	if isStr {
+		if val == "" {
+			return nil
+		}
+		if val == "{}" {
+			*j = make(JSON, 0)
+		}
 
-	return errors.Wrapf(enc.EncodeString(v), "failed to EncodeString(%v)", v)
+		return errors.Wrapf(json.UnmarshalContext(context.Background(), []byte(val), j), "failed to json.Unmarshall(%v,*JSON)", val)
+	}
+
+	return errors.Errorf("unexpected type for src:%#v(%T)", src, src)
 }
 
 func (u *User) Checksum() string {
@@ -443,4 +438,23 @@ func sendMessagesConcurrently[M any](ctx context.Context, sendMessage func(conte
 	}
 
 	return errors.Wrap(multierror.Append(nil, errs...).ErrorOrNil(), "at least one message sends failed")
+}
+
+func generateUsernameKeywords(username string) []string {
+	if username == "" {
+		return nil
+	}
+	keywordsMap := make(map[string]struct{})
+	for _, part := range append(strings.Split(username, "."), username) {
+		for i := 0; i < len(part); i++ {
+			keywordsMap[part[:i+1]] = struct{}{}
+			keywordsMap[part[len(part)-1-i:]] = struct{}{}
+		}
+	}
+	keywords := make([]string, 0, len(keywordsMap))
+	for keyword := range keywordsMap {
+		keywords = append(keywords, keyword)
+	}
+
+	return keywords
 }

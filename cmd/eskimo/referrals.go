@@ -28,7 +28,7 @@ func (s *service) setupUserReferralRoutes(router *server.Router) {
 //	@Produce		json
 //	@Param			Authorization	header		string	true	"Insert your access token"	default(Bearer <Add access token here>)
 //	@Param			userId			path		string	true	"ID of the user"
-//	@Param			days			query		uint64	false	"The number of days to look in the past. Defaults to 5."
+//	@Param			days			query		uint64	false	"Always is 5, cannot be changed due to DB schema"
 //	@Success		200				{array}		users.ReferralAcquisition
 //	@Failure		400				{object}	server.ErrorResponse	"if validations fail"
 //	@Failure		401				{object}	server.ErrorResponse	"if not authorized"
@@ -41,13 +41,7 @@ func (s *service) GetReferralAcquisitionHistory( //nolint:gocritic // False nega
 	ctx context.Context,
 	req *server.Request[GetReferralAcquisitionHistoryArg, []*users.ReferralAcquisition],
 ) (*server.Response[[]*users.ReferralAcquisition], *server.Response[server.ErrorResponse]) {
-	if req.Data.Days == 0 {
-		req.Data.Days = 5
-	}
-	if req.Data.Days > 30 { //nolint:gomnd // A month.
-		req.Data.Days = 30
-	}
-	res, err := s.usersRepository.GetReferralAcquisitionHistory(ctx, req.Data.UserID, req.Data.Days)
+	res, err := s.usersRepository.GetReferralAcquisitionHistory(ctx, req.Data.UserID)
 	if err != nil {
 		return nil, server.Unexpected(errors.Wrapf(err, "error getting referral acquisition history for %#v", req.Data))
 	}

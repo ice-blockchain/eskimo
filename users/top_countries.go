@@ -7,43 +7,45 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 
-	"github.com/ice-blockchain/go-tarantool-client"
+	storage "github.com/ice-blockchain/wintr/connectors/storage/v2"
 )
 
 func (r *repository) GetTopCountries(ctx context.Context, keyword string, limit, offset uint64) (cs []*CountryStatistics, err error) {
 	if ctx.Err() != nil {
 		return nil, errors.Wrap(ctx.Err(), "get top countries failed because context failed")
 	}
-	countries, params := r.getTopCountriesParams(keyword, offset)
+	countries, countryParams := r.getTopCountriesParams(keyword)
+	params := []any{limit, offset}
+	params = append(params, countryParams...)
 	sql := fmt.Sprintf(`
 						SELECT  country, 
 								user_count 
 						FROM users_per_country
 						WHERE lower(country) in (%v)
 						ORDER BY user_count desc 
-						LIMIT %v OFFSET :offset`, countries, limit)
-	err = errors.Wrapf(r.db.PrepareExecuteTyped(sql, params, &cs), "get top countries failed for %v %v %v", keyword, limit, offset)
+						LIMIT $1 OFFSET $2`, countries)
+	cs, err = storage.Select[CountryStatistics](ctx, r.db, sql, params...)
+	if err != nil {
+		return nil, errors.Wrapf(err, "get top countries failed for %v %v %v", keyword, limit, offset)
+	}
 
 	return
 }
 
-func (r *repository) getTopCountriesParams(countryKeyword string, offset uint64) (countriesSQLEnumeration string, params map[string]any) {
+func (r *repository) getTopCountriesParams(countryKeyword string) (countriesSQLEnumeration string, params []any) {
 	countriesSQLEnumeration = "''"
-	params = map[string]any{
-		"offset": offset,
-	}
+	params = make([]any, 0)
+	const initialParamIdx = 3 // 1 and 2 are limit and offset.
 	keyword := strings.ToLower(countryKeyword)
 	if keyword == "" {
 		countriesSQLEnumeration = "lower(country)"
 	} else if countries := r.LookupCountries(keyword); len(countries) != 0 {
 		var countryParams []string
 		for i, country := range countries {
-			k := fmt.Sprintf("country%v", i)
-			countryParams = append(countryParams, fmt.Sprintf(":%v", k))
-			params[k] = strings.ToLower(country)
+			countryParams = append(countryParams, fmt.Sprintf("$%v", i+initialParamIdx))
+			params = append(params, strings.ToLower(country))
 		}
 		countriesSQLEnumeration = strings.Join(countryParams, ",")
 	}
@@ -51,35 +53,31 @@ func (r *repository) getTopCountriesParams(countryKeyword string, offset uint64)
 	return
 }
 
-func (r *repository) incrementOrDecrementCountryUserCount(ctx context.Context, usr *UserSnapshot) error { //nolint:gocognit // .
+func (r *repository) incrementOrDecrementCountryUserCount(ctx context.Context, usr *UserSnapshot) error {
 	if (usr.User != nil && usr.Before != nil && usr.User.Country == usr.Before.Country) || ctx.Err() != nil {
 		return errors.Wrap(ctx.Err(), "context failed")
 	}
+	nextIndex := 1
+	values := make([]string, 0, 1+1)
+	params := make([]any, 0, 1+1)
+	incrementCondition := "1=0"
+	sqlTemplate := `
+		INSERT INTO users_per_country (country, user_count) 
+		VALUES %[1]v
+		ON CONFLICT (country) DO UPDATE
+		  SET user_count = (CASE WHEN %[2]v THEN GREATEST(users_per_country.user_count + 1, 0) ELSE GREATEST(users_per_country.user_count - 1, 0) END)`
 	if usr.User != nil {
-		arOp := []tarantool.Op{{Op: "+", Field: 1, Arg: uint64(1)}}
-		tuple := &CountryStatistics{Country: usr.User.Country, UserCount: 1}
-
-		if err := r.db.UpsertTyped("USERS_PER_COUNTRY", tuple, arOp, &[]*CountryStatistics{}); err != nil {
-			return errors.Wrapf(err, "error increasing country count for country:%v", usr.User.Country)
-		}
+		values = append(values, fmt.Sprintf("($%v,1)", nextIndex))
+		params = append(params, usr.User.Country)
+		incrementCondition = "users_per_country.country = $1"
+		nextIndex++
 	}
 	if usr.Before != nil {
-		arOp := []tarantool.Op{{Op: "-", Field: 1, Arg: uint64(1)}}
-		tuple := &CountryStatistics{Country: usr.Before.Country, UserCount: 1}
-
-		if err := r.db.UpsertTyped("USERS_PER_COUNTRY", tuple, arOp, &[]*CountryStatistics{}); err != nil {
-			var revertErr error
-			if usr.User != nil {
-				tuple = &CountryStatistics{Country: usr.User.Country, UserCount: 0}
-				revertErr = errors.Wrapf(r.db.UpsertTyped("USERS_PER_COUNTRY", tuple, arOp, &[]*CountryStatistics{}),
-					"failed to decrement USERS_PER_COUNTRY due to rollback for incrementing for %v", usr.User.Country)
-			}
-
-			return multierror.Append( //nolint:wrapcheck // Not needed.
-				errors.Wrapf(err, "error decreasing country count for country:%v", usr.Before.Country),
-				revertErr).ErrorOrNil()
-		}
+		values = append(values, fmt.Sprintf("($%v,0)", nextIndex))
+		params = append(params, usr.Before.Country)
 	}
+	sql := fmt.Sprintf(sqlTemplate, strings.Join(values, ","), incrementCondition)
+	_, err := storage.Exec(ctx, r.db, sql, params...)
 
-	return nil
+	return errors.Wrapf(err, "error changing country count for params:%#v", params...)
 }

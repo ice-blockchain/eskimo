@@ -434,7 +434,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "integer",
-                        "description": "The number of days to look in the past. Defaults to 5.",
+                        "description": "Always is 5, cannot be changed due to DB schema",
                         "name": "days",
                         "in": "query"
                     }
@@ -968,6 +968,8 @@ var SwaggerInfo = &swag.Spec{
 	Description:      "API that handles everything related to read only operations for user's account, user's devices and statistics about accounts and devices.",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
+	LeftDelim:        "{{",
+	RightDelim:       "}}",
 }
 
 func init() {

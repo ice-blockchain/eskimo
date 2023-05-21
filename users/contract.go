@@ -4,6 +4,7 @@ package users
 
 import (
 	"context"
+	"database/sql"
 	_ "embed"
 	"io"
 	"mime/multipart"
@@ -11,15 +12,14 @@ import (
 	"regexp"
 	stdlibtime "time"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/pkg/errors"
-	"github.com/vmihailenco/msgpack/v5"
 
 	"github.com/ice-blockchain/eskimo/users/internal/device"
 	devicemetadata "github.com/ice-blockchain/eskimo/users/internal/device/metadata"
-	"github.com/ice-blockchain/go-tarantool-client"
 	"github.com/ice-blockchain/wintr/analytics/tracking"
 	messagebroker "github.com/ice-blockchain/wintr/connectors/message_broker"
-	"github.com/ice-blockchain/wintr/connectors/storage"
+	storage "github.com/ice-blockchain/wintr/connectors/storage/v2"
 	"github.com/ice-blockchain/wintr/multimedia/picture"
 	"github.com/ice-blockchain/wintr/time"
 )
@@ -78,17 +78,16 @@ type (
 	}
 	PrivateUserInformation struct {
 		SensitiveUserInformation
-		FirstName string `json:"firstName,omitempty" example:"John" `
-		LastName  string `json:"lastName,omitempty" example:"Doe"`
+		FirstName *string `json:"firstName,omitempty" example:"John" `
+		LastName  *string `json:"lastName,omitempty" example:"Doe"`
 		devicemetadata.DeviceLocation
 	}
 	PublicUserInformation struct {
 		ID                UserID `json:"id,omitempty" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
 		Username          string `json:"username,omitempty" example:"jdoe"`
-		ProfilePictureURL string `json:"profilePictureUrl,omitempty" example:"https://somecdn.com/p1.jpg"`
+		ProfilePictureURL string `json:"profilePictureUrl,omitempty" example:"https://somecdn.com/p1.jpg" db:"profile_picture_name"`
 	}
 	User struct {
-		_msgpack                struct{}                    `msgpack:",asArray"` //nolint:unused,tagliatelle,revive,nosnakecase // To insert we need asArray
 		CreatedAt               *time.Time                  `json:"createdAt,omitempty" example:"2022-01-03T16:20:52.156534Z"`
 		UpdatedAt               *time.Time                  `json:"updatedAt,omitempty" example:"2022-01-03T16:20:52.156534Z"`
 		LastMiningStartedAt     *time.Time                  `json:"lastMiningStartedAt,omitempty" example:"2022-01-03T16:20:52.156534Z" swaggerignore:"true"`
@@ -96,17 +95,19 @@ type (
 		LastPingCooldownEndedAt *time.Time                  `json:"lastPingCooldownEndedAt,omitempty" example:"2022-01-03T16:20:52.156534Z" swaggerignore:"true"`
 		HiddenProfileElements   *Enum[HiddenProfileElement] `json:"hiddenProfileElements,omitempty" swaggertype:"array,string" example:"level" enums:"globalRank,referralCount,level,role,badges"` //nolint:lll // .
 		RandomReferredBy        *bool                       `json:"randomReferredBy,omitempty" example:"true" swaggerignore:"true"`
-		Verified                *bool                       `json:"-" example:"true" swaggerignore:"true"`
+		KYCPassed               *bool                       `json:"-" example:"true" swaggerignore:"true"`
 		ClientData              *JSON                       `json:"clientData,omitempty"`
 		PrivateUserInformation
 		PublicUserInformation
-		ReferredBy                     UserID `json:"referredBy,omitempty" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2" `
-		PhoneNumberHash                string `json:"phoneNumberHash,omitempty" example:"Ef86A6021afCDe5673511376B2" swaggerignore:"true"`
-		AgendaPhoneNumberHashes        string `json:"agendaPhoneNumberHashes,omitempty" example:"Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2"` //nolint:lll // .
-		MiningBlockchainAccountAddress string `json:"miningBlockchainAccountAddress,omitempty" example:"0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
-		BlockchainAccountAddress       string `json:"blockchainAccountAddress,omitempty" example:"0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
-		Language                       string `json:"language,omitempty" example:"en"`
-		HashCode                       uint64 `json:"hashCode,omitempty" example:"43453546464576547" swaggerignore:"true"`
+		ReferredBy                     UserID   `json:"referredBy,omitempty" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2" `
+		PhoneNumberHash                string   `json:"phoneNumberHash,omitempty" example:"Ef86A6021afCDe5673511376B2" swaggerignore:"true"`
+		AgendaPhoneNumberHashes        *string  `json:"agendaPhoneNumberHashes,omitempty" example:"Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2"` //nolint:lll // .
+		MiningBlockchainAccountAddress string   `json:"miningBlockchainAccountAddress,omitempty" example:"0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
+		BlockchainAccountAddress       string   `json:"blockchainAccountAddress,omitempty" example:"0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
+		Language                       string   `json:"language,omitempty" example:"en"`
+		Lookup                         string   `json:"-" example:"username"`
+		AgendaContactUserIDs           []string `json:"agendaContactUserIDs,omitempty" swaggerignore:"true" db:"agenda_contact_user_ids"`
+		HashCode                       int64    `json:"hashCode,omitempty" example:"43453546464576547" swaggerignore:"true"`
 	}
 	MinimalUserProfile struct {
 		Active *NotExpired `json:"active,omitempty" example:"true"`
@@ -135,7 +136,6 @@ type (
 		T2   uint64     `json:"t2" example:"13"`
 	}
 	CountryStatistics struct {
-		_msgpack struct{} `msgpack:",asArray"` //nolint:unused,revive,tagliatelle,nosnakecase // To insert we need asArray
 		// ISO 3166 country code.
 		Country   devicemetadata.Country `json:"country" example:"US"`
 		UserCount uint64                 `json:"userCount" example:"12121212"`
@@ -153,7 +153,6 @@ type (
 		UserCount
 	}
 	PhoneNumberValidation struct {
-		_msgpack struct{} `msgpack:",asArray"` //nolint:unused,revive,tagliatelle,nosnakecase // To insert we need asArray
 		// `Read Only`.
 		CreatedAt       *time.Time `json:"createdAt,omitempty" example:"2022-01-03T16:20:52.156534Z"`
 		UserID          UserID     `json:"userId,omitempty" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
@@ -162,7 +161,6 @@ type (
 		ValidationCode  string     `json:"validationCode,omitempty" example:"1234"`
 	}
 	EmailValidation struct {
-		_msgpack struct{} `msgpack:",asArray"` //nolint:unused,revive,tagliatelle,nosnakecase // To insert we need asArray
 		// `Read Only`.
 		CreatedAt      *time.Time `json:"createdAt,omitempty" example:"2022-01-03T16:20:52.156534Z"`
 		UserID         UserID     `json:"userId,omitempty" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
@@ -170,9 +168,12 @@ type (
 		ValidationCode string     `json:"validationCode,omitempty" example:"1234"`
 	}
 	GlobalUnsigned struct {
-		_msgpack struct{} `msgpack:",asArray"` //nolint:unused,revive,tagliatelle,nosnakecase // To insert we need asArray
-		Key      string   `json:"key" example:"TOTAL_USERS_2022-01-22:16"`
-		Value    uint64   `json:"value" example:"123676"`
+		Key   string `json:"key" example:"TOTAL_USERS_2022-01-22:16"`
+		Value uint64 `json:"value" example:"123676"`
+	}
+	Contact struct {
+		UserID        UserID `json:"userId,omitempty" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
+		ContactUserID UserID `json:"contactUserId,omitempty" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
 	}
 	ReadRepository interface {
 		GetUsers(ctx context.Context, keyword string, limit, offset uint64) ([]*MinimalUserProfile, error)
@@ -183,7 +184,7 @@ type (
 		GetUserGrowth(ctx context.Context, days uint64) (*UserGrowthStatistics, error)
 
 		GetReferrals(ctx context.Context, userID string, referralType ReferralType, limit, offset uint64) (*Referrals, error)
-		GetReferralAcquisitionHistory(ctx context.Context, userID string, days uint64) ([]*ReferralAcquisition, error)
+		GetReferralAcquisitionHistory(ctx context.Context, userID string) ([]*ReferralAcquisition, error)
 	}
 	WriteRepository interface {
 		CreateUser(ctx context.Context, usr *User, clientIP net.IP) error
@@ -215,6 +216,7 @@ type (
 // Private API.
 
 const (
+	hoursInOneDay                       = 24
 	applicationYamlKey                  = "users"
 	dayFormat, hourFormat, minuteFormat = "2006-01-02", "2006-01-02T15", "2006-01-02T15:04"
 	totalUsersGlobalKey                 = "TOTAL_USERS"
@@ -224,19 +226,19 @@ const (
 	totalNoOfDefaultProfilePictures     = 20
 	defaultProfilePictureName           = "default-profile-picture-%v.png"
 	defaultProfilePictureNameRegex      = "default-profile-picture-\\d+[.]png"
-	hashCodeDBColumnName                = "hash_code"
 	usernameDBColumnName                = "username"
 	requestDeadline                     = 25 * stdlibtime.Second
+
+	maxDaysReferralsHistory = 5
 )
 
 var (
-	//go:embed DDL.lua
+	//go:embed DDL.sql
 	ddl string
-	_   msgpack.CustomDecoder = (*NotExpired)(nil)
-	_   msgpack.CustomEncoder = (*Enum[HiddenProfileElement])(nil)
-	_   msgpack.CustomDecoder = (*Enum[HiddenProfileElement])(nil)
-	_   msgpack.CustomEncoder = (*JSON)(nil)
-	_   msgpack.CustomDecoder = (*JSON)(nil)
+
+	_ sql.Scanner        = (*JSON)(nil)
+	_ sql.Scanner        = (*NotExpired)(nil)
+	_ pgtype.ArraySetter = (*Enum[HiddenProfileElement])(nil)
 )
 
 type (
@@ -258,7 +260,7 @@ type (
 	// | repository implements the public API that this package exposes.
 	repository struct {
 		cfg *config
-		db  tarantool.Connector
+		db  *storage.DB
 		mb  messagebroker.Client
 		devicemetadata.DeviceMetadataRepository
 		pictureClient  picture.Client

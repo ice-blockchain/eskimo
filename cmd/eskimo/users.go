@@ -42,6 +42,12 @@ func (s *service) GetUsers( //nolint:gocritic // False negative.
 	ctx context.Context,
 	req *server.Request[GetUsersArg, []*users.MinimalUserProfile],
 ) (*server.Response[[]*users.MinimalUserProfile], *server.Response[server.ErrorResponse]) {
+	key := string(everythingNotAllowedInUsernamePattern.ReplaceAll([]byte(strings.ToLower(req.Data.Keyword)), []byte("")))
+	if key == "" || !strings.EqualFold(key, req.Data.Keyword) {
+		err := errors.Errorf("username: %v is invalid, it should match regex: %v", req.Data.Keyword, everythingNotAllowedInUsernamePattern)
+
+		return nil, server.BadRequest(err, invalidKeywordErrorCode)
+	}
 	if req.Data.Limit == 0 {
 		req.Data.Limit = 10
 	}

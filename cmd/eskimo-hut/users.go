@@ -79,8 +79,8 @@ func buildUserForCreation(req *server.Request[CreateUserRequestBody, User]) *use
 	usr.Email = req.Data.Email
 	usr.PhoneNumber = req.Data.PhoneNumber
 	usr.PhoneNumberHash = req.Data.PhoneNumberHash
-	usr.FirstName = req.Data.FirstName
-	usr.LastName = req.Data.LastName
+	usr.FirstName = &req.Data.FirstName
+	usr.LastName = &req.Data.LastName
 	usr.ClientData = req.Data.ClientData
 	usr.Language = req.Data.Language
 
@@ -200,12 +200,12 @@ func buildUserForModification(req *server.Request[ModifyUserRequestBody, User]) 
 	usr.Country = strings.ToUpper(req.Data.Country)
 	usr.City = req.Data.City
 	usr.Username = strings.ToLower(req.Data.Username)
-	usr.FirstName = req.Data.FirstName
-	usr.LastName = req.Data.LastName
+	usr.FirstName = &req.Data.FirstName
+	usr.LastName = &req.Data.LastName
 	usr.PhoneNumber = req.Data.PhoneNumber
 	usr.PhoneNumberHash = req.Data.PhoneNumberHash
 	usr.Email = req.Data.Email
-	usr.AgendaPhoneNumberHashes = req.Data.AgendaPhoneNumberHashes
+	usr.AgendaPhoneNumberHashes = &req.Data.AgendaPhoneNumberHashes
 	usr.BlockchainAccountAddress = req.Data.BlockchainAccountAddress
 	usr.Language = req.Data.Language
 	if req.Data.ClearHiddenProfileElements != nil && *req.Data.ClearHiddenProfileElements {

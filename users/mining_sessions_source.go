@@ -9,7 +9,7 @@ import (
 	"github.com/pkg/errors"
 
 	messagebroker "github.com/ice-blockchain/wintr/connectors/message_broker"
-	"github.com/ice-blockchain/wintr/connectors/storage"
+	storage "github.com/ice-blockchain/wintr/connectors/storage/v2"
 	"github.com/ice-blockchain/wintr/time"
 )
 
@@ -49,18 +49,14 @@ func (s *miningSessionSource) updateMiningSession(ctx context.Context, now *time
 		return errors.Wrap(ctx.Err(), "unexpected deadline ")
 	}
 	sql := `UPDATE users
-   			SET updated_at = :updated_at,
-   				last_mining_started_at = :last_mining_started_at,
-   				last_mining_ended_at = :last_mining_ended_at
-	        WHERE id = :user_id
-	          AND ((last_mining_started_at IS NULL OR last_mining_started_at != :last_mining_started_at)
-				   OR (last_mining_ended_at IS NULL OR last_mining_ended_at != :last_mining_ended_at))`
-	params := make(map[string]any, 1+1+1+1)
-	params["updated_at"] = time.Now()
-	params["last_mining_started_at"] = now
-	params["last_mining_ended_at"] = ses.EndedAt
-	params["user_id"] = ses.UserID
+   			SET updated_at = $1,
+   				last_mining_started_at = $2,
+   				last_mining_ended_at = $3
+	        WHERE id = $4
+	          AND ((last_mining_started_at IS NULL OR last_mining_started_at != $2)
+				   OR (last_mining_ended_at IS NULL OR last_mining_ended_at != $3))`
+	_, err := storage.Exec(ctx, s.db, sql, time.Now().Time, now.Time, ses.EndedAt.Time, ses.UserID)
 
-	return errors.Wrapf(storage.CheckSQLDMLErr(s.db.PrepareExecute(sql, params)),
+	return errors.Wrapf(err,
 		"failed to update users.last_mining_started_at to %v, users.last_mining_ended_at to %v, for userID: %v", now, ses.EndedAt, ses.UserID)
 }

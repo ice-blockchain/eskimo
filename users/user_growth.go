@@ -5,7 +5,6 @@ package users
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"strings"
 	stdlibtime "time"
 
@@ -13,7 +12,7 @@ import (
 	"github.com/pkg/errors"
 
 	messagebroker "github.com/ice-blockchain/wintr/connectors/message_broker"
-	"github.com/ice-blockchain/wintr/connectors/storage"
+	storage "github.com/ice-blockchain/wintr/connectors/storage/v2"
 	"github.com/ice-blockchain/wintr/time"
 )
 
@@ -77,23 +76,19 @@ func (r *repository) getGlobalValues(ctx context.Context, keys ...string) ([]*Gl
 	if ctx.Err() != nil {
 		return nil, errors.Wrap(ctx.Err(), "context failed")
 	}
-	values := make([]string, 0, len(keys))
-	params := make(map[string]any, len(keys)+1)
+	placeholders := make([]string, 0, len(keys))
+	params := make([]any, len(keys)+1) //nolint:makezero // .
+	params[0] = ""
 	for i, key := range keys {
-		params[fmt.Sprintf("key%v", i)] = key
-		values = append(values, fmt.Sprintf(":key%v", i))
-		if params["positions"] == nil {
-			params["positions"] = key
-		} else {
-			params["positions"] = fmt.Sprintf("%v,%v", params["positions"], key)
-		}
+		params[i+1] = key
+		placeholders = append(placeholders, fmt.Sprintf("$%v", i+2)) //nolint:gomnd // Not a magic number.
+		params[0] = fmt.Sprintf("%v,%v", params[0], key)
 	}
 	sql := fmt.Sprintf(`SELECT *
 						FROM global
 						WHERE key in (%v)
-						ORDER BY POSITION(key, :positions)`, strings.Join(values, ","))
-	vals := make([]*GlobalUnsigned, 0, len(keys))
-	err := r.db.PrepareExecuteTyped(sql, params, &vals)
+						ORDER BY POSITION(key in $1)`, strings.Join(placeholders, ","))
+	vals, err := storage.Select[GlobalUnsigned](ctx, r.db, sql, params...)
 
 	return vals, errors.Wrapf(err, "failed to select global vals for keys:%#v", keys)
 }
@@ -110,7 +105,7 @@ func (r *repository) incrementTotalUsers(ctx context.Context, usr *UserSnapshot)
 	return r.incrementOrDecrementTotalUsers(ctx, time.Now(), false)
 }
 
-//nolint:funlen,gocognit,gocyclo,revive,cyclop // .
+//nolint:revive // .
 func (r *repository) incrementOrDecrementTotalUsers(ctx context.Context, date *time.Time, increment bool) error {
 	if ctx.Err() != nil {
 		return errors.Wrap(ctx.Err(), "unexpected deadline")
@@ -119,48 +114,17 @@ func (r *repository) incrementOrDecrementTotalUsers(ctx context.Context, date *t
 	if !increment {
 		operation = "-"
 	}
-	params := make(map[string]any, 1+1+1)
-	params["total_key"] = totalUsersGlobalKey
-	params["total_parent_key"] = r.totalUsersGlobalParentKey(date.Time)
-	params["total_child_key"] = r.totalUsersGlobalChildKey(date.Time)
+	params := []any{totalUsersGlobalKey, r.totalUsersGlobalParentKey(date.Time), r.totalUsersGlobalChildKey(date.Time)}
 	sqlParams := make([]string, 0, len(params))
-	for k := range params {
-		sqlParams = append(sqlParams, fmt.Sprintf(":%s", k))
+	for idx := range params {
+		sqlParams = append(sqlParams, fmt.Sprintf("($%v,1)", idx+1))
 	}
-	sql := fmt.Sprintf(`UPDATE global  
-						SET value = (select CAST(GREATEST(CAST(total.value AS UNSIGNED) %[1]v 1,0) AS UNSIGNED) FROM global total WHERE total.key = :total_key) 
-						WHERE key in (%[2]v)`, operation, strings.Join(sqlParams, ","))
-	resp, err := r.db.PrepareExecute(sql, params)
-	if err = storage.CheckSQLDMLErr(resp, err); err != nil && !errors.Is(err, storage.ErrNotFound) {
+	sql := fmt.Sprintf(`INSERT INTO global (key, value) 
+									VALUES %[2]v
+								ON CONFLICT (key) DO UPDATE    
+						SET value = (select GREATEST(total.value %[1]v 1,0) FROM global total WHERE total.key = '%[3]v')`, operation, strings.Join(sqlParams, ","), params[0])
+	if _, err := storage.Exec(ctx, r.db, sql, params...); err != nil && !storage.IsErr(err, storage.ErrNotFound) {
 		return errors.Wrapf(err, "failed to update global.value to global.value%v1 of key='%v', for params:%#v ", operation, totalUsersGlobalKey, params)
-	}
-	updatedRows, err := strconv.Atoi(fmt.Sprint(resp.Data[0]))
-	if err != nil {
-		return errors.Wrapf(err, "not a number")
-	}
-	if updatedRows < len(params) { //nolint:nestif // .
-		for key, val := range params {
-			if val == totalUsersGlobalKey {
-				continue
-			}
-			sql = fmt.Sprintf(`INSERT INTO global (key,value) 
-							   SELECT :%v,
-									  CAST(value AS UNSIGNED)
-							   FROM global  
-							   WHERE key = :total_key`, key)
-			innerParams := map[string]any{key: val, "total_key": params["total_key"]}
-			if err = storage.CheckSQLDMLErr(r.db.PrepareExecute(sql, innerParams)); err != nil && !errors.Is(err, storage.ErrDuplicate) {
-				return errors.Wrapf(err, "failed to insert global.value from existing global.value of key='%v', for k:%v,v:%v ", totalUsersGlobalKey, key, val)
-			}
-			if err != nil && errors.Is(err, storage.ErrDuplicate) {
-				sql = fmt.Sprintf(`UPDATE global  
-								   SET value = (select CAST(total.value AS UNSIGNED) FROM global total WHERE total.key = :total_key) 
-								   WHERE key = :%v`, key)
-				if err = storage.CheckSQLDMLErr(r.db.PrepareExecute(sql, innerParams)); err != nil {
-					return errors.Wrapf(err, "failed to update global.value to existing global.value of key='%v', for k:%v,v:%v ", totalUsersGlobalKey, key, val)
-				}
-			}
-		}
 	}
 	keys := make([]string, 0, len(params))
 	for _, v := range params {
@@ -170,7 +134,7 @@ func (r *repository) incrementOrDecrementTotalUsers(ctx context.Context, date *t
 	return errors.Wrapf(r.notifyGlobalValueUpdateMessage(ctx, keys...), "failed to notifyGlobalValueUpdateMessage, keys:%#v", keys)
 }
 
-func (r *repository) incrementTotalActiveUsers(ctx context.Context, prev, next *time.Time) error { //nolint:funlen,gocognit,gocyclo,revive,cyclop // .
+func (r *repository) incrementTotalActiveUsers(ctx context.Context, prev, next *time.Time) error { //nolint:funlen,gocognit // .
 	if ctx.Err() != nil {
 		return errors.Wrap(ctx.Err(), "unexpected deadline")
 	}
@@ -180,44 +144,25 @@ func (r *repository) incrementTotalActiveUsers(ctx context.Context, prev, next *
 	if skipChild && skipParent {
 		return nil
 	}
-	params := make(map[string]any, 1+1)
+	params := make([]any, 0)
 	if !skipParent {
-		params["total_per_parent_duration_key"] = parent
+		params = append(params, parent)
 	}
 	if !skipChild {
-		params["total_per_child_key"] = child
+		params = append(params, child)
 	}
 	sqlParams := make([]string, 0, len(params))
-	for k := range params {
-		sqlParams = append(sqlParams, fmt.Sprintf(":%s", k))
+	for idx := range params {
+		sqlParams = append(sqlParams, fmt.Sprintf("($%v,1)", idx+1))
 	}
-	sql := fmt.Sprintf(`UPDATE global  
-						SET value = CAST(CAST(value AS UNSIGNED)+1 AS UNSIGNED)
-						WHERE key in (%v)`, strings.Join(sqlParams, ","))
-	resp, err := r.db.PrepareExecute(sql, params)
-	if err = storage.CheckSQLDMLErr(resp, err); err != nil && !errors.Is(err, storage.ErrNotFound) {
-		return errors.Wrapf(err, "failed to update global.value to global.value+1 for params:%#v ", params)
-	}
-	updatedRows, err := strconv.Atoi(fmt.Sprint(resp.Data[0]))
-	if err != nil {
-		return errors.Wrapf(err, "not a number")
-	}
-	if updatedRows < len(params) {
-		for key, val := range params {
-			sql = fmt.Sprintf(`INSERT INTO global (key,value) VALUES (:%v,CAST(1 AS UNSIGNED))`, key)
-			innerParams := map[string]any{key: val}
-			if err = storage.CheckSQLDMLErr(r.db.PrepareExecute(sql, innerParams)); err != nil && !errors.Is(err, storage.ErrDuplicate) {
-				return errors.Wrapf(err, "failed to insert global.value to 1 for params[%v]:%v ", key, val)
-			}
-			if err != nil && errors.Is(err, storage.ErrDuplicate) {
-				sql = fmt.Sprintf(`UPDATE global
-								   SET value = CAST(CAST(value AS UNSIGNED)+1 AS UNSIGNED)
-								   WHERE key = :%v`, key)
-				if err = storage.CheckSQLDMLErr(r.db.PrepareExecute(sql, innerParams)); err != nil {
-					return errors.Wrapf(err, "failed to update global.value to global.value+1 for params[%v]:%v ", key, val)
-				}
-			}
-		}
+	sql := fmt.Sprintf(`
+				INSERT INTO global (key, value) VALUES 
+					%v
+				ON CONFLICT (key) DO UPDATE   
+						SET value = global.value + 1`, strings.Join(sqlParams, ","))
+
+	if _, err := storage.Exec(ctx, r.db, sql, params...); err != nil && !storage.IsErr(err, storage.ErrNotFound) {
+		return errors.Wrapf(err, "failed to update global.value to global.value+1 for params:%#v", params...)
 	}
 	keys := make([]string, 0, len(params))
 	for _, v := range params {
