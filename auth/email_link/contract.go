@@ -12,12 +12,17 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/ice-blockchain/wintr/connectors/storage/v2"
+	"github.com/ice-blockchain/wintr/email"
 )
 
 // Public API.
 type (
+	Auth struct {
+		Email string `json:"email" example:"jdoe@gmail.com"`
+	}
 	Processor interface {
 		Repository
+		StartEmailLinkAuth(ctx context.Context, a *Auth) error
 		IssueRefreshToken(ctx context.Context, emailLinkPayload string) (string, error)
 	}
 	Repository interface {
@@ -46,14 +51,23 @@ const (
 
 type (
 	repository struct {
-		db       *storage.DB
-		cfg      *config
-		shutdown func() error
+		db          *storage.DB
+		cfg         *config
+		shutdown    func() error
+		emailClient email.Client
 	}
 	processor struct {
 		*repository
 	}
 	config struct {
+		EmailValidation struct {
+			AuthLink              string `yaml:"authLink"`
+			FromEmailName         string `yaml:"fromEmailName"`
+			FromEmailAddress      string `yaml:"fromEmailAddress"`
+			EmailBodyHTMLTemplate string `mapstructure:"emailBodyHTMLTemplate" yaml:"emailBodyHTMLTemplate"` //nolint:tagliatelle // Nope.
+			EmailSubject          string `yaml:"emailSubject"`
+			ServiceName           string `yaml:"serviceName"`
+		} `yaml:"emailValidation"`
 		JWTSecret      string              `yaml:"jwtSecret" mapstructure:"jwtSecret"`
 		ExpirationTime stdlibtime.Duration `yaml:"expirationTime" mapstructure:"expirationTime"`
 		//TODO: move to wintr?

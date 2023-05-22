@@ -83,9 +83,15 @@ type (
 		Bogus          string `json:"bogus" swaggerignore:"true"` // It's just for the router to register the JSON body binder.
 		users.DeviceMetadata
 	}
+	StartEmailLinkAuthRequestArg struct {
+		Email string `json:"email" allowUnauthorized:"true" required:"true" example:"jdoe@gmail.com"`
+	}
 	User struct {
 		*users.User
 		Checksum string `json:"checksum,omitempty" example:"1232412415326543647657"`
+	}
+	Auth struct {
+		Email string `json:"email" example:"jdoe@gmail.com"`
 	}
 
 	RefreshedToken struct {

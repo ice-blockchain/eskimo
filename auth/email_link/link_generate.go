@@ -4,12 +4,13 @@ package emaillink
 
 import (
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/pkg/errors"
 
 	"github.com/ice-blockchain/wintr/time"
 )
 
-func (r *repository) generateLinkPayload(email, otp string, now time.Time) (string, error) {
-	token := jwt.NewWithClaims(&jwt.SigningMethodHMAC{}, emailClaims{
+func (r *repository) generateLinkPayload(email, otp string, now *time.Time) (string, error) {
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, emailClaims{
 		RegisteredClaims: &jwt.RegisteredClaims{
 			Issuer:    jwtIssuer,
 			Subject:   email,
@@ -21,5 +22,7 @@ func (r *repository) generateLinkPayload(email, otp string, now time.Time) (stri
 		OTP: otp,
 	})
 
-	return token.SignedString([]byte(r.cfg.JWTSecret))
+	payload, err := token.SignedString([]byte(r.cfg.JWTSecret))
+
+	return payload, errors.Wrapf(err, "can't generate link payload for email:%v,otp:%v,now:%v", email, otp, now)
 }

@@ -2,6 +2,12 @@
 
 basePath: /v1w
 definitions:
+  main.Auth:
+    properties:
+      email:
+        example: jdoe@gmail.com
+        type: string
+    type: object
   main.CreateUserRequestBody:
     properties:
       clientData:
@@ -114,6 +120,12 @@ definitions:
         example: did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2
         type: string
     type: object
+  main.StartEmailLinkAuthRequestArg:
+    properties:
+      email:
+        example: jdoe@gmail.com
+        type: string
+    type: object
   main.User:
     properties:
       agendaPhoneNumberHashes:
@@ -215,6 +227,39 @@ info:
   title: User Accounts, User Devices, User Statistics API
   version: latest
 paths:
+  /auth:
+    post:
+      consumes:
+      - application/json
+      description: Starts email link auth process
+      parameters:
+      - description: Request params
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/main.StartEmailLinkAuthRequestArg'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.Auth'
+        "422":
+          description: if syntax fails
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "504":
+          description: if request times out
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+      tags:
+      - Auth
   /auth/finish/{payload}:
     get:
       description: Finishes login flow using magic link

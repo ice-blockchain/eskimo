@@ -29,6 +29,19 @@ auth/email-link:
       password: pass
     replicaURLs:
       - postgresql://root:pass@localhost:5433/eskimo
+  emailValidation:
+    authLink: https://ice.io/auth
+    emailSubject: ICE email verification
+    emailBodyHTMLTemplate: 'Hello<br><br>
+      We received a request to sign in to {{.serviceName}} using this email address. If you want to sign in with your {{.email}} account, click this link:<br><br>
+      <a href="{{.link}}" target="_blank">Sign in to {{.serviceName}}</a><br><br>
+      If you did not request this link, you can safely ignore this email.<br><br>
+      Thanks,<br><br>
+      Your {{.serviceName}} team<br>'
+    fromEmailAddress: no-reply@ice.io
+    fromEmailName: ICE
+    serviceName: ice-app-staging
+  jwtSecret: bogus
 users: &users
   wintr/connectors/storage/v2:
     runDDL: true

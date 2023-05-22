@@ -11,6 +11,58 @@ import (
 	"github.com/ice-blockchain/wintr/server"
 )
 
+func (s *service) setupAuthRoutes(router *server.Router) {
+	router.
+		Group("v1w").
+		POST("auth", server.RootHandler(s.StartEmailLinkAuth))
+}
+
+// StartEmailLinkAuth godoc
+//
+//	@Schemes
+//	@Description	Starts email link auth process
+//	@Tags			Auth
+//	@Accept			json
+//	@Produce		json
+//	@Param			request	body		StartEmailLinkAuthRequestArg	true	"Request params"
+//	@Success		200		{object}	Auth
+//	@Failure		422		{object}	server.ErrorResponse	"if syntax fails"
+//	@Failure		500		{object}	server.ErrorResponse
+//	@Failure		504		{object}	server.ErrorResponse	"if request times out"
+//	@Router			/auth [POST].
+func (s *service) StartEmailLinkAuth( //nolint:gocritic // .
+	ctx context.Context,
+	req *server.Request[StartEmailLinkAuthRequestArg, Auth],
+) (*server.Response[Auth], *server.Response[server.ErrorResponse]) {
+	if err := req.Data.verifyIfAtLeastOnePropertyProvided(); err != nil {
+		return nil, err
+	}
+	a := buildAuthForStartEmailLinkAuth(req)
+	if err := s.authEmailLinkProcessor.StartEmailLinkAuth(ctx, a); err != nil {
+		err = errors.Wrapf(err, "failed to start email link auth %#v", req.Data)
+		if err != nil {
+			return nil, server.Unexpected(err)
+		}
+	}
+
+	return server.OK[Auth](), nil
+}
+
+func buildAuthForStartEmailLinkAuth(req *server.Request[StartEmailLinkAuthRequestArg, Auth]) *emaillink.Auth {
+	a := new(emaillink.Auth)
+	a.Email = req.Data.Email
+
+	return a
+}
+
+func (a *StartEmailLinkAuthRequestArg) verifyIfAtLeastOnePropertyProvided() *server.Response[server.ErrorResponse] {
+	if a.Email == "" {
+		return server.UnprocessableEntity(errors.New("start email link auth request without email value"), invalidPropertiesErrorCode)
+	}
+
+	return nil
+}
+
 // FinishLoginUsingMagicLink godoc
 //
 //	@Schemes

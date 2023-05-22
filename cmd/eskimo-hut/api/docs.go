@@ -19,6 +19,57 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/auth": {
+            "post": {
+                "description": "Starts email link auth process",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "parameters": [
+                    {
+                        "description": "Request params",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.StartEmailLinkAuthRequestArg"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.Auth"
+                        }
+                    },
+                    "422": {
+                        "description": "if syntax fails",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    },
+                    "504": {
+                        "description": "if request times out",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/auth/finish/{payload}": {
             "get": {
                 "description": "Finishes login flow using magic link",
@@ -630,6 +681,15 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "main.Auth": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string",
+                    "example": "jdoe@gmail.com"
+                }
+            }
+        },
         "main.CreateUserRequestBody": {
             "type": "object",
             "properties": {
@@ -790,6 +850,15 @@ const docTemplate = `{
                 "userId": {
                     "type": "string",
                     "example": "did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"
+                }
+            }
+        },
+        "main.StartEmailLinkAuthRequestArg": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string",
+                    "example": "jdoe@gmail.com"
                 }
             }
         },
