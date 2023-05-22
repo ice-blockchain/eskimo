@@ -19,6 +19,64 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/auth/finish/{payload}": {
+            "get": {
+                "description": "Finishes login flow using magic link",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Request params",
+                        "name": "payload",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.RefreshedToken"
+                        }
+                    },
+                    "400": {
+                        "description": "if invalid or expired payload provided",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "if email does not need to be confirmed by magic link",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    },
+                    "422": {
+                        "description": "if syntax fails",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    },
+                    "504": {
+                        "description": "if request times out",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/users": {
             "post": {
                 "description": "Creates an user account",
@@ -612,6 +670,19 @@ const docTemplate = `{
                     "description": "Optional. Required only if ` + "`" + `phoneNumber` + "`" + ` is set.",
                     "type": "string",
                     "example": "Ef86A6021afCDe5673511376B2"
+                }
+            }
+        },
+        "main.RefreshedToken": {
+            "type": "object",
+            "properties": {
+                "accessToken": {
+                    "type": "string",
+                    "example": ""
+                },
+                "refreshToken": {
+                    "type": "string",
+                    "example": ""
                 }
             }
         },

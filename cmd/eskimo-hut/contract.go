@@ -4,9 +4,9 @@ package main
 
 import (
 	_ "embed"
-	emaillink "github.com/ice-blockchain/eskimo/auth/email_link"
 	"mime/multipart"
 
+	emaillink "github.com/ice-blockchain/eskimo/auth/email_link"
 	"github.com/ice-blockchain/eskimo/users"
 )
 
@@ -87,6 +87,14 @@ type (
 		*users.User
 		Checksum string `json:"checksum,omitempty" example:"1232412415326543647657"`
 	}
+
+	RefreshedToken struct {
+		RefreshToken string `json:"refreshToken" example:""`
+		AccessToken  string `json:"accessToken" example:""`
+	}
+	MagicLinkPayload struct {
+		JWTPayload string `uri:"payload" required:"true" allowUnauthorized:"true" example:"eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJPbmxpbmUgSldUIEJ1aWxkZXIiLCJpYXQiOjE2ODQzMjQ0NTYsImV4cCI6MTcxNTg2MDQ1NiwiYXVkIjoiIiwic3ViIjoianJvY2tldEBleGFtcGxlLmNvbSIsIm90cCI6IjUxMzRhMzdkLWIyMWEtNGVhNi1hNzk2LTAxOGIwMjMwMmFhMCJ9.q3xa8Gwg2FVCRHLZqkSedH3aK8XBqykaIy85rRU40nM"` //nolint:lll // .
+	}
 )
 
 // Private API.
@@ -105,6 +113,10 @@ const (
 	referralNotFoundErrorCode               = "REFERRAL_NOT_FOUND"
 	raceConditionErrorCode                  = "RACE_CONDITION"
 	invalidPropertiesErrorCode              = "INVALID_PROPERTIES"
+
+	linkExpired             = "EXPIRED_LINK"
+	invalidOTPCode          = "INVALID_OTP"
+	emailValidationNotFound = "EMAIL_VALIDATION_NOT_FOUND"
 )
 
 // .

@@ -4,11 +4,11 @@ package main
 
 import (
 	"context"
-	"github.com/hashicorp/go-multierror"
-	emaillink "github.com/ice-blockchain/eskimo/auth/email_link"
 
+	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 
+	emaillink "github.com/ice-blockchain/eskimo/auth/email_link"
 	"github.com/ice-blockchain/eskimo/cmd/eskimo-hut/api"
 	"github.com/ice-blockchain/eskimo/users"
 	appCfg "github.com/ice-blockchain/wintr/config"

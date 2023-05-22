@@ -33,6 +33,15 @@ definitions:
         example: Ef86A6021afCDe5673511376B2
         type: string
     type: object
+  main.RefreshedToken:
+    properties:
+      accessToken:
+        example: ""
+        type: string
+      refreshToken:
+        example: ""
+        type: string
+    type: object
   main.ReplaceDeviceMetadataRequestBody:
     properties:
       apiLevel:
@@ -206,6 +215,44 @@ info:
   title: User Accounts, User Devices, User Statistics API
   version: latest
 paths:
+  /auth/finish/{payload}:
+    get:
+      description: Finishes login flow using magic link
+      parameters:
+      - description: Request params
+        in: path
+        name: payload
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.RefreshedToken'
+        "400":
+          description: if invalid or expired payload provided
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "404":
+          description: if email does not need to be confirmed by magic link
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "422":
+          description: if syntax fails
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "504":
+          description: if request times out
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+      tags:
+      - Auth
   /users:
     post:
       consumes:

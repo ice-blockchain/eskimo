@@ -1,30 +1,41 @@
+// SPDX-License-Identifier: ice License 1.0
+
 package emaillink
 
 import (
+	"context"
 	_ "embed"
-	"github.com/golang-jwt/jwt/v5"
-	"github.com/ice-blockchain/wintr/connectors/storage/v2"
-	"github.com/pkg/errors"
 	"io"
 	stdlibtime "time"
+
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/pkg/errors"
+
+	"github.com/ice-blockchain/wintr/connectors/storage/v2"
 )
 
 // Public API.
 type (
 	Processor interface {
 		Repository
-		VerifyMagicLink(jwt string) error
+		IssueRefreshToken(ctx context.Context, emailLinkPayload string) (string, error)
 	}
 	Repository interface {
 		io.Closer
-		//RefreshToken(jwt string) (string, error)
-		//IssueRefreshToken(userId users.UserID) (string, error)
+	}
+	// TODO: move to wintr.
+	Token struct {
+		*jwt.RegisteredClaims
+		Role     string `json:"role" example:"1"`
+		EMail    string `json:"email" example:"jdoe@example.com"`
+		HashCode int64  `json:"hashCode,omitempty" example:"12356789"`
 	}
 )
 
 var (
-	ErrInvalidToken = errors.New("invalid token")
-	ErrExpiredToken = errors.New("expired token")
+	ErrInvalidToken           = errors.New("invalid token")
+	ErrExpiredToken           = errors.New("expired token")
+	ErrNoConfirmationRequired = errors.New("no pending confirmation")
 )
 
 // Private API.
@@ -45,9 +56,12 @@ type (
 	config struct {
 		JWTSecret      string              `yaml:"jwtSecret" mapstructure:"jwtSecret"`
 		ExpirationTime stdlibtime.Duration `yaml:"expirationTime" mapstructure:"expirationTime"`
+		//TODO: move to wintr?
+		RefreshExpirationTime stdlibtime.Duration `yaml:"refreshExpirationTime" mapstructure:"refreshExpirationTime"`
+		AccessExpirationTime  stdlibtime.Duration `yaml:"accessExpirationTime" mapstructure:"refreshExpirationTime"`
 	}
 	emailClaims struct {
-		jwt.RegisteredClaims
+		*jwt.RegisteredClaims
 		OTP string `json:"otp" example:"c8f64979-9cea-4649-a89a-35607e734e68"`
 	}
 )
@@ -55,5 +69,4 @@ type (
 var (
 	//go:embed DDL.sql
 	ddl string
-	cfg config
 )
