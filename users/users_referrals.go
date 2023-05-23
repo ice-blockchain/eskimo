@@ -49,11 +49,6 @@ func (r *repository) GetReferrals(ctx context.Context, userID string, referralTy
                    			AND referrals.username != referrals.id
 						    AND referrals.referred_by != referrals.id`
 	case ContactsReferrals:
-		if true {
-			return &Referrals{
-				Referrals: make([]*MinimalUserProfile, 0),
-			}, nil
-		}
 		referralTypeJoin = `
 			JOIN USERS referrals
 					ON NULLIF(referrals.phone_number_hash,'') IS NOT NULL
