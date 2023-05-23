@@ -228,7 +228,7 @@ func (r *repository) GetReferralAcquisitionHistory(ctx context.Context, userID s
 }
 
 func (r *repository) updateReferralCount(ctx context.Context, msgTimestamp stdlibtime.Time, us *UserSnapshot) error {
-	if us.ReferredBy == us.ID || us.ReferredBy == "" || us.Before == nil || us.User == nil || us.Before.ReferredBy == us.ReferredBy {
+	if us.User == nil || us.ReferredBy == us.ID || us.ReferredBy == "" || us.Before == nil || us.Before.ReferredBy == us.ReferredBy {
 		return nil
 	}
 	_, err := storage.Exec(ctx, r.db, `INSERT INTO processed_referrals(user_id, referred_by, processed_at) VALUES ($1, $2, $3)`,
