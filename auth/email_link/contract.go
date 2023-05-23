@@ -23,7 +23,9 @@ type (
 	Processor interface {
 		Repository
 		StartEmailLinkAuth(ctx context.Context, a *Auth) error
-		IssueRefreshToken(ctx context.Context, emailLinkPayload string) (string, error)
+		IssueRefreshTokenForMagicLink(ctx context.Context, emailLinkPayload string) (string, error)
+		RenewRefreshToken(ctx context.Context, prevToken string) (string, error)
+		IssueAccessToken(ctx context.Context, refreshToken string) (string, error)
 	}
 	Repository interface {
 		io.Closer
@@ -34,6 +36,7 @@ type (
 		Role     string `json:"role" example:"1"`
 		EMail    string `json:"email" example:"jdoe@example.com"`
 		HashCode int64  `json:"hashCode,omitempty" example:"12356789"`
+		Seq      int64  `json:"seq"`
 	}
 )
 
@@ -41,6 +44,9 @@ var (
 	ErrInvalidToken           = errors.New("invalid token")
 	ErrExpiredToken           = errors.New("expired token")
 	ErrNoConfirmationRequired = errors.New("no pending confirmation")
+
+	ErrUserDataMismatch = errors.New("user data was updated in db")
+	ErrUserNotFound     = storage.ErrNotFound
 )
 
 // Private API.
@@ -72,11 +78,15 @@ type (
 		ExpirationTime stdlibtime.Duration `yaml:"expirationTime" mapstructure:"expirationTime"`
 		//TODO: move to wintr?
 		RefreshExpirationTime stdlibtime.Duration `yaml:"refreshExpirationTime" mapstructure:"refreshExpirationTime"`
-		AccessExpirationTime  stdlibtime.Duration `yaml:"accessExpirationTime" mapstructure:"refreshExpirationTime"`
+		AccessExpirationTime  stdlibtime.Duration `yaml:"accessExpirationTime" mapstructure:"accessExpirationTime"`
 	}
 	emailClaims struct {
 		*jwt.RegisteredClaims
 		OTP string `json:"otp" example:"c8f64979-9cea-4649-a89a-35607e734e68"`
+	}
+
+	issuedTokenSeq struct {
+		IssuedTokenSeq int64 `db:"issued_token_seq"`
 	}
 )
 

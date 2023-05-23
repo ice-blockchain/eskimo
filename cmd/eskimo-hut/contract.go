@@ -101,6 +101,10 @@ type (
 	MagicLinkPayload struct {
 		JWTPayload string `uri:"payload" required:"true" allowUnauthorized:"true" example:"eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJPbmxpbmUgSldUIEJ1aWxkZXIiLCJpYXQiOjE2ODQzMjQ0NTYsImV4cCI6MTcxNTg2MDQ1NiwiYXVkIjoiIiwic3ViIjoianJvY2tldEBleGFtcGxlLmNvbSIsIm90cCI6IjUxMzRhMzdkLWIyMWEtNGVhNi1hNzk2LTAxOGIwMjMwMmFhMCJ9.q3xa8Gwg2FVCRHLZqkSedH3aK8XBqykaIy85rRU40nM"` //nolint:lll // .
 	}
+	RefreshToken struct {
+		// TODO: replace with Authorization when wintr will handle both.
+		Token string `header:"Token" required:"true" allowForbiddenWriteOperation:"true" allowUnauthorized:"true" example:"eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJPbmxpbmUgSldUIEJ1aWxkZXIiLCJpYXQiOjE2ODQzMjQ0NTYsImV4cCI6MTcxNTg2MDQ1NiwiYXVkIjoiIiwic3ViIjoianJvY2tldEBleGFtcGxlLmNvbSIsIm90cCI6IjUxMzRhMzdkLWIyMWEtNGVhNi1hNzk2LTAxOGIwMjMwMmFhMCJ9.q3xa8Gwg2FVCRHLZqkSedH3aK8XBqykaIy85rRU40nM"` //nolint:lll // .
+	}
 )
 
 // Private API.
@@ -123,6 +127,9 @@ const (
 	linkExpired             = "EXPIRED_LINK"
 	invalidOTPCode          = "INVALID_OTP"
 	emailValidationNotFound = "EMAIL_VALIDATION_NOT_FOUND"
+
+	dataMismatch = "DATA_MISMATCH"
+	userNotFound = "USER_NOT_FOUND"
 )
 
 // .

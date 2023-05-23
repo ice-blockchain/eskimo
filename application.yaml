@@ -42,6 +42,8 @@ auth/email-link:
     fromEmailName: ICE
     serviceName: ice-app-staging
   jwtSecret: bogus
+  refreshExpirationTime: 24h
+  accessExpirationTime: 1m
 users: &users
   wintr/connectors/storage/v2:
     runDDL: true

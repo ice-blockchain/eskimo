@@ -4,72 +4,91 @@ package emaillink
 
 import (
 	"context"
-	"time"
+	"strconv"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/pkg/errors"
 
+	"github.com/ice-blockchain/eskimo/users"
 	"github.com/ice-blockchain/wintr/connectors/storage/v2"
+	"github.com/ice-blockchain/wintr/time"
 )
 
-func (r *repository) IssueRefreshToken(ctx context.Context, emailLinkPayload string) (string, error) {
-	userID, email, err := r.verifyMagicLink(ctx, emailLinkPayload)
+func (r *repository) IssueRefreshTokenForMagicLink(ctx context.Context, emailLinkPayload string) (string, error) {
+	userID, email, otp, err := r.verifyMagicLink(ctx, emailLinkPayload)
 	if err != nil {
 		return "", errors.Wrapf(err, "failed to verify email link payload")
 	}
 
-	return r.generateRefreshToken(userID, email)
-}
-
-func (r *repository) generateRefreshToken(userID, email string) (string, error) {
-	now := time.Now().In(time.UTC)
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, Token{
-		RegisteredClaims: &jwt.RegisteredClaims{
-			Issuer:    jwtIssuer,
-			Subject:   userID,
-			ExpiresAt: jwt.NewNumericDate(now.Add(r.cfg.RefreshExpirationTime)),
-			NotBefore: jwt.NewNumericDate(now),
-			IssuedAt:  jwt.NewNumericDate(now),
-		},
-		EMail: email,
-	})
-
-	tokenStr, err := token.SignedString([]byte(r.cfg.JWTSecret))
-
-	return tokenStr, errors.Wrapf(err, "failed to generate refresh token for user %v %v", userID, email)
-}
-
-func (r *repository) verifyMagicLink(ctx context.Context, jwtToken string) (userID, email string, err error) {
-	email, otp, err := r.parseMagicLinkToken(jwtToken)
+	now := time.Now()
+	refreshTokenSeq, err := r.updateRefreshTokenForUser(ctx, userID, 0, now, email, otp)
 	if err != nil {
-		return "", "", errors.Wrapf(err, "failed to fetch email and otp code from payload")
-	}
-	hasPendingConf, err := r.deleteEmailConfirmation(ctx, email, otp)
-	if err != nil {
-		return "", "", errors.Wrapf(err, "failed to delete pending confirmation for email:%v", email)
-	}
-	if !hasPendingConf {
-		return "", "", errors.Wrapf(ErrNoConfirmationRequired, "no pending confirmation for email %v", email)
+		if storage.IsErr(err, storage.ErrNotFound) {
+			return "", errors.Wrapf(ErrNoConfirmationRequired, "no pending confirmation for email %v", email)
+		}
+
+		return "", errors.Wrapf(err, "failed to update issuing token for email: %v", email)
 	}
 
-	return r.findOrGenerateUserIDByEmail(ctx, email)
+	return r.generateRefreshToken(now, userID, email, refreshTokenSeq)
 }
 
-func (r *repository) deleteEmailConfirmation(ctx context.Context, email, otp string) (bool, error) {
-	rowsDeleted, err := storage.Exec(ctx, r.db, `DELETE FROM pending_email_confirmations WHERE email = $1 AND otp = $2`, email, otp)
-	if err != nil {
-		return false, errors.Wrapf(err, "failed to delete pending email confirmation for email %v", email)
+// TODO: move to wintr?
+func (r *repository) parseToken(jwtToken string) (userID, email string, seq int64, err error) {
+	var claims Token
+	if err := verifyJWTCommonFields(jwtToken, r.cfg.JWTSecret, &claims); err != nil {
+		return "", "", 0, errors.Wrapf(err, "invalid refresh/access token")
 	}
 
-	return rowsDeleted == 1, nil
+	return claims.Subject, claims.EMail, claims.Seq, nil
 }
 
-func (r *repository) parseMagicLinkToken(jwtToken string) (email, otp string, err error) {
+func (r *repository) verifyMagicLink(ctx context.Context, jwtToken string) (userID users.UserID, email, otp string, err error) {
 	var claims emailClaims
 	if err = verifyJWTCommonFields(jwtToken, r.cfg.JWTSecret, &claims); err != nil {
-		return "", "", errors.Wrapf(err, "invalid email token")
+		return "", "", "", errors.Wrapf(err, "invalid email token")
 	}
-	return claims.Subject, claims.OTP, nil
+	email = claims.Subject
+	otp = claims.OTP
+	if err != nil {
+		return "", "", "", errors.Wrapf(err, "failed to fetch email and otp code from payload")
+	}
+	userID, err = r.findOrGenerateUserIDByEmail(ctx, email)
+	if err != nil {
+		return "", "", "", errors.Wrapf(err, "failed to fetch email and otp code from payload")
+	}
+
+	return userID, email, otp, err
+}
+
+func (r *repository) updateRefreshTokenForUser(
+	ctx context.Context,
+	userID users.UserID,
+	currentSeq int64,
+	now *time.Time,
+	email string,
+	otp ...any,
+) (tokenSeq int64, err error) {
+	params := []any{email, now.Time, userID}
+	if currentSeq > 0 {
+		params = append(params, strconv.FormatInt(currentSeq, 10))
+	}
+	if len(otp) > 0 {
+		params = append(params, otp[0])
+	}
+	updatedValue, err := storage.ExecOne[issuedTokenSeq](ctx, r.db, `
+		UPDATE pending_email_confirmations
+			SET token_issued_at = $2,
+		        user_id = $3,
+		        otp = $3,
+				issued_token_seq = COALESCE(pending_email_confirmations.issued_token_seq,0) + 1
+		WHERE  (pending_email_confirmations.user_id = $3 AND pending_email_confirmations.issued_token_seq::text = $4::text) OR (pending_email_confirmations.email = $1 AND pending_email_confirmations.otp = $4)
+		RETURNING issued_token_seq`, params...)
+	if err != nil {
+		return 0, errors.Wrapf(err, "failed to assign refreshed token to pending email confirmation for email %v", email)
+	}
+
+	return updatedValue.IssuedTokenSeq, nil
 }
 
 func verifyJWTCommonFields(jwtToken, secret string, res jwt.Claims) error {

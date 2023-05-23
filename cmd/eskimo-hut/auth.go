@@ -4,6 +4,7 @@ package main
 
 import (
 	"context"
+	"strings"
 
 	"github.com/pkg/errors"
 
@@ -14,7 +15,9 @@ import (
 func (s *service) setupAuthRoutes(router *server.Router) {
 	router.
 		Group("v1w").
-		POST("auth", server.RootHandler(s.StartEmailLinkAuth))
+		POST("auth", server.RootHandler(s.StartEmailLinkAuth)).
+		GET("auth/refresh", server.RootHandler(s.RefreshToken)).
+		GET("auth/finish/:payload", server.RootHandler(s.FinishLoginUsingMagicLink))
 }
 
 // StartEmailLinkAuth godoc
@@ -81,7 +84,7 @@ func (s *service) FinishLoginUsingMagicLink( //nolint:gocritic // .
 	ctx context.Context,
 	req *server.Request[MagicLinkPayload, RefreshedToken],
 ) (*server.Response[RefreshedToken], *server.Response[server.ErrorResponse]) {
-	refreshToken, err := s.authEmailLinkProcessor.IssueRefreshToken(ctx, req.Data.JWTPayload)
+	refreshToken, err := s.authEmailLinkProcessor.IssueRefreshTokenForMagicLink(ctx, req.Data.JWTPayload)
 	if err != nil {
 		err = errors.Wrapf(err, "finish login using magic link failed for %#v", req.Data)
 		switch {
@@ -95,7 +98,61 @@ func (s *service) FinishLoginUsingMagicLink( //nolint:gocritic // .
 			return nil, server.Unexpected(err)
 		}
 	}
-	accessToken := "" // TODO implement later.
+	accessToken, err := s.authEmailLinkProcessor.IssueAccessToken(ctx, refreshToken)
+	if err != nil {
+		switch {
+		case errors.Is(err, emaillink.ErrUserNotFound):
+			accessToken = "" //nolint:gosec // For initial user creation.
+		default:
+			return nil, server.Unexpected(err)
+		}
+	}
 
 	return server.OK(&RefreshedToken{RefreshToken: refreshToken, AccessToken: accessToken}), nil
+}
+
+// RefreshToken godoc
+//
+//	@Schemes
+//	@Description	Issues new access token
+//	@Tags			Auth
+//	@Produce		json
+//	@Param			Token	header		string	true	"Insert your access token"	default(Bearer <Add access token here>)
+//	@Success		200		{object}	RefreshedToken
+//	@Failure		400		{object}	server.ErrorResponse	"if users data from token does not match data in db"
+//	@Failure		403		{object}	server.ErrorResponse	"if invalid or expired refresh token provided"
+//	@Failure		404		{object}	server.ErrorResponse	"if user not found"
+//	@Failure		422		{object}	server.ErrorResponse	"if syntax fails"
+//	@Failure		500		{object}	server.ErrorResponse
+//	@Failure		504		{object}	server.ErrorResponse	"if request times out"
+//	@Router			/auth/refresh [GET].
+func (s *service) RefreshToken( //nolint:gocritic // .
+	ctx context.Context,
+	req *server.Request[RefreshToken, RefreshedToken],
+) (*server.Response[RefreshedToken], *server.Response[server.ErrorResponse]) {
+	tokenPayload := strings.TrimPrefix(req.Data.Token, "Bearer ")
+	accessToken, err := s.authEmailLinkProcessor.IssueAccessToken(ctx, tokenPayload)
+	if err != nil {
+		switch {
+		case errors.Is(err, emaillink.ErrUserDataMismatch):
+			return nil, server.BadRequest(err, dataMismatch)
+		case errors.Is(err, emaillink.ErrUserNotFound):
+			return nil, server.NotFound(err, userNotFound)
+		default:
+			return nil, server.Unexpected(err)
+		}
+	}
+	nextRefreshToken, err := s.authEmailLinkProcessor.RenewRefreshToken(ctx, tokenPayload)
+	if err != nil {
+		switch {
+		case errors.Is(err, emaillink.ErrExpiredToken):
+			return nil, server.Forbidden(err)
+		case errors.Is(err, emaillink.ErrInvalidToken):
+			return nil, server.Forbidden(err)
+		default:
+			return nil, server.Unexpected(err)
+		}
+	}
+
+	return server.OK(&RefreshedToken{RefreshToken: nextRefreshToken, AccessToken: accessToken}), nil
 }

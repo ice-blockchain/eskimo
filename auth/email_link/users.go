@@ -12,9 +12,9 @@ import (
 	"github.com/ice-blockchain/wintr/connectors/storage/v2"
 )
 
-func (r *repository) findOrGenerateUserIDByEmail(ctx context.Context, email string) (userID, userEmail string, err error) {
+func (r *repository) findOrGenerateUserIDByEmail(ctx context.Context, email string) (userID string, err error) {
 	if ctx.Err() != nil {
-		return "", "", errors.Wrap(ctx.Err(), "context failed")
+		return "", errors.Wrap(ctx.Err(), "context failed")
 	}
 	randomID := uuid.NewString()
 	type dbUserID struct {
@@ -23,16 +23,16 @@ func (r *repository) findOrGenerateUserIDByEmail(ctx context.Context, email stri
 	ids, err := storage.Select[dbUserID](ctx, r.db, `SELECT id FROM users WHERE email=$1 OR id = $2`, email, randomID)
 	if err != nil || len(ids) == 0 {
 		if storage.IsErr(err, storage.ErrNotFound) || len(ids) == 0 {
-			return randomID, email, nil
+			return randomID, nil
 		}
 
-		return "", "", errors.Wrapf(err, "failed to search for existing userId for email: %v", email)
+		return "", errors.Wrapf(err, "failed to search for existing userId for email: %v", email)
 	}
 	if ids[0].ID == randomID || (len(ids) > 1) {
 		return r.findOrGenerateUserIDByEmail(ctx, email)
 	}
 
-	return ids[0].ID, email, nil
+	return ids[0].ID, nil
 }
 
 func (r *repository) getUserByID(ctx context.Context, id users.UserID) (*users.User, error) {

@@ -23,8 +23,7 @@ func (s *service) setupUserRoutes(router *server.Router) {
 		Group("v1w").
 		POST("users", server.RootHandler(s.CreateUser)).
 		PATCH("users/:userId", server.RootHandler(s.ModifyUser)).
-		DELETE("users/:userId", server.RootHandler(s.DeleteUser)).
-		GET("auth/finish/:payload", server.RootHandler(s.FinishLoginUsingMagicLink))
+		DELETE("users/:userId", server.RootHandler(s.DeleteUser))
 }
 
 // CreateUser godoc
