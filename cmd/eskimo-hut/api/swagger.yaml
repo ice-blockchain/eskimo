@@ -39,6 +39,14 @@ definitions:
         example: Ef86A6021afCDe5673511376B2
         type: string
     type: object
+  main.RefreshToken:
+    properties:
+      customClaims:
+        allOf:
+        - $ref: '#/definitions/users.JSON'
+        description: Optional. In null - current claims are used, if any value - it
+          would be overwritten. Example {"role":"new_role"}.
+    type: object
   main.RefreshedToken:
     properties:
       accessToken:
@@ -299,7 +307,9 @@ paths:
       tags:
       - Auth
   /auth/refresh:
-    get:
+    post:
+      consumes:
+      - application/json
       description: Issues new access token
       parameters:
       - default: Bearer <Add access token here>
@@ -308,6 +318,12 @@ paths:
         name: Token
         required: true
         type: string
+      - description: Body containing customClaims
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/main.RefreshToken'
       produces:
       - application/json
       responses:

@@ -16,7 +16,7 @@ func (s *service) setupAuthRoutes(router *server.Router) {
 	router.
 		Group("v1w").
 		POST("auth", server.RootHandler(s.StartEmailLinkAuth)).
-		GET("auth/refresh", server.RootHandler(s.RefreshToken)).
+		POST("auth/refresh", server.RootHandler(s.RefreshToken)).
 		GET("auth/finish/:payload", server.RootHandler(s.FinishLoginUsingMagicLink))
 }
 
@@ -98,7 +98,7 @@ func (s *service) FinishLoginUsingMagicLink( //nolint:gocritic // .
 			return nil, server.Unexpected(err)
 		}
 	}
-	accessToken, err := s.authEmailLinkProcessor.IssueAccessToken(ctx, refreshToken)
+	accessToken, err := s.authEmailLinkProcessor.IssueAccessToken(ctx, refreshToken, nil)
 	if err != nil {
 		switch {
 		case errors.Is(err, emaillink.ErrUserNotFound):
@@ -116,8 +116,10 @@ func (s *service) FinishLoginUsingMagicLink( //nolint:gocritic // .
 //	@Schemes
 //	@Description	Issues new access token
 //	@Tags			Auth
+//	@Accept			json
 //	@Produce		json
-//	@Param			Token	header		string	true	"Insert your access token"	default(Bearer <Add access token here>)
+//	@Param			Token	header		string			true	"Insert your access token"	default(Bearer <Add access token here>)
+//	@Param			request	body		RefreshToken	true	"Body containing customClaims"
 //	@Success		200		{object}	RefreshedToken
 //	@Failure		400		{object}	server.ErrorResponse	"if users data from token does not match data in db"
 //	@Failure		403		{object}	server.ErrorResponse	"if invalid or expired refresh token provided"
@@ -125,13 +127,13 @@ func (s *service) FinishLoginUsingMagicLink( //nolint:gocritic // .
 //	@Failure		422		{object}	server.ErrorResponse	"if syntax fails"
 //	@Failure		500		{object}	server.ErrorResponse
 //	@Failure		504		{object}	server.ErrorResponse	"if request times out"
-//	@Router			/auth/refresh [GET].
+//	@Router			/auth/refresh [POST].
 func (s *service) RefreshToken( //nolint:gocritic // .
 	ctx context.Context,
 	req *server.Request[RefreshToken, RefreshedToken],
 ) (*server.Response[RefreshedToken], *server.Response[server.ErrorResponse]) {
 	tokenPayload := strings.TrimPrefix(req.Data.Token, "Bearer ")
-	accessToken, err := s.authEmailLinkProcessor.IssueAccessToken(ctx, tokenPayload)
+	accessToken, err := s.authEmailLinkProcessor.IssueAccessToken(ctx, tokenPayload, req.Data.CustomClaims)
 	if err != nil {
 		switch {
 		case errors.Is(err, emaillink.ErrUserDataMismatch):
@@ -142,7 +144,7 @@ func (s *service) RefreshToken( //nolint:gocritic // .
 			return nil, server.Unexpected(err)
 		}
 	}
-	nextRefreshToken, err := s.authEmailLinkProcessor.RenewRefreshToken(ctx, tokenPayload)
+	nextRefreshToken, err := s.authEmailLinkProcessor.RenewRefreshToken(ctx, tokenPayload, req.Data.CustomClaims)
 	if err != nil {
 		switch {
 		case errors.Is(err, emaillink.ErrExpiredToken):

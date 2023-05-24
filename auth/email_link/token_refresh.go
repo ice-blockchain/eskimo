@@ -23,7 +23,7 @@ func (r *repository) generateRefreshToken(now *time.Time, userID users.UserID, e
 			NotBefore: jwt.NewNumericDate(*now.Time),
 			IssuedAt:  jwt.NewNumericDate(*now.Time),
 		},
-		EMail: email,
+		Email: email,
 		Seq:   seq,
 	})
 
@@ -32,13 +32,13 @@ func (r *repository) generateRefreshToken(now *time.Time, userID users.UserID, e
 	return tokenStr, errors.Wrapf(err, "failed to generate refresh token for user %v %v", userID, email)
 }
 
-func (r *repository) RenewRefreshToken(ctx context.Context, previousRefreshToken string) (string, error) {
+func (r *repository) RenewRefreshToken(ctx context.Context, previousRefreshToken string, customClaims *users.JSON) (string, error) {
 	userID, email, seq, err := r.parseToken(previousRefreshToken)
 	if err != nil {
 		return "", errors.Wrapf(err, "failed to verify token")
 	}
 	now := time.Now()
-	refreshTokenSeq, err := r.updateRefreshTokenForUser(ctx, userID, seq, now, email)
+	refreshTokenSeq, err := r.updateRefreshTokenForUser(ctx, userID, seq, now, email, customClaims)
 	if err != nil {
 		if storage.IsErr(err, storage.ErrNotFound) {
 			return "", errors.Wrapf(ErrInvalidToken, "refreshToken with wrong sequence provided")
@@ -50,12 +50,15 @@ func (r *repository) RenewRefreshToken(ctx context.Context, previousRefreshToken
 	return r.generateRefreshToken(now, userID, email, refreshTokenSeq)
 }
 
-func (r *repository) IssueAccessToken(ctx context.Context, refreshToken string) (string, error) {
+func (r *repository) IssueAccessToken(ctx context.Context, refreshToken string, overrideCustomClaims *users.JSON) (string, error) {
 	userID, email, seq, err := r.parseToken(refreshToken)
 	if err != nil {
 		return "", errors.Wrapf(err, "failed to verify token")
 	}
-	user, err := r.getUserByID(ctx, userID)
+	user, err := r.getUserByIDOrEmail(ctx, userID, email)
+	if overrideCustomClaims != nil {
+		user.CustomClaims = overrideCustomClaims
+	}
 	if err != nil {
 		return "", errors.Wrapf(err, "failed to get user by id %v", userID)
 	}
@@ -65,7 +68,20 @@ func (r *repository) IssueAccessToken(ctx context.Context, refreshToken string) 
 
 	return r.generateAccessToken(seq, user)
 }
-func (r *repository) generateAccessToken(refreshTokenSeq int64, user *users.User) (string, error) {
+
+func (r *repository) generateAccessToken(refreshTokenSeq int64, user *minimalUser) (string, error) {
+	var claims *map[string]any
+	role := defaultRole
+	if user.CustomClaims != nil {
+		customClaimsData := map[string]any(*user.CustomClaims)
+		if clRole, ok := customClaimsData["role"]; ok {
+			role = clRole.(string)
+			delete(customClaimsData, "role")
+		}
+		if len(customClaimsData) > 0 {
+			claims = &customClaimsData
+		}
+	}
 	now := time.Now().In(stdlibtime.UTC)
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, Token{
 		RegisteredClaims: &jwt.RegisteredClaims{
@@ -75,12 +91,12 @@ func (r *repository) generateAccessToken(refreshTokenSeq int64, user *users.User
 			NotBefore: jwt.NewNumericDate(now),
 			IssuedAt:  jwt.NewNumericDate(now),
 		},
-		EMail:    user.Email,
+		Email:    user.Email,
 		HashCode: user.HashCode,
-		Role:     "app",
+		Role:     role,
 		Seq:      refreshTokenSeq,
+		Custom:   claims,
 	})
-
 	tokenStr, err := token.SignedString([]byte(r.cfg.JWTSecret))
 
 	return tokenStr, errors.Wrapf(err, "failed to generate access token for userID %v and email %v", user.ID, user.Email)

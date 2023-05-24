@@ -59,11 +59,13 @@ func New(ctx context.Context, _ context.CancelFunc) Repository {
 		emailClient: email.New(applicationYamlKey),
 	}
 }
+
 func StartProcessor(ctx context.Context, cancel context.CancelFunc) Processor {
 	repo := New(ctx, cancel)
 
 	return &processor{repo.(*repository)}
 }
+
 func (r *repository) Close() error {
 	return errors.Wrap(r.shutdown(), "closing auth/emaillink repository failed")
 }

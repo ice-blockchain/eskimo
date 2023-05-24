@@ -209,19 +209,25 @@ func (Enum[T]) ScanIndexType() any {
 }
 
 func (j *JSON) Scan(src any) error {
-	val, isStr := src.(string)
-	if isStr {
+	valBytes, isBytes := src.([]byte)
+	if !isBytes {
+		val, isStr := src.(string)
+		if !isStr {
+			return errors.Errorf("unexpected type for src:%#v(%T)", src, src)
+		}
 		if val == "" {
 			return nil
 		}
 		if val == "{}" {
 			*j = make(JSON, 0)
 		}
-
-		return errors.Wrapf(json.UnmarshalContext(context.Background(), []byte(val), j), "failed to json.Unmarshall(%v,*JSON)", val)
+		valBytes = []byte(val)
+	}
+	if len(valBytes) > 2 { //nolint:gomnd // {}
+		return errors.Wrapf(json.UnmarshalContext(context.Background(), valBytes, j), "failed to json.Unmarshall(%v,*JSON)", string(valBytes))
 	}
 
-	return errors.Errorf("unexpected type for src:%#v(%T)", src, src)
+	return nil
 }
 
 func (u *User) Checksum() string {

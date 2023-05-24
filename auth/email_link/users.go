@@ -35,11 +35,18 @@ func (r *repository) findOrGenerateUserIDByEmail(ctx context.Context, email stri
 	return ids[0].ID, nil
 }
 
-func (r *repository) getUserByID(ctx context.Context, id users.UserID) (*users.User, error) {
+func (r *repository) getUserByIDOrEmail(ctx context.Context, id users.UserID, email string) (*minimalUser, error) {
 	if ctx.Err() != nil {
 		return nil, errors.Wrap(ctx.Err(), "get user failed because context failed")
 	}
-	result, err := storage.Get[users.User](ctx, r.db, `SELECT * FROM users u WHERE id = $1`, id)
+	result, err := storage.Get[minimalUser](ctx, r.db, `
+		WITH em AS (
+			SELECT user_id as id, email, COALESCE((custom_claims -> 'hash_code')::BIGINT,0) as hash_code, custom_claims FROM pending_email_confirmations WHERE email = $2
+		)
+		SELECT u.id, u.email, u.hash_code, em.custom_claims as custom_claims FROM users u, em WHERE u.id = $1
+		UNION ALL (select * from em)
+		LIMIT 1
+`, id, email)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to get user by id %v", id)
 	}

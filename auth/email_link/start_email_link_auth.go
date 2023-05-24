@@ -6,9 +6,9 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/golang-jwt/jwt/v5"
 	"text/template"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 
@@ -73,11 +73,11 @@ func (r *repository) upsertPendingEmailConfirmation(ctx context.Context, toEmail
 	return errors.Wrapf(err, "failed to insert/update email confirmation record for email:%v", toEmail)
 }
 
-func (r *repository) generateLinkPayload(email, otp string, now *time.Time) (string, error) {
+func (r *repository) generateLinkPayload(emailValue, otp string, now *time.Time) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, emailClaims{
 		RegisteredClaims: &jwt.RegisteredClaims{
 			Issuer:    jwtIssuer,
-			Subject:   email,
+			Subject:   emailValue,
 			Audience:  nil,
 			ExpiresAt: jwt.NewNumericDate(now.Add(r.cfg.ExpirationTime)),
 			NotBefore: jwt.NewNumericDate(*now.Time),
@@ -88,7 +88,7 @@ func (r *repository) generateLinkPayload(email, otp string, now *time.Time) (str
 
 	payload, err := token.SignedString([]byte(r.cfg.JWTSecret))
 
-	return payload, errors.Wrapf(err, "can't generate link payload for email:%v,otp:%v,now:%v", email, otp, now)
+	return payload, errors.Wrapf(err, "can't generate link payload for email:%v,otp:%v,now:%v", emailValue, otp, now)
 }
 
 func (r *repository) getAuthLink(token string) string {

@@ -129,8 +129,11 @@ const docTemplate = `{
             }
         },
         "/auth/refresh": {
-            "get": {
+            "post": {
                 "description": "Issues new access token",
+                "consumes": [
+                    "application/json"
+                ],
                 "produces": [
                     "application/json"
                 ],
@@ -145,6 +148,15 @@ const docTemplate = `{
                         "name": "Token",
                         "in": "header",
                         "required": true
+                    },
+                    {
+                        "description": "Body containing customClaims",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.RefreshToken"
+                        }
                     }
                 ],
                 "responses": {
@@ -795,6 +807,19 @@ const docTemplate = `{
                     "description": "Optional. Required only if ` + "`" + `phoneNumber` + "`" + ` is set.",
                     "type": "string",
                     "example": "Ef86A6021afCDe5673511376B2"
+                }
+            }
+        },
+        "main.RefreshToken": {
+            "type": "object",
+            "properties": {
+                "customClaims": {
+                    "description": "Optional. In null - current claims are used, if any value - it would be overwritten. Example {\"role\":\"new_role\"}.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/users.JSON"
+                        }
+                    ]
                 }
             }
         },

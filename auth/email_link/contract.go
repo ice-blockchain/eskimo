@@ -11,6 +11,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/pkg/errors"
 
+	"github.com/ice-blockchain/eskimo/users"
 	"github.com/ice-blockchain/wintr/connectors/storage/v2"
 	"github.com/ice-blockchain/wintr/email"
 )
@@ -24,8 +25,8 @@ type (
 		Repository
 		StartEmailLinkAuth(ctx context.Context, a *Auth) error
 		IssueRefreshTokenForMagicLink(ctx context.Context, emailLinkPayload string) (string, error)
-		RenewRefreshToken(ctx context.Context, prevToken string) (string, error)
-		IssueAccessToken(ctx context.Context, refreshToken string) (string, error)
+		RenewRefreshToken(ctx context.Context, prevToken string, customClaims *users.JSON) (string, error)
+		IssueAccessToken(ctx context.Context, refreshToken string, customClaims *users.JSON) (string, error)
 	}
 	Repository interface {
 		io.Closer
@@ -33,10 +34,11 @@ type (
 	// TODO: move to wintr.
 	Token struct {
 		*jwt.RegisteredClaims
-		Role     string `json:"role" example:"1"`
-		EMail    string `json:"email" example:"jdoe@example.com"`
-		HashCode int64  `json:"hashCode,omitempty" example:"12356789"`
-		Seq      int64  `json:"seq"`
+		Custom   *map[string]any `json:"custom,omitempty"`
+		Role     string          `json:"role" example:"1"`
+		Email    string          `json:"email" example:"jdoe@example.com"`
+		HashCode int64           `json:"hashCode,omitempty" example:"12356789"`
+		Seq      int64           `json:"seq"`
 	}
 )
 
@@ -53,6 +55,8 @@ var (
 const (
 	applicationYamlKey = "auth/email-link"
 	jwtIssuer          = "ice.io"
+
+	defaultRole = "app"
 )
 
 type (
@@ -76,7 +80,7 @@ type (
 		} `yaml:"emailValidation"`
 		JWTSecret      string              `yaml:"jwtSecret" mapstructure:"jwtSecret"`
 		ExpirationTime stdlibtime.Duration `yaml:"expirationTime" mapstructure:"expirationTime"`
-		//TODO: move to wintr?
+		// TODO: move to wintr?
 		RefreshExpirationTime stdlibtime.Duration `yaml:"refreshExpirationTime" mapstructure:"refreshExpirationTime"`
 		AccessExpirationTime  stdlibtime.Duration `yaml:"accessExpirationTime" mapstructure:"accessExpirationTime"`
 	}
@@ -88,9 +92,13 @@ type (
 	issuedTokenSeq struct {
 		IssuedTokenSeq int64 `db:"issued_token_seq"`
 	}
+	minimalUser struct {
+		CustomClaims *users.JSON
+		ID           string
+		Email        string
+		HashCode     int64
+	}
 )
 
-var (
-	//go:embed DDL.sql
-	ddl string
-)
+//go:embed DDL.sql
+var ddl string
