@@ -69,6 +69,10 @@ func StartProcessor(ctx context.Context, cancel context.CancelFunc) Processor {
 	return prc
 }
 
+func (r *repository) SetEmailValidationStarter(evs EmailValidationStarter) {
+	r.emailValidator = evs
+}
+
 func (r *repository) Close() error {
 	return errors.Wrap(r.shutdown(), "closing users repository failed")
 }
@@ -443,4 +447,17 @@ func generateUsernameKeywords(username string) []string {
 	}
 
 	return keywords
+}
+
+func ConfirmedEmailContext(ctx context.Context, emailValue string) context.Context {
+	return context.WithValue(ctx, confirmedEmailCtxValueKey, emailValue) //nolint:revive,staticcheck // .
+}
+
+func ConfirmedEmail(ctx context.Context) string {
+	email, ok := ctx.Value(confirmedEmailCtxValueKey).(string)
+	if ok {
+		return email
+	}
+
+	return ""
 }

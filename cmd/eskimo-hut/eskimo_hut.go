@@ -42,7 +42,8 @@ func (s *service) RegisterRoutes(router *server.Router) {
 
 func (s *service) Init(ctx context.Context, cancel context.CancelFunc) {
 	s.usersProcessor = users.StartProcessor(ctx, cancel)
-	s.authEmailLinkProcessor = emaillink.StartProcessor(ctx, cancel)
+	s.authEmailLinkProcessor = emaillink.StartProcessor(ctx, cancel, s.usersProcessor)
+	s.usersProcessor.SetEmailValidationStarter(s.authEmailLinkProcessor)
 }
 
 func (s *service) Close(ctx context.Context) error {

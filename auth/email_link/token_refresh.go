@@ -4,7 +4,6 @@ package emaillink
 
 import (
 	"context"
-	stdlibtime "time"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/pkg/errors"
@@ -32,64 +31,54 @@ func (r *repository) generateRefreshToken(now *time.Time, userID users.UserID, e
 	return tokenStr, errors.Wrapf(err, "failed to generate refresh token for user %v %v", userID, email)
 }
 
-func (r *repository) RenewRefreshToken(ctx context.Context, previousRefreshToken string, customClaims *users.JSON) (string, error) {
+func (r *repository) RenewTokens(ctx context.Context, previousRefreshToken string, customClaims *users.JSON) (refreshToken, accessToken string, err error) {
 	userID, email, seq, err := r.parseToken(previousRefreshToken)
 	if err != nil {
-		return "", errors.Wrapf(err, "failed to verify token")
+		return "", "", errors.Wrapf(err, "failed to verify token")
 	}
 	now := time.Now()
-	refreshTokenSeq, err := r.updateRefreshTokenForUser(ctx, userID, seq, now, email, customClaims)
-	if err != nil {
-		if storage.IsErr(err, storage.ErrNotFound) {
-			return "", errors.Wrapf(ErrInvalidToken, "refreshToken with wrong sequence provided")
-		}
-
-		return "", errors.Wrapf(err, "failed to update pending confirmation for email:%v", email)
-	}
-
-	return r.generateRefreshToken(now, userID, email, refreshTokenSeq)
-}
-
-func (r *repository) IssueAccessToken(ctx context.Context, refreshToken string, overrideCustomClaims *users.JSON) (string, error) {
-	userID, email, seq, err := r.parseToken(refreshToken)
-	if err != nil {
-		return "", errors.Wrapf(err, "failed to verify token")
-	}
 	user, err := r.getUserByIDOrEmail(ctx, userID, email)
-	if overrideCustomClaims != nil {
-		user.CustomClaims = overrideCustomClaims
-	}
 	if err != nil {
-		return "", errors.Wrapf(err, "failed to get user by id %v", userID)
+		return "", "", errors.Wrapf(err, "failed to get user by id %v", userID)
+	}
+	if customClaims != nil {
+		user.CustomClaims = customClaims
 	}
 	if user.Email != email {
-		return "", errors.Wrapf(ErrUserDataMismatch, "user's email %v does not match token's email %v", user.Email, email)
+		return "", "", errors.Wrapf(ErrUserDataMismatch, "user's email %v does not match token's email %v", user.Email, email)
+	}
+	refreshTokenSeq, err := r.incrementRefreshTokenSeq(ctx, userID, seq, now, customClaims)
+	if err != nil {
+		if storage.IsErr(err, storage.ErrNotFound) {
+			return "", "", errors.Wrapf(ErrInvalidToken, "refreshToken with wrong sequence provided")
+		}
+
+		return "", "", errors.Wrapf(err, "failed to update pending confirmation for email:%v", email)
 	}
 
-	return r.generateAccessToken(seq, user)
+	return r.generateTokens(now, user, refreshTokenSeq)
 }
 
-func (r *repository) generateAccessToken(refreshTokenSeq int64, user *minimalUser) (string, error) {
+func (r *repository) generateAccessToken(now *time.Time, refreshTokenSeq int64, user *minimalUser) (string, error) {
 	var claims *map[string]any
 	role := defaultRole
 	if user.CustomClaims != nil {
 		customClaimsData := map[string]any(*user.CustomClaims)
 		if clRole, ok := customClaimsData["role"]; ok {
-			role = clRole.(string)
+			role = clRole.(string) //nolint:errcheck,forcetypeassert // We're issuing them
 			delete(customClaimsData, "role")
 		}
 		if len(customClaimsData) > 0 {
 			claims = &customClaimsData
 		}
 	}
-	now := time.Now().In(stdlibtime.UTC)
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, Token{
 		RegisteredClaims: &jwt.RegisteredClaims{
 			Issuer:    jwtIssuer,
 			Subject:   user.ID,
 			ExpiresAt: jwt.NewNumericDate(now.Add(r.cfg.AccessExpirationTime)),
-			NotBefore: jwt.NewNumericDate(now),
-			IssuedAt:  jwt.NewNumericDate(now),
+			NotBefore: jwt.NewNumericDate(*now.Time),
+			IssuedAt:  jwt.NewNumericDate(*now.Time),
 		},
 		Email:    user.Email,
 		HashCode: user.HashCode,
@@ -100,4 +89,24 @@ func (r *repository) generateAccessToken(refreshTokenSeq int64, user *minimalUse
 	tokenStr, err := token.SignedString([]byte(r.cfg.JWTSecret))
 
 	return tokenStr, errors.Wrapf(err, "failed to generate access token for userID %v and email %v", user.ID, user.Email)
+}
+
+func (r *repository) incrementRefreshTokenSeq(
+	ctx context.Context,
+	userID users.UserID,
+	currentSeq int64,
+	now *time.Time,
+	customClaims *users.JSON,
+) (tokenSeq int64, err error) {
+	return r.updateEmailConfirmations(ctx, userID, currentSeq, now, "", customClaims, "")
+}
+
+func (r *repository) generateTokens(now *time.Time, user *minimalUser, seq int64) (refreshToken, accessToken string, err error) {
+	refreshToken, err = r.generateRefreshToken(now, user.ID, user.Email, seq)
+	if err != nil {
+		return "", "", errors.Wrapf(err, "failed to generate jwt for refreshToken")
+	}
+	accessToken, err = r.generateAccessToken(now, seq, user)
+
+	return refreshToken, accessToken, errors.Wrapf(err, "failed to generate jwt for accessToken")
 }

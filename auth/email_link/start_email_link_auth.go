@@ -12,31 +12,33 @@ import (
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 
+	"github.com/ice-blockchain/eskimo/users"
 	"github.com/ice-blockchain/wintr/connectors/storage/v2"
 	"github.com/ice-blockchain/wintr/email"
 	"github.com/ice-blockchain/wintr/log"
 	"github.com/ice-blockchain/wintr/time"
 )
 
-func (r *repository) StartEmailLinkAuth(ctx context.Context, au *Auth) error {
+func (r *repository) StartEmailLinkAuth(ctx context.Context, emailValue string) error {
 	if ctx.Err() != nil {
 		return errors.Wrap(ctx.Err(), "create user failed because context failed")
 	}
-	otp := uuid.NewString()
+	otp := generateOTP()
 	now := time.Now()
-	token, err := r.generateLinkPayload(au.Email, otp, now)
+	oldEmail := users.ConfirmedEmail(ctx)
+	token, err := r.generateLinkPayload(emailValue, oldEmail, oldEmail, otp, now)
 	if err != nil {
-		return errors.Wrapf(err, "can't generate link payload for email: %v", au.Email)
+		return errors.Wrapf(err, "can't generate link payload for email: %v", emailValue)
 	}
-	if uErr := r.upsertPendingEmailConfirmation(ctx, au.Email, otp, now); uErr != nil {
+	if uErr := r.upsertPendingEmailConfirmation(ctx, emailValue, oldEmail, otp, now); uErr != nil {
 		return errors.Wrap(uErr, "failed to store/update email confirmation")
 	}
 
-	return errors.Wrap(r.sendValidationEmail(ctx, au.Email, r.getAuthLink(token)), "failed to store/update email confirmation")
+	return errors.Wrap(r.sendValidationEmail(ctx, emailValue, r.getAuthLink(token)), "failed to store/update email confirmation")
 }
 
 func (r *repository) sendValidationEmail(ctx context.Context, toEmail, link string) error {
-	emailTemplate := template.Must(new(template.Template).Parse(r.cfg.EmailValidation.EmailBodyHTMLTemplate))
+	emailTemplate := template.Must(new(template.Template).Parse(r.cfg.EmailValidation.SignIn.EmailBodyHTMLTemplate))
 	emailTemplateData := map[string]any{
 		"email":       toEmail,
 		"link":        link,
@@ -51,7 +53,7 @@ func (r *repository) sendValidationEmail(ctx context.Context, toEmail, link stri
 			Type: email.TextHTML,
 			Data: emailMessageBuffer.String(),
 		},
-		Subject: fmt.Sprintf("Sign in to %v", r.cfg.EmailValidation.ServiceName),
+		Subject: fmt.Sprintf("Verify your email for %v", r.cfg.EmailValidation.ServiceName),
 		From: email.Participant{
 			Name:  r.cfg.EmailValidation.FromEmailName,
 			Email: r.cfg.EmailValidation.FromEmailAddress,
@@ -62,28 +64,37 @@ func (r *repository) sendValidationEmail(ctx context.Context, toEmail, link stri
 	}), "failed to send validation email for user with email:%v", toEmail)
 }
 
-func (r *repository) upsertPendingEmailConfirmation(ctx context.Context, toEmail, otp string, now *time.Time) error {
-	sql := `INSERT INTO pending_email_confirmations (created_at, email, otp)
-	          VALUES ($1, $2, $3)
+func (r *repository) upsertPendingEmailConfirmation(ctx context.Context, toEmail, oldEmail, otp string, now *time.Time) error {
+	customClaimsFromOldEmail := "null"
+	params := []any{now.Time, toEmail, otp}
+	if oldEmail != "" {
+		customClaimsFromOldEmail = "(SELECT custom_claims FROM pending_email_confirmations WHERE email = $4)"
+		params = append(params, oldEmail)
+	}
+	sql := fmt.Sprintf(`INSERT INTO pending_email_confirmations (created_at, email, otp, custom_claims)
+	          VALUES ($1, $2, $3, %v)
 	          ON CONFLICT (email)
 	          DO UPDATE SET otp = 		 EXCLUDED.otp, 
-			  			    created_at = EXCLUDED.created_at`
-	_, err := storage.Exec(ctx, r.db, sql, now.Time, toEmail, otp)
+			  			    created_at = EXCLUDED.created_at,
+	                        custom_claims = EXCLUDED.custom_claims`, customClaimsFromOldEmail)
+	_, err := storage.Exec(ctx, r.db, sql, params...)
 
 	return errors.Wrapf(err, "failed to insert/update email confirmation record for email:%v", toEmail)
 }
 
-func (r *repository) generateLinkPayload(emailValue, otp string, now *time.Time) (string, error) {
+func (r *repository) generateLinkPayload(emailValue, oldEmail, notifyEmail, otp string, now *time.Time) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, emailClaims{
 		RegisteredClaims: &jwt.RegisteredClaims{
 			Issuer:    jwtIssuer,
 			Subject:   emailValue,
 			Audience:  nil,
-			ExpiresAt: jwt.NewNumericDate(now.Add(r.cfg.ExpirationTime)),
+			ExpiresAt: jwt.NewNumericDate(now.Add(r.cfg.EmailExpirationTime)),
 			NotBefore: jwt.NewNumericDate(*now.Time),
 			IssuedAt:  jwt.NewNumericDate(*now.Time),
 		},
-		OTP: otp,
+		OTP:         otp,
+		OldEmail:    oldEmail,
+		NotifyEmail: notifyEmail,
 	})
 
 	payload, err := token.SignedString([]byte(r.cfg.JWTSecret))
@@ -93,4 +104,8 @@ func (r *repository) generateLinkPayload(emailValue, otp string, now *time.Time)
 
 func (r *repository) getAuthLink(token string) string {
 	return fmt.Sprintf("%s?token=%s", r.cfg.EmailValidation.AuthLink, token)
+}
+
+func generateOTP() string {
+	return uuid.NewString()
 }

@@ -16,7 +16,7 @@ import (
 	"github.com/ice-blockchain/wintr/log"
 )
 
-func New(ctx context.Context, _ context.CancelFunc) Repository {
+func StartProcessor(ctx context.Context, cancel context.CancelFunc, userModifier UserModifier) Processor {
 	var cfg config
 	appCfg.MustLoadFromKey(applicationYamlKey, &cfg)
 	if cfg.JWTSecret == "" {
@@ -35,10 +35,16 @@ func New(ctx context.Context, _ context.CancelFunc) Repository {
 	if cfg.EmailValidation.AuthLink == "" {
 		log.Panic("no auth link provided")
 	}
-	if cfg.EmailValidation.EmailBodyHTMLTemplate == "" {
+	if cfg.EmailValidation.SignIn.EmailBodyHTMLTemplate == "" {
 		log.Panic("no email body html template provided")
 	}
-	if cfg.EmailValidation.EmailSubject == "" {
+	if cfg.EmailValidation.SignIn.EmailSubject == "" {
+		log.Panic("no email subject provided")
+	}
+	if cfg.EmailValidation.NotifyChanged.EmailBodyHTMLTemplate == "" {
+		log.Panic("no email body html template provided")
+	}
+	if cfg.EmailValidation.NotifyChanged.EmailSubject == "" {
 		log.Panic("no email subject provided")
 	}
 	if cfg.EmailValidation.FromEmailAddress == "" {
@@ -52,18 +58,15 @@ func New(ctx context.Context, _ context.CancelFunc) Repository {
 	}
 	db := storage.MustConnect(ctx, ddl, applicationYamlKey)
 
-	return &repository{
-		cfg:         &cfg,
-		shutdown:    db.Close,
-		db:          db,
-		emailClient: email.New(applicationYamlKey),
+	repo := &repository{
+		cfg:          &cfg,
+		shutdown:     db.Close,
+		db:           db,
+		emailClient:  email.New(applicationYamlKey),
+		userModifier: userModifier,
 	}
-}
 
-func StartProcessor(ctx context.Context, cancel context.CancelFunc) Processor {
-	repo := New(ctx, cancel)
-
-	return &processor{repo.(*repository)}
+	return &processor{repo}
 }
 
 func (r *repository) Close() error {

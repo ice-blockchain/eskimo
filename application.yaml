@@ -31,19 +31,29 @@ auth/email-link:
       - postgresql://root:pass@localhost:5433/eskimo
   emailValidation:
     authLink: https://ice.io/auth
-    emailSubject: ICE email verification
-    emailBodyHTMLTemplate: 'Hello<br><br>
-      We received a request to sign in to {{.serviceName}} using this email address. If you want to sign in with your {{.email}} account, click this link:<br><br>
-      <a href="{{.link}}" target="_blank">Sign in to {{.serviceName}}</a><br><br>
-      If you did not request this link, you can safely ignore this email.<br><br>
-      Thanks,<br><br>
-      Your {{.serviceName}} team<br>'
     fromEmailAddress: no-reply@ice.io
     fromEmailName: ICE
     serviceName: ice-app-staging
+    signIn:
+      emailSubject: ICE email verification
+      emailBodyHTMLTemplate: 'Hello<br><br>
+        We received a request to sign in to {{.serviceName}} using this email address. If you want to sign in with your {{.email}} account, click this link:<br><br>
+        <a href="{{.link}}" target="_blank">Sign in to {{.serviceName}}</a><br><br>
+        If you did not request this link, you can safely ignore this email.<br><br>
+        Thanks,<br><br>
+        Your {{.serviceName}} team<br>'
+    notifyChanged:
+      emailSubject: Your sign-in email was changed for ICE
+      emailBodyHTMLTemplate: '<p>Hello</p>
+<p>Your sign-in email for {{.serviceName}} was changed to <a href="mailto:{{.newEmail}}" target="_blank">{{.newEmail}}</a>.</p>
+<p>If you didn’t ask to change your email, follow this link to reset your sign-in email.</p>
+<p><a href="{{.link}}" target="_blank">{{.link}}</a></p>
+<p>Thanks,</p>
+<p>Your {{.serviceName}} team</p>'
   jwtSecret: bogus
   refreshExpirationTime: 24h
   accessExpirationTime: 1m
+  emailExpirationTime: 1h
 users: &users
   wintr/connectors/storage/v2:
     runDDL: true

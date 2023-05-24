@@ -6,6 +6,7 @@ import (
 	"context"
 	_ "embed"
 	"io"
+	"mime/multipart"
 	stdlibtime "time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -18,15 +19,14 @@ import (
 
 // Public API.
 type (
-	Auth struct {
-		Email string `json:"email" example:"jdoe@gmail.com"`
+	UserModifier interface {
+		ModifyUser(ctx context.Context, usr *users.User, profilePicture *multipart.FileHeader) error
 	}
 	Processor interface {
 		Repository
-		StartEmailLinkAuth(ctx context.Context, a *Auth) error
-		IssueRefreshTokenForMagicLink(ctx context.Context, emailLinkPayload string) (string, error)
-		RenewRefreshToken(ctx context.Context, prevToken string, customClaims *users.JSON) (string, error)
-		IssueAccessToken(ctx context.Context, refreshToken string, customClaims *users.JSON) (string, error)
+		StartEmailLinkAuth(ctx context.Context, userEmail string) error
+		FinishLoginUsingMagicLink(ctx context.Context, emailLinkPayload string) (refresh string, access string, err error)
+		RenewTokens(ctx context.Context, prevToken string, customClaims *users.JSON) (refresh string, access string, err error)
 	}
 	Repository interface {
 		io.Closer
@@ -61,32 +61,41 @@ const (
 
 type (
 	repository struct {
-		db          *storage.DB
-		cfg         *config
-		shutdown    func() error
-		emailClient email.Client
+		db           *storage.DB
+		cfg          *config
+		shutdown     func() error
+		emailClient  email.Client
+		userModifier UserModifier
 	}
 	processor struct {
 		*repository
 	}
 	config struct {
 		EmailValidation struct {
-			AuthLink              string `yaml:"authLink"`
-			FromEmailName         string `yaml:"fromEmailName"`
-			FromEmailAddress      string `yaml:"fromEmailAddress"`
-			EmailBodyHTMLTemplate string `mapstructure:"emailBodyHTMLTemplate" yaml:"emailBodyHTMLTemplate"` //nolint:tagliatelle // Nope.
-			EmailSubject          string `yaml:"emailSubject"`
-			ServiceName           string `yaml:"serviceName"`
+			AuthLink         string `yaml:"authLink"`
+			FromEmailName    string `yaml:"fromEmailName"`
+			FromEmailAddress string `yaml:"fromEmailAddress"`
+			ServiceName      string `yaml:"serviceName"`
+			SignIn           struct {
+				EmailBodyHTMLTemplate string `mapstructure:"emailBodyHTMLTemplate" yaml:"emailBodyHTMLTemplate"` //nolint:tagliatelle // Nope.
+				EmailSubject          string `yaml:"emailSubject"`
+			} `yaml:"signIn"`
+			NotifyChanged struct {
+				EmailBodyHTMLTemplate string `mapstructure:"emailBodyHTMLTemplate" yaml:"emailBodyHTMLTemplate"` //nolint:tagliatelle // Nope.
+				EmailSubject          string `yaml:"emailSubject"`
+			} `yaml:"notifyChanged"`
 		} `yaml:"emailValidation"`
-		JWTSecret      string              `yaml:"jwtSecret" mapstructure:"jwtSecret"`
-		ExpirationTime stdlibtime.Duration `yaml:"expirationTime" mapstructure:"expirationTime"`
+		JWTSecret           string              `yaml:"jwtSecret" mapstructure:"jwtSecret"`
+		EmailExpirationTime stdlibtime.Duration `yaml:"emailExpirationTime" mapstructure:"emailExpirationTime"`
 		// TODO: move to wintr?
 		RefreshExpirationTime stdlibtime.Duration `yaml:"refreshExpirationTime" mapstructure:"refreshExpirationTime"`
 		AccessExpirationTime  stdlibtime.Duration `yaml:"accessExpirationTime" mapstructure:"accessExpirationTime"`
 	}
 	emailClaims struct {
 		*jwt.RegisteredClaims
-		OTP string `json:"otp" example:"c8f64979-9cea-4649-a89a-35607e734e68"`
+		OTP         string `json:"otp" example:"c8f64979-9cea-4649-a89a-35607e734e68"`
+		OldEmail    string `json:"oldEmail,omitempty"`
+		NotifyEmail string `json:"notifyEmail,omitempty"`
 	}
 
 	issuedTokenSeq struct {

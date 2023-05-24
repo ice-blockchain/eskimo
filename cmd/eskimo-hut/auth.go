@@ -40,8 +40,7 @@ func (s *service) StartEmailLinkAuth( //nolint:gocritic // .
 	if err := req.Data.verifyIfAtLeastOnePropertyProvided(); err != nil {
 		return nil, err
 	}
-	a := buildAuthForStartEmailLinkAuth(req)
-	if err := s.authEmailLinkProcessor.StartEmailLinkAuth(ctx, a); err != nil {
+	if err := s.authEmailLinkProcessor.StartEmailLinkAuth(ctx, req.Data.Email); err != nil {
 		err = errors.Wrapf(err, "failed to start email link auth %#v", req.Data)
 		if err != nil {
 			return nil, server.Unexpected(err)
@@ -49,13 +48,6 @@ func (s *service) StartEmailLinkAuth( //nolint:gocritic // .
 	}
 
 	return server.OK[Auth](), nil
-}
-
-func buildAuthForStartEmailLinkAuth(req *server.Request[StartEmailLinkAuthRequestArg, Auth]) *emaillink.Auth {
-	a := new(emaillink.Auth)
-	a.Email = req.Data.Email
-
-	return a
 }
 
 func (a *StartEmailLinkAuthRequestArg) verifyIfAtLeastOnePropertyProvided() *server.Response[server.ErrorResponse] {
@@ -84,7 +76,7 @@ func (s *service) FinishLoginUsingMagicLink( //nolint:gocritic // .
 	ctx context.Context,
 	req *server.Request[MagicLinkPayload, RefreshedToken],
 ) (*server.Response[RefreshedToken], *server.Response[server.ErrorResponse]) {
-	refreshToken, err := s.authEmailLinkProcessor.IssueRefreshTokenForMagicLink(ctx, req.Data.JWTPayload)
+	refreshToken, accessToken, err := s.authEmailLinkProcessor.FinishLoginUsingMagicLink(ctx, req.Data.JWTPayload)
 	if err != nil {
 		err = errors.Wrapf(err, "finish login using magic link failed for %#v", req.Data)
 		switch {
@@ -94,15 +86,6 @@ func (s *service) FinishLoginUsingMagicLink( //nolint:gocritic // .
 			return nil, server.BadRequest(err, invalidOTPCode)
 		case errors.Is(err, emaillink.ErrNoConfirmationRequired):
 			return nil, server.NotFound(err, emailValidationNotFound)
-		default:
-			return nil, server.Unexpected(err)
-		}
-	}
-	accessToken, err := s.authEmailLinkProcessor.IssueAccessToken(ctx, refreshToken, nil)
-	if err != nil {
-		switch {
-		case errors.Is(err, emaillink.ErrUserNotFound):
-			accessToken = "" //nolint:gosec // For initial user creation.
 		default:
 			return nil, server.Unexpected(err)
 		}
@@ -133,20 +116,13 @@ func (s *service) RefreshToken( //nolint:gocritic // .
 	req *server.Request[RefreshToken, RefreshedToken],
 ) (*server.Response[RefreshedToken], *server.Response[server.ErrorResponse]) {
 	tokenPayload := strings.TrimPrefix(req.Data.Token, "Bearer ")
-	accessToken, err := s.authEmailLinkProcessor.IssueAccessToken(ctx, tokenPayload, req.Data.CustomClaims)
+	nextRefreshToken, accessToken, err := s.authEmailLinkProcessor.RenewTokens(ctx, tokenPayload, req.Data.CustomClaims)
 	if err != nil {
 		switch {
 		case errors.Is(err, emaillink.ErrUserDataMismatch):
 			return nil, server.BadRequest(err, dataMismatch)
 		case errors.Is(err, emaillink.ErrUserNotFound):
 			return nil, server.NotFound(err, userNotFound)
-		default:
-			return nil, server.Unexpected(err)
-		}
-	}
-	nextRefreshToken, err := s.authEmailLinkProcessor.RenewRefreshToken(ctx, tokenPayload, req.Data.CustomClaims)
-	if err != nil {
-		switch {
 		case errors.Is(err, emaillink.ErrExpiredToken):
 			return nil, server.Forbidden(err)
 		case errors.Is(err, emaillink.ErrInvalidToken):

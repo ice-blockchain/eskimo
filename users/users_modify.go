@@ -38,6 +38,10 @@ func (r *repository) ModifyUser(ctx context.Context, usr *User, profilePicture *
 		usr.LastPingCooldownEndedAt = nil
 	}
 	usr.UpdatedAt = time.Now()
+	usr.Email, err = r.triggerEmailValidation(ctx, usr, oldUsr)
+	if err != nil {
+		return errors.Wrapf(err, "failed to start email validaton flow due to user %v modification", usr.ID)
+	}
 	if profilePicture != nil {
 		if profilePicture.Header.Get("Reset") == "true" {
 			profilePicture.Filename = RandomDefaultProfilePictureName()
@@ -255,4 +259,18 @@ func resolveProfilePictureExtension(fileName string) string {
 	}
 
 	return ext
+}
+
+func (r *repository) triggerEmailValidation(ctx context.Context, newUser, oldUser *User) (emailForUpdate string, err error) {
+	if newUser.Email == "" || newUser.Email == oldUser.Email {
+		return "", nil
+	}
+	confirmedEmail := ConfirmedEmail(ctx)
+	if confirmedEmail != "" {
+		return confirmedEmail, nil
+	}
+
+	return "", errors.Wrapf(
+		r.emailValidator.StartEmailLinkAuth(ConfirmedEmailContext(ctx, oldUser.Email), newUser.Email),
+		"failed to send email confirmation")
 }

@@ -12,7 +12,20 @@ import (
 	"github.com/ice-blockchain/wintr/connectors/storage/v2"
 )
 
-func (r *repository) findOrGenerateUserIDByEmail(ctx context.Context, email string) (userID string, err error) {
+func (r *repository) getUserByEmail(ctx context.Context, email, oldEmail string) (*minimalUser, error) {
+	userID, err := r.findOrGenerateUserIDByEmail(ctx, email, oldEmail)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to fetch or generate userID")
+	}
+	user, err := r.getUserByIDOrEmail(ctx, userID, email)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to get user info by id %v", userID)
+	}
+
+	return user, nil
+}
+
+func (r *repository) findOrGenerateUserIDByEmail(ctx context.Context, email, oldEmail string) (userID string, err error) {
 	if ctx.Err() != nil {
 		return "", errors.Wrap(ctx.Err(), "context failed")
 	}
@@ -20,7 +33,11 @@ func (r *repository) findOrGenerateUserIDByEmail(ctx context.Context, email stri
 	type dbUserID struct {
 		ID users.UserID
 	}
-	ids, err := storage.Select[dbUserID](ctx, r.db, `SELECT id FROM users WHERE email=$1 OR id = $2`, email, randomID)
+	searchEmail := email
+	if oldEmail != "" {
+		searchEmail = oldEmail
+	}
+	ids, err := storage.Select[dbUserID](ctx, r.db, `SELECT id FROM users WHERE email=$1 OR id = $2`, searchEmail, randomID)
 	if err != nil || len(ids) == 0 {
 		if storage.IsErr(err, storage.ErrNotFound) || len(ids) == 0 {
 			return randomID, nil
@@ -29,7 +46,7 @@ func (r *repository) findOrGenerateUserIDByEmail(ctx context.Context, email stri
 		return "", errors.Wrapf(err, "failed to search for existing userId for email: %v", email)
 	}
 	if ids[0].ID == randomID || (len(ids) > 1) {
-		return r.findOrGenerateUserIDByEmail(ctx, email)
+		return r.findOrGenerateUserIDByEmail(ctx, email, oldEmail)
 	}
 
 	return ids[0].ID, nil
@@ -41,7 +58,7 @@ func (r *repository) getUserByIDOrEmail(ctx context.Context, id users.UserID, em
 	}
 	result, err := storage.Get[minimalUser](ctx, r.db, `
 		WITH em AS (
-			SELECT user_id as id, email, COALESCE((custom_claims -> 'hash_code')::BIGINT,0) as hash_code, custom_claims FROM pending_email_confirmations WHERE email = $2
+			SELECT $1 as id, email, COALESCE((custom_claims -> 'hash_code')::BIGINT,0) as hash_code, custom_claims FROM pending_email_confirmations WHERE email = $2
 		)
 		SELECT u.id, u.email, u.hash_code, em.custom_claims as custom_claims FROM users u, em WHERE u.id = $1
 		UNION ALL (select * from em)

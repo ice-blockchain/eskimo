@@ -190,6 +190,7 @@ type (
 		CreateUser(ctx context.Context, usr *User, clientIP net.IP) error
 		DeleteUser(ctx context.Context, userID UserID) error
 		ModifyUser(ctx context.Context, usr *User, profilePicture *multipart.FileHeader) error
+		SetEmailValidationStarter(evs EmailValidationStarter)
 	}
 	// Repository main API exposed that handles all the features of this package.
 	Repository interface {
@@ -202,6 +203,9 @@ type (
 	Processor interface {
 		Repository
 		CheckHealth(context.Context) error
+	}
+	EmailValidationStarter interface {
+		StartEmailLinkAuth(ctx context.Context, email string) error
 	}
 )
 
@@ -223,6 +227,7 @@ const (
 	totalActiveUsersGlobalKey           = "TOTAL_ACTIVE_USERS"
 	checksumCtxValueKey                 = "versioningChecksumCtxValueKey"
 	requestingUserIDCtxValueKey         = "requestingUserIDCtxValueKey"
+	confirmedEmailCtxValueKey           = "confirmedEmailCtxValueKey"
 	totalNoOfDefaultProfilePictures     = 20
 	defaultProfilePictureName           = "default-profile-picture-%v.png"
 	defaultProfilePictureNameRegex      = "default-profile-picture-\\d+[.]png"
@@ -270,6 +275,7 @@ type (
 		pictureClient  picture.Client
 		trackingClient tracking.Client
 		shutdown       func() error
+		emailValidator EmailValidationStarter
 	}
 
 	processor struct {
