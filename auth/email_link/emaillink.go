@@ -10,13 +10,14 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/ice-blockchain/wintr/auth"
 	appCfg "github.com/ice-blockchain/wintr/config"
 	"github.com/ice-blockchain/wintr/connectors/storage/v2"
 	"github.com/ice-blockchain/wintr/email"
 	"github.com/ice-blockchain/wintr/log"
 )
 
-func StartProcessor(ctx context.Context, cancel context.CancelFunc, userModifier UserModifier) Processor {
+func StartProcessor(ctx context.Context, _ context.CancelFunc, userModifier UserModifier) Processor { //nolint:funlen // .
 	var cfg config
 	appCfg.MustLoadFromKey(applicationYamlKey, &cfg)
 	if cfg.JWTSecret == "" {
@@ -63,6 +64,7 @@ func StartProcessor(ctx context.Context, cancel context.CancelFunc, userModifier
 		shutdown:     db.Close,
 		db:           db,
 		emailClient:  email.New(applicationYamlKey),
+		authClient:   auth.New(ctx, applicationYamlKey),
 		userModifier: userModifier,
 	}
 

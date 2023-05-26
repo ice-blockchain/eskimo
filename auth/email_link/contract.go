@@ -13,6 +13,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/ice-blockchain/eskimo/users"
+	"github.com/ice-blockchain/wintr/auth"
 	"github.com/ice-blockchain/wintr/connectors/storage/v2"
 	"github.com/ice-blockchain/wintr/email"
 )
@@ -25,20 +26,11 @@ type (
 	Processor interface {
 		Repository
 		StartEmailLinkAuth(ctx context.Context, userEmail string) error
-		FinishLoginUsingMagicLink(ctx context.Context, emailLinkPayload string) (refresh string, access string, err error)
-		RenewTokens(ctx context.Context, prevToken string, customClaims *users.JSON) (refresh string, access string, err error)
+		FinishLoginUsingMagicLink(ctx context.Context, emailLinkPayload string) (refresh, access string, err error)
+		RenewTokens(ctx context.Context, prevToken string, customClaims *users.JSON) (refresh, access string, err error)
 	}
 	Repository interface {
 		io.Closer
-	}
-	// TODO: move to wintr.
-	Token struct {
-		*jwt.RegisteredClaims
-		Custom   *map[string]any `json:"custom,omitempty"`
-		Role     string          `json:"role" example:"1"`
-		Email    string          `json:"email" example:"jdoe@example.com"`
-		HashCode int64           `json:"hashCode,omitempty" example:"12356789"`
-		Seq      int64           `json:"seq"`
 	}
 )
 
@@ -55,8 +47,7 @@ var (
 const (
 	applicationYamlKey = "auth/email-link"
 	jwtIssuer          = "ice.io"
-
-	defaultRole = "app"
+	defaultRole        = "app"
 )
 
 type (
@@ -65,6 +56,7 @@ type (
 		cfg          *config
 		shutdown     func() error
 		emailClient  email.Client
+		authClient   auth.Client
 		userModifier UserModifier
 	}
 	processor struct {
@@ -85,9 +77,8 @@ type (
 				EmailSubject          string `yaml:"emailSubject"`
 			} `yaml:"notifyChanged"`
 		} `yaml:"emailValidation"`
-		JWTSecret           string              `yaml:"jwtSecret" mapstructure:"jwtSecret"`
-		EmailExpirationTime stdlibtime.Duration `yaml:"emailExpirationTime" mapstructure:"emailExpirationTime"`
-		// TODO: move to wintr?
+		JWTSecret             string              `yaml:"jwtSecret" mapstructure:"jwtSecret"`
+		EmailExpirationTime   stdlibtime.Duration `yaml:"emailExpirationTime" mapstructure:"emailExpirationTime"`
 		RefreshExpirationTime stdlibtime.Duration `yaml:"refreshExpirationTime" mapstructure:"refreshExpirationTime"`
 		AccessExpirationTime  stdlibtime.Duration `yaml:"accessExpirationTime" mapstructure:"accessExpirationTime"`
 	}
@@ -109,5 +100,8 @@ type (
 	}
 )
 
-//go:embed DDL.sql
-var ddl string
+// .
+var (
+	//go:embed DDL.sql
+	ddl string
+)

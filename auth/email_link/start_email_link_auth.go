@@ -21,7 +21,7 @@ import (
 
 func (r *repository) StartEmailLinkAuth(ctx context.Context, emailValue string) error {
 	if ctx.Err() != nil {
-		return errors.Wrap(ctx.Err(), "create user failed because context failed")
+		return errors.Wrap(ctx.Err(), "start email link auth failed because context failed")
 	}
 	otp := generateOTP()
 	now := time.Now()
@@ -31,10 +31,10 @@ func (r *repository) StartEmailLinkAuth(ctx context.Context, emailValue string) 
 		return errors.Wrapf(err, "can't generate link payload for email: %v", emailValue)
 	}
 	if uErr := r.upsertPendingEmailConfirmation(ctx, emailValue, oldEmail, otp, now); uErr != nil {
-		return errors.Wrap(uErr, "failed to store/update email confirmation")
+		return errors.Wrapf(uErr, "failed to store/update email confirmation for:%v", emailValue)
 	}
 
-	return errors.Wrap(r.sendValidationEmail(ctx, emailValue, r.getAuthLink(token)), "failed to store/update email confirmation")
+	return errors.Wrapf(r.sendValidationEmail(ctx, emailValue, r.getAuthLink(token)), "failed to send validation email for:%v", emailValue)
 }
 
 func (r *repository) sendValidationEmail(ctx context.Context, toEmail, link string) error {
@@ -74,8 +74,8 @@ func (r *repository) upsertPendingEmailConfirmation(ctx context.Context, toEmail
 	sql := fmt.Sprintf(`INSERT INTO pending_email_confirmations (created_at, email, otp, custom_claims)
 	          VALUES ($1, $2, $3, %v)
 	          ON CONFLICT (email)
-	          DO UPDATE SET otp = 		 EXCLUDED.otp, 
-			  			    created_at = EXCLUDED.created_at,
+	          DO UPDATE SET otp           = EXCLUDED.otp, 
+			  			    created_at    = EXCLUDED.created_at,
 	                        custom_claims = EXCLUDED.custom_claims`, customClaimsFromOldEmail)
 	_, err := storage.Exec(ctx, r.db, sql, params...)
 
@@ -96,7 +96,6 @@ func (r *repository) generateLinkPayload(emailValue, oldEmail, notifyEmail, otp 
 		OldEmail:    oldEmail,
 		NotifyEmail: notifyEmail,
 	})
-
 	payload, err := token.SignedString([]byte(r.cfg.JWTSecret))
 
 	return payload, errors.Wrapf(err, "can't generate link payload for email:%v,otp:%v,now:%v", emailValue, otp, now)

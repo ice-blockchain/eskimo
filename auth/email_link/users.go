@@ -27,7 +27,7 @@ func (r *repository) getUserByEmail(ctx context.Context, email, oldEmail string)
 
 func (r *repository) findOrGenerateUserIDByEmail(ctx context.Context, email, oldEmail string) (userID string, err error) {
 	if ctx.Err() != nil {
-		return "", errors.Wrap(ctx.Err(), "context failed")
+		return "", errors.Wrap(ctx.Err(), "find or generate user by id or email context failed")
 	}
 	randomID := uuid.NewString()
 	type dbUserID struct {
@@ -43,7 +43,7 @@ func (r *repository) findOrGenerateUserIDByEmail(ctx context.Context, email, old
 			return randomID, nil
 		}
 
-		return "", errors.Wrapf(err, "failed to search for existing userId for email: %v", email)
+		return "", errors.Wrapf(err, "failed to find user by userID:%v or email:%v", randomID, email)
 	}
 	if ids[0].ID == randomID || (len(ids) > 1) {
 		return r.findOrGenerateUserIDByEmail(ctx, email, oldEmail)
@@ -54,7 +54,7 @@ func (r *repository) findOrGenerateUserIDByEmail(ctx context.Context, email, old
 
 func (r *repository) getUserByIDOrEmail(ctx context.Context, id users.UserID, email string) (*minimalUser, error) {
 	if ctx.Err() != nil {
-		return nil, errors.Wrap(ctx.Err(), "get user failed because context failed")
+		return nil, errors.Wrap(ctx.Err(), "get user by id of email failed because context failed")
 	}
 	result, err := storage.Get[minimalUser](ctx, r.db, `
 		WITH em AS (
@@ -63,9 +63,9 @@ func (r *repository) getUserByIDOrEmail(ctx context.Context, id users.UserID, em
 		SELECT u.id, u.email, u.hash_code, em.custom_claims as custom_claims FROM users u, em WHERE u.id = $1
 		UNION ALL (select * from em)
 		LIMIT 1
-`, id, email)
+	`, id, email)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to get user by id %v", id)
+		return nil, errors.Wrapf(err, "failed to get user by id:%v or email:%v", id, email)
 	}
 
 	return result, nil
