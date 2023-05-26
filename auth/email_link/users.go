@@ -57,11 +57,11 @@ func (r *repository) getUserByIDOrEmail(ctx context.Context, id users.UserID, em
 		return nil, errors.Wrap(ctx.Err(), "get user by id of email failed because context failed")
 	}
 	result, err := storage.Get[minimalUser](ctx, r.db, `
-		WITH em AS (
+		WITH emails AS (
 			SELECT $1 as id, email, COALESCE((custom_claims -> 'hash_code')::BIGINT,0) as hash_code, custom_claims FROM pending_email_confirmations WHERE email = $2
 		)
-		SELECT u.id, u.email, u.hash_code, em.custom_claims as custom_claims FROM users u, em WHERE u.id = $1
-		UNION ALL (select * from em)
+		SELECT u.id, u.email, u.hash_code, emails.custom_claims as custom_claims FROM users u, emails WHERE u.id = $1
+		UNION ALL (select * from emails)
 		LIMIT 1
 	`, id, email)
 	if err != nil {

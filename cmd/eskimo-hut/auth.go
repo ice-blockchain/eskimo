@@ -17,7 +17,7 @@ func (s *service) setupAuthRoutes(router *server.Router) {
 		Group("v1w").
 		POST("auth", server.RootHandler(s.StartEmailLinkAuth)).
 		POST("auth/refresh", server.RootHandler(s.RefreshToken)).
-		GET("auth/finish/:payload", server.RootHandler(s.FinishLoginUsingMagicLink))
+		GET("auth/finish", server.RootHandler(s.FinishLoginUsingMagicLink))
 }
 
 // StartEmailLinkAuth godoc
@@ -64,19 +64,19 @@ func (a *StartEmailLinkAuthRequestArg) verifyIfAtLeastOnePropertyProvided() *ser
 //	@Description	Finishes login flow using magic link
 //	@Tags			Auth
 //	@Produce		json
-//	@Param			payload	path		string	true	"Request params"
+//	@Param			token	query		string	true	"Request params"
 //	@Success		200		{object}	RefreshedToken
 //	@Failure		400		{object}	server.ErrorResponse	"if invalid or expired payload provided"
 //	@Failure		404		{object}	server.ErrorResponse	"if email does not need to be confirmed by magic link"
 //	@Failure		422		{object}	server.ErrorResponse	"if syntax fails"
 //	@Failure		500		{object}	server.ErrorResponse
 //	@Failure		504		{object}	server.ErrorResponse	"if request times out"
-//	@Router			/auth/finish/{payload} [GET].
+//	@Router			/auth/finish [GET].
 func (s *service) FinishLoginUsingMagicLink( //nolint:gocritic // .
 	ctx context.Context,
 	req *server.Request[MagicLinkPayload, RefreshedToken],
 ) (*server.Response[RefreshedToken], *server.Response[server.ErrorResponse]) {
-	refreshToken, accessToken, err := s.authEmailLinkProcessor.FinishLoginUsingMagicLink(ctx, req.Data.JWTPayload)
+	refreshToken, accessToken, err := s.authEmailLinkProcessor.FinishLoginUsingMagicLink(ctx, req.Data.EmailToken)
 	if err != nil {
 		err = errors.Wrapf(err, "finish login using magic link failed for %#v", req.Data)
 		switch {
@@ -101,15 +101,15 @@ func (s *service) FinishLoginUsingMagicLink( //nolint:gocritic // .
 //	@Tags			Auth
 //	@Accept			json
 //	@Produce		json
-//	@Param			Token	header		string			true	"Insert your access token"	default(Bearer <Add access token here>)
-//	@Param			request	body		RefreshToken	true	"Body containing customClaims"
-//	@Success		200		{object}	RefreshedToken
-//	@Failure		400		{object}	server.ErrorResponse	"if users data from token does not match data in db"
-//	@Failure		403		{object}	server.ErrorResponse	"if invalid or expired refresh token provided"
-//	@Failure		404		{object}	server.ErrorResponse	"if user not found"
-//	@Failure		422		{object}	server.ErrorResponse	"if syntax fails"
-//	@Failure		500		{object}	server.ErrorResponse
-//	@Failure		504		{object}	server.ErrorResponse	"if request times out"
+//	@Param			Authorization	header		string			true	"Insert your access token"	default(Bearer <Add access token here>)
+//	@Param			request			body		RefreshToken	true	"Body containing customClaims"
+//	@Success		200				{object}	RefreshedToken
+//	@Failure		400				{object}	server.ErrorResponse	"if users data from token does not match data in db"
+//	@Failure		403				{object}	server.ErrorResponse	"if invalid or expired refresh token provided"
+//	@Failure		404				{object}	server.ErrorResponse	"if user not found"
+//	@Failure		422				{object}	server.ErrorResponse	"if syntax fails"
+//	@Failure		500				{object}	server.ErrorResponse
+//	@Failure		504				{object}	server.ErrorResponse	"if request times out"
 //	@Router			/auth/refresh [POST].
 func (s *service) RefreshToken( //nolint:gocritic // .
 	ctx context.Context,

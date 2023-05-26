@@ -70,7 +70,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/auth/finish/{payload}": {
+        "/auth/finish": {
             "get": {
                 "description": "Finishes login flow using magic link",
                 "produces": [
@@ -83,8 +83,8 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Request params",
-                        "name": "payload",
-                        "in": "path",
+                        "name": "token",
+                        "in": "query",
                         "required": true
                     }
                 ],
@@ -145,7 +145,7 @@ const docTemplate = `{
                         "type": "string",
                         "default": "Bearer \u003cAdd access token here\u003e",
                         "description": "Insert your access token",
-                        "name": "Token",
+                        "name": "Authorization",
                         "in": "header",
                         "required": true
                     },

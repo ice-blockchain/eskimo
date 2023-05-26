@@ -15,7 +15,7 @@ import (
 )
 
 func (r *repository) generateRefreshToken(now *time.Time, userID users.UserID, email string, seq int64) (string, error) {
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, auth.CustomToken{
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, auth.IceToken{
 		RegisteredClaims: &jwt.RegisteredClaims{
 			Issuer:    jwtIssuer,
 			Subject:   userID,
@@ -32,8 +32,8 @@ func (r *repository) generateRefreshToken(now *time.Time, userID users.UserID, e
 }
 
 func (r *repository) RenewTokens(ctx context.Context, previousRefreshToken string, customClaims *users.JSON) (refreshToken, accessToken string, err error) {
-	var token auth.CustomToken
-	if err = auth.VerifyJWTCommonFields(previousRefreshToken, &token); err != nil {
+	var token auth.IceToken
+	if err = auth.VerifyJWTCommonFields(previousRefreshToken, r.cfg.JWTSecret, &token); err != nil {
 		return "", "", errors.Wrapf(err, "failed to verify token:%v", previousRefreshToken)
 	}
 	now := time.Now()
@@ -47,7 +47,7 @@ func (r *repository) RenewTokens(ctx context.Context, previousRefreshToken strin
 	if user.Email != token.Email {
 		return "", "", errors.Wrapf(ErrUserDataMismatch, "user's email:%v does not match token's email:%v", user.Email, token.Email)
 	}
-	refreshTokenSeq, err := r.incrementRefreshTokenSeq(ctx, token.Subject, token.Seq, now, customClaims)
+	refreshTokenSeq, err := r.incrementRefreshTokenSeq(ctx, token.Subject, token.Email, token.Seq, now, customClaims)
 	if err != nil {
 		if storage.IsErr(err, storage.ErrNotFound) {
 			return "", "", errors.Wrapf(ErrInvalidToken, "refreshToken with wrong sequence:%v provided", refreshTokenSeq)
@@ -73,7 +73,7 @@ func (r *repository) generateAccessToken(now *time.Time, refreshTokenSeq int64, 
 			claims = &customClaimsData
 		}
 	}
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, auth.CustomToken{
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, auth.IceToken{
 		RegisteredClaims: &jwt.RegisteredClaims{
 			Issuer:    jwtIssuer,
 			Subject:   user.ID,
@@ -95,11 +95,12 @@ func (r *repository) generateAccessToken(now *time.Time, refreshTokenSeq int64, 
 func (r *repository) incrementRefreshTokenSeq(
 	ctx context.Context,
 	userID users.UserID,
+	email string,
 	currentSeq int64,
 	now *time.Time,
 	customClaims *users.JSON,
 ) (tokenSeq int64, err error) {
-	return r.updateEmailConfirmations(ctx, userID, currentSeq, now, "", customClaims, "")
+	return r.updateEmailConfirmations(ctx, userID, currentSeq, now, email, customClaims, "")
 }
 
 func (r *repository) generateTokens(now *time.Time, user *minimalUser, seq int64) (refreshToken, accessToken string, err error) {

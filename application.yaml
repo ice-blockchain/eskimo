@@ -30,7 +30,7 @@ auth/email-link:
     replicaURLs:
       - postgresql://root:pass@localhost:5433/eskimo
   emailValidation:
-    authLink: https://ice.io/auth
+    authLink: https://localhost:1443/v1w/auth/finish
     fromEmailAddress: no-reply@ice.io
     fromEmailName: ICE
     serviceName: ice-app-staging

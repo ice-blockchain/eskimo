@@ -268,13 +268,13 @@ paths:
             $ref: '#/definitions/server.ErrorResponse'
       tags:
       - Auth
-  /auth/finish/{payload}:
+  /auth/finish:
     get:
       description: Finishes login flow using magic link
       parameters:
       - description: Request params
-        in: path
-        name: payload
+        in: query
+        name: token
         required: true
         type: string
       produces:
@@ -315,7 +315,7 @@ paths:
       - default: Bearer <Add access token here>
         description: Insert your access token
         in: header
-        name: Token
+        name: Authorization
         required: true
         type: string
       - description: Body containing customClaims

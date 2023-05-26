@@ -22,20 +22,22 @@ func (r *repository) handleEmailModification(ctx context.Context, userID users.U
 	if err != nil {
 		return errors.Wrapf(err, "can't generate link payload for email: %v", oldEmail)
 	}
+	if err := r.upsertPendingEmailConfirmation(ctx, oldEmail, oldEmail, rollbackOTP, now); err != nil {
+		return errors.Wrap(err, "failed to store/update email confirmation")
+	}
+	usr := new(users.User)
+	usr.ID = userID
+	usr.Email = newEmail
+	if err = r.userModifier.ModifyUser(users.ConfirmedEmailContext(ctx, newEmail), usr, nil); err != nil {
+		return errors.Wrapf(err,
+			"failed to modify user %v with email modification", userID)
+	}
 	if notifyEmail != "" {
 		if err = r.sendNotifyEmailChanged(ctx, newEmail, notifyEmail, r.getAuthLink(rollbackToken)); err != nil {
 			return errors.Wrapf(err, "failed to send notification email about email change for userID %v email %v", userID, oldEmail)
 		}
 	}
-	if uErr := r.upsertPendingEmailConfirmation(ctx, oldEmail, oldEmail, rollbackOTP, now); uErr != nil {
-		return errors.Wrap(uErr, "failed to store/update email confirmation")
-	}
-	usr := new(users.User)
-	usr.ID = userID
-	usr.Email = newEmail
-
-	return errors.Wrapf(r.userModifier.ModifyUser(users.ConfirmedEmailContext(ctx, newEmail), usr, nil),
-		"failed to modify user %v with email modification", userID)
+	return nil
 }
 
 func (r *repository) rollbackEmailModification(ctx context.Context, userID users.UserID, oldEmail string) error {

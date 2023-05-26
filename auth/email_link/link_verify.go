@@ -19,7 +19,7 @@ import (
 //nolint:funlen // .
 func (r *repository) FinishLoginUsingMagicLink(ctx context.Context, emailLinkPayload string) (refreshToken, accessToken string, err error) {
 	var claims emailClaims
-	if err = auth.VerifyJWTCommonFields(emailLinkPayload, &claims); err != nil {
+	if err = auth.VerifyJWTCommonFields(emailLinkPayload, r.cfg.JWTSecret, &claims); err != nil {
 		return "", "", errors.Wrapf(err, "invalid email token:%v", emailLinkPayload)
 	}
 	email := claims.Subject
@@ -78,8 +78,9 @@ func (r *repository) updateEmailConfirmations(ctx context.Context, userID users.
 		        otp = $3,
 				issued_token_seq = COALESCE(pending_email_confirmations.issued_token_seq,0) + 1
 				%v
-		WHERE  (pending_email_confirmations.user_id = $3 AND pending_email_confirmations.issued_token_seq::text = $4::text) OR
-		         (pending_email_confirmations.email = $1 AND pending_email_confirmations.otp = $4)
+		WHERE  (pending_email_confirmations.email = $1) 
+		AND   ((pending_email_confirmations.otp = $4) OR
+		       (pending_email_confirmations.user_id = $3 AND pending_email_confirmations.issued_token_seq::text = $4::text))
 		RETURNING issued_token_seq`, customClaimsClause), params...)
 	if err != nil {
 		return 0, errors.Wrapf(err, "failed to assign refreshed token to pending email confirmation for params:%#v", params...)
