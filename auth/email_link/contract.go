@@ -46,8 +46,6 @@ var (
 // Private API.
 const (
 	applicationYamlKey = "auth/email-link"
-	jwtIssuer          = "ice.io"
-	defaultRole        = "app"
 )
 
 type (
@@ -77,10 +75,8 @@ type (
 				EmailSubject          string `yaml:"emailSubject"`
 			} `yaml:"notifyChanged"`
 		} `yaml:"emailValidation"`
-		JWTSecret             string              `yaml:"jwtSecret" mapstructure:"jwtSecret"`
-		EmailExpirationTime   stdlibtime.Duration `yaml:"emailExpirationTime" mapstructure:"emailExpirationTime"`
-		RefreshExpirationTime stdlibtime.Duration `yaml:"refreshExpirationTime" mapstructure:"refreshExpirationTime"`
-		AccessExpirationTime  stdlibtime.Duration `yaml:"accessExpirationTime" mapstructure:"accessExpirationTime"`
+		EmailJWTSecret      string              `yaml:"emailJwtSecret" mapstructure:"emailJwtSecret"`
+		EmailExpirationTime stdlibtime.Duration `yaml:"emailExpirationTime" mapstructure:"emailExpirationTime"`
 	}
 	emailClaims struct {
 		*jwt.RegisteredClaims

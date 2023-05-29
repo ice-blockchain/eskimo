@@ -115,7 +115,7 @@ func (s *service) RefreshToken( //nolint:gocritic // .
 	ctx context.Context,
 	req *server.Request[RefreshToken, RefreshedToken],
 ) (*server.Response[RefreshedToken], *server.Response[server.ErrorResponse]) {
-	tokenPayload := strings.TrimPrefix(req.Data.Token, "Bearer ")
+	tokenPayload := strings.TrimPrefix(req.Data.Authorization, "Bearer ")
 	nextRefreshToken, accessToken, err := s.authEmailLinkProcessor.RenewTokens(ctx, tokenPayload, req.Data.CustomClaims)
 	if err != nil {
 		switch {

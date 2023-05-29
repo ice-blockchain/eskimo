@@ -5,7 +5,6 @@ package emaillink
 import (
 	"context"
 
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/pkg/errors"
 
 	"github.com/ice-blockchain/eskimo/users"
@@ -14,26 +13,9 @@ import (
 	time "github.com/ice-blockchain/wintr/time"
 )
 
-func (r *repository) generateRefreshToken(now *time.Time, userID users.UserID, email string, seq int64) (string, error) {
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, auth.IceToken{
-		RegisteredClaims: &jwt.RegisteredClaims{
-			Issuer:    jwtIssuer,
-			Subject:   userID,
-			ExpiresAt: jwt.NewNumericDate(now.Add(r.cfg.RefreshExpirationTime)),
-			NotBefore: jwt.NewNumericDate(*now.Time),
-			IssuedAt:  jwt.NewNumericDate(*now.Time),
-		},
-		Email: email,
-		Seq:   seq,
-	})
-	refreshToken, err := token.SignedString([]byte(r.cfg.JWTSecret))
-
-	return refreshToken, errors.Wrapf(err, "failed to generate refresh token for userID:%v, email:%v", userID, email)
-}
-
 func (r *repository) RenewTokens(ctx context.Context, previousRefreshToken string, customClaims *users.JSON) (refreshToken, accessToken string, err error) {
 	var token auth.IceToken
-	if err = auth.VerifyJWTCommonFields(previousRefreshToken, r.cfg.JWTSecret, &token); err != nil {
+	if err = auth.VerifyJWTCommonFields(previousRefreshToken, auth.Secret, &token); err != nil {
 		return "", "", errors.Wrapf(err, "failed to verify token:%v", previousRefreshToken)
 	}
 	now := time.Now()
@@ -60,38 +42,7 @@ func (r *repository) RenewTokens(ctx context.Context, previousRefreshToken strin
 	return refreshToken, accessToken, errors.Wrapf(err, "can't generate tokens for userID:%v, email:%v", token.Subject, token.Email)
 }
 
-func (r *repository) generateAccessToken(now *time.Time, refreshTokenSeq int64, user *minimalUser) (string, error) {
-	var claims *map[string]any
-	role := defaultRole
-	if user.CustomClaims != nil {
-		customClaimsData := map[string]any(*user.CustomClaims)
-		if clRole, ok := customClaimsData["role"]; ok {
-			role = clRole.(string) //nolint:errcheck,forcetypeassert // We're issuing them
-			delete(customClaimsData, "role")
-		}
-		if len(customClaimsData) > 0 {
-			claims = &customClaimsData
-		}
-	}
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, auth.IceToken{
-		RegisteredClaims: &jwt.RegisteredClaims{
-			Issuer:    jwtIssuer,
-			Subject:   user.ID,
-			ExpiresAt: jwt.NewNumericDate(now.Add(r.cfg.AccessExpirationTime)),
-			NotBefore: jwt.NewNumericDate(*now.Time),
-			IssuedAt:  jwt.NewNumericDate(*now.Time),
-		},
-		Email:    user.Email,
-		HashCode: user.HashCode,
-		Role:     role,
-		Seq:      refreshTokenSeq,
-		Custom:   claims,
-	})
-	tokenStr, err := token.SignedString([]byte(r.cfg.JWTSecret))
-
-	return tokenStr, errors.Wrapf(err, "failed to generate access token for userID:%v and email:%v", user.ID, user.Email)
-}
-
+//nolint:revive // .
 func (r *repository) incrementRefreshTokenSeq(
 	ctx context.Context,
 	userID users.UserID,
@@ -103,12 +54,13 @@ func (r *repository) incrementRefreshTokenSeq(
 	return r.updateEmailConfirmations(ctx, userID, currentSeq, now, email, customClaims, "")
 }
 
-func (r *repository) generateTokens(now *time.Time, user *minimalUser, seq int64) (refreshToken, accessToken string, err error) {
-	refreshToken, err = r.generateRefreshToken(now, user.ID, user.Email, seq)
-	if err != nil {
-		return "", "", errors.Wrapf(err, "failed to generate jwt refreshToken for userID:%v", user.ID)
+func (*repository) generateTokens(now *time.Time, user *minimalUser, seq int64) (refreshToken, accessToken string, err error) {
+	var claims map[string]any
+	if user.CustomClaims != nil {
+		claims = *user.CustomClaims
 	}
-	accessToken, err = r.generateAccessToken(now, seq, user)
 
-	return refreshToken, accessToken, errors.Wrapf(err, "failed to generate accessToken for userID:%v", user.ID)
+	rt, at, err := auth.GenerateTokens(now, user.ID, user.Email, user.HashCode, seq, claims)
+
+	return rt, at, errors.Wrapf(err, "failed to generate tokens")
 }

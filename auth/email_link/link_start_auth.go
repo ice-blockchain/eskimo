@@ -13,6 +13,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/ice-blockchain/eskimo/users"
+	"github.com/ice-blockchain/wintr/auth"
 	"github.com/ice-blockchain/wintr/connectors/storage/v2"
 	"github.com/ice-blockchain/wintr/email"
 	"github.com/ice-blockchain/wintr/log"
@@ -85,7 +86,7 @@ func (r *repository) upsertPendingEmailConfirmation(ctx context.Context, toEmail
 func (r *repository) generateLinkPayload(emailValue, oldEmail, notifyEmail, otp string, now *time.Time) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, emailClaims{
 		RegisteredClaims: &jwt.RegisteredClaims{
-			Issuer:    jwtIssuer,
+			Issuer:    auth.JwtIssuer,
 			Subject:   emailValue,
 			Audience:  nil,
 			ExpiresAt: jwt.NewNumericDate(now.Add(r.cfg.EmailExpirationTime)),
@@ -96,7 +97,7 @@ func (r *repository) generateLinkPayload(emailValue, oldEmail, notifyEmail, otp 
 		OldEmail:    oldEmail,
 		NotifyEmail: notifyEmail,
 	})
-	payload, err := token.SignedString([]byte(r.cfg.JWTSecret))
+	payload, err := token.SignedString([]byte(r.cfg.EmailJWTSecret))
 
 	return payload, errors.Wrapf(err, "can't generate link payload for email:%v,otp:%v,now:%v", emailValue, otp, now)
 }

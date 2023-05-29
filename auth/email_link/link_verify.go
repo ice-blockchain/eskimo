@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 
@@ -19,7 +20,7 @@ import (
 //nolint:funlen // .
 func (r *repository) FinishLoginUsingMagicLink(ctx context.Context, emailLinkPayload string) (refreshToken, accessToken string, err error) {
 	var claims emailClaims
-	if err = auth.VerifyJWTCommonFields(emailLinkPayload, r.cfg.JWTSecret, &claims); err != nil {
+	if err = auth.VerifyJWTCommonFields(emailLinkPayload, r, &claims); err != nil {
 		return "", "", errors.Wrapf(err, "invalid email token:%v", emailLinkPayload)
 	}
 	email := claims.Subject
@@ -49,6 +50,19 @@ func (r *repository) FinishLoginUsingMagicLink(ctx context.Context, emailLinkPay
 	refreshToken, accessToken, err = r.generateTokens(now, user, refreshTokenSeq)
 
 	return refreshToken, accessToken, errors.Wrapf(err, "can't generate tokens for userID:%v", user.ID)
+}
+
+func (r *repository) Verify() func(token *jwt.Token) (any, error) {
+	return func(token *jwt.Token) (any, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok || token.Method.Alg() != jwt.SigningMethodHS256.Name {
+			return nil, errors.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+		if iss, err := token.Claims.GetIssuer(); err != nil || iss != auth.JwtIssuer {
+			return nil, errors.Wrapf(ErrInvalidToken, "invalid issuer:%v", iss)
+		}
+
+		return []byte(r.cfg.EmailJWTSecret), nil
+	}
 }
 
 func (r *repository) markOTPasUsed(ctx context.Context, userID users.UserID, now *time.Time, email, otp string) (tokenSeq int64, err error) {

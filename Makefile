@@ -252,7 +252,10 @@ format-imports:
 	goimports -w -local github.com/ice-blockchain ./..
 
 print-token-%:
-	go run -v local.go --generateAuth $*
+	go run -v local.go --generateFirebaseAuth $*
+
+print-ice-token-%:
+	go run -v local.go --generateIceAuth $*
 
 start-seeding:
 	go run -v local.go --startSeeding true

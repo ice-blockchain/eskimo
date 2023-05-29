@@ -2,8 +2,6 @@ module github.com/ice-blockchain/eskimo
 
 go 1.20
 
-replace github.com/ice-blockchain/wintr => ../wintr
-
 require (
 	github.com/goccy/go-json v0.10.2
 	github.com/golang-jwt/jwt/v5 v5.0.0

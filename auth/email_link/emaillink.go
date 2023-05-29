@@ -17,20 +17,54 @@ import (
 	"github.com/ice-blockchain/wintr/log"
 )
 
-func StartProcessor(ctx context.Context, _ context.CancelFunc, userModifier UserModifier) Processor { //nolint:funlen // .
+func StartProcessor(ctx context.Context, _ context.CancelFunc, userModifier UserModifier) Processor {
+	cfg := loadConfiguration()
+	cfg.validate()
+	db := storage.MustConnect(ctx, ddl, applicationYamlKey)
+
+	repo := &repository{
+		cfg:          cfg,
+		shutdown:     db.Close,
+		db:           db,
+		emailClient:  email.New(applicationYamlKey),
+		authClient:   auth.New(ctx, applicationYamlKey),
+		userModifier: userModifier,
+	}
+
+	return &processor{repo}
+}
+
+func (r *repository) Close() error {
+	return errors.Wrap(r.shutdown(), "closing auth/emaillink repository failed")
+}
+
+func loadConfiguration() *config {
 	var cfg config
 	appCfg.MustLoadFromKey(applicationYamlKey, &cfg)
-	if cfg.JWTSecret == "" {
+	if cfg.EmailJWTSecret == "" {
 		module := strings.ToUpper(strings.ReplaceAll(strings.ReplaceAll(applicationYamlKey, "-", "_"), "/", "_"))
-		cfg.JWTSecret = os.Getenv(fmt.Sprintf("%s_JWT_SECRET", module))
-		if cfg.JWTSecret == "" {
-			cfg.JWTSecret = os.Getenv("JWT_SECRET")
+		cfg.EmailJWTSecret = os.Getenv(fmt.Sprintf("%s_EMAIL_JWT_SECRET", module))
+		if cfg.EmailJWTSecret == "" {
+			cfg.EmailJWTSecret = os.Getenv("EMAIL_JWT_SECRET")
+		}
+		// If specific one for emails for found - let's use the same one as wintr/auth uses for token generation.
+		if cfg.EmailJWTSecret == "" {
+			module = strings.ToUpper(strings.ReplaceAll(strings.ReplaceAll(applicationYamlKey, "-", "_"), "/", "_"))
+			cfg.EmailJWTSecret = os.Getenv(fmt.Sprintf("%s_JWT_SECRET", module))
+			if cfg.EmailJWTSecret == "" {
+				cfg.EmailJWTSecret = os.Getenv("JWT_SECRET")
+			}
 		}
 	}
-	if cfg.JWTSecret == "" {
+
+	return &cfg
+}
+
+func (cfg *config) validate() {
+	if cfg.EmailJWTSecret == "" {
 		log.Panic(errors.New("no jwt secret provided"))
 	}
-	if cfg.JWTSecret == "" {
+	if cfg.EmailJWTSecret == "" {
 		log.Panic(errors.New("no jwt secret provided"))
 	}
 	if cfg.EmailValidation.AuthLink == "" {
@@ -57,20 +91,4 @@ func StartProcessor(ctx context.Context, _ context.CancelFunc, userModifier User
 	if cfg.EmailValidation.ServiceName == "" {
 		log.Panic("no service name provided")
 	}
-	db := storage.MustConnect(ctx, ddl, applicationYamlKey)
-
-	repo := &repository{
-		cfg:          &cfg,
-		shutdown:     db.Close,
-		db:           db,
-		emailClient:  email.New(applicationYamlKey),
-		authClient:   auth.New(ctx, applicationYamlKey),
-		userModifier: userModifier,
-	}
-
-	return &processor{repo}
-}
-
-func (r *repository) Close() error {
-	return errors.Wrap(r.shutdown(), "closing auth/emaillink repository failed")
 }
