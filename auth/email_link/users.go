@@ -58,7 +58,7 @@ func (r *repository) getUserByIDOrEmail(ctx context.Context, id users.UserID, em
 	}
 	result, err := storage.Get[minimalUser](ctx, r.db, `
 		WITH emails AS (
-			SELECT $1 as id, email, COALESCE((custom_claims -> 'hash_code')::BIGINT,0) as hash_code, custom_claims FROM pending_email_confirmations WHERE email = $2
+			SELECT $1 as id, email, COALESCE((custom_claims -> 'hash_code')::BIGINT,0) as hash_code, custom_claims FROM email_confirmations WHERE email = $2
 		)
 		SELECT u.id, u.email, u.hash_code, emails.custom_claims as custom_claims FROM users u, emails WHERE u.id = $1
 		UNION ALL (select * from emails)

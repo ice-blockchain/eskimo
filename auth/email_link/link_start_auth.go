@@ -31,7 +31,7 @@ func (r *repository) StartEmailLinkAuth(ctx context.Context, emailValue string) 
 	if err != nil {
 		return errors.Wrapf(err, "can't generate link payload for email: %v", emailValue)
 	}
-	if uErr := r.upsertPendingEmailConfirmation(ctx, emailValue, oldEmail, otp, now); uErr != nil {
+	if uErr := r.upsertEmailConfirmation(ctx, emailValue, oldEmail, otp, now); uErr != nil {
 		return errors.Wrapf(uErr, "failed to store/update email confirmation for:%v", emailValue)
 	}
 
@@ -65,14 +65,14 @@ func (r *repository) sendValidationEmail(ctx context.Context, toEmail, link stri
 	}), "failed to send validation email for user with email:%v", toEmail)
 }
 
-func (r *repository) upsertPendingEmailConfirmation(ctx context.Context, toEmail, oldEmail, otp string, now *time.Time) error {
+func (r *repository) upsertEmailConfirmation(ctx context.Context, toEmail, oldEmail, otp string, now *time.Time) error {
 	customClaimsFromOldEmail := "null"
 	params := []any{now.Time, toEmail, otp}
 	if oldEmail != "" {
-		customClaimsFromOldEmail = "(SELECT custom_claims FROM pending_email_confirmations WHERE email = $4)"
+		customClaimsFromOldEmail = "(SELECT custom_claims FROM email_confirmations WHERE email = $4)"
 		params = append(params, oldEmail)
 	}
-	sql := fmt.Sprintf(`INSERT INTO pending_email_confirmations (created_at, email, otp, custom_claims)
+	sql := fmt.Sprintf(`INSERT INTO email_confirmations (created_at, email, otp, custom_claims)
 	          VALUES ($1, $2, $3, %v)
 	          ON CONFLICT (email)
 	          DO UPDATE SET otp           = EXCLUDED.otp, 

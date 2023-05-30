@@ -27,7 +27,11 @@ func (r *repository) FinishLoginUsingMagicLink(ctx context.Context, emailLinkPay
 	now := time.Now()
 	user, err := r.getUserByEmail(ctx, email, claims.OldEmail)
 	if err != nil {
-		return "", "", errors.Wrapf(err, "failed to get user info by id:%v", user.ID)
+		if storage.IsErr(err, storage.ErrNotFound) {
+			return "", "", errors.Wrapf(ErrNoConfirmationRequired, "no pending confirmation for email:%v", email)
+		}
+
+		return "", "", errors.Wrapf(err, "failed to get user info by email:%v(%v)", email, claims.OldEmail)
 	}
 	if claims.OldEmail != "" {
 		if err = r.handleEmailModification(ctx, user.ID, email, claims.OldEmail, claims.NotifyEmail); err != nil {
@@ -86,15 +90,15 @@ func (r *repository) updateEmailConfirmations(ctx context.Context, userID users.
 		customClaimsClause = ",\n\t\t\t\tcustom_claims = $5::jsonb"
 	}
 	updatedValue, err := storage.ExecOne[issuedTokenSeq](ctx, r.db, fmt.Sprintf(`
-		UPDATE pending_email_confirmations
+		UPDATE email_confirmations
 			SET token_issued_at = $2,
 		        user_id = $3,
 		        otp = $3,
-				issued_token_seq = COALESCE(pending_email_confirmations.issued_token_seq,0) + 1
+				issued_token_seq = COALESCE(email_confirmations.issued_token_seq,0) + 1
 				%v
-		WHERE  (pending_email_confirmations.email = $1) 
-		AND   ((pending_email_confirmations.otp = $4) OR
-		       (pending_email_confirmations.user_id = $3 AND pending_email_confirmations.issued_token_seq::text = $4::text))
+		WHERE  (email_confirmations.email = $1) 
+		AND   ((email_confirmations.otp = $4) OR
+		       (email_confirmations.user_id = $3 AND email_confirmations.issued_token_seq::text = $4::text))
 		RETURNING issued_token_seq`, customClaimsClause), params...)
 	if err != nil {
 		return 0, errors.Wrapf(err, "failed to assign refreshed token to pending email confirmation for params:%#v", params...)

@@ -7,34 +7,41 @@ import (
 	"context"
 	"text/template"
 
+	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 
 	"github.com/ice-blockchain/eskimo/users"
 	"github.com/ice-blockchain/wintr/email"
-	"github.com/ice-blockchain/wintr/log"
 	"github.com/ice-blockchain/wintr/time"
 )
 
 func (r *repository) handleEmailModification(ctx context.Context, userID users.UserID, newEmail, oldEmail, notifyEmail string) error {
-	now := time.Now()
-	rollbackOTP := generateOTP()
-	rollbackToken, err := r.generateLinkPayload(oldEmail, newEmail, "", rollbackOTP, now)
-	if err != nil {
-		return errors.Wrapf(err, "can't generate link payload for email: %v", oldEmail)
-	}
-	if err = r.upsertPendingEmailConfirmation(ctx, oldEmail, oldEmail, rollbackOTP, now); err != nil {
-		return errors.Wrap(err, "failed to store/update email confirmation")
-	}
 	usr := new(users.User)
 	usr.ID = userID
 	usr.Email = newEmail
-	if err = r.userModifier.ModifyUser(users.ConfirmedEmailContext(ctx, newEmail), usr, nil); err != nil {
-		return errors.Wrapf(err,
-			"failed to modify user %v with email modification", userID)
+	if err := r.userModifier.ModifyUser(users.ConfirmedEmailContext(ctx, newEmail), usr, nil); err != nil {
+		return errors.Wrapf(err, "failed to modify user %v with email modification", userID)
 	}
 	if notifyEmail != "" {
+		rollbackOTP, now := generateOTP(), time.Now()
+		rollbackToken, err := r.generateLinkPayload(oldEmail, newEmail, "", rollbackOTP, now)
+		if err != nil {
+			return multierror.Append( //nolint:wrapcheck // .
+				errors.Wrapf(r.rollbackEmailModification(ctx, userID, oldEmail), "[rollback]"),
+				errors.Wrapf(err, "can't generate link payload for email: %v", oldEmail),
+			).ErrorOrNil()
+		}
+		if err = r.upsertEmailConfirmation(ctx, oldEmail, oldEmail, rollbackOTP, now); err != nil {
+			return multierror.Append( //nolint:wrapcheck // .
+				errors.Wrapf(r.rollbackEmailModification(ctx, userID, oldEmail), "[rollback]"),
+				errors.Wrap(err, "failed to store/update email confirmation"),
+			).ErrorOrNil()
+		}
 		if err = r.sendNotifyEmailChanged(ctx, newEmail, notifyEmail, r.getAuthLink(rollbackToken)); err != nil {
-			return errors.Wrapf(err, "failed to send notification email about email change for userID %v email %v", userID, oldEmail)
+			return multierror.Append( //nolint:wrapcheck // .
+				errors.Wrapf(r.rollbackEmailModification(ctx, userID, oldEmail), "[rollback]"),
+				errors.Wrapf(err, "failed to send notification email about email change for userID %v email %v", userID, oldEmail),
+			).ErrorOrNil()
 		}
 	}
 
@@ -51,15 +58,19 @@ func (r *repository) rollbackEmailModification(ctx context.Context, userID users
 }
 
 func (r *repository) sendNotifyEmailChanged(ctx context.Context, newEmail, toEmail, rollbackLink string) error {
-	emailTemplate := template.Must(new(template.Template).Parse(r.cfg.EmailValidation.NotifyChanged.EmailBodyHTMLTemplate))
+	emailTemplate, err := (new(template.Template).Parse(r.cfg.EmailValidation.NotifyChanged.EmailBodyHTMLTemplate))
+	if err != nil {
+		return errors.Wrapf(err, "invalid email template")
+	}
 	emailTemplateData := map[string]any{
 		"newEmail":    newEmail,
 		"link":        rollbackLink,
 		"serviceName": r.cfg.EmailValidation.ServiceName,
 	}
 	var emailMessageBuffer bytes.Buffer
-	eErr := emailTemplate.Execute(&emailMessageBuffer, emailTemplateData)
-	log.Panic(errors.Wrapf(eErr, "invalid Email template"))
+	if eErr := emailTemplate.Execute(&emailMessageBuffer, emailTemplateData); eErr != nil {
+		return errors.Wrapf(eErr, "invalid email template")
+	}
 
 	return errors.Wrapf(r.emailClient.Send(ctx, &email.Parcel{
 		Body: &email.Body{
