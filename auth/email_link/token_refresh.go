@@ -21,6 +21,10 @@ func (r *repository) RenewTokens(ctx context.Context, previousRefreshToken strin
 	now := time.Now()
 	user, err := r.getUserByIDOrEmail(ctx, token.Subject, token.Email)
 	if err != nil {
+		if errors.Is(err, storage.ErrNotFound) {
+			return "", "", errors.Wrapf(ErrUserNotFound, "user with id %v or email %v not found", token.Subject, token.Email)
+		}
+
 		return "", "", errors.Wrapf(err, "failed to get user by id:%v", token.Subject)
 	}
 	if customClaims != nil {
@@ -32,7 +36,7 @@ func (r *repository) RenewTokens(ctx context.Context, previousRefreshToken strin
 	refreshTokenSeq, err := r.incrementRefreshTokenSeq(ctx, token.Subject, token.Email, token.Seq, now, customClaims)
 	if err != nil {
 		if storage.IsErr(err, storage.ErrNotFound) {
-			return "", "", errors.Wrapf(ErrInvalidToken, "refreshToken with wrong sequence:%v provided", refreshTokenSeq)
+			return "", "", errors.Wrapf(ErrInvalidToken, "refreshToken with wrong sequence:%v provided", token.Seq)
 		}
 
 		return "", "", errors.Wrapf(err, "failed to update pending confirmation for email:%v", token.Email)
@@ -62,5 +66,5 @@ func (*repository) generateTokens(now *time.Time, user *minimalUser, seq int64) 
 
 	rt, at, err := auth.GenerateTokens(now, user.ID, user.Email, user.HashCode, seq, claims)
 
-	return rt, at, errors.Wrapf(err, "failed to generate tokens")
+	return rt, at, errors.Wrapf(err, "failed to generate tokens for userID:%v", user.ID)
 }

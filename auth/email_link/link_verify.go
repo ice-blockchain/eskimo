@@ -31,7 +31,7 @@ func (r *repository) FinishLoginUsingMagicLink(ctx context.Context, emailLinkPay
 			return "", "", errors.Wrapf(ErrNoConfirmationRequired, "no pending confirmation for email:%v", email)
 		}
 
-		return "", "", errors.Wrapf(err, "failed to get user info by email:%v(%v)", email, claims.OldEmail)
+		return "", "", errors.Wrapf(err, "failed to get user info by email:%v(old email:%v)", email, claims.OldEmail)
 	}
 	if claims.OldEmail != "" {
 		if err = r.handleEmailModification(ctx, user.ID, email, claims.OldEmail, claims.NotifyEmail); err != nil {
@@ -41,9 +41,10 @@ func (r *repository) FinishLoginUsingMagicLink(ctx context.Context, emailLinkPay
 	}
 	refreshTokenSeq, err := r.markOTPasUsed(ctx, user.ID, now, email, claims.OTP)
 	if err != nil {
-		mErr := multierror.Append(errors.Wrapf(err, "failed to update issuing token for email:%v", email))
+		mErr := multierror.Append(errors.Wrapf(err, "failed to mark otp as used for email:%v", email))
 		if claims.OldEmail != "" {
-			mErr = multierror.Append(mErr, errors.Wrapf(r.rollbackEmailModification(ctx, user.ID, claims.OldEmail), "[rollback]"))
+			mErr = multierror.Append(mErr,
+				errors.Wrapf(r.rollbackEmailModification(ctx, user.ID, claims.OldEmail), "[rollback] rollbackEmailModification failed for userID:%v", user.ID))
 		}
 		if storage.IsErr(err, storage.ErrNotFound) {
 			return "", "", errors.Wrapf(ErrNoConfirmationRequired, "no pending confirmation for email:%v", email)

@@ -19,6 +19,7 @@ import (
 )
 
 // Public API.
+
 type (
 	UserModifier interface {
 		ModifyUser(ctx context.Context, usr *users.User, profilePicture *multipart.FileHeader) error
@@ -44,6 +45,7 @@ var (
 )
 
 // Private API.
+
 const (
 	applicationYamlKey = "auth/email-link"
 )

@@ -15,11 +15,11 @@ import (
 func (r *repository) getUserByEmail(ctx context.Context, email, oldEmail string) (*minimalUser, error) {
 	userID, err := r.findOrGenerateUserIDByEmail(ctx, email, oldEmail)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to fetch or generate userID")
+		return nil, errors.Wrapf(err, "failed to fetch or generate userID for email:%v", email)
 	}
 	user, err := r.getUserByIDOrEmail(ctx, userID, email)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to get user info by id %v", userID)
+		return nil, errors.Wrapf(err, "failed to get user info by userID:%v", userID)
 	}
 
 	return user, nil
@@ -37,7 +37,7 @@ func (r *repository) findOrGenerateUserIDByEmail(ctx context.Context, email, old
 	if oldEmail != "" {
 		searchEmail = oldEmail
 	}
-	ids, err := storage.Select[dbUserID](ctx, r.db, `SELECT id FROM users WHERE email=$1 OR id = $2`, searchEmail, randomID)
+	ids, err := storage.Select[dbUserID](ctx, r.db, `SELECT id FROM users WHERE email = $1 OR id = $2`, searchEmail, randomID)
 	if err != nil || len(ids) == 0 {
 		if storage.IsErr(err, storage.ErrNotFound) || len(ids) == 0 {
 			return randomID, nil

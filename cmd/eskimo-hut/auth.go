@@ -37,9 +37,6 @@ func (s *service) StartEmailLinkAuth( //nolint:gocritic // .
 	ctx context.Context,
 	req *server.Request[StartEmailLinkAuthRequestArg, Auth],
 ) (*server.Response[Auth], *server.Response[server.ErrorResponse]) {
-	if err := req.Data.verifyIfAtLeastOnePropertyProvided(); err != nil {
-		return nil, err
-	}
 	if err := s.authEmailLinkProcessor.StartEmailLinkAuth(ctx, req.Data.Email); err != nil {
 		err = errors.Wrapf(err, "failed to start email link auth %#v", req.Data)
 		if err != nil {
@@ -48,14 +45,6 @@ func (s *service) StartEmailLinkAuth( //nolint:gocritic // .
 	}
 
 	return server.OK[Auth](), nil
-}
-
-func (a *StartEmailLinkAuthRequestArg) verifyIfAtLeastOnePropertyProvided() *server.Response[server.ErrorResponse] {
-	if a.Email == "" {
-		return server.UnprocessableEntity(errors.New("start email link auth request without email value"), invalidPropertiesErrorCode)
-	}
-
-	return nil
 }
 
 // FinishLoginUsingMagicLink godoc

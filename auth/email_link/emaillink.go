@@ -22,16 +22,14 @@ func StartProcessor(ctx context.Context, _ context.CancelFunc, userModifier User
 	cfg.validate()
 	db := storage.MustConnect(ctx, ddl, applicationYamlKey)
 
-	repo := &repository{
+	return &processor{&repository{
 		cfg:          cfg,
 		shutdown:     db.Close,
 		db:           db,
 		emailClient:  email.New(applicationYamlKey),
 		authClient:   auth.New(ctx, applicationYamlKey),
 		userModifier: userModifier,
-	}
-
-	return &processor{repo}
+	}}
 }
 
 func (r *repository) Close() error {
@@ -62,10 +60,7 @@ func loadConfiguration() *config {
 
 func (cfg *config) validate() {
 	if cfg.EmailJWTSecret == "" {
-		log.Panic(errors.New("no jwt secret provided"))
-	}
-	if cfg.EmailJWTSecret == "" {
-		log.Panic(errors.New("no jwt secret provided"))
+		log.Panic(errors.New("no email jwt secret provided"))
 	}
 	if cfg.EmailValidation.AuthLink == "" {
 		log.Panic("no auth link provided")
