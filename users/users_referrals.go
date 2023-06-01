@@ -243,9 +243,10 @@ func (r *repository) updateReferralCount(ctx context.Context, msgTimestamp stdli
 }
 
 //nolint:gocritic,revive // Struct is private, so we return values from it.
-func (r *repository) getCurrentReferralCount(ctx context.Context, userID UserID) (t1, t2 int64, date *time.Time, T0UserID UserID, err error) {
+func (r *repository) getCurrentReferralCount(ctx context.Context, userID UserID) (t1, t2 int64, date, T0Date *time.Time, T0UserID UserID, err error) {
 	type refCount struct {
 		Date     *time.Time `db:"date"`
+		T0Date   *time.Time `db:"t0_date"`
 		T0UserID UserID     `db:"t0_user_id"`
 		T1       int64
 		T2       int64
@@ -253,24 +254,26 @@ func (r *repository) getCurrentReferralCount(ctx context.Context, userID UserID)
 	sql := `
 	WITH t0 AS (
 		SELECT id FROM (SELECT referred_by AS id FROM users WHERE id = $1 AND referred_by != id
-						UNION SELECT NULL as id) tmp LIMIT 1
+						UNION ALL SELECT NULL as id) tmp LIMIT 1
 	) SELECT
-		  COALESCE(t1_today,0) AS t1,
-		  COALESCE((SELECT t2_today from referral_acquisition_history where user_id = t0.id),0) AS t2,
-		  date,
-		  COALESCE(t0.id,'') as t0_user_id
+		  COALESCE(refs.t1_today,0) AS t1,
+		  COALESCE(t0_refs.t2_today,0) AS t2,
+		  refs.date,
+		  COALESCE(t0.id,'') as t0_user_id,
+		  t0_refs.date as t0_date
 	FROM t0
-		LEFT JOIN referral_acquisition_history ON user_id = $1
+		LEFT JOIN referral_acquisition_history refs ON refs.user_id = $1
+		LEFT JOIN referral_acquisition_history t0_refs ON t0_refs.user_id = t0.id
 	`
 	count, err := storage.Get[refCount](ctx, r.db, sql, userID)
 	if err != nil {
-		return 0, 0, nil, "", errors.Wrapf(err, "failed to read current referral count for userID:%v", userID)
+		return 0, 0, nil, nil, "", errors.Wrapf(err, "failed to read current referral count for userID:%v", userID)
 	}
 	if count.Date == nil {
-		return 0, count.T2, nil, count.T0UserID, errors.Wrapf(storage.ErrNotFound, "failed to read current referral count for userID:%v", userID)
+		return 0, count.T2, nil, count.T0Date, count.T0UserID, errors.Wrapf(storage.ErrNotFound, "failed to read current referral count for userID:%v", userID)
 	}
 
-	return count.T1, count.T2, count.Date, count.T0UserID, nil
+	return count.T1, count.T2, count.Date, count.T0Date, count.T0UserID, nil
 }
 
 //nolint:funlen // Long SQL.
@@ -279,12 +282,15 @@ func (r *repository) incrementReferralCount(ctx context.Context, userID UserID) 
 		return errors.Wrapf(ctx.Err(), "ctx failed: ")
 	}
 	nowMidnight := time.New(time.Now().In(stdlibtime.UTC).Truncate(hoursInOneDay * stdlibtime.Hour))
-	t1, t2, storedDate, t0UserID, err := r.getCurrentReferralCount(ctx, userID)
+	t1, t2, storedDate, t0Date, t0UserID, err := r.getCurrentReferralCount(ctx, userID)
 	if err != nil && !storage.IsErr(err, storage.ErrNotFound) {
 		return errors.Wrapf(err, "failed to read current value")
 	}
 	if storedDate == nil {
 		storedDate = nowMidnight
+	}
+	if t0Date == nil {
+		t0Date = nowMidnight
 	}
 	shiftDays := nowMidnight.Sub(*storedDate.Time).Nanoseconds() / int64(hoursInOneDay*stdlibtime.Hour)
 	if shiftDays > maxDaysReferralsHistory {
@@ -316,12 +322,12 @@ func (r *repository) incrementReferralCount(ctx context.Context, userID UserID) 
 			ELSE referral_acquisition_history.t2 END),
 			date = $5
 		    %[1]v
-		WHERE referral_acquisition_history.date = $2 AND ((referral_acquisition_history.user_id = $1 AND referral_acquisition_history.t1_today = $3)
-  				     		or (referral_acquisition_history.user_id = $6 AND referral_acquisition_history.t2_today = $4))`,
+		WHERE (referral_acquisition_history.date = $2 AND referral_acquisition_history.user_id = $1 AND referral_acquisition_history.t1_today = $3)
+  		   OR (referral_acquisition_history.date = $7 AND referral_acquisition_history.user_id = $6 AND referral_acquisition_history.t2_today = $4)`,
 		shiftDatesFields,
 		t0UpdateTrigger,
 	)
-	rowsUpdated, err := storage.Exec(ctx, r.db, sql, userID, storedDate.Time, t1, t2, nowMidnight.Time, t0UserID)
+	rowsUpdated, err := storage.Exec(ctx, r.db, sql, userID, storedDate.Time, t1, t2, nowMidnight.Time, t0UserID, t0Date.Time)
 	if rowsUpdated == 0 || storage.IsErr(err, storage.ErrNotFound) {
 		return r.incrementReferralCount(ctx, userID)
 	}
