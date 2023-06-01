@@ -51,6 +51,9 @@ func (r *repository) ModifyUser(ctx context.Context, usr *User, profilePicture *
 		}
 	}
 	agendaBefore, agendaContactIDsForUpdate, uniqueAgendaContactIDsForSend, err := r.findAgendaContactIDs(ctx, usr)
+	if err != nil {
+		return errors.Wrapf(err, "can't find agenda contact ids for user:%v", usr.ID)
+	}
 	sql, params := usr.genSQLUpdate(ctx, agendaContactIDsForUpdate)
 	noOpNoOfParams := 1 + 1
 	if lu != nil {
@@ -68,7 +71,7 @@ func (r *repository) ModifyUser(ctx context.Context, usr *User, profilePicture *
 			return ErrRaceCondition
 		}
 
-		return errors.Wrapf(err, "failed to update user %#v", usr)
+		return errors.Wrapf(tErr, "failed to update user %#v", usr)
 	}
 	bkpUsr := *oldUsr
 	if profilePicture != nil {

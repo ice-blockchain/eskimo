@@ -107,7 +107,7 @@ func (r *repository) GetUserByUsername(ctx context.Context, username string) (*U
 	if ctx.Err() != nil {
 		return nil, errors.Wrap(ctx.Err(), "get user failed because context failed")
 	}
-	result, err := storage.Get[UserProfile](ctx, r.db, `SELECT * FROM users WHERE username = $1`, username)
+	result, err := storage.Get[User](ctx, r.db, `SELECT * FROM users WHERE username = $1`, username)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to get user by username %v", username)
 	}
