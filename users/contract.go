@@ -205,7 +205,7 @@ type (
 		CheckHealth(context.Context) error
 	}
 	EmailValidationStarter interface {
-		StartEmailLinkAuth(ctx context.Context, email string) error
+		SendSignInLinkToEmail(ctx context.Context, email string) error
 	}
 )
 

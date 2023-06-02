@@ -42,8 +42,8 @@ func (s *service) RegisterRoutes(router *server.Router) {
 
 func (s *service) Init(ctx context.Context, cancel context.CancelFunc) {
 	s.usersProcessor = users.StartProcessor(ctx, cancel)
-	s.authEmailLinkProcessor = emaillink.StartProcessor(ctx, cancel, s.usersProcessor)
-	s.usersProcessor.SetEmailValidationStarter(s.authEmailLinkProcessor)
+	s.authEmailLinkClient = emaillink.StartProcessor(ctx, s.usersProcessor)
+	s.usersProcessor.SetEmailValidationStarter(s.authEmailLinkClient)
 }
 
 func (s *service) Close(ctx context.Context) error {
@@ -53,7 +53,7 @@ func (s *service) Close(ctx context.Context) error {
 
 	return multierror.Append(
 		errors.Wrap(s.usersProcessor.Close(), "could not close usersProcessor"),
-		errors.Wrap(s.authEmailLinkProcessor.Close(), "could not close authEmailLinkProcessor"),
+		errors.Wrap(s.authEmailLinkClient.Close(), "could not close authEmailLinkClient"),
 	)
 }
 

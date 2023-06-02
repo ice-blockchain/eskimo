@@ -30,7 +30,7 @@ func main() {
 	}
 	if generateIceAuth != nil && *generateIceAuth != "" {
 		userID := uuid.NewString()
-		refreshToken, accessToken, err := authfixture.GenerateTokens(userID, *generateIceAuth)
+		refreshToken, accessToken, err := authfixture.GenerateIceTokens(userID, *generateIceAuth)
 		log.Panic(err) //nolint:revive // .
 		formatToken(userID, refreshToken, accessToken)
 

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: ice License 1.0
 
-package emaillink
+package emaillinkiceauth
 
 import (
 	"context"
@@ -12,15 +12,14 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/ice-blockchain/eskimo/users"
-	"github.com/ice-blockchain/wintr/auth"
 	"github.com/ice-blockchain/wintr/connectors/storage/v2"
 	"github.com/ice-blockchain/wintr/time"
 )
 
 //nolint:funlen // .
-func (r *repository) FinishLoginUsingMagicLink(ctx context.Context, emailLinkPayload string) (refreshToken, accessToken string, err error) {
+func (r *repository) SignIn(ctx context.Context, emailLinkPayload string) (refreshToken, accessToken string, err error) {
 	var claims emailClaims
-	if err = auth.VerifyJWTCommonFields(emailLinkPayload, r, &claims); err != nil {
+	if err = r.verifyEmailToken(emailLinkPayload, &claims); err != nil {
 		return "", "", errors.Wrapf(err, "invalid email token:%v", emailLinkPayload)
 	}
 	email := claims.Subject
@@ -57,17 +56,25 @@ func (r *repository) FinishLoginUsingMagicLink(ctx context.Context, emailLinkPay
 	return refreshToken, accessToken, errors.Wrapf(err, "can't generate tokens for userID:%v", user.ID)
 }
 
-func (r *repository) Verify() func(token *jwt.Token) (any, error) {
-	return func(token *jwt.Token) (any, error) {
+func (r *repository) verifyEmailToken(jwtToken string, res jwt.Claims) error {
+	if _, err := jwt.ParseWithClaims(jwtToken, res, func(token *jwt.Token) (any, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok || token.Method.Alg() != jwt.SigningMethodHS256.Name {
 			return nil, errors.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
-		if iss, err := token.Claims.GetIssuer(); err != nil || iss != auth.JwtIssuer {
+		if iss, err := token.Claims.GetIssuer(); err != nil || iss != jwtIssuer {
 			return nil, errors.Wrapf(ErrInvalidToken, "invalid issuer:%v", iss)
 		}
 
 		return []byte(r.cfg.EmailJWTSecret), nil
+	}); err != nil {
+		if errors.Is(err, jwt.ErrTokenExpired) || errors.Is(err, jwt.ErrTokenNotValidYet) {
+			return errors.Wrapf(ErrExpiredToken, "expired or not valid yet token:%v", jwtToken)
+		}
+
+		return errors.Wrapf(err, "invalid token:%v", jwtToken)
 	}
+
+	return nil
 }
 
 func (r *repository) markOTPasUsed(ctx context.Context, userID users.UserID, now *time.Time, email, otp string) (tokenSeq int64, err error) {
@@ -91,15 +98,15 @@ func (r *repository) updateEmailConfirmations(ctx context.Context, userID users.
 		customClaimsClause = ",\n\t\t\t\tcustom_claims = $5::jsonb"
 	}
 	updatedValue, err := storage.ExecOne[issuedTokenSeq](ctx, r.db, fmt.Sprintf(`
-		UPDATE email_confirmations
+		UPDATE email_link_sign_ins
 			SET token_issued_at = $2,
 		        user_id = $3,
 		        otp = $3,
-				issued_token_seq = COALESCE(email_confirmations.issued_token_seq,0) + 1
+				issued_token_seq = COALESCE(email_link_sign_ins.issued_token_seq,0) + 1
 				%v
-		WHERE  (email_confirmations.email = $1) 
-		AND   ((email_confirmations.otp = $4) OR
-		       (email_confirmations.user_id = $3 AND email_confirmations.issued_token_seq::text = $4::text))
+		WHERE  (email_link_sign_ins.email = $1) 
+		AND   ((email_link_sign_ins.otp = $4) OR
+		       (email_link_sign_ins.user_id = $3 AND email_link_sign_ins.issued_token_seq::text = $4::text))
 		RETURNING issued_token_seq`, customClaimsClause), params...)
 	if err != nil {
 		return 0, errors.Wrapf(err, "failed to assign refreshed token to pending email confirmation for params:%#v", params...)

@@ -38,7 +38,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/main.StartEmailLinkAuthRequestArg"
+                            "$ref": "#/definitions/main.SendSignInLinkToEmailRequestArg"
                         }
                     }
                 ],
@@ -828,11 +828,11 @@ const docTemplate = `{
             "properties": {
                 "accessToken": {
                     "type": "string",
-                    "example": ""
+                    "example": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJPbmxpbmUgSldUIEJ1aWxkZXIiLCJpYXQiOjE2ODQzMjQ0NTYsImV4cCI6MTcxNTg2MDQ1NiwiYXVkIjoiIiwic3ViIjoianJvY2tldEBleGFtcGxlLmNvbSIsIm90cCI6IjUxMzRhMzdkLWIyMWEtNGVhNi1hNzk2LTAxOGIwMjMwMmFhMCJ9.q3xa8Gwg2FVCRHLZqkSedH3aK8XBqykaIy85rRU40nM"
                 },
                 "refreshToken": {
                     "type": "string",
-                    "example": ""
+                    "example": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJPbmxpbmUgSldUIEJ1aWxkZXIiLCJpYXQiOjE2ODQzMjQ0NTYsImV4cCI6MTcxNTg2MDQ1NiwiYXVkIjoiIiwic3ViIjoianJvY2tldEBleGFtcGxlLmNvbSIsIm90cCI6IjUxMzRhMzdkLWIyMWEtNGVhNi1hNzk2LTAxOGIwMjMwMmFhMCJ9.q3xa8Gwg2FVCRHLZqkSedH3aK8XBqykaIy85rRU40nM"
                 }
             }
         },
@@ -943,7 +943,7 @@ const docTemplate = `{
                 }
             }
         },
-        "main.StartEmailLinkAuthRequestArg": {
+        "main.SendSignInLinkToEmailRequestArg": {
             "type": "object",
             "properties": {
                 "email": {

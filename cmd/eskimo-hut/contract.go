@@ -83,7 +83,7 @@ type (
 		Bogus          string `json:"bogus" swaggerignore:"true"` // It's just for the router to register the JSON body binder.
 		users.DeviceMetadata
 	}
-	StartEmailLinkAuthRequestArg struct {
+	SendSignInLinkToEmailRequestArg struct {
 		Email string `json:"email" allowUnauthorized:"true" required:"true" example:"jdoe@gmail.com"`
 	}
 	User struct {
@@ -142,8 +142,8 @@ var (
 type (
 	// | service implements server.State and is responsible for managing the state and lifecycle of the package.
 	service struct {
-		usersProcessor         users.Processor
-		authEmailLinkProcessor emaillink.Processor
+		usersProcessor      users.Processor
+		authEmailLinkClient emaillink.Client
 	}
 	config struct {
 		Host    string `yaml:"host"`

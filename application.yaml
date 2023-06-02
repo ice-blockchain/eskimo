@@ -12,7 +12,9 @@ cmd/eskimo:
     port: 443
     certPath: cmd/eskimo/.testdata/localhost.crt
     keyPath: cmd/eskimo/.testdata/localhost.key
-  wintr/server/auth:
+  wintr/server/ice:
+    refreshExpirationTime: 24h
+    accessExpirationTime: 1h
     jwtSecret: bogus
 cmd/eskimo-hut:
   host: localhost:1443
@@ -22,7 +24,7 @@ cmd/eskimo-hut:
     port: 1443
     certPath: cmd/eskimo-hut/.testdata/localhost.crt
     keyPath: cmd/eskimo-hut/.testdata/localhost.key
-  wintr/server/auth:
+  wintr/server/ice:
     refreshExpirationTime: 24h
     accessExpirationTime: 1h
     jwtSecret: bogus
@@ -42,20 +44,22 @@ auth/email-link:
     serviceName: ice-app-staging
     signIn:
       emailSubject: ICE email verification
-      emailBodyHTMLTemplate: 'Hello<br><br>
+      emailBodyHTMLTemplate: | 
+        Hello<br><br>
         We received a request to sign in to {{.serviceName}} using this email address. If you want to sign in with your {{.email}} account, click this link:<br><br>
         <a href="{{.link}}" target="_blank">Sign in to {{.serviceName}}</a><br><br>
         If you did not request this link, you can safely ignore this email.<br><br>
         Thanks,<br><br>
-        Your {{.serviceName}} team<br>'
+        Your {{.serviceName}} team<br>
     notifyChanged:
       emailSubject: Your sign-in email was changed for ICE
-      emailBodyHTMLTemplate: '<p>Hello</p>
-<p>Your sign-in email for {{.serviceName}} was changed to <a href="mailto:{{.newEmail}}" target="_blank">{{.newEmail}}</a>.</p>
-<p>If you didn’t ask to change your email, follow this link to reset your sign-in email.</p>
-<p><a href="{{.link}}" target="_blank">{{.link}}</a></p>
-<p>Thanks,</p>
-<p>Your {{.serviceName}} team</p>'
+      emailBodyHTMLTemplate: | 
+        <p>Hello</p>
+        <p>Your sign-in email for {{.serviceName}} was changed to <a href="mailto:{{.newEmail}}" target="_blank">{{.newEmail}}</a>.</p>
+        <p>If you didn’t ask to change your email, follow this link to reset your sign-in email.</p>
+        <p><a href="{{.link}}" target="_blank">{{.link}}</a></p>
+        <p>Thanks,</p>
+        <p>Your {{.serviceName}} team</p>'
   emailJwtSecret: bogus
   emailExpirationTime: 1h
 users: &users

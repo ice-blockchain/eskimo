@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: ice License 1.0
 
-package emaillink
+package emaillinkiceauth
 
 import (
 	"context"
@@ -17,12 +17,12 @@ import (
 	"github.com/ice-blockchain/wintr/log"
 )
 
-func StartProcessor(ctx context.Context, _ context.CancelFunc, userModifier UserModifier) Processor {
+func StartProcessor(ctx context.Context, userModifier UserModifier) Client {
 	cfg := loadConfiguration()
 	cfg.validate()
 	db := storage.MustConnect(ctx, ddl, applicationYamlKey)
 
-	return &processor{&repository{
+	return &client{&repository{
 		cfg:          cfg,
 		shutdown:     db.Close,
 		db:           db,
@@ -45,7 +45,7 @@ func loadConfiguration() *config {
 		if cfg.EmailJWTSecret == "" {
 			cfg.EmailJWTSecret = os.Getenv("EMAIL_JWT_SECRET")
 		}
-		// If specific one for emails for found - let's use the same one as wintr/auth uses for token generation.
+		// If specific one for emails for found - let's use the same one as wintr/ice/auth uses for token generation.
 		if cfg.EmailJWTSecret == "" {
 			module = strings.ToUpper(strings.ReplaceAll(strings.ReplaceAll(applicationYamlKey, "-", "_"), "/", "_"))
 			cfg.EmailJWTSecret = os.Getenv(fmt.Sprintf("%s_JWT_SECRET", module))

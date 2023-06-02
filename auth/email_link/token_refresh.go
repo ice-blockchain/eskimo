@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: ice License 1.0
 
-package emaillink
+package emaillinkiceauth
 
 import (
 	"context"
@@ -13,9 +13,9 @@ import (
 	time "github.com/ice-blockchain/wintr/time"
 )
 
-func (r *repository) RenewTokens(ctx context.Context, previousRefreshToken string, customClaims *users.JSON) (refreshToken, accessToken string, err error) {
+func (r *repository) RegenerateTokens(ctx context.Context, previousRefreshToken string, customClaims *users.JSON) (refreshToken, accessToken string, err error) { //nolint:lll // .
 	var token auth.IceToken
-	if err = auth.VerifyJWTCommonFields(previousRefreshToken, auth.Secret, &token); err != nil {
+	if err = r.authClient.ParseToken(previousRefreshToken, &token); err != nil {
 		return "", "", errors.Wrapf(err, "failed to verify token:%v", previousRefreshToken)
 	}
 	now := time.Now()
@@ -58,13 +58,13 @@ func (r *repository) incrementRefreshTokenSeq(
 	return r.updateEmailConfirmations(ctx, userID, currentSeq, now, email, customClaims, "")
 }
 
-func (*repository) generateTokens(now *time.Time, user *minimalUser, seq int64) (refreshToken, accessToken string, err error) {
+func (r *repository) generateTokens(now *time.Time, user *minimalUser, seq int64) (refreshToken, accessToken string, err error) {
 	var claims map[string]any
 	if user.CustomClaims != nil {
 		claims = *user.CustomClaims
 	}
+	refreshToken, accessToken, err = r.authClient.GenerateTokens(now, user.ID, user.Email, user.HashCode, seq, claims)
+	err = errors.Wrapf(err, "failed to generate tokens for userID:%v", user.ID)
 
-	rt, at, err := auth.GenerateTokens(now, user.ID, user.Email, user.HashCode, seq, claims)
-
-	return rt, at, errors.Wrapf(err, "failed to generate tokens for userID:%v", user.ID)
+	return
 }

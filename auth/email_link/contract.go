@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: ice License 1.0
 
-package emaillink
+package emaillinkiceauth
 
 import (
 	"context"
@@ -24,11 +24,11 @@ type (
 	UserModifier interface {
 		ModifyUser(ctx context.Context, usr *users.User, profilePicture *multipart.FileHeader) error
 	}
-	Processor interface {
+	Client interface {
 		Repository
-		StartEmailLinkAuth(ctx context.Context, userEmail string) error
-		FinishLoginUsingMagicLink(ctx context.Context, emailLinkPayload string) (refresh, access string, err error)
-		RenewTokens(ctx context.Context, prevToken string, customClaims *users.JSON) (refresh, access string, err error)
+		SendSignInLinkToEmail(ctx context.Context, userEmail string) error
+		SignIn(ctx context.Context, emailLinkPayload string) (refresh, access string, err error)
+		RegenerateTokens(ctx context.Context, prevToken string, customClaims *users.JSON) (refresh, access string, err error)
 	}
 	Repository interface {
 		io.Closer
@@ -48,6 +48,7 @@ var (
 
 const (
 	applicationYamlKey = "auth/email-link"
+	jwtIssuer          = "ice.io"
 )
 
 type (
@@ -59,7 +60,7 @@ type (
 		authClient   auth.Client
 		userModifier UserModifier
 	}
-	processor struct {
+	client struct {
 		*repository
 	}
 	config struct {

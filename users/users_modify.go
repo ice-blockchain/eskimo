@@ -271,6 +271,6 @@ func (r *repository) triggerEmailValidation(ctx context.Context, newUser, oldUse
 	}
 
 	return "", errors.Wrapf(
-		r.emailValidator.StartEmailLinkAuth(ConfirmedEmailContext(ctx, oldUser.Email), newUser.Email),
-		"failed to send email confirmation")
+		r.emailValidator.SendSignInLinkToEmail(ConfirmedEmailContext(ctx, oldUser.Email), newUser.Email),
+		"failed to send email confirmation for:%v", newUser.Email)
 }

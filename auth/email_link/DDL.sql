@@ -1,6 +1,6 @@
 -- SPDX-License-Identifier: ice License 1.0
 
-CREATE TABLE IF NOT EXISTS email_confirmations  (
+CREATE TABLE IF NOT EXISTS email_link_sign_ins (
            created_at       timestamp NOT NULL,
            token_issued_at  timestamp,
            issued_token_seq BIGINT DEFAULT 0,

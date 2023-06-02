@@ -15,29 +15,29 @@ import (
 func (s *service) setupAuthRoutes(router *server.Router) {
 	router.
 		Group("v1w").
-		POST("auth", server.RootHandler(s.StartEmailLinkAuth)).
-		POST("auth/refresh", server.RootHandler(s.RefreshToken)).
-		GET("auth/finish", server.RootHandler(s.FinishLoginUsingMagicLink))
+		POST("auth", server.RootHandler(s.SendSignInLinkToEmail)).
+		POST("auth/refresh", server.RootHandler(s.RegenerateTokens)).
+		GET("auth/finish", server.RootHandler(s.SignIn))
 }
 
-// StartEmailLinkAuth godoc
+// SendSignInLinkToEmail godoc
 //
 //	@Schemes
 //	@Description	Starts email link auth process
 //	@Tags			Auth
 //	@Accept			json
 //	@Produce		json
-//	@Param			request	body		StartEmailLinkAuthRequestArg	true	"Request params"
+//	@Param			request	body		SendSignInLinkToEmailRequestArg	true	"Request params"
 //	@Success		200		{object}	Auth
 //	@Failure		422		{object}	server.ErrorResponse	"if syntax fails"
 //	@Failure		500		{object}	server.ErrorResponse
 //	@Failure		504		{object}	server.ErrorResponse	"if request times out"
 //	@Router			/auth [POST].
-func (s *service) StartEmailLinkAuth( //nolint:gocritic // .
+func (s *service) SendSignInLinkToEmail( //nolint:gocritic // .
 	ctx context.Context,
-	req *server.Request[StartEmailLinkAuthRequestArg, Auth],
+	req *server.Request[SendSignInLinkToEmailRequestArg, Auth],
 ) (*server.Response[Auth], *server.Response[server.ErrorResponse]) {
-	if err := s.authEmailLinkProcessor.StartEmailLinkAuth(ctx, req.Data.Email); err != nil {
+	if err := s.authEmailLinkClient.SendSignInLinkToEmail(ctx, req.Data.Email); err != nil {
 		err = errors.Wrapf(err, "failed to start email link auth %#v", req.Data)
 		if err != nil {
 			return nil, server.Unexpected(err)
@@ -47,7 +47,7 @@ func (s *service) StartEmailLinkAuth( //nolint:gocritic // .
 	return server.OK[Auth](), nil
 }
 
-// FinishLoginUsingMagicLink godoc
+// SignIn godoc
 //
 //	@Schemes
 //	@Description	Finishes login flow using magic link
@@ -61,11 +61,11 @@ func (s *service) StartEmailLinkAuth( //nolint:gocritic // .
 //	@Failure		500		{object}	server.ErrorResponse
 //	@Failure		504		{object}	server.ErrorResponse	"if request times out"
 //	@Router			/auth/finish [GET].
-func (s *service) FinishLoginUsingMagicLink( //nolint:gocritic // .
+func (s *service) SignIn( //nolint:gocritic // .
 	ctx context.Context,
 	req *server.Request[MagicLinkPayload, RefreshedToken],
 ) (*server.Response[RefreshedToken], *server.Response[server.ErrorResponse]) {
-	refreshToken, accessToken, err := s.authEmailLinkProcessor.FinishLoginUsingMagicLink(ctx, req.Data.EmailToken)
+	refreshToken, accessToken, err := s.authEmailLinkClient.SignIn(ctx, req.Data.EmailToken)
 	if err != nil {
 		err = errors.Wrapf(err, "finish login using magic link failed for %#v", req.Data)
 		switch {
@@ -83,7 +83,7 @@ func (s *service) FinishLoginUsingMagicLink( //nolint:gocritic // .
 	return server.OK(&RefreshedToken{RefreshToken: refreshToken, AccessToken: accessToken}), nil
 }
 
-// RefreshToken godoc
+// RegenerateTokens godoc
 //
 //	@Schemes
 //	@Description	Issues new access token
@@ -100,12 +100,12 @@ func (s *service) FinishLoginUsingMagicLink( //nolint:gocritic // .
 //	@Failure		500				{object}	server.ErrorResponse
 //	@Failure		504				{object}	server.ErrorResponse	"if request times out"
 //	@Router			/auth/refresh [POST].
-func (s *service) RefreshToken( //nolint:gocritic // .
+func (s *service) RegenerateTokens( //nolint:gocritic // .
 	ctx context.Context,
 	req *server.Request[RefreshToken, RefreshedToken],
 ) (*server.Response[RefreshedToken], *server.Response[server.ErrorResponse]) {
 	tokenPayload := strings.TrimPrefix(req.Data.Authorization, "Bearer ")
-	nextRefreshToken, accessToken, err := s.authEmailLinkProcessor.RenewTokens(ctx, tokenPayload, req.Data.CustomClaims)
+	nextRefreshToken, accessToken, err := s.authEmailLinkClient.RegenerateTokens(ctx, tokenPayload, req.Data.CustomClaims)
 	if err != nil {
 		switch {
 		case errors.Is(err, emaillink.ErrUserDataMismatch):

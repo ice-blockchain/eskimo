@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: ice License 1.0
 
-package emaillink
+package emaillinkiceauth
 
 import (
 	"bytes"
@@ -13,14 +13,13 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/ice-blockchain/eskimo/users"
-	"github.com/ice-blockchain/wintr/auth"
 	"github.com/ice-blockchain/wintr/connectors/storage/v2"
 	"github.com/ice-blockchain/wintr/email"
 	"github.com/ice-blockchain/wintr/log"
 	"github.com/ice-blockchain/wintr/time"
 )
 
-func (r *repository) StartEmailLinkAuth(ctx context.Context, emailValue string) error {
+func (r *repository) SendSignInLinkToEmail(ctx context.Context, emailValue string) error {
 	if ctx.Err() != nil {
 		return errors.Wrap(ctx.Err(), "start email link auth failed because context failed")
 	}
@@ -69,10 +68,10 @@ func (r *repository) upsertEmailConfirmation(ctx context.Context, toEmail, oldEm
 	customClaimsFromOldEmail := "null"
 	params := []any{now.Time, toEmail, otp}
 	if oldEmail != "" {
-		customClaimsFromOldEmail = "(SELECT custom_claims FROM email_confirmations WHERE email = $4)"
+		customClaimsFromOldEmail = "(SELECT custom_claims FROM email_link_sign_ins WHERE email = $4)"
 		params = append(params, oldEmail)
 	}
-	sql := fmt.Sprintf(`INSERT INTO email_confirmations (created_at, email, otp, custom_claims)
+	sql := fmt.Sprintf(`INSERT INTO email_link_sign_ins (created_at, email, otp, custom_claims)
 	          VALUES ($1, $2, $3, %v)
 	          ON CONFLICT (email)
 	          DO UPDATE SET otp           = EXCLUDED.otp, 
@@ -86,7 +85,7 @@ func (r *repository) upsertEmailConfirmation(ctx context.Context, toEmail, oldEm
 func (r *repository) generateLinkPayload(emailValue, oldEmail, notifyEmail, otp string, now *time.Time) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, emailClaims{
 		RegisteredClaims: &jwt.RegisteredClaims{
-			Issuer:    auth.JwtIssuer,
+			Issuer:    jwtIssuer,
 			Subject:   emailValue,
 			Audience:  nil,
 			ExpiresAt: jwt.NewNumericDate(now.Add(r.cfg.EmailExpirationTime)),
