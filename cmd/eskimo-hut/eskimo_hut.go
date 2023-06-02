@@ -54,7 +54,7 @@ func (s *service) Close(ctx context.Context) error {
 	return multierror.Append(
 		errors.Wrap(s.usersProcessor.Close(), "could not close usersProcessor"),
 		errors.Wrap(s.authEmailLinkClient.Close(), "could not close authEmailLinkClient"),
-	)
+	).ErrorOrNil() //nolint:wrapcheck // Not needed.
 }
 
 func (s *service) CheckHealth(ctx context.Context) error {
