@@ -227,7 +227,7 @@ func (u *User) genSQLUpdate(ctx context.Context, agendaUserIDs []UserID) (sql st
 		sql += fmt.Sprintf(", BLOCKCHAIN_ACCOUNT_ADDRESS = $%v", nextIndex)
 		nextIndex++
 	}
-	if u.AgendaPhoneNumberHashes != nil && *u.AgendaPhoneNumberHashes != "" {
+	if agendaUserIDs != nil {
 		params = append(params, agendaUserIDs)
 		sql += fmt.Sprintf(", agenda_contact_user_ids = $%v", nextIndex)
 		nextIndex++
