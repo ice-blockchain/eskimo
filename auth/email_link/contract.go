@@ -25,13 +25,10 @@ type (
 		ModifyUser(ctx context.Context, usr *users.User, profilePicture *multipart.FileHeader) error
 	}
 	Client interface {
-		Repository
+		io.Closer
 		SendSignInLinkToEmail(ctx context.Context, userEmail string) error
 		SignIn(ctx context.Context, emailLinkPayload string) (refresh, access string, err error)
 		RegenerateTokens(ctx context.Context, prevToken string, customClaims *users.JSON) (refresh, access string, err error)
-	}
-	Repository interface {
-		io.Closer
 	}
 )
 
@@ -52,7 +49,7 @@ const (
 )
 
 type (
-	repository struct {
+	client struct {
 		db           *storage.DB
 		cfg          *config
 		shutdown     func() error
@@ -60,15 +57,11 @@ type (
 		authClient   auth.Client
 		userModifier UserModifier
 	}
-	client struct {
-		*repository
-	}
 	config struct {
 		EmailValidation struct {
 			AuthLink         string `yaml:"authLink"`
 			FromEmailName    string `yaml:"fromEmailName"`
 			FromEmailAddress string `yaml:"fromEmailAddress"`
-			ServiceName      string `yaml:"serviceName"`
 			SignIn           struct {
 				EmailBodyHTMLTemplate string `mapstructure:"emailBodyHTMLTemplate" yaml:"emailBodyHTMLTemplate"` //nolint:tagliatelle // Nope.
 				EmailSubject          string `yaml:"emailSubject"`
@@ -92,10 +85,10 @@ type (
 		IssuedTokenSeq int64 `db:"issued_token_seq"`
 	}
 	minimalUser struct {
-		CustomClaims *users.JSON
-		ID           string
-		Email        string
-		HashCode     int64
+		CustomClaims *users.JSON `json:"customClaims,omitempty"`
+		ID           string      `json:"id" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
+		Email        string      `json:"email,omitempty" example:"someone1@example.com"`
+		HashCode     int64       `json:"hashCode,omitempty" example:"43453546464576547"`
 	}
 )
 

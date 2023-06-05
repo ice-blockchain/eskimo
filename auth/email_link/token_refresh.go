@@ -8,18 +8,17 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/ice-blockchain/eskimo/users"
-	"github.com/ice-blockchain/wintr/auth"
 	"github.com/ice-blockchain/wintr/connectors/storage/v2"
 	time "github.com/ice-blockchain/wintr/time"
 )
 
-func (r *repository) RegenerateTokens(ctx context.Context, previousRefreshToken string, customClaims *users.JSON) (refreshToken, accessToken string, err error) { //nolint:lll // .
-	var token auth.IceToken
-	if err = r.authClient.ParseToken(previousRefreshToken, &token); err != nil {
+func (c *client) RegenerateTokens(ctx context.Context, previousRefreshToken string, customClaims *users.JSON) (refreshToken, accessToken string, err error) {
+	token, err := c.authClient.ParseToken(previousRefreshToken)
+	if err != nil {
 		return "", "", errors.Wrapf(err, "failed to verify token:%v", previousRefreshToken)
 	}
 	now := time.Now()
-	user, err := r.getUserByIDOrEmail(ctx, token.Subject, token.Email)
+	usr, err := c.getUserByIDOrEmail(ctx, token.Subject, token.Email)
 	if err != nil {
 		if errors.Is(err, storage.ErrNotFound) {
 			return "", "", errors.Wrapf(ErrUserNotFound, "user with id %v or email %v not found", token.Subject, token.Email)
@@ -28,12 +27,12 @@ func (r *repository) RegenerateTokens(ctx context.Context, previousRefreshToken 
 		return "", "", errors.Wrapf(err, "failed to get user by id:%v", token.Subject)
 	}
 	if customClaims != nil {
-		user.CustomClaims = customClaims
+		usr.CustomClaims = customClaims
 	}
-	if user.Email != token.Email {
-		return "", "", errors.Wrapf(ErrUserDataMismatch, "user's email:%v does not match token's email:%v", user.Email, token.Email)
+	if usr.Email != token.Email {
+		return "", "", errors.Wrapf(ErrUserDataMismatch, "user's email:%v does not match token's email:%v", usr.Email, token.Email)
 	}
-	refreshTokenSeq, err := r.incrementRefreshTokenSeq(ctx, token.Subject, token.Email, token.Seq, now, customClaims)
+	refreshTokenSeq, err := c.incrementRefreshTokenSeq(ctx, token.Subject, token.Email, token.Seq, now, customClaims)
 	if err != nil {
 		if storage.IsErr(err, storage.ErrNotFound) {
 			return "", "", errors.Wrapf(ErrInvalidToken, "refreshToken with wrong sequence:%v provided", token.Seq)
@@ -41,13 +40,13 @@ func (r *repository) RegenerateTokens(ctx context.Context, previousRefreshToken 
 
 		return "", "", errors.Wrapf(err, "failed to update pending confirmation for email:%v", token.Email)
 	}
-	refreshToken, accessToken, err = r.generateTokens(now, user, refreshTokenSeq)
+	refreshToken, accessToken, err = c.generateTokens(now, usr, refreshTokenSeq)
 
 	return refreshToken, accessToken, errors.Wrapf(err, "can't generate tokens for userID:%v, email:%v", token.Subject, token.Email)
 }
 
 //nolint:revive // .
-func (r *repository) incrementRefreshTokenSeq(
+func (c *client) incrementRefreshTokenSeq(
 	ctx context.Context,
 	userID users.UserID,
 	email string,
@@ -55,16 +54,16 @@ func (r *repository) incrementRefreshTokenSeq(
 	now *time.Time,
 	customClaims *users.JSON,
 ) (tokenSeq int64, err error) {
-	return r.updateEmailConfirmations(ctx, userID, currentSeq, now, email, customClaims, "")
+	return c.updateEmailConfirmations(ctx, userID, email, "", currentSeq, now, customClaims)
 }
 
-func (r *repository) generateTokens(now *time.Time, user *minimalUser, seq int64) (refreshToken, accessToken string, err error) {
+func (c *client) generateTokens(now *time.Time, usr *minimalUser, seq int64) (refreshToken, accessToken string, err error) {
 	var claims map[string]any
-	if user.CustomClaims != nil {
-		claims = *user.CustomClaims
+	if usr.CustomClaims != nil {
+		claims = *usr.CustomClaims
 	}
-	refreshToken, accessToken, err = r.authClient.GenerateTokens(now, user.ID, user.Email, user.HashCode, seq, claims)
-	err = errors.Wrapf(err, "failed to generate tokens for userID:%v", user.ID)
+	refreshToken, accessToken, err = c.authClient.GenerateTokens(now, usr.ID, usr.Email, usr.HashCode, seq, claims)
+	err = errors.Wrapf(err, "failed to generate tokens for user:%#v", usr)
 
 	return
 }

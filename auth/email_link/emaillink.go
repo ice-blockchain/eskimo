@@ -17,23 +17,23 @@ import (
 	"github.com/ice-blockchain/wintr/log"
 )
 
-func StartProcessor(ctx context.Context, userModifier UserModifier) Client {
+func NewClient(ctx context.Context, userModifier UserModifier) Client {
 	cfg := loadConfiguration()
 	cfg.validate()
 	db := storage.MustConnect(ctx, ddl, applicationYamlKey)
 
-	return &client{&repository{
+	return &client{
 		cfg:          cfg,
 		shutdown:     db.Close,
 		db:           db,
 		emailClient:  email.New(applicationYamlKey),
 		authClient:   auth.New(ctx, applicationYamlKey),
 		userModifier: userModifier,
-	}}
+	}
 }
 
-func (r *repository) Close() error {
-	return errors.Wrap(r.shutdown(), "closing auth/emaillink repository failed")
+func (c *client) Close() error {
+	return errors.Wrap(c.shutdown(), "closing auth/emaillink repository failed")
 }
 
 func loadConfiguration() *config {
@@ -82,8 +82,5 @@ func (cfg *config) validate() {
 	}
 	if cfg.EmailValidation.FromEmailName == "" {
 		log.Panic("no from email name provided")
-	}
-	if cfg.EmailValidation.ServiceName == "" {
-		log.Panic("no service name provided")
 	}
 }

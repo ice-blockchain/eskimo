@@ -17,14 +17,14 @@ import (
 )
 
 //nolint:funlen // .
-func (r *repository) SignIn(ctx context.Context, emailLinkPayload string) (refreshToken, accessToken string, err error) {
+func (c *client) SignIn(ctx context.Context, emailLinkPayload string) (refreshToken, accessToken string, err error) {
 	var claims emailClaims
-	if err = r.verifyEmailToken(emailLinkPayload, &claims); err != nil {
+	if err = c.verifyEmailToken(emailLinkPayload, &claims); err != nil {
 		return "", "", errors.Wrapf(err, "invalid email token:%v", emailLinkPayload)
 	}
 	email := claims.Subject
 	now := time.Now()
-	user, err := r.getUserByEmail(ctx, email, claims.OldEmail)
+	usr, err := c.getUserByEmail(ctx, email, claims.OldEmail)
 	if err != nil {
 		if storage.IsErr(err, storage.ErrNotFound) {
 			return "", "", errors.Wrapf(ErrNoConfirmationRequired, "no pending confirmation for email:%v", email)
@@ -33,17 +33,17 @@ func (r *repository) SignIn(ctx context.Context, emailLinkPayload string) (refre
 		return "", "", errors.Wrapf(err, "failed to get user info by email:%v(old email:%v)", email, claims.OldEmail)
 	}
 	if claims.OldEmail != "" {
-		if err = r.handleEmailModification(ctx, user.ID, email, claims.OldEmail, claims.NotifyEmail); err != nil {
+		if err = c.handleEmailModification(ctx, usr.ID, email, claims.OldEmail, claims.NotifyEmail); err != nil {
 			return "", "", errors.Wrapf(err, "failed to handle email modification:%v", email)
 		}
-		user.Email = email
+		usr.Email = email
 	}
-	refreshTokenSeq, err := r.markOTPasUsed(ctx, user.ID, now, email, claims.OTP)
+	refreshTokenSeq, err := c.markOTPasUsed(ctx, usr.ID, now, email, claims.OTP)
 	if err != nil {
 		mErr := multierror.Append(errors.Wrapf(err, "failed to mark otp as used for email:%v", email))
 		if claims.OldEmail != "" {
 			mErr = multierror.Append(mErr,
-				errors.Wrapf(r.rollbackEmailModification(ctx, user.ID, claims.OldEmail), "[rollback] rollbackEmailModification failed for userID:%v", user.ID))
+				errors.Wrapf(c.rollbackEmailModification(ctx, usr.ID, claims.OldEmail), "[rollback] rollbackEmailModification failed for userID:%v", usr.ID))
 		}
 		if storage.IsErr(err, storage.ErrNotFound) {
 			return "", "", errors.Wrapf(ErrNoConfirmationRequired, "no pending confirmation for email:%v", email)
@@ -51,12 +51,12 @@ func (r *repository) SignIn(ctx context.Context, emailLinkPayload string) (refre
 
 		return "", "", mErr.ErrorOrNil() //nolint:wrapcheck // .
 	}
-	refreshToken, accessToken, err = r.generateTokens(now, user, refreshTokenSeq)
+	refreshToken, accessToken, err = c.generateTokens(now, usr, refreshTokenSeq)
 
-	return refreshToken, accessToken, errors.Wrapf(err, "can't generate tokens for userID:%v", user.ID)
+	return refreshToken, accessToken, errors.Wrapf(err, "can't generate tokens for userID:%v", usr.ID)
 }
 
-func (r *repository) verifyEmailToken(jwtToken string, res jwt.Claims) error {
+func (c *client) verifyEmailToken(jwtToken string, res jwt.Claims) error {
 	if _, err := jwt.ParseWithClaims(jwtToken, res, func(token *jwt.Token) (any, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok || token.Method.Alg() != jwt.SigningMethodHS256.Name {
 			return nil, errors.Errorf("unexpected signing method: %v", token.Header["alg"])
@@ -65,7 +65,7 @@ func (r *repository) verifyEmailToken(jwtToken string, res jwt.Claims) error {
 			return nil, errors.Wrapf(ErrInvalidToken, "invalid issuer:%v", iss)
 		}
 
-		return []byte(r.cfg.EmailJWTSecret), nil
+		return []byte(c.cfg.EmailJWTSecret), nil
 	}); err != nil {
 		if errors.Is(err, jwt.ErrTokenExpired) || errors.Is(err, jwt.ErrTokenNotValidYet) {
 			return errors.Wrapf(ErrExpiredToken, "expired or not valid yet token:%v", jwtToken)
@@ -77,13 +77,13 @@ func (r *repository) verifyEmailToken(jwtToken string, res jwt.Claims) error {
 	return nil
 }
 
-func (r *repository) markOTPasUsed(ctx context.Context, userID users.UserID, now *time.Time, email, otp string) (tokenSeq int64, err error) {
-	return r.updateEmailConfirmations(ctx, userID, 0, now, email, nil, otp)
+func (c *client) markOTPasUsed(ctx context.Context, userID users.UserID, now *time.Time, email, otp string) (tokenSeq int64, err error) {
+	return c.updateEmailConfirmations(ctx, userID, email, otp, 0, now, nil)
 }
 
 //nolint:revive // .
-func (r *repository) updateEmailConfirmations(ctx context.Context, userID users.UserID, currentSeq int64,
-	now *time.Time, email string, customClaims *users.JSON, otp string,
+func (c *client) updateEmailConfirmations(
+	ctx context.Context, userID, email, otp string, currentSeq int64, now *time.Time, customClaims *users.JSON,
 ) (tokenSeq int64, err error) {
 	params := []any{email, now.Time, userID}
 	if currentSeq > 0 {
@@ -97,7 +97,7 @@ func (r *repository) updateEmailConfirmations(ctx context.Context, userID users.
 		params = append(params, customClaims)
 		customClaimsClause = ",\n\t\t\t\tcustom_claims = $5::jsonb"
 	}
-	updatedValue, err := storage.ExecOne[issuedTokenSeq](ctx, r.db, fmt.Sprintf(`
+	updatedValue, err := storage.ExecOne[issuedTokenSeq](ctx, c.db, fmt.Sprintf(`
 		UPDATE email_link_sign_ins
 			SET token_issued_at = $2,
 		        user_id = $3,
