@@ -13,7 +13,6 @@ import (
 	"sync"
 	stdlibtime "time"
 
-	"github.com/cenkalti/backoff/v4"
 	"github.com/goccy/go-json"
 	"github.com/hashicorp/go-multierror"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -112,25 +111,6 @@ func (p *processor) CheckHealth(ctx context.Context) error {
 	}, responder)
 
 	return errors.Wrapf(<-responder, "[health-check] failed to send health check message to broker")
-}
-
-func retry(ctx context.Context, op func() error) error {
-	//nolint:wrapcheck // No need, its just a proxy.
-	return backoff.RetryNotify(
-		op,
-		//nolint:gomnd // Because those are static configs.
-		backoff.WithContext(&backoff.ExponentialBackOff{
-			InitialInterval:     100 * stdlibtime.Millisecond,
-			RandomizationFactor: 0.5,
-			Multiplier:          2.5,
-			MaxInterval:         stdlibtime.Second,
-			MaxElapsedTime:      25 * stdlibtime.Second,
-			Stop:                backoff.Stop,
-			Clock:               backoff.SystemClock,
-		}, ctx),
-		func(e error, next stdlibtime.Duration) {
-			log.Error(errors.Wrapf(e, "call failed. retrying in %v... ", next))
-		})
 }
 
 func runConcurrently[ARG any](ctx context.Context, run func(context.Context, ARG) error, args []ARG) error {

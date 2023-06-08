@@ -14,37 +14,25 @@ import (
 )
 
 func (s *miningSessionSource) Process(ctx context.Context, msg *messagebroker.Message) error {
-	if ctx.Err() != nil {
+	if ctx.Err() != nil || len(msg.Value) == 0 {
 		return errors.Wrap(ctx.Err(), "unexpected deadline while processing message")
 	}
-
-	var ses miningSession
-	if err := json.UnmarshalContext(ctx, msg.Value, &ses); err != nil {
+	ses := new(miningSession)
+	if err := json.UnmarshalContext(ctx, msg.Value, ses); err != nil || ses.UserID == "" || ses.StartedAt.IsNil() {
 		return errors.Wrapf(err, "process: cannot unmarshall %v into %#v", string(msg.Value), ses)
 	}
-	var usr *User
-	if err := retry(ctx, func() error {
-		var err error
-		usr, err = s.getUserByID(ctx, ses.UserID)
-
-		return err
-	}); err != nil {
-		return errors.Wrapf(err, "permanently failed to get current user by ID:%v", ses.UserID)
-	}
-
-	now := time.New(msg.Timestamp)
-	if err := s.updateMiningSession(ctx, now, &ses); err != nil {
+	if err := s.updateMiningSession(ctx, ses); err != nil {
 		return errors.Wrapf(err, "failed to updateMiningSession for %#v", ses)
 	}
 
-	if err := s.incrementTotalActiveUsers(ctx, usr.LastMiningStartedAt, now); err != nil {
-		return errors.Wrapf(err, "failed to incrementTotalActiveUsers for prev:%v,next:%v", usr.LastMiningStartedAt, now)
+	if err := s.incrementTotalActiveUsers(ctx, ses); err != nil {
+		return errors.Wrapf(err, "failed to incrementTotalActiveUsers for %#v", ses)
 	}
 
 	return nil
 }
 
-func (s *miningSessionSource) updateMiningSession(ctx context.Context, now *time.Time, ses *miningSession) error {
+func (s *miningSessionSource) updateMiningSession(ctx context.Context, ses *miningSession) error {
 	if ctx.Err() != nil {
 		return errors.Wrap(ctx.Err(), "unexpected deadline ")
 	}
@@ -55,8 +43,11 @@ func (s *miningSessionSource) updateMiningSession(ctx context.Context, now *time
 	        WHERE id = $4
 	          AND ((last_mining_started_at IS NULL OR last_mining_started_at != $2)
 				   OR (last_mining_ended_at IS NULL OR last_mining_ended_at != $3))`
-	_, err := storage.Exec(ctx, s.db, sql, time.Now().Time, now.Time, ses.EndedAt.Time, ses.UserID)
+	affectedRows, err := storage.Exec(ctx, s.db, sql, time.Now().Time, ses.LastNaturalMiningStartedAt.Time, ses.EndedAt.Time, ses.UserID)
+	if affectedRows == 0 && err == nil {
+		err = ErrDuplicate
+	}
 
 	return errors.Wrapf(err,
-		"failed to update users.last_mining_started_at to %v, users.last_mining_ended_at to %v, for userID: %v", now, ses.EndedAt, ses.UserID)
+		"failed to update users.last_mining_started_at to %v, users.last_mining_ended_at to %v, for userID: %v", ses.LastNaturalMiningStartedAt.Time, ses.EndedAt, ses.UserID) //nolint:lll // .
 }

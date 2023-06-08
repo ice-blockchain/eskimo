@@ -65,9 +65,9 @@ func (r *repository) ModifyUser(ctx context.Context, usr *User, profilePicture *
 
 		return nil
 	}
-	if updatedRowsCount, tErr := storage.Exec(ctx, r.db, sql, params...); tErr != nil {
+	if updatedRowsCount, tErr := storage.Exec(ctx, r.db, sql, params...); tErr != nil || updatedRowsCount == 0 {
 		_, tErr = detectAndParseDuplicateDatabaseError(tErr)
-		if !storage.IsErr(tErr, storage.ErrDuplicate) && (storage.IsErr(tErr, storage.ErrNotFound) || updatedRowsCount == 0) {
+		if tErr == nil && updatedRowsCount == 0 {
 			return ErrRaceCondition
 		}
 

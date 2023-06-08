@@ -516,6 +516,7 @@ linters-settings:
 
 linters:
   disable:
+    - tagalign
     # TODO remove asap!
     - gomoddirectives
     # The following we don't need at all, ever, in any scenario.

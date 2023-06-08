@@ -134,25 +134,16 @@ func (r *repository) incrementOrDecrementTotalUsers(ctx context.Context, date *t
 	return errors.Wrapf(r.notifyGlobalValueUpdateMessage(ctx, keys...), "failed to notifyGlobalValueUpdateMessage, keys:%#v", keys)
 }
 
-func (r *repository) incrementTotalActiveUsers(ctx context.Context, prev, next *time.Time) error { //nolint:funlen,gocognit // .
+func (r *repository) incrementTotalActiveUsers(ctx context.Context, ms *miningSession) error {
 	if ctx.Err() != nil {
 		return errors.Wrap(ctx.Err(), "unexpected deadline")
 	}
-	parent, child := r.totalActiveUsersGlobalParentKey(next.Time), r.totalActiveUsersGlobalChildKey(next.Time)
-	skipParent := prev != nil && r.totalActiveUsersGlobalParentKey(prev.Time) == parent
-	skipChild := prev != nil && r.totalActiveUsersGlobalChildKey(prev.Time) == child
-	if skipChild && skipParent {
+	keys := ms.detectIncrTotalActiveUsersKeys(r)
+	if len(keys) == 0 {
 		return nil
 	}
-	params := make([]any, 0)
-	if !skipParent {
-		params = append(params, parent)
-	}
-	if !skipChild {
-		params = append(params, child)
-	}
-	sqlParams := make([]string, 0, len(params))
-	for idx := range params {
+	sqlParams := make([]string, 0, len(keys))
+	for idx := range keys {
 		sqlParams = append(sqlParams, fmt.Sprintf("($%v,1)", idx+1))
 	}
 	sql := fmt.Sprintf(`
@@ -161,15 +152,28 @@ func (r *repository) incrementTotalActiveUsers(ctx context.Context, prev, next *
 				ON CONFLICT (key) DO UPDATE   
 						SET value = global.value + 1`, strings.Join(sqlParams, ","))
 
-	if _, err := storage.Exec(ctx, r.db, sql, params...); err != nil && !storage.IsErr(err, storage.ErrNotFound) {
-		return errors.Wrapf(err, "failed to update global.value to global.value+1 for params:%#v", params...)
-	}
-	keys := make([]string, 0, len(params))
-	for _, v := range params {
-		keys = append(keys, v.(string)) //nolint:forcetypeassert // We know for sure.
+	if _, err := storage.Exec(ctx, r.db, sql, keys...); err != nil && !storage.IsErr(err, storage.ErrNotFound) {
+		return errors.Wrapf(err, "failed to update global.value to global.value+1 for keys:%#v", keys) //nolint:asasalint // Wrong.
 	}
 
-	return errors.Wrapf(r.notifyGlobalValueUpdateMessage(ctx, keys...), "failed to notifyGlobalValueUpdateMessage, keys:%#v", keys)
+	return nil
+}
+
+func (ms *miningSession) detectIncrTotalActiveUsersKeys(repo *repository) []any {
+	keys := make([]any, 0)
+	start, end := ms.EndedAt.Add(-ms.Extension), *ms.EndedAt.Time
+	if !ms.LastNaturalMiningStartedAt.Equal(*ms.StartedAt.Time) ||
+		(!ms.PreviouslyEndedAt.IsNil() &&
+			repo.totalActiveUsersGlobalChildKey(ms.StartedAt.Time) == repo.totalActiveUsersGlobalChildKey(ms.PreviouslyEndedAt.Time)) {
+		start = start.Add(repo.cfg.GlobalAggregationInterval.Child)
+	}
+	for start.Before(end) {
+		keys = append(keys, repo.totalActiveUsersGlobalChildKey(&start))
+		start = start.Add(repo.cfg.GlobalAggregationInterval.Child)
+	}
+	keys = append(keys, repo.totalActiveUsersGlobalChildKey(&end))
+
+	return keys
 }
 
 func (r *repository) notifyGlobalValueUpdateMessage(ctx context.Context, keys ...string) error {
