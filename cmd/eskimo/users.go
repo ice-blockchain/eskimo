@@ -28,7 +28,7 @@ func (s *service) setupUserRoutes(router *server.Router) {
 //	@Accept			json
 //	@Produce		json
 //	@Param			Authorization	header		string	true	"Insert your access token"	default(Bearer <Add access token here>)
-//	@Param			keyword			query		string	true	"A keyword to look for in the usernames and full names of users"
+//	@Param			keyword			query		string	true	"A keyword to look for in the usernames"
 //	@Param			limit			query		uint64	false	"Limit of elements to return. Defaults to 10"
 //	@Param			offset			query		uint64	false	"Elements to skip before starting to look for"
 //	@Success		200				{array}		users.MinimalUserProfile
