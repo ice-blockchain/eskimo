@@ -8,13 +8,22 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/ice-blockchain/eskimo/users"
+	"github.com/ice-blockchain/wintr/auth"
 	"github.com/ice-blockchain/wintr/connectors/storage/v2"
 	time "github.com/ice-blockchain/wintr/time"
 )
 
+//nolint:funlen // .
 func (c *client) RegenerateTokens(ctx context.Context, previousRefreshToken string, customClaims *users.JSON) (refreshToken, accessToken string, err error) {
 	token, err := c.authClient.ParseToken(previousRefreshToken)
 	if err != nil {
+		if errors.Is(err, auth.ErrExpiredToken) {
+			return "", "", errors.Wrapf(ErrExpiredToken, "failed to verify due to expired token:%v", previousRefreshToken)
+		}
+		if errors.Is(err, auth.ErrInvalidToken) {
+			return "", "", errors.Wrapf(ErrInvalidToken, "failed to verify due to invalid token:%v", previousRefreshToken)
+		}
+
 		return "", "", errors.Wrapf(err, "failed to verify token:%v", previousRefreshToken)
 	}
 	now := time.Now()

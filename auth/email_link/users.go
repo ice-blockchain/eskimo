@@ -66,12 +66,14 @@ func (c *client) getUserByIDOrEmail(ctx context.Context, id, email string) (*min
 			WHERE email = $2
 		)
 		SELECT 
-			u.id,
-			u.email,
-			u.hash_code,
-			emails.custom_claims AS custom_claims
-		FROM users u, emails
-		WHERE u.id = $1
+				u.id,
+				u.email,
+				u.hash_code,
+				emails.custom_claims AS custom_claims
+			FROM users u, emails
+			WHERE u.id = $1
+		UNION ALL (select * from emails)
+		LIMIT 1
 	`, id, email)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to get user by id:%v or email:%v", id, email)

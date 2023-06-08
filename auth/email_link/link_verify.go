@@ -27,7 +27,7 @@ func (c *client) SignIn(ctx context.Context, emailLinkPayload string) (refreshTo
 	usr, err := c.getUserByEmail(ctx, email, claims.OldEmail)
 	if err != nil {
 		if storage.IsErr(err, storage.ErrNotFound) {
-			return "", "", errors.Wrapf(ErrNoConfirmationRequired, "no pending confirmation for email:%v", email)
+			return "", "", errors.Wrapf(ErrNoConfirmationRequired, "[getUserByEmail] no pending confirmation for email:%v", email)
 		}
 
 		return "", "", errors.Wrapf(err, "failed to get user info by email:%v(old email:%v)", email, claims.OldEmail)
@@ -46,7 +46,7 @@ func (c *client) SignIn(ctx context.Context, emailLinkPayload string) (refreshTo
 				errors.Wrapf(c.rollbackEmailModification(ctx, usr.ID, claims.OldEmail), "[rollback] rollbackEmailModification failed for userID:%v", usr.ID))
 		}
 		if storage.IsErr(err, storage.ErrNotFound) {
-			return "", "", errors.Wrapf(ErrNoConfirmationRequired, "no pending confirmation for email:%v", email)
+			return "", "", errors.Wrapf(ErrNoConfirmationRequired, "[markOTPasUsed] no pending confirmation for email:%v", email)
 		}
 
 		return "", "", mErr.ErrorOrNil() //nolint:wrapcheck // .
