@@ -268,7 +268,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "A keyword to look for in the usernames and full names of users",
+                        "description": "A keyword to look for in the usernames",
                         "name": "keyword",
                         "in": "query",
                         "required": true

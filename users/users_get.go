@@ -142,7 +142,7 @@ func (r *repository) GetUsers(ctx context.Context, keyword string, limit, offset
 							THEN (CASE 
 									WHEN COALESCE(u.last_mining_ended_at,to_timestamp(0)) < $1 
 									    THEN COALESCE(u.last_ping_cooldown_ended_at,to_timestamp(1)) 
-								   	ELSE $1 
+								   	ELSE u.last_mining_ended_at 
 							      END)
 						ELSE to_timestamp(0)
 					END) 		AS last_ping_cooldown_ended_at,

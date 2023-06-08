@@ -97,7 +97,7 @@ func (r *repository) GetReferrals(ctx context.Context, userID string, referralTy
 						THEN (CASE 
 									WHEN COALESCE(referrals.last_mining_ended_at,to_timestamp(0)) < $4 
 									    THEN COALESCE(referrals.last_ping_cooldown_ended_at,to_timestamp(0)) 
-								   	ELSE $4 
+								   	ELSE referrals.last_mining_ended_at
 							  END)
 					ELSE null
 				 END)                                                                                  				AS last_ping_cooldown_ended_at,
