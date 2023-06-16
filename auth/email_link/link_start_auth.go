@@ -77,7 +77,7 @@ func (c *client) sendValidationEmail(ctx context.Context, toEmail, language, lin
 	}), "failed to send validation email for user with email:%v", toEmail)
 }
 
-//nolint:funlen,revive // Big SQL.
+//nolint:revive // .
 func (c *client) upsertEmailLinkSignIns(ctx context.Context, toEmail, oldEmail, deviceUniqueID, otp, code string, now *time.Time) error {
 	customClaimsFromOldEmail := "null"
 	confirmationCodeWrongAttempts := 0

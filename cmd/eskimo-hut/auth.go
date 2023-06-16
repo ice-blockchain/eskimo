@@ -104,7 +104,7 @@ func (s *service) SignIn( //nolint:gocritic // .
 //	@Failure		500				{object}	server.ErrorResponse
 //	@Failure		504				{object}	server.ErrorResponse	"if request times out"
 //	@Router			/auth/refresh [POST].
-func (s *service) RegenerateTokens( //nqolint:gocritic // .
+func (s *service) RegenerateTokens( //nolint:gocritic // .
 	ctx context.Context,
 	req *server.Request[RefreshToken, RefreshedToken],
 ) (*server.Response[RefreshedToken], *server.Response[server.ErrorResponse]) {
