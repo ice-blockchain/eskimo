@@ -92,14 +92,14 @@ func (c *client) incrementRefreshTokenSeq(
 	return updatedValue.IssuedTokenSeq, nil
 }
 
-func (c *client) generateTokens(now *time.Time, usr *minimalUser, seq int64) (tokens *Tokens, err error) {
+func (c *client) generateTokens(now *time.Time, els *emailLinkSignIns, seq int64) (tokens *Tokens, err error) {
 	var claims map[string]any
-	if usr.CustomClaims != nil {
-		claims = *usr.CustomClaims
+	if els.CustomClaims != nil {
+		claims = *els.CustomClaims
 	}
-	refreshToken, accessToken, err := c.authClient.GenerateTokens(now, usr.UserID, usr.DeviceUniqueID, usr.Email, usr.HashCode, seq, claims)
+	refreshToken, accessToken, err := c.authClient.GenerateTokens(now, els.UserID, els.DeviceUniqueID, els.Email, els.HashCode, seq, claims)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to generate tokens for user:%#v", usr)
+		return nil, errors.Wrapf(err, "failed to generate tokens for user:%#v", els)
 	}
 
 	return &Tokens{AccessToken: accessToken, RefreshToken: refreshToken}, nil

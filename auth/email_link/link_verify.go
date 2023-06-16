@@ -20,7 +20,7 @@ func (c *client) SignIn(ctx context.Context, emailLinkPayload, confirmationCode 
 	}
 	email := token.Subject
 	id := ID{Email: email, DeviceUniqueID: token.DeviceUniqueID}
-	usr, err := c.getUserByPk(ctx, &id, token.OldEmail)
+	els, err := c.getEmailLinkSignInByPk(ctx, &id, token.OldEmail)
 	if err != nil {
 		if storage.IsErr(err, storage.ErrNotFound) {
 			return errors.Wrapf(ErrNoConfirmationRequired, "[getUserByPk] no pending confirmation for email:%v", email)
@@ -28,17 +28,16 @@ func (c *client) SignIn(ctx context.Context, emailLinkPayload, confirmationCode 
 
 		return errors.Wrapf(err, "failed to get user info by email:%v(old email:%v)", email, token.OldEmail)
 	}
-	if usr.ConfirmationCode == usr.UserID {
+	if els.Confirmed {
 		return errors.Wrapf(ErrNoPendingConfirmation, "no pending confirmation for id:%#v", id)
 	}
-	if time.Now().After(usr.ConfirmationCodeCreatedAt.Add(c.cfg.ConfirmationCode.ExpirationTime)) {
+	if time.Now().After(els.ConfirmationCodeCreatedAt.Add(c.cfg.ConfirmationCode.ExpirationTime)) {
 		return errors.Wrapf(ErrConfirmationCodeTimeout, "confirmation code timeout for id:%#v expired", id)
 	}
-	if usr.ConfirmationCodeWrongAttemptsCount >= c.cfg.ConfirmationCode.MaxWrongAttemptsCount {
+	if els.ConfirmationCodeWrongAttemptsCount >= c.cfg.ConfirmationCode.MaxWrongAttemptsCount {
 		return errors.Wrapf(ErrConfirmationCodeAttemptsExceeded, "confirmation code wrong attempts count exceeded for id:%#v", id)
 	}
-
-	if usr.ConfirmationCode != confirmationCode {
+	if els.ConfirmationCode != confirmationCode {
 		var mErr *multierror.Error
 		if iErr := c.increaseWrongConfirmationCodeAttemptsCount(ctx, &id); iErr != nil {
 			mErr = multierror.Append(mErr, errors.Wrapf(iErr, "can't increment wrong device code attempts for email:%v,deviceUniqueID:%v", email, token.DeviceUniqueID))
@@ -49,13 +48,13 @@ func (c *client) SignIn(ctx context.Context, emailLinkPayload, confirmationCode 
 		return mErr.ErrorOrNil() //nolint:wrapcheck // Not needed.
 	}
 	if token.OldEmail != "" {
-		if err = c.handleEmailModification(ctx, usr.UserID, email, usr.DeviceUniqueID, token.OldEmail, token.NotifyEmail, usr.Language); err != nil {
+		if err = c.handleEmailModification(ctx, els, email, token.OldEmail, token.NotifyEmail); err != nil {
 			return errors.Wrapf(err, "failed to handle email modification:%v", email)
 		}
-		usr.Email = email
+		els.Email = email
 	}
-	if fErr := c.finishAuthProcess(ctx, &id, usr.UserID, token.OTP); fErr != nil {
-		return errors.Wrapf(fErr, "can't insert generated token data for userID:%v,email:%v,otp:%v", usr.UserID, email, token.OTP)
+	if fErr := c.finishAuthProcess(ctx, &id, els.UserID, token.OTP); fErr != nil {
+		return errors.Wrapf(fErr, "can't insert generated token data for userID:%v,email:%v,otp:%v", els.UserID, email, token.OTP)
 	}
 
 	return nil
@@ -73,13 +72,14 @@ func (c *client) increaseWrongConfirmationCodeAttemptsCount(ctx context.Context,
 }
 
 func (c *client) finishAuthProcess(ctx context.Context, pk *ID, userID, otp string) error {
-	params := []any{pk.Email, time.Now().Time, userID, otp, pk.DeviceUniqueID}
+	confirmed := true
+	params := []any{pk.Email, time.Now().Time, userID, otp, pk.DeviceUniqueID, confirmed}
 	sql := `UPDATE email_link_sign_ins
 				SET token_issued_at = $2,
 					user_id = $3,
 					otp = $3,
 					issued_token_seq = COALESCE(issued_token_seq, 0) + 1,
-					confirmation_code = $3
+					confirmed = $6
 			WHERE email_link_sign_ins.email = $1
 				  AND otp = $4
 				  AND device_unique_id = $5`

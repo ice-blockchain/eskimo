@@ -89,24 +89,19 @@ type (
 		Language       string `json:"language" required:"true" example:"en"`
 	}
 	StatusArg struct {
-		Email          string `json:"email" allowUnauthorized:"true" required:"true" example:"jdoe@gmail.com"`
-		LoginSession   string `json:"loginSession" required:"true" example:"eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJPbmxpbmUgSldUIEJ1aWxkZXIiLCJpYXQiOjE2ODQzMjQ0NTYsImV4cCI6MTcxNTg2MDQ1NiwiYXVkIjoiIiwic3ViIjoianJvY2tldEBleGFtcGxlLmNvbSIsIm90cCI6IjUxMzRhMzdkLWIyMWEtNGVhNi1hNzk2LTAxOGIwMjMwMmFhMCJ9.q3xa8Gwg2FVCRHLZqkSedH3aK8XBqykaIy85rRU40nM"` //nolint:lll // .
-		DeviceUniqueID string `json:"deviceUniqueId" example:"70063ABB-E69F-4FD2-8B83-90DD372802DA"`
+		LoginSession string `json:"loginSession" allowUnauthorized:"true" required:"true" example:"eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJPbmxpbmUgSldUIEJ1aWxkZXIiLCJpYXQiOjE2ODQzMjQ0NTYsImV4cCI6MTcxNTg2MDQ1NiwiYXVkIjoiIiwic3ViIjoianJvY2tldEBleGFtcGxlLmNvbSIsIm90cCI6IjUxMzRhMzdkLWIyMWEtNGVhNi1hNzk2LTAxOGIwMjMwMmFhMCJ9.q3xa8Gwg2FVCRHLZqkSedH3aK8XBqykaIy85rRU40nM"` //nolint:lll // .
 	}
 	ModifyUserResponse struct {
 		*users.User
-		*users.EmailValidation
-		Checksum string `json:"checksum,omitempty" example:"1232412415326543647657"`
+		ConfirmationCode string `json:"confirmationCode,omitempty" example:"123"`
+		Checksum         string `json:"checksum,omitempty" example:"1232412415326543647657"`
 	}
 	User struct {
 		*users.User
 		Checksum string `json:"checksum,omitempty" example:"1232412415326543647657"`
 	}
 	Auth struct {
-		Email            string `json:"email" example:"jdoe@gmail.com"`
-		DeviceUniqueID   string `json:"deviceUniqueId" example:"70063ABB-E69F-4FD2-8B83-90DD372802DA"`
-		LoginSession     string `json:"loginSession" example:"eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJPbmxpbmUgSldUIEJ1aWxkZXIiLCJpYXQiOjE2ODQzMjQ0NTYsImV4cCI6MTcxNTg2MDQ1NiwiYXVkIjoiIiwic3ViIjoianJvY2tldEBleGFtcGxlLmNvbSIsIm90cCI6IjUxMzRhMzdkLWIyMWEtNGVhNi1hNzk2LTAxOGIwMjMwMmFhMCJ9.q3xa8Gwg2FVCRHLZqkSedH3aK8XBqykaIy85rRU40nM"` //nolint:lll // .
-		ConfirmationCode string `json:"confirmationCode" example:"999"`
+		LoginSession string `json:"loginSession" example:"eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJPbmxpbmUgSldUIEJ1aWxkZXIiLCJpYXQiOjE2ODQzMjQ0NTYsImV4cCI6MTcxNTg2MDQ1NiwiYXVkIjoiIiwic3ViIjoianJvY2tldEBleGFtcGxlLmNvbSIsIm90cCI6IjUxMzRhMzdkLWIyMWEtNGVhNi1hNzk2LTAxOGIwMjMwMmFhMCJ9.q3xa8Gwg2FVCRHLZqkSedH3aK8XBqykaIy85rRU40nM"` //nolint:lll // .
 	}
 	RefreshedToken struct {
 		*emaillink.Tokens

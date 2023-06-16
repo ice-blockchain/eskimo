@@ -152,10 +152,6 @@ type (
 		TimeSeries []*UserCountTimeSeriesDataPoint `json:"timeSeries"`
 		UserCount
 	}
-	EmailValidation struct {
-		LoginSession     string `json:"loginSession,omitempty" example:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJpY2UuaW8iLCJzdWIiOiJzdXV2b3JAZ21haWwuY29tIiwiZXhwIjoxNjg2ODU1MTY2LCJuYmYiOjE2ODY4NTM5NjYsImlhdCI6MTY4Njg1Mzk2NiwiZGV2aWNlVW5pcXVlSWQiOiI3MDA2M0FCQi1FNjlGLTRGRDItOEI4My05MEREMzcyODAyREEifQ.SD9MFnKkJGIVh6kkzQ9TGVpAkcApthxTFeOQkV9aJgs"` //nolint:lll // .
-		ConfirmationCode string `json:"confirmationCode,omitempty" example:"123"`
-	}
 	GlobalUnsigned struct {
 		Key   string `json:"key" example:"TOTAL_USERS_2022-01-22:16"`
 		Value uint64 `json:"value" example:"123676"`
@@ -178,7 +174,7 @@ type (
 	WriteRepository interface {
 		CreateUser(ctx context.Context, usr *User, clientIP net.IP) error
 		DeleteUser(ctx context.Context, userID UserID) error
-		ModifyUser(ctx context.Context, usr *User, profilePicture *multipart.FileHeader) (*EmailValidation, error)
+		ModifyUser(ctx context.Context, usr *User, profilePicture *multipart.FileHeader) (string, error)
 		SetEmailValidationStarter(evs EmailValidationStarter)
 	}
 	// Repository main API exposed that handles all the features of this package.

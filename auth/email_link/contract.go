@@ -24,14 +24,14 @@ import (
 
 type (
 	UserModifier interface {
-		ModifyUser(ctx context.Context, usr *users.User, profilePicture *multipart.FileHeader) (emailValidation *users.EmailValidation, err error)
+		ModifyUser(ctx context.Context, usr *users.User, profilePicture *multipart.FileHeader) (confirmationCode string, err error)
 	}
 	Client interface {
 		io.Closer
 		SendSignInLinkToEmail(ctx context.Context, emailValue, deviceUniqueID, language string) (loginSession, confirmationCode string, err error)
 		SignIn(ctx context.Context, emailLinkPayload, confirmationCode string) error
 		RegenerateTokens(ctx context.Context, prevToken string, customClaims *users.JSON) (tokens *Tokens, err error)
-		Status(ctx context.Context, emailValue, deviceUniqueID string) (tokens *Tokens, err error)
+		Status(ctx context.Context, loginSession string) (tokens *Tokens, err error)
 	}
 	ID struct {
 		Email          string `json:"email,omitempty" example:"someone1@example.com"`
@@ -66,8 +66,6 @@ const (
 	applicationYamlKey = "auth/email-link"
 	jwtIssuer          = "ice.io"
 	defaultLanguage    = "en"
-
-	loginSessionCtxValueKey = "loginSessionCtxValueKey"
 
 	ValidationEmailType    string = "validation"
 	NotifyEmailChangedType string = "notify_changed"
@@ -109,12 +107,13 @@ type (
 	}
 	loginFlowToken struct {
 		*jwt.RegisteredClaims
-		DeviceUniqueID string `json:"deviceUniqueId,omitempty"`
+		DeviceUniqueID   string `json:"deviceUniqueId,omitempty"`
+		ConfirmationCode string `json:"confirmationCode,omitempty"`
 	}
 	issuedTokenSeq struct {
 		IssuedTokenSeq int64 `db:"issued_token_seq"`
 	}
-	minimalUser struct {
+	emailLinkSignIns struct {
 		CreatedAt                          *time.Time
 		TokenIssuedAt                      *time.Time
 		ConfirmationCodeCreatedAt          *time.Time
@@ -122,13 +121,13 @@ type (
 		UserID                             string      `json:"userId" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
 		Email                              string      `json:"email,omitempty" example:"someone1@example.com"`
 		OTP                                string      `json:"otp,omitempty" example:"207d0262-2554-4df9-b954-08cb42718b25"`
-		LoginSession                       string      `json:"loginSession,omitempty" example:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJpY2UuaW8iLCJzdWIiOiJzdXV2b3JAZ21haWwuY29tIiwiZXhwIjoxNjg2ODU1MTY2LCJuYmYiOjE2ODY4NTM5NjYsImlhdCI6MTY4Njg1Mzk2NiwiZGV2aWNlVW5pcXVlSWQiOiI3MDA2M0FCQi1FNjlGLTRGRDItOEI4My05MEREMzcyODAyREEifQ.SD9MFnKkJGIVh6kkzQ9TGVpAkcApthxTFeOQkV9aJgs"` //nolint:lll // .
 		Language                           string      `json:"language,omitempty" example:"en"`
 		DeviceUniqueID                     string      `json:"deviceUniqueId,omitempty" example:"6FB988F3-36F4-433D-9C7C-555887E57EB2" db:"device_unique_id"`
 		ConfirmationCode                   string      `json:"confirmationCode,omitempty" example:"123"`
 		IssuedTokenSeq                     int64       `json:"issuedTokenSeq,omitempty" example:"1"`
 		ConfirmationCodeWrongAttemptsCount int64       `json:"confirmationCodeWrongAttemptsCount,omitempty" example:"3" db:"confirmation_code_wrong_attempts_count"`
 		HashCode                           int64       `json:"hashCode,omitempty" example:"43453546464576547"`
+		Confirmed                          bool        `json:"confirmed" example:"false"`
 	}
 	emailTemplate struct {
 		subject, body *template.Template

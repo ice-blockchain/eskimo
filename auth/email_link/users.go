@@ -11,7 +11,7 @@ import (
 	"github.com/ice-blockchain/wintr/connectors/storage/v2"
 )
 
-func (c *client) getUserByPk(ctx context.Context, id *ID, oldEmail string) (*minimalUser, error) {
+func (c *client) getEmailLinkSignInByPk(ctx context.Context, id *ID, oldEmail string) (*emailLinkSignIns, error) {
 	userID, err := c.findUser(ctx, id.Email, oldEmail)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to fetch or generate userID for email:%v", id.Email)
@@ -56,11 +56,11 @@ func (c *client) findUser(ctx context.Context, email, oldEmail string) (userID s
 }
 
 //nolint:funlen // .
-func (c *client) getUserByIDOrPk(ctx context.Context, userID string, id *ID) (*minimalUser, error) {
+func (c *client) getUserByIDOrPk(ctx context.Context, userID string, id *ID) (*emailLinkSignIns, error) {
 	if ctx.Err() != nil {
 		return nil, errors.Wrap(ctx.Err(), "get user by id or email failed because context failed")
 	}
-	usr, err := storage.Get[minimalUser](ctx, c.db, `
+	usr, err := storage.Get[emailLinkSignIns](ctx, c.db, `
 		WITH emails AS (
 			SELECT
 				confirmation_code_created_at,
@@ -68,13 +68,13 @@ func (c *client) getUserByIDOrPk(ctx context.Context, userID string, id *ID) (*m
 				issued_token_seq,
 				confirmation_code_wrong_attempts_count,
 				otp,
-				login_session,
 				confirmation_code,
 				$1 												   AS user_id,
 				email,
 				$3 												   AS device_unique_id,
 				'en' 											   AS language,
 				COALESCE((custom_claims -> 'hash_code')::BIGINT,0) AS hash_code,
+				confirmed,
 				custom_claims
 			FROM email_link_sign_ins
 			WHERE email = $2 AND device_unique_id = $3
@@ -85,13 +85,13 @@ func (c *client) getUserByIDOrPk(ctx context.Context, userID string, id *ID) (*m
 				emails.issued_token_seq       			 	  	   AS issued_token_seq,
 				emails.confirmation_code_wrong_attempts_count 	   AS confirmation_code_wrong_attempts_count,
 				emails.otp       						 	  	   AS otp,
-				emails.login_session       		 	  		  	   AS login_session,
 				emails.confirmation_code       			 	  	   AS confirmation_code,
 				u.id 									 	  	   AS user_id,
 				u.email,
 				emails.device_unique_id 				 	  	   AS device_unique_id,
 				u.language			    				 	  	   AS language,
 				u.hash_code,
+				emails.confirmed								   AS confirmed,
 				emails.custom_claims    				 	  	   AS custom_claims
 			FROM users u, emails
 			WHERE u.id = $1
@@ -105,18 +105,19 @@ func (c *client) getUserByIDOrPk(ctx context.Context, userID string, id *ID) (*m
 	return usr, nil
 }
 
-func (c *client) getUserByLoginSession(ctx context.Context, loginSession string, id *ID) (*minimalUser, error) {
+func (c *client) getConfirmedEmailLinkSignIns(ctx context.Context, id *ID, confirmationCode string) (*emailLinkSignIns, error) {
 	if ctx.Err() != nil {
 		return nil, errors.Wrap(ctx.Err(), "get user by id or email failed because context failed")
 	}
 	sql := `SELECT *
 			FROM email_link_sign_ins
-			WHERE login_session = $1 
+			WHERE confirmation_code = $1 
 	  			  AND email = $2
-				  AND device_unique_id = $3`
-	usr, err := storage.Get[minimalUser](ctx, c.db, sql, loginSession, id.Email, id.DeviceUniqueID)
+				  AND device_unique_id = $3
+				  AND confirmed = TRUE`
+	usr, err := storage.Get[emailLinkSignIns](ctx, c.db, sql, confirmationCode, id.Email, id.DeviceUniqueID)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to get user by loginSession:%v and id:%#v", loginSession, id)
+		return nil, errors.Wrapf(err, "failed to get user by loginSession:%v and id:%#v", confirmationCode, id)
 	}
 
 	return usr, nil

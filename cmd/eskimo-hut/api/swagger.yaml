@@ -4,15 +4,6 @@ basePath: /v1w
 definitions:
   main.Auth:
     properties:
-      confirmationCode:
-        example: "999"
-        type: string
-      deviceUniqueId:
-        example: 70063ABB-E69F-4FD2-8B83-90DD372802DA
-        type: string
-      email:
-        example: jdoe@gmail.com
-        type: string
       loginSession:
         example: eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJPbmxpbmUgSldUIEJ1aWxkZXIiLCJpYXQiOjE2ODQzMjQ0NTYsImV4cCI6MTcxNTg2MDQ1NiwiYXVkIjoiIiwic3ViIjoianJvY2tldEBleGFtcGxlLmNvbSIsIm90cCI6IjUxMzRhMzdkLWIyMWEtNGVhNi1hNzk2LTAxOGIwMjMwMmFhMCJ9.q3xa8Gwg2FVCRHLZqkSedH3aK8XBqykaIy85rRU40nM
         type: string
@@ -99,9 +90,6 @@ definitions:
         type: string
       lastName:
         example: Doe
-        type: string
-      loginSession:
-        example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJpY2UuaW8iLCJzdWIiOiJzdXV2b3JAZ21haWwuY29tIiwiZXhwIjoxNjg2ODU1MTY2LCJuYmYiOjE2ODY4NTM5NjYsImlhdCI6MTY4Njg1Mzk2NiwiZGV2aWNlVW5pcXVlSWQiOiI3MDA2M0FCQi1FNjlGLTRGRDItOEI4My05MEREMzcyODAyREEifQ.SD9MFnKkJGIVh6kkzQ9TGVpAkcApthxTFeOQkV9aJgs
         type: string
       miningBlockchainAccountAddress:
         example: 0x4B73C58370AEfcEf86A6021afCDe5673511376B2
@@ -225,12 +213,6 @@ definitions:
     type: object
   main.StatusArg:
     properties:
-      deviceUniqueId:
-        example: 70063ABB-E69F-4FD2-8B83-90DD372802DA
-        type: string
-      email:
-        example: jdoe@gmail.com
-        type: string
       loginSession:
         example: eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJPbmxpbmUgSldUIEJ1aWxkZXIiLCJpYXQiOjE2ODQzMjQ0NTYsImV4cCI6MTcxNTg2MDQ1NiwiYXVkIjoiIiwic3ViIjoianJvY2tldEBleGFtcGxlLmNvbSIsIm90cCI6IjUxMzRhMzdkLWIyMWEtNGVhNi1hNzk2LTAxOGIwMjMwMmFhMCJ9.q3xa8Gwg2FVCRHLZqkSedH3aK8XBqykaIy85rRU40nM
         type: string
@@ -384,7 +366,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/main.RefreshedToken'
+            type: object
         "400":
           description: if invalid or expired payload provided
           schema:

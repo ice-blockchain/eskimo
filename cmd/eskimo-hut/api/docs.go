@@ -92,7 +92,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/main.RefreshedToken"
+                            "type": "object"
                         }
                     },
                     "400": {
@@ -824,18 +824,6 @@ const docTemplate = `{
         "main.Auth": {
             "type": "object",
             "properties": {
-                "confirmationCode": {
-                    "type": "string",
-                    "example": "999"
-                },
-                "deviceUniqueId": {
-                    "type": "string",
-                    "example": "70063ABB-E69F-4FD2-8B83-90DD372802DA"
-                },
-                "email": {
-                    "type": "string",
-                    "example": "jdoe@gmail.com"
-                },
                 "loginSession": {
                     "type": "string",
                     "example": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJPbmxpbmUgSldUIEJ1aWxkZXIiLCJpYXQiOjE2ODQzMjQ0NTYsImV4cCI6MTcxNTg2MDQ1NiwiYXVkIjoiIiwic3ViIjoianJvY2tldEBleGFtcGxlLmNvbSIsIm90cCI6IjUxMzRhMzdkLWIyMWEtNGVhNi1hNzk2LTAxOGIwMjMwMmFhMCJ9.q3xa8Gwg2FVCRHLZqkSedH3aK8XBqykaIy85rRU40nM"
@@ -954,10 +942,6 @@ const docTemplate = `{
                 "lastName": {
                     "type": "string",
                     "example": "Doe"
-                },
-                "loginSession": {
-                    "type": "string",
-                    "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJpY2UuaW8iLCJzdWIiOiJzdXV2b3JAZ21haWwuY29tIiwiZXhwIjoxNjg2ODU1MTY2LCJuYmYiOjE2ODY4NTM5NjYsImlhdCI6MTY4Njg1Mzk2NiwiZGV2aWNlVW5pcXVlSWQiOiI3MDA2M0FCQi1FNjlGLTRGRDItOEI4My05MEREMzcyODAyREEifQ.SD9MFnKkJGIVh6kkzQ9TGVpAkcApthxTFeOQkV9aJgs"
                 },
                 "miningBlockchainAccountAddress": {
                     "type": "string",
@@ -1138,14 +1122,6 @@ const docTemplate = `{
         "main.StatusArg": {
             "type": "object",
             "properties": {
-                "deviceUniqueId": {
-                    "type": "string",
-                    "example": "70063ABB-E69F-4FD2-8B83-90DD372802DA"
-                },
-                "email": {
-                    "type": "string",
-                    "example": "jdoe@gmail.com"
-                },
                 "loginSession": {
                     "type": "string",
                     "example": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJPbmxpbmUgSldUIEJ1aWxkZXIiLCJpYXQiOjE2ODQzMjQ0NTYsImV4cCI6MTcxNTg2MDQ1NiwiYXVkIjoiIiwic3ViIjoianJvY2tldEBleGFtcGxlLmNvbSIsIm90cCI6IjUxMzRhMzdkLWIyMWEtNGVhNi1hNzk2LTAxOGIwMjMwMmFhMCJ9.q3xa8Gwg2FVCRHLZqkSedH3aK8XBqykaIy85rRU40nM"

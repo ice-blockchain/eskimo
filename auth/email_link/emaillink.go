@@ -167,19 +167,6 @@ func loadEmailMagicLinkTranslationTemplates() {
 	}
 }
 
-func LoginSessionContext(ctx context.Context, token string) context.Context {
-	return context.WithValue(ctx, loginSessionCtxValueKey, token) //nolint:revive,staticcheck // .
-}
-
-func LoginSession(ctx context.Context) string {
-	token, ok := ctx.Value(loginSessionCtxValueKey).(string)
-	if ok {
-		return token
-	}
-
-	return ""
-}
-
 func parseJwtToken(jwtToken, secret string, res jwt.Claims) error {
 	if _, err := jwt.ParseWithClaims(jwtToken, res, func(token *jwt.Token) (any, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok || token.Method.Alg() != jwt.SigningMethodHS256.Name {

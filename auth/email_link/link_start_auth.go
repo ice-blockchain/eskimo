@@ -31,12 +31,12 @@ func (c *client) SendSignInLinkToEmail(ctx context.Context, emailValue, deviceUn
 	if err != nil {
 		return "", "", errors.Wrapf(err, "can't generate magic link payload for id: %#v", id)
 	}
-	loginSession, err = c.generateLoginSession(&id)
+	confirmationCode = generateConfirmationCode()
+	loginSession, err = c.generateLoginSession(&id, confirmationCode)
 	if err != nil {
 		return "", "", errors.Wrap(err, "can't call generateLoginSession")
 	}
-	confirmationCode = generateConfirmationCode()
-	if uErr := c.upsertEmailLinkSignIns(ctx, id.Email, oldEmail, id.DeviceUniqueID, loginSession, otp, language, confirmationCode, now); uErr != nil {
+	if uErr := c.upsertEmailLinkSignIns(ctx, id.Email, oldEmail, id.DeviceUniqueID, otp, confirmationCode, now); uErr != nil {
 		return "", "", errors.Wrapf(uErr, "failed to store/update email link sign ins for id:%#v", id)
 	}
 	authLink := c.getAuthLink(payload, language)
@@ -77,34 +77,34 @@ func (c *client) sendValidationEmail(ctx context.Context, toEmail, language, lin
 	}), "failed to send validation email for user with email:%v", toEmail)
 }
 
-func (c *client) upsertEmailLinkSignIns(ctx context.Context, toEmail, oldEmail, deviceUniqueID, loginSession, otp, language, code string, now *time.Time) error {
+//nolint:funlen,revive // Big SQL.
+func (c *client) upsertEmailLinkSignIns(ctx context.Context, toEmail, oldEmail, deviceUniqueID, otp, code string, now *time.Time) error {
 	customClaimsFromOldEmail := "null"
 	confirmationCodeWrongAttempts := 0
-	params := []any{now.Time, toEmail, deviceUniqueID, loginSession, otp, language, code, confirmationCodeWrongAttempts}
+	confirmed := false
+	params := []any{now.Time, toEmail, deviceUniqueID, otp, code, confirmationCodeWrongAttempts, confirmed}
 	if oldEmail != "" {
-		customClaimsFromOldEmail = "(SELECT custom_claims FROM email_link_sign_ins WHERE email = $9)"
+		customClaimsFromOldEmail = "(SELECT custom_claims FROM email_link_sign_ins WHERE email = $8 AND device_unique_id = $3)"
 		params = append(params, oldEmail)
 	}
 	sql := fmt.Sprintf(`INSERT INTO email_link_sign_ins (
 							created_at,
 							email,
 							device_unique_id,
-							login_session,
 							otp,
-							language,
 							confirmation_code,
 							confirmation_code_wrong_attempts_count,
 							confirmation_code_created_at,
+							confirmed,
 							custom_claims)
-						VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $1, %v)
+						VALUES ($1, $2, $3, $4, $5, $6, $1, $7, %v)
 						ON CONFLICT (email, device_unique_id) DO UPDATE 
 							SET otp           				     	   = EXCLUDED.otp, 
 								created_at    				     	   = EXCLUDED.created_at,
 								confirmation_code 		          	   = EXCLUDED.confirmation_code,
 								confirmation_code_created_at     	   = EXCLUDED.confirmation_code_created_at,
 								confirmation_code_wrong_attempts_count = EXCLUDED.confirmation_code_wrong_attempts_count,
-								language 						 	   = EXCLUDED.language,
-								login_session 			     	   	   = EXCLUDED.login_session,
+								confirmed 			     	   	   	   = EXCLUDED.confirmed,
 								custom_claims 				     	   = EXCLUDED.custom_claims`, customClaimsFromOldEmail)
 	_, err := storage.Exec(ctx, c.db, sql, params...)
 
@@ -138,18 +138,7 @@ func (c *client) getAuthLink(token, language string) string {
 	return fmt.Sprintf("%s?token=%s&lang=%s", c.cfg.EmailValidation.AuthLink, token, language)
 }
 
-func generateOTP() string {
-	return uuid.NewString()
-}
-
-func generateConfirmationCode() string {
-	result, err := rand.Int(rand.Reader, big.NewInt(999))
-	log.Panic(err, "random wrong")
-
-	return fmt.Sprintf("%03d", result.Int64()+1)
-}
-
-func (c *client) generateLoginSession(id *ID) (string, error) {
+func (c *client) generateLoginSession(id *ID, confirmationCode string) (string, error) {
 	now := time.Now()
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, loginFlowToken{
 		RegisteredClaims: &jwt.RegisteredClaims{
@@ -160,7 +149,8 @@ func (c *client) generateLoginSession(id *ID) (string, error) {
 			NotBefore: jwt.NewNumericDate(*now.Time),
 			IssuedAt:  jwt.NewNumericDate(*now.Time),
 		},
-		DeviceUniqueID: id.DeviceUniqueID,
+		DeviceUniqueID:   id.DeviceUniqueID,
+		ConfirmationCode: confirmationCode,
 	})
 	payload, err := token.SignedString([]byte(c.cfg.LoginSession.JwtSecret))
 	if err != nil {
@@ -168,4 +158,15 @@ func (c *client) generateLoginSession(id *ID) (string, error) {
 	}
 
 	return payload, nil
+}
+
+func generateOTP() string {
+	return uuid.NewString()
+}
+
+func generateConfirmationCode() string {
+	result, err := rand.Int(rand.Reader, big.NewInt(999)) //nolint:gomnd // It's max value.
+	log.Panic(err, "random wrong")
+
+	return fmt.Sprintf("%03d", result.Int64()+1)
 }

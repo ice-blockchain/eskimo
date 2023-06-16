@@ -38,12 +38,12 @@ func (s *service) SendSignInLinkToEmail( //nolint:gocritic // .
 	ctx context.Context,
 	req *server.Request[SendSignInLinkToEmailRequestArg, Auth],
 ) (*server.Response[Auth], *server.Response[server.ErrorResponse]) {
-	loginSession, code, err := s.authEmailLinkClient.SendSignInLinkToEmail(ctx, req.Data.Email, req.Data.DeviceUniqueID, req.Data.Language)
+	loginSession, _, err := s.authEmailLinkClient.SendSignInLinkToEmail(ctx, req.Data.Email, req.Data.DeviceUniqueID, req.Data.Language)
 	if err != nil {
 		return nil, server.Unexpected(errors.Wrapf(err, "failed to start email link auth %#v", req.Data))
 	}
 
-	return server.OK[Auth](&Auth{Email: req.Data.Email, DeviceUniqueID: req.Data.DeviceUniqueID, LoginSession: loginSession, ConfirmationCode: code}), nil
+	return server.OK[Auth](&Auth{LoginSession: loginSession}), nil
 }
 
 // SignIn godoc
@@ -53,7 +53,7 @@ func (s *service) SendSignInLinkToEmail( //nolint:gocritic // .
 //	@Tags			Auth
 //	@Produce		json
 //	@Param			token	query		string	true	"Request params"
-//	@Success		200		{object}	RefreshedToken
+//	@Success		200		{object}	any
 //	@Failure		400		{object}	server.ErrorResponse	"if invalid or expired payload provided"
 //	@Failure		404		{object}	server.ErrorResponse	"if email does not need to be confirmed by magic link"
 //	@Failure		422		{object}	server.ErrorResponse	"if syntax fails"
@@ -149,8 +149,7 @@ func (s *service) Status( //nolint:gocritic // .
 	ctx context.Context,
 	req *server.Request[StatusArg, RefreshedToken],
 ) (*server.Response[RefreshedToken], *server.Response[server.ErrorResponse]) {
-	loginFlowCtx := emaillink.LoginSessionContext(ctx, req.Data.LoginSession)
-	tokens, err := s.authEmailLinkClient.Status(loginFlowCtx, req.Data.Email, req.Data.DeviceUniqueID)
+	tokens, err := s.authEmailLinkClient.Status(ctx, req.Data.LoginSession)
 	if err != nil {
 		err = errors.Wrapf(err, "failed to get status for: %#v", req.Data)
 		if err != nil {

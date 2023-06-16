@@ -4,6 +4,7 @@ package emaillinkiceauth
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
@@ -13,44 +14,45 @@ import (
 	"github.com/ice-blockchain/wintr/time"
 )
 
-func (c *client) handleEmailModification(ctx context.Context, userID, newEmail, deviceUniqueID, oldEmail, notifyEmail, language string) error {
+//nolint:funlen // Big rollback logic.
+func (c *client) handleEmailModification(ctx context.Context, els *emailLinkSignIns, newEmail, oldEmail, notifyEmail string) error {
 	usr := new(users.User)
-	usr.ID = userID
+	usr.ID = els.UserID
 	usr.Email = newEmail
 	_, err := c.userModifier.ModifyUser(users.ConfirmedEmailContext(ctx, newEmail), usr, nil)
 	if err != nil {
-		return errors.Wrapf(err, "failed to modify user %v with email modification", userID)
+		return errors.Wrapf(err, "failed to modify user %v with email modification", els.UserID)
 	}
 	if notifyEmail != "" {
 		rollbackEmailOTP, now := generateOTP(), time.Now()
-		rollbackEmailPayload, rErr := c.generateMagicLinkPayload(&ID{Email: oldEmail, DeviceUniqueID: deviceUniqueID}, newEmail, "", rollbackEmailOTP, now)
+		rollbackEmailPayload, rErr := c.generateMagicLinkPayload(&ID{Email: oldEmail, DeviceUniqueID: els.DeviceUniqueID}, newEmail, "", rollbackEmailOTP, now)
 		if rErr != nil {
 			return multierror.Append( //nolint:wrapcheck // .
-				errors.Wrapf(c.rollbackEmailModification(ctx, userID, oldEmail), "[rollback] rollbackEmailModification failed for email:%v", oldEmail),
+				errors.Wrapf(c.rollbackEmailModification(ctx, els.UserID, oldEmail), "[rollback] rollbackEmailModification failed for email:%v", oldEmail),
 				errors.Wrapf(rErr, "can't generate link payload for email: %v", oldEmail),
 			).ErrorOrNil()
 		}
-		rollbackSession, rErr := c.generateLoginSession(&ID{Email: newEmail, DeviceUniqueID: deviceUniqueID})
-		if rErr != nil {
-			return errors.Wrap(rErr, "can't call generateLoginSession")
-		}
 		rollbackConfirmationCode := generateConfirmationCode()
-		if uErr := c.upsertEmailLinkSignIns(ctx, oldEmail, oldEmail, deviceUniqueID, rollbackSession, rollbackEmailOTP, language, rollbackConfirmationCode, now); uErr != nil {
+		if uErr := c.upsertEmailLinkSignIns(ctx, oldEmail, oldEmail, els.DeviceUniqueID, rollbackEmailOTP, rollbackConfirmationCode, now); uErr != nil {
 			return multierror.Append( //nolint:wrapcheck // .
-				errors.Wrapf(c.rollbackEmailModification(ctx, userID, oldEmail), "[rollback] rollbackEmailModification failed for email:%v", oldEmail),
+				errors.Wrapf(c.rollbackEmailModification(ctx, els.UserID, oldEmail), "[rollback] rollbackEmailModification failed for email:%v", oldEmail),
 				errors.Wrapf(uErr, "failed to store/update email confirmation for email:%v", oldEmail),
 			).ErrorOrNil()
 		}
-		authLink := c.getAuthLink(rollbackEmailPayload, language)
-		if sErr := c.sendNotifyEmailChanged(ctx, notifyEmail, authLink, language); sErr != nil {
+		authLink := c.getRollbackAuthLink(rollbackEmailPayload, els.Language, rollbackConfirmationCode)
+		if sErr := c.sendNotifyEmailChanged(ctx, notifyEmail, authLink, els.Language); sErr != nil {
 			return multierror.Append( //nolint:wrapcheck // .
-				errors.Wrapf(c.rollbackEmailModification(ctx, userID, oldEmail), "[rollback] rollbackEmailModification failed for email:%v", oldEmail),
-				errors.Wrapf(sErr, "failed to send notification email about email change for userID %v email %v", userID, oldEmail),
+				errors.Wrapf(c.rollbackEmailModification(ctx, els.UserID, oldEmail), "[rollback] rollbackEmailModification failed for email:%v", oldEmail),
+				errors.Wrapf(sErr, "failed to send notification email about email change for userID %v email %v", els.UserID, oldEmail),
 			).ErrorOrNil()
 		}
 	}
 
 	return nil
+}
+
+func (c *client) getRollbackAuthLink(token, language, confirmationCode string) string {
+	return fmt.Sprintf("%s?token=%s&lang=%s&confirmationCode=%s", c.cfg.EmailValidation.AuthLink, token, language, confirmationCode)
 }
 
 func (c *client) rollbackEmailModification(ctx context.Context, userID users.UserID, oldEmail string) error {
