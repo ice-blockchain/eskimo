@@ -1,0 +1,4 @@
+{
+ "body": "<p>Hello</p><p>We received a request to sign in to ice-app using this email address. If you want to sign in with your {{.Email}} account, click this link:</p><p><a href=\"{{.Link}}\" target=\"_blank\">Sign in to ice-app</a></p><p>If you did not request this link, you can safely ignore this email.</p><p>Thanks,</p><p>Your ice-app team</p>",
+ "subject": "ICE email verification"
+}

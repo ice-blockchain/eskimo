@@ -152,20 +152,9 @@ type (
 		TimeSeries []*UserCountTimeSeriesDataPoint `json:"timeSeries"`
 		UserCount
 	}
-	PhoneNumberValidation struct {
-		// `Read Only`.
-		CreatedAt       *time.Time `json:"createdAt,omitempty" example:"2022-01-03T16:20:52.156534Z"`
-		UserID          UserID     `json:"userId,omitempty" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
-		PhoneNumber     string     `json:"phoneNumber,omitempty" example:"+12345678"`
-		PhoneNumberHash string     `json:"phoneNumberHash,omitempty" example:"Ef86A6021afCDe5673511376B2"`
-		ValidationCode  string     `json:"validationCode,omitempty" example:"1234"`
-	}
 	EmailValidation struct {
-		// `Read Only`.
-		CreatedAt      *time.Time `json:"createdAt,omitempty" example:"2022-01-03T16:20:52.156534Z"`
-		UserID         UserID     `json:"userId,omitempty" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
-		Email          string     `json:"email,omitempty" example:"someone1@example.com"`
-		ValidationCode string     `json:"validationCode,omitempty" example:"1234"`
+		LoginSession     string `json:"loginSession,omitempty" example:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJpY2UuaW8iLCJzdWIiOiJzdXV2b3JAZ21haWwuY29tIiwiZXhwIjoxNjg2ODU1MTY2LCJuYmYiOjE2ODY4NTM5NjYsImlhdCI6MTY4Njg1Mzk2NiwiZGV2aWNlVW5pcXVlSWQiOiI3MDA2M0FCQi1FNjlGLTRGRDItOEI4My05MEREMzcyODAyREEifQ.SD9MFnKkJGIVh6kkzQ9TGVpAkcApthxTFeOQkV9aJgs"` //nolint:lll // .
+		ConfirmationCode string `json:"confirmationCode,omitempty" example:"123"`
 	}
 	GlobalUnsigned struct {
 		Key   string `json:"key" example:"TOTAL_USERS_2022-01-22:16"`
@@ -189,7 +178,7 @@ type (
 	WriteRepository interface {
 		CreateUser(ctx context.Context, usr *User, clientIP net.IP) error
 		DeleteUser(ctx context.Context, userID UserID) error
-		ModifyUser(ctx context.Context, usr *User, profilePicture *multipart.FileHeader) error
+		ModifyUser(ctx context.Context, usr *User, profilePicture *multipart.FileHeader) (*EmailValidation, error)
 		SetEmailValidationStarter(evs EmailValidationStarter)
 	}
 	// Repository main API exposed that handles all the features of this package.
@@ -205,7 +194,7 @@ type (
 		CheckHealth(context.Context) error
 	}
 	EmailValidationStarter interface {
-		SendSignInLinkToEmail(ctx context.Context, email string) error
+		SendSignInLinkToEmail(ctx context.Context, email, deviceUniqueID, language string) (loginSession, confirmationCode string, err error)
 	}
 )
 

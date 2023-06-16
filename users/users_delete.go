@@ -136,7 +136,8 @@ func (r *repository) updateReferredByForAllT1Referrals(ctx context.Context, user
 			res[ix].User.ReferredBy = res[ix].NewReferredBy
 			valTrue := true
 			res[ix].User.RandomReferredBy = &valTrue
-			errChan <- errors.Wrapf(r.ModifyUser(ctx, &res[ix].User, nil),
+			_, mErr := r.ModifyUser(ctx, &res[ix].User, nil)
+			errChan <- errors.Wrapf(mErr,
 				"failed to update referred by for userID:%v", res[ix].User.ID)
 		}(ii)
 	}

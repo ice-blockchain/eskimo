@@ -95,7 +95,7 @@ func buildUserForCreation(req *server.Request[CreateUserRequestBody, User]) *use
 //	@Param			userId				path		string					true	"ID of the user"
 //	@Param			multiPartFormData	formData	ModifyUserRequestBody	true	"Request params"
 //	@Param			profilePicture		formData	file					false	"The new profile picture for the user"
-//	@Success		200					{object}	User
+//	@Success		200					{object}	ModifyUserResponse
 //	@Failure		400					{object}	server.ErrorResponse	"if validations fail"
 //	@Failure		401					{object}	server.ErrorResponse	"if not authorized"
 //	@Failure		403					{object}	server.ErrorResponse	"not allowed"
@@ -105,15 +105,16 @@ func buildUserForCreation(req *server.Request[CreateUserRequestBody, User]) *use
 //	@Failure		500					{object}	server.ErrorResponse
 //	@Failure		504					{object}	server.ErrorResponse	"if request times out"
 //	@Router			/users/{userId} [PATCH].
-func (s *service) ModifyUser( //nolint:gocritic // .
+func (s *service) ModifyUser( //nolint:gocritic,funlen // .
 	ctx context.Context,
-	req *server.Request[ModifyUserRequestBody, User],
-) (*server.Response[User], *server.Response[server.ErrorResponse]) {
+	req *server.Request[ModifyUserRequestBody, ModifyUserResponse],
+) (*server.Response[ModifyUserResponse], *server.Response[server.ErrorResponse]) {
 	if err := validateModifyUser(ctx, req); err != nil {
 		return nil, err
 	}
 	usr := buildUserForModification(req)
-	if err := s.usersProcessor.ModifyUser(users.ContextWithChecksum(ctx, req.Data.Checksum), usr, req.Data.ProfilePicture); err != nil {
+	emailValidation, err := s.usersProcessor.ModifyUser(users.ContextWithChecksum(ctx, req.Data.Checksum), usr, req.Data.ProfilePicture)
+	if err != nil {
 		err = errors.Wrapf(err, "failed to modify user for %#v", req.Data)
 		switch {
 		case errors.Is(err, users.ErrRaceCondition):
@@ -135,10 +136,10 @@ func (s *service) ModifyUser( //nolint:gocritic // .
 		}
 	}
 
-	return server.OK(&User{User: usr, Checksum: usr.Checksum()}), nil
+	return server.OK(&ModifyUserResponse{User: usr, EmailValidation: emailValidation, Checksum: usr.Checksum()}), nil
 }
 
-func validateModifyUser(ctx context.Context, req *server.Request[ModifyUserRequestBody, User]) *server.Response[server.ErrorResponse] {
+func validateModifyUser(ctx context.Context, req *server.Request[ModifyUserRequestBody, ModifyUserResponse]) *server.Response[server.ErrorResponse] {
 	if err := req.Data.verifyIfAtLeastOnePropertyProvided(); err != nil {
 		return err
 	}
@@ -159,7 +160,7 @@ func validateModifyUser(ctx context.Context, req *server.Request[ModifyUserReque
 	return validateHiddenProfileElements(req)
 }
 
-func validateHiddenProfileElements(req *server.Request[ModifyUserRequestBody, User]) *server.Response[server.ErrorResponse] {
+func validateHiddenProfileElements(req *server.Request[ModifyUserRequestBody, ModifyUserResponse]) *server.Response[server.ErrorResponse] {
 	if req.Data.HiddenProfileElements == nil {
 		return nil
 	}
@@ -190,7 +191,7 @@ func validateHiddenProfileElements(req *server.Request[ModifyUserRequestBody, Us
 	return nil
 }
 
-func buildUserForModification(req *server.Request[ModifyUserRequestBody, User]) *users.User { //nolint:funlen // .
+func buildUserForModification(req *server.Request[ModifyUserRequestBody, ModifyUserResponse]) *users.User { //nolint:funlen // .
 	usr := new(users.User)
 	usr.ID = req.Data.UserID
 	usr.ReferredBy = req.Data.ReferredBy

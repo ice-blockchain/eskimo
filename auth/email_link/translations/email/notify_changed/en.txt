@@ -1,0 +1,4 @@
+{
+ "body": "<p>Hello,</p><p>Your sign-in email for ice-app was changed to <a href=\"mailto:{{.NewEmail}}\" target=\"_blank\">{{.NewEmail}}</a>.</p><p>If you didn’t ask to change your email, follow this link to reset your sign-in email.</p><p><a href=\"{{.Link}}\" target=\"_blank\">{{.Link}}</a></p><p>Thanks,</p><p>Your ice-app team</p>",
+ "subject": "Your sign-in email was changed for ICE"
+}

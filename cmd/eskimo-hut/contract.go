@@ -84,22 +84,36 @@ type (
 		users.DeviceMetadata
 	}
 	SendSignInLinkToEmailRequestArg struct {
-		Email string `json:"email" allowUnauthorized:"true" required:"true" example:"jdoe@gmail.com"`
+		Email          string `json:"email" allowUnauthorized:"true" required:"true" example:"jdoe@gmail.com"`
+		DeviceUniqueID string `json:"deviceUniqueId" required:"true" example:"70063ABB-E69F-4FD2-8B83-90DD372802DA"`
+		Language       string `json:"language" required:"true" example:"en"`
+	}
+	StatusArg struct {
+		Email          string `json:"email" allowUnauthorized:"true" required:"true" example:"jdoe@gmail.com"`
+		LoginSession   string `json:"loginSession" required:"true" example:"eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJPbmxpbmUgSldUIEJ1aWxkZXIiLCJpYXQiOjE2ODQzMjQ0NTYsImV4cCI6MTcxNTg2MDQ1NiwiYXVkIjoiIiwic3ViIjoianJvY2tldEBleGFtcGxlLmNvbSIsIm90cCI6IjUxMzRhMzdkLWIyMWEtNGVhNi1hNzk2LTAxOGIwMjMwMmFhMCJ9.q3xa8Gwg2FVCRHLZqkSedH3aK8XBqykaIy85rRU40nM"` //nolint:lll // .
+		DeviceUniqueID string `json:"deviceUniqueId" example:"70063ABB-E69F-4FD2-8B83-90DD372802DA"`
+	}
+	ModifyUserResponse struct {
+		*users.User
+		*users.EmailValidation
+		Checksum string `json:"checksum,omitempty" example:"1232412415326543647657"`
 	}
 	User struct {
 		*users.User
 		Checksum string `json:"checksum,omitempty" example:"1232412415326543647657"`
 	}
 	Auth struct {
-		Email string `json:"email" example:"jdoe@gmail.com"`
+		Email            string `json:"email" example:"jdoe@gmail.com"`
+		DeviceUniqueID   string `json:"deviceUniqueId" example:"70063ABB-E69F-4FD2-8B83-90DD372802DA"`
+		LoginSession     string `json:"loginSession" example:"eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJPbmxpbmUgSldUIEJ1aWxkZXIiLCJpYXQiOjE2ODQzMjQ0NTYsImV4cCI6MTcxNTg2MDQ1NiwiYXVkIjoiIiwic3ViIjoianJvY2tldEBleGFtcGxlLmNvbSIsIm90cCI6IjUxMzRhMzdkLWIyMWEtNGVhNi1hNzk2LTAxOGIwMjMwMmFhMCJ9.q3xa8Gwg2FVCRHLZqkSedH3aK8XBqykaIy85rRU40nM"` //nolint:lll // .
+		ConfirmationCode string `json:"confirmationCode" example:"999"`
 	}
-
 	RefreshedToken struct {
-		RefreshToken string `json:"refreshToken" example:"eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJPbmxpbmUgSldUIEJ1aWxkZXIiLCJpYXQiOjE2ODQzMjQ0NTYsImV4cCI6MTcxNTg2MDQ1NiwiYXVkIjoiIiwic3ViIjoianJvY2tldEBleGFtcGxlLmNvbSIsIm90cCI6IjUxMzRhMzdkLWIyMWEtNGVhNi1hNzk2LTAxOGIwMjMwMmFhMCJ9.q3xa8Gwg2FVCRHLZqkSedH3aK8XBqykaIy85rRU40nM"` //nolint:lll // .
-		AccessToken  string `json:"accessToken" example:"eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJPbmxpbmUgSldUIEJ1aWxkZXIiLCJpYXQiOjE2ODQzMjQ0NTYsImV4cCI6MTcxNTg2MDQ1NiwiYXVkIjoiIiwic3ViIjoianJvY2tldEBleGFtcGxlLmNvbSIsIm90cCI6IjUxMzRhMzdkLWIyMWEtNGVhNi1hNzk2LTAxOGIwMjMwMmFhMCJ9.q3xa8Gwg2FVCRHLZqkSedH3aK8XBqykaIy85rRU40nM"`  //nolint:lll // .
+		*emaillink.Tokens
 	}
 	MagicLinkPayload struct {
-		EmailToken string `form:"token" swaggerignore:"true"  required:"true" allowUnauthorized:"true" example:"eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJPbmxpbmUgSldUIEJ1aWxkZXIiLCJpYXQiOjE2ODQzMjQ0NTYsImV4cCI6MTcxNTg2MDQ1NiwiYXVkIjoiIiwic3ViIjoianJvY2tldEBleGFtcGxlLmNvbSIsIm90cCI6IjUxMzRhMzdkLWIyMWEtNGVhNi1hNzk2LTAxOGIwMjMwMmFhMCJ9.q3xa8Gwg2FVCRHLZqkSedH3aK8XBqykaIy85rRU40nM"` //nolint:lll // .
+		EmailToken       string `form:"token" required:"true" allowUnauthorized:"true" example:"eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJPbmxpbmUgSldUIEJ1aWxkZXIiLCJpYXQiOjE2ODQzMjQ0NTYsImV4cCI6MTcxNTg2MDQ1NiwiYXVkIjoiIiwic3ViIjoianJvY2tldEBleGFtcGxlLmNvbSIsIm90cCI6IjUxMzRhMzdkLWIyMWEtNGVhNi1hNzk2LTAxOGIwMjMwMmFhMCJ9.q3xa8Gwg2FVCRHLZqkSedH3aK8XBqykaIy85rRU40nM"` //nolint:lll // .
+		ConfirmationCode string `form:"confirmationCode" required:"true" example:"999"`
 	}
 	RefreshToken struct {
 		// Optional. In null - current claims are used, if any value - it would be overwritten. Example {"role":"new_role"}.
@@ -125,12 +139,18 @@ const (
 	raceConditionErrorCode                  = "RACE_CONDITION"
 	invalidPropertiesErrorCode              = "INVALID_PROPERTIES"
 
-	linkExpired             = "EXPIRED_LINK"
-	invalidOTPCode          = "INVALID_OTP"
-	emailValidationNotFound = "EMAIL_VALIDATION_NOT_FOUND"
+	linkExpiredErrorCode    = "EXPIRED_LINK"
+	invalidOTPCodeErrorCode = "INVALID_OTP"
+	dataMismatchErrorCode   = "DATA_MISMATCH"
 
-	dataMismatch = "DATA_MISMATCH"
-	userNotFound = "USER_NOT_FOUND"
+	confirmationCodeNotFoundErrorCode         = "CONFIRMATION_CODE_NOT_FOUND"
+	confirmationCodeTimeoutErrorCode          = "CONFIRMATION_CODE_TIMEOUT"
+	confirmationCodeAttemptsExceededErrorCode = "CONFIRMATION_CODE_ATTEMPTS_EXCEEDED"
+	confirmationCodeWrongErrorCode            = "CONFIRMATION_CODE_WRONG"
+
+	noPendingLoginSessionErrorCode     = "NO_PENDING_LOGIN_SESSION"
+	noPendingCodeConfirmationErrorCode = "NO_PENDING_CODE_CONFIRMATION"
+	statusNotVerifiedErrorCode         = "NOT_VERIFIED"
 )
 
 // .

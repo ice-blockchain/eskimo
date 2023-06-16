@@ -3,9 +3,7 @@
 package emaillinkiceauth
 
 import (
-	"bytes"
 	"context"
-	"text/template"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
@@ -15,32 +13,39 @@ import (
 	"github.com/ice-blockchain/wintr/time"
 )
 
-func (c *client) handleEmailModification(ctx context.Context, userID users.UserID, newEmail, oldEmail, notifyEmail string) error {
+func (c *client) handleEmailModification(ctx context.Context, userID, newEmail, deviceUniqueID, oldEmail, notifyEmail, language string) error {
 	usr := new(users.User)
 	usr.ID = userID
 	usr.Email = newEmail
-	if err := c.userModifier.ModifyUser(users.ConfirmedEmailContext(ctx, newEmail), usr, nil); err != nil {
+	_, err := c.userModifier.ModifyUser(users.ConfirmedEmailContext(ctx, newEmail), usr, nil)
+	if err != nil {
 		return errors.Wrapf(err, "failed to modify user %v with email modification", userID)
 	}
 	if notifyEmail != "" {
 		rollbackEmailOTP, now := generateOTP(), time.Now()
-		rollbackEmailPayload, err := c.generateLinkPayload(oldEmail, newEmail, "", rollbackEmailOTP, now)
-		if err != nil {
+		rollbackEmailPayload, rErr := c.generateMagicLinkPayload(&ID{Email: oldEmail, DeviceUniqueID: deviceUniqueID}, newEmail, "", rollbackEmailOTP, now)
+		if rErr != nil {
 			return multierror.Append( //nolint:wrapcheck // .
 				errors.Wrapf(c.rollbackEmailModification(ctx, userID, oldEmail), "[rollback] rollbackEmailModification failed for email:%v", oldEmail),
-				errors.Wrapf(err, "can't generate link payload for email: %v", oldEmail),
+				errors.Wrapf(rErr, "can't generate link payload for email: %v", oldEmail),
 			).ErrorOrNil()
 		}
-		if err = c.upsertEmailConfirmation(ctx, oldEmail, oldEmail, rollbackEmailOTP, now); err != nil {
+		rollbackSession, rErr := c.generateLoginSession(&ID{Email: newEmail, DeviceUniqueID: deviceUniqueID})
+		if rErr != nil {
+			return errors.Wrap(rErr, "can't call generateLoginSession")
+		}
+		rollbackConfirmationCode := generateConfirmationCode()
+		if uErr := c.upsertEmailLinkSignIns(ctx, oldEmail, oldEmail, deviceUniqueID, rollbackSession, rollbackEmailOTP, language, rollbackConfirmationCode, now); uErr != nil {
 			return multierror.Append( //nolint:wrapcheck // .
 				errors.Wrapf(c.rollbackEmailModification(ctx, userID, oldEmail), "[rollback] rollbackEmailModification failed for email:%v", oldEmail),
-				errors.Wrapf(err, "failed to store/update email confirmation for email:%v", oldEmail),
+				errors.Wrapf(uErr, "failed to store/update email confirmation for email:%v", oldEmail),
 			).ErrorOrNil()
 		}
-		if err = c.sendNotifyEmailChanged(ctx, newEmail, notifyEmail, c.getAuthLink(rollbackEmailPayload)); err != nil {
+		authLink := c.getAuthLink(rollbackEmailPayload, language)
+		if sErr := c.sendNotifyEmailChanged(ctx, notifyEmail, authLink, language); sErr != nil {
 			return multierror.Append( //nolint:wrapcheck // .
 				errors.Wrapf(c.rollbackEmailModification(ctx, userID, oldEmail), "[rollback] rollbackEmailModification failed for email:%v", oldEmail),
-				errors.Wrapf(err, "failed to send notification email about email change for userID %v email %v", userID, oldEmail),
+				errors.Wrapf(sErr, "failed to send notification email about email change for userID %v email %v", userID, oldEmail),
 			).ErrorOrNil()
 		}
 	}
@@ -52,38 +57,38 @@ func (c *client) rollbackEmailModification(ctx context.Context, userID users.Use
 	usr := new(users.User)
 	usr.ID = userID
 	usr.Email = oldEmail
+	_, err := c.userModifier.ModifyUser(users.ConfirmedEmailContext(ctx, oldEmail), usr, nil)
 
-	return errors.Wrapf(c.userModifier.ModifyUser(users.ConfirmedEmailContext(ctx, oldEmail), usr, nil),
+	return errors.Wrapf(err,
 		"[rollback] failed to modify user:%v", userID)
 }
 
-func (c *client) sendNotifyEmailChanged(ctx context.Context, newEmail, toEmail, link string) error {
-	emailTemplate, err := (new(template.Template).Parse(c.cfg.EmailValidation.NotifyChanged.EmailBodyHTMLTemplate))
-	if err != nil {
-		return errors.Wrapf(err, "invalid email template for email:%v", newEmail)
+func (c *client) sendNotifyEmailChanged(ctx context.Context, toEmail, link, language string) error {
+	var tmpl *emailTemplate
+	tmpl, ok := allEmailLinkTemplates[NotifyEmailChangedType][language]
+	if !ok {
+		tmpl = allEmailLinkTemplates[NotifyEmailChangedType][defaultLanguage]
 	}
-	emailTemplateData := map[string]any{
-		"newEmail": newEmail,
-		"link":     link,
-	}
-	var emailMessageBuffer bytes.Buffer
-	if eErr := emailTemplate.Execute(&emailMessageBuffer, emailTemplateData); eErr != nil {
-		return errors.Wrapf(eErr,
-			"invalid email template:%v or template data:%#v", c.cfg.EmailValidation.NotifyChanged.EmailBodyHTMLTemplate, emailTemplateData)
+	data := struct {
+		NewEmail string
+		Link     string
+	}{
+		NewEmail: toEmail,
+		Link:     link,
 	}
 
 	return errors.Wrapf(c.emailClient.Send(ctx, &email.Parcel{
 		Body: &email.Body{
 			Type: email.TextHTML,
-			Data: emailMessageBuffer.String(),
+			Data: tmpl.getBody(data),
 		},
-		Subject: c.cfg.EmailValidation.NotifyChanged.EmailSubject,
+		Subject: tmpl.getSubject(nil),
 		From: email.Participant{
-			Name:  c.cfg.EmailValidation.FromEmailName,
-			Email: c.cfg.EmailValidation.FromEmailAddress,
+			Name:  c.cfg.FromEmailName,
+			Email: c.cfg.FromEmailAddress,
 		},
 	}, email.Participant{
 		Name:  "",
 		Email: toEmail,
-	}), "failed to send validation email for user with email:%v", toEmail)
+	}), "failed to send notify email changed for user with email:%v", toEmail)
 }

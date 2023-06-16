@@ -16,20 +16,20 @@ import (
 )
 
 //nolint:funlen,gocognit,gocyclo,revive,cyclop // It needs a better breakdown.
-func (r *repository) ModifyUser(ctx context.Context, usr *User, profilePicture *multipart.FileHeader) error {
+func (r *repository) ModifyUser(ctx context.Context, usr *User, profilePicture *multipart.FileHeader) (emailValidation *EmailValidation, err error) {
 	if ctx.Err() != nil {
-		return errors.Wrap(ctx.Err(), "update user failed because context failed")
+		return nil, errors.Wrap(ctx.Err(), "update user failed because context failed")
 	}
 	oldUsr, err := r.getUserByID(ctx, usr.ID)
 	if err != nil {
-		return errors.Wrapf(err, "get user %v failed", usr.ID)
+		return nil, errors.Wrapf(err, "get user %v failed", usr.ID)
 	}
 	lu := lastUpdatedAt(ctx)
 	if lu != nil && oldUsr.UpdatedAt.UnixNano() != lu.UnixNano() {
-		return ErrRaceCondition
+		return nil, ErrRaceCondition
 	}
 	if usr.Country != "" && !r.IsValid(usr.Country) {
-		return ErrInvalidCountry
+		return nil, ErrInvalidCountry
 	}
 	if usr.Language != "" && oldUsr.Language == usr.Language {
 		usr.Language = ""
@@ -38,9 +38,9 @@ func (r *repository) ModifyUser(ctx context.Context, usr *User, profilePicture *
 		usr.LastPingCooldownEndedAt = nil
 	}
 	usr.UpdatedAt = time.Now()
-	usr.Email, err = r.triggerEmailValidation(ctx, usr, oldUsr)
+	usr.Email, emailValidation, err = r.triggerEmailValidation(ctx, usr, oldUsr)
 	if err != nil {
-		return errors.Wrapf(err, "failed to start email validaton flow due to user %v modification", usr.ID)
+		return nil, errors.Wrapf(err, "failed to start email validaton flow due to user %v modification", usr.ID)
 	}
 	if profilePicture != nil {
 		if profilePicture.Header.Get("Reset") == "true" {
@@ -51,12 +51,12 @@ func (r *repository) ModifyUser(ctx context.Context, usr *User, profilePicture *
 		}
 		usr.ProfilePictureURL = profilePicture.Filename
 		if err = r.pictureClient.UploadPicture(ctx, profilePicture, oldUsr.ProfilePictureURL); err != nil {
-			return errors.Wrapf(err, "failed to upload profile picture for userID:%v", usr.ID)
+			return nil, errors.Wrapf(err, "failed to upload profile picture for userID:%v", usr.ID)
 		}
 	}
 	agendaBefore, agendaContactIDsForUpdate, uniqueAgendaContactIDsForSend, err := r.findAgendaContactIDs(ctx, usr)
 	if err != nil {
-		return errors.Wrapf(err, "can't find agenda contact ids for user:%v", usr.ID)
+		return nil, errors.Wrapf(err, "can't find agenda contact ids for user:%v", usr.ID)
 	}
 	sql, params := usr.genSQLUpdate(ctx, agendaContactIDsForUpdate)
 	noOpNoOfParams := 1 + 1
@@ -67,15 +67,15 @@ func (r *repository) ModifyUser(ctx context.Context, usr *User, profilePicture *
 		*usr = *r.sanitizeUser(oldUsr)
 		usr.sanitizeForUI()
 
-		return nil
+		return nil, nil //nolint:nilnil // Wrong.
 	}
 	if updatedRowsCount, tErr := storage.Exec(ctx, r.db, sql, params...); tErr != nil || updatedRowsCount == 0 {
 		_, tErr = detectAndParseDuplicateDatabaseError(tErr)
-		if tErr == nil && updatedRowsCount == 0 {
-			return ErrRaceCondition
+		if !storage.IsErr(tErr, storage.ErrDuplicate) && (storage.IsErr(tErr, storage.ErrNotFound) || updatedRowsCount == 0) {
+			return nil, ErrRaceCondition
 		}
 
-		return errors.Wrapf(tErr, "failed to update user %#v", usr)
+		return nil, errors.Wrapf(tErr, "failed to update user %#v", usr)
 	}
 	bkpUsr := *oldUsr
 	if profilePicture != nil {
@@ -86,7 +86,7 @@ func (r *repository) ModifyUser(ctx context.Context, usr *User, profilePicture *
 		rollBackParams[1] = bkpUsr.UpdatedAt.Time
 		_, rErr := storage.Exec(ctx, r.db, sql, rollBackParams...)
 
-		return errors.Wrapf(multierror.Append(rErr, sErr).ErrorOrNil(), "can't send contacts message for userID:%v", usr.ID)
+		return nil, errors.Wrapf(multierror.Append(rErr, sErr).ErrorOrNil(), "can't send contacts message for userID:%v", usr.ID)
 	}
 
 	us := &UserSnapshot{User: r.sanitizeUser(oldUsr.override(usr)), Before: r.sanitizeUser(oldUsr)}
@@ -95,7 +95,7 @@ func (r *repository) ModifyUser(ctx context.Context, usr *User, profilePicture *
 		rollBackParams[1] = bkpUsr.UpdatedAt.Time
 		_, rollbackErr := storage.Exec(ctx, r.db, sql, rollBackParams...)
 
-		return multierror.Append( //nolint:wrapcheck // Not needed.
+		return nil, multierror.Append( //nolint:wrapcheck // Not needed.
 			errors.Wrapf(err, "failed to send updated user snapshot message %#v", us),
 			errors.Wrapf(rollbackErr, "failed to replace user to previous value, due to rollback, prev:%#v", bkpUsr),
 		).ErrorOrNil()
@@ -103,7 +103,7 @@ func (r *repository) ModifyUser(ctx context.Context, usr *User, profilePicture *
 	*usr = *us.User
 	usr.sanitizeForUI()
 
-	return nil
+	return emailValidation, nil
 }
 
 func (u *User) override(user *User) *User {
@@ -261,16 +261,18 @@ func resolveProfilePictureExtension(fileName string) string {
 	return ext
 }
 
-func (r *repository) triggerEmailValidation(ctx context.Context, newUser, oldUser *User) (emailForUpdate string, err error) {
+func (r *repository) triggerEmailValidation(ctx context.Context, newUser, oldUser *User) (emailForUpdate string, emailValidation *EmailValidation, err error) {
 	if newUser.Email == "" || newUser.Email == oldUser.Email {
-		return "", nil
+		return "", nil, nil
 	}
 	confirmedEmail := ConfirmedEmail(ctx)
 	if confirmedEmail != "" {
-		return confirmedEmail, nil
+		return confirmedEmail, nil, nil
+	}
+	loginSession, confirmationCode, err := r.emailValidator.SendSignInLinkToEmail(ConfirmedEmailContext(ctx, oldUser.Email), newUser.Email, "", oldUser.Language)
+	if err != nil {
+		return "", nil, errors.Wrapf(err, "can't send sign in link to email:%v", newUser.Email)
 	}
 
-	return "", errors.Wrapf(
-		r.emailValidator.SendSignInLinkToEmail(ConfirmedEmailContext(ctx, oldUser.Email), newUser.Email),
-		"failed to send email confirmation for:%v", newUser.Email)
+	return "", &EmailValidation{LoginSession: loginSession, ConfirmationCode: confirmationCode}, nil
 }

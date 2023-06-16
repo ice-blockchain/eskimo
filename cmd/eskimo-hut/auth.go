@@ -17,7 +17,8 @@ func (s *service) setupAuthRoutes(router *server.Router) {
 		Group("v1w").
 		POST("auth", server.RootHandler(s.SendSignInLinkToEmail)).
 		POST("auth/refresh", server.RootHandler(s.RegenerateTokens)).
-		GET("auth/finish", server.RootHandler(s.SignIn))
+		GET("auth/finish", server.RootHandler(s.SignIn)).
+		POST("auth/status", server.RootHandler(s.Status))
 }
 
 // SendSignInLinkToEmail godoc
@@ -37,14 +38,12 @@ func (s *service) SendSignInLinkToEmail( //nolint:gocritic // .
 	ctx context.Context,
 	req *server.Request[SendSignInLinkToEmailRequestArg, Auth],
 ) (*server.Response[Auth], *server.Response[server.ErrorResponse]) {
-	if err := s.authEmailLinkClient.SendSignInLinkToEmail(ctx, req.Data.Email); err != nil {
-		err = errors.Wrapf(err, "failed to start email link auth %#v", req.Data)
-		if err != nil {
-			return nil, server.Unexpected(err)
-		}
+	loginSession, code, err := s.authEmailLinkClient.SendSignInLinkToEmail(ctx, req.Data.Email, req.Data.DeviceUniqueID, req.Data.Language)
+	if err != nil {
+		return nil, server.Unexpected(errors.Wrapf(err, "failed to start email link auth %#v", req.Data))
 	}
 
-	return server.OK[Auth](), nil
+	return server.OK[Auth](&Auth{Email: req.Data.Email, DeviceUniqueID: req.Data.DeviceUniqueID, LoginSession: loginSession, ConfirmationCode: code}), nil
 }
 
 // SignIn godoc
@@ -63,24 +62,29 @@ func (s *service) SendSignInLinkToEmail( //nolint:gocritic // .
 //	@Router			/auth/finish [GET].
 func (s *service) SignIn( //nolint:gocritic // .
 	ctx context.Context,
-	req *server.Request[MagicLinkPayload, RefreshedToken],
-) (*server.Response[RefreshedToken], *server.Response[server.ErrorResponse]) {
-	refreshToken, accessToken, err := s.authEmailLinkClient.SignIn(ctx, req.Data.EmailToken)
-	if err != nil {
+	req *server.Request[MagicLinkPayload, any],
+) (*server.Response[any], *server.Response[server.ErrorResponse]) {
+	if err := s.authEmailLinkClient.SignIn(ctx, req.Data.EmailToken, req.Data.ConfirmationCode); err != nil {
 		err = errors.Wrapf(err, "finish login using magic link failed for %#v", req.Data)
 		switch {
-		case errors.Is(err, emaillink.ErrExpiredToken):
-			return nil, server.BadRequest(err, linkExpired)
-		case errors.Is(err, emaillink.ErrInvalidToken):
-			return nil, server.BadRequest(err, invalidOTPCode)
 		case errors.Is(err, emaillink.ErrNoConfirmationRequired):
-			return nil, server.NotFound(err, emailValidationNotFound)
+			return nil, server.NotFound(err, confirmationCodeNotFoundErrorCode)
+		case errors.Is(err, emaillink.ErrExpiredToken):
+			return nil, server.BadRequest(err, linkExpiredErrorCode)
+		case errors.Is(err, emaillink.ErrInvalidToken):
+			return nil, server.BadRequest(err, invalidOTPCodeErrorCode)
+		case errors.Is(err, emaillink.ErrConfirmationCodeTimeout):
+			return nil, server.BadRequest(err, confirmationCodeTimeoutErrorCode)
+		case errors.Is(err, emaillink.ErrConfirmationCodeAttemptsExceeded):
+			return nil, server.BadRequest(err, confirmationCodeAttemptsExceededErrorCode)
+		case errors.Is(err, emaillink.ErrConfirmationCodeWrong):
+			return nil, server.BadRequest(err, confirmationCodeWrongErrorCode)
 		default:
 			return nil, server.Unexpected(err)
 		}
 	}
 
-	return server.OK(&RefreshedToken{RefreshToken: refreshToken, AccessToken: accessToken}), nil
+	return server.OK[any](), nil
 }
 
 // RegenerateTokens godoc
@@ -95,31 +99,75 @@ func (s *service) SignIn( //nolint:gocritic // .
 //	@Success		200				{object}	RefreshedToken
 //	@Failure		400				{object}	server.ErrorResponse	"if users data from token does not match data in db"
 //	@Failure		403				{object}	server.ErrorResponse	"if invalid or expired refresh token provided"
-//	@Failure		404				{object}	server.ErrorResponse	"if user not found"
+//	@Failure		404				{object}	server.ErrorResponse	"if user or confirmation not found"
 //	@Failure		422				{object}	server.ErrorResponse	"if syntax fails"
 //	@Failure		500				{object}	server.ErrorResponse
 //	@Failure		504				{object}	server.ErrorResponse	"if request times out"
 //	@Router			/auth/refresh [POST].
-func (s *service) RegenerateTokens( //nolint:gocritic // .
+func (s *service) RegenerateTokens( //nqolint:gocritic // .
 	ctx context.Context,
 	req *server.Request[RefreshToken, RefreshedToken],
 ) (*server.Response[RefreshedToken], *server.Response[server.ErrorResponse]) {
 	tokenPayload := strings.TrimPrefix(req.Data.Authorization, "Bearer ")
-	nextRefreshToken, accessToken, err := s.authEmailLinkClient.RegenerateTokens(ctx, tokenPayload, req.Data.CustomClaims)
+	tokens, err := s.authEmailLinkClient.RegenerateTokens(ctx, tokenPayload, req.Data.CustomClaims)
 	if err != nil {
 		switch {
-		case errors.Is(err, emaillink.ErrUserDataMismatch):
-			return nil, server.BadRequest(err, dataMismatch)
+		case errors.Is(err, emaillink.ErrNoPendingConfirmation):
+			return nil, server.NotFound(err, noPendingCodeConfirmationErrorCode)
 		case errors.Is(err, emaillink.ErrUserNotFound):
-			return nil, server.NotFound(err, userNotFound)
+			return nil, server.NotFound(err, userNotFoundErrorCode)
 		case errors.Is(err, emaillink.ErrExpiredToken):
 			return nil, server.Forbidden(err)
 		case errors.Is(err, emaillink.ErrInvalidToken):
 			return nil, server.Forbidden(err)
+		case errors.Is(err, emaillink.ErrUserDataMismatch):
+			return nil, server.BadRequest(err, dataMismatchErrorCode)
 		default:
 			return nil, server.Unexpected(err)
 		}
 	}
 
-	return server.OK(&RefreshedToken{RefreshToken: nextRefreshToken, AccessToken: accessToken}), nil
+	return server.OK(&RefreshedToken{Tokens: tokens}), nil
+}
+
+// Status godoc
+//
+//	@Schemes
+//	@Description	Status of the auth process
+//	@Tags			Auth
+//	@Accept			json
+//	@Produce		json
+//	@Param			request	body		StatusArg	true	"Request params"
+//	@Success		200		{object}	Auth
+//	@Failure		422		{object}	server.ErrorResponse	"if syntax fails"
+//	@Failure		403		{object}	server.ErrorResponse	"if invalid or expired login session provided"
+//	@Failure		404		{object}	server.ErrorResponse	"if login session not found"
+//	@Failure		500		{object}	server.ErrorResponse
+//	@Failure		504		{object}	server.ErrorResponse	"if request times out"
+//	@Router			/auth/status [POST].
+func (s *service) Status( //nolint:gocritic // .
+	ctx context.Context,
+	req *server.Request[StatusArg, RefreshedToken],
+) (*server.Response[RefreshedToken], *server.Response[server.ErrorResponse]) {
+	loginFlowCtx := emaillink.LoginSessionContext(ctx, req.Data.LoginSession)
+	tokens, err := s.authEmailLinkClient.Status(loginFlowCtx, req.Data.Email, req.Data.DeviceUniqueID)
+	if err != nil {
+		err = errors.Wrapf(err, "failed to get status for: %#v", req.Data)
+		if err != nil {
+			switch {
+			case errors.Is(err, emaillink.ErrNoPendingLoginSession):
+				return nil, server.NotFound(err, noPendingLoginSessionErrorCode)
+			case errors.Is(err, emaillink.ErrStatusNotVerified):
+				return nil, server.NotFound(err, statusNotVerifiedErrorCode)
+			case errors.Is(err, emaillink.ErrInvalidToken):
+				return nil, server.Forbidden(err)
+			case errors.Is(err, emaillink.ErrExpiredToken):
+				return nil, server.Forbidden(err)
+			default:
+				return nil, server.Unexpected(err)
+			}
+		}
+	}
+
+	return server.OK(&RefreshedToken{Tokens: tokens}), nil
 }

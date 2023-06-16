@@ -179,7 +179,70 @@ const docTemplate = `{
                         }
                     },
                     "404": {
-                        "description": "if user not found",
+                        "description": "if user or confirmation not found",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    },
+                    "422": {
+                        "description": "if syntax fails",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    },
+                    "504": {
+                        "description": "if request times out",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/status": {
+            "post": {
+                "description": "Status of the auth process",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "parameters": [
+                    {
+                        "description": "Request params",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.StatusArg"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.Auth"
+                        }
+                    },
+                    "403": {
+                        "description": "if invalid or expired login session provided",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "if login session not found",
                         "schema": {
                             "$ref": "#/definitions/server.ErrorResponse"
                         }
@@ -513,7 +576,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/main.User"
+                            "$ref": "#/definitions/main.ModifyUserResponse"
                         }
                     },
                     "400": {
@@ -761,9 +824,21 @@ const docTemplate = `{
         "main.Auth": {
             "type": "object",
             "properties": {
+                "confirmationCode": {
+                    "type": "string",
+                    "example": "999"
+                },
+                "deviceUniqueId": {
+                    "type": "string",
+                    "example": "70063ABB-E69F-4FD2-8B83-90DD372802DA"
+                },
                 "email": {
                     "type": "string",
                     "example": "jdoe@gmail.com"
+                },
+                "loginSession": {
+                    "type": "string",
+                    "example": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJPbmxpbmUgSldUIEJ1aWxkZXIiLCJpYXQiOjE2ODQzMjQ0NTYsImV4cCI6MTcxNTg2MDQ1NiwiYXVkIjoiIiwic3ViIjoianJvY2tldEBleGFtcGxlLmNvbSIsIm90cCI6IjUxMzRhMzdkLWIyMWEtNGVhNi1hNzk2LTAxOGIwMjMwMmFhMCJ9.q3xa8Gwg2FVCRHLZqkSedH3aK8XBqykaIy85rRU40nM"
                 }
             }
         },
@@ -807,6 +882,106 @@ const docTemplate = `{
                     "description": "Optional. Required only if ` + "`" + `phoneNumber` + "`" + ` is set.",
                     "type": "string",
                     "example": "Ef86A6021afCDe5673511376B2"
+                }
+            }
+        },
+        "main.ModifyUserResponse": {
+            "type": "object",
+            "properties": {
+                "agendaPhoneNumberHashes": {
+                    "type": "string",
+                    "example": "Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2"
+                },
+                "blockchainAccountAddress": {
+                    "type": "string",
+                    "example": "0x4B73C58370AEfcEf86A6021afCDe5673511376B2"
+                },
+                "checksum": {
+                    "type": "string",
+                    "example": "1232412415326543647657"
+                },
+                "city": {
+                    "type": "string",
+                    "example": "New York"
+                },
+                "clientData": {
+                    "$ref": "#/definitions/users.JSON"
+                },
+                "confirmationCode": {
+                    "type": "string",
+                    "example": "123"
+                },
+                "country": {
+                    "type": "string",
+                    "example": "US"
+                },
+                "createdAt": {
+                    "type": "string",
+                    "example": "2022-01-03T16:20:52.156534Z"
+                },
+                "email": {
+                    "type": "string",
+                    "example": "jdoe@gmail.com"
+                },
+                "firstName": {
+                    "type": "string",
+                    "example": "John"
+                },
+                "hiddenProfileElements": {
+                    "type": "array",
+                    "items": {
+                        "type": "string",
+                        "enum": [
+                            "globalRank",
+                            "referralCount",
+                            "level",
+                            "role",
+                            "badges"
+                        ]
+                    },
+                    "example": [
+                        "level"
+                    ]
+                },
+                "id": {
+                    "type": "string",
+                    "example": "did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"
+                },
+                "language": {
+                    "type": "string",
+                    "example": "en"
+                },
+                "lastName": {
+                    "type": "string",
+                    "example": "Doe"
+                },
+                "loginSession": {
+                    "type": "string",
+                    "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJpY2UuaW8iLCJzdWIiOiJzdXV2b3JAZ21haWwuY29tIiwiZXhwIjoxNjg2ODU1MTY2LCJuYmYiOjE2ODY4NTM5NjYsImlhdCI6MTY4Njg1Mzk2NiwiZGV2aWNlVW5pcXVlSWQiOiI3MDA2M0FCQi1FNjlGLTRGRDItOEI4My05MEREMzcyODAyREEifQ.SD9MFnKkJGIVh6kkzQ9TGVpAkcApthxTFeOQkV9aJgs"
+                },
+                "miningBlockchainAccountAddress": {
+                    "type": "string",
+                    "example": "0x4B73C58370AEfcEf86A6021afCDe5673511376B2"
+                },
+                "phoneNumber": {
+                    "type": "string",
+                    "example": "+12099216581"
+                },
+                "profilePictureUrl": {
+                    "type": "string",
+                    "example": "https://somecdn.com/p1.jpg"
+                },
+                "referredBy": {
+                    "type": "string",
+                    "example": "did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"
+                },
+                "updatedAt": {
+                    "type": "string",
+                    "example": "2022-01-03T16:20:52.156534Z"
+                },
+                "username": {
+                    "type": "string",
+                    "example": "jdoe"
                 }
             }
         },
@@ -946,9 +1121,34 @@ const docTemplate = `{
         "main.SendSignInLinkToEmailRequestArg": {
             "type": "object",
             "properties": {
+                "deviceUniqueId": {
+                    "type": "string",
+                    "example": "70063ABB-E69F-4FD2-8B83-90DD372802DA"
+                },
                 "email": {
                     "type": "string",
                     "example": "jdoe@gmail.com"
+                },
+                "language": {
+                    "type": "string",
+                    "example": "en"
+                }
+            }
+        },
+        "main.StatusArg": {
+            "type": "object",
+            "properties": {
+                "deviceUniqueId": {
+                    "type": "string",
+                    "example": "70063ABB-E69F-4FD2-8B83-90DD372802DA"
+                },
+                "email": {
+                    "type": "string",
+                    "example": "jdoe@gmail.com"
+                },
+                "loginSession": {
+                    "type": "string",
+                    "example": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJPbmxpbmUgSldUIEJ1aWxkZXIiLCJpYXQiOjE2ODQzMjQ0NTYsImV4cCI6MTcxNTg2MDQ1NiwiYXVkIjoiIiwic3ViIjoianJvY2tldEBleGFtcGxlLmNvbSIsIm90cCI6IjUxMzRhMzdkLWIyMWEtNGVhNi1hNzk2LTAxOGIwMjMwMmFhMCJ9.q3xa8Gwg2FVCRHLZqkSedH3aK8XBqykaIy85rRU40nM"
                 }
             }
         },
