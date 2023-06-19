@@ -242,7 +242,7 @@ const docTemplate = `{
                         }
                     },
                     "404": {
-                        "description": "if login session not found",
+                        "description": "if login session not found or confirmation code verifying failed",
                         "schema": {
                             "$ref": "#/definitions/server.ErrorResponse"
                         }
@@ -895,10 +895,6 @@ const docTemplate = `{
                 "clientData": {
                     "$ref": "#/definitions/users.JSON"
                 },
-                "confirmationCode": {
-                    "type": "string",
-                    "example": "123"
-                },
                 "country": {
                     "type": "string",
                     "example": "US"
@@ -942,6 +938,10 @@ const docTemplate = `{
                 "lastName": {
                     "type": "string",
                     "example": "Doe"
+                },
+                "loginSession": {
+                    "type": "string",
+                    "example": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJPbmxpbmUgSldUIEJ1aWxkZXIiLCJpYXQiOjE2ODQzMjQ0NTYsImV4cCI6MTcxNTg2MDQ1NiwiYXVkIjoiIiwic3ViIjoianJvY2tldEBleGFtcGxlLmNvbSIsIm90cCI6IjUxMzRhMzdkLWIyMWEtNGVhNi1hNzk2LTAxOGIwMjMwMmFhMCJ9.q3xa8Gwg2FVCRHLZqkSedH3aK8XBqykaIy85rRU40nM"
                 },
                 "miningBlockchainAccountAddress": {
                     "type": "string",

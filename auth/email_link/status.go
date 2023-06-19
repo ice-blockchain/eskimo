@@ -42,5 +42,5 @@ func (c *client) resetLoginSession(ctx context.Context, id *ID, confirmationCode
 					  AND confirmation_code = $3`
 	_, err := storage.Exec(ctx, c.db, sql, id.Email, id.DeviceUniqueID, confirmationCode)
 
-	return errors.Wrapf(err, "failed to get user by id:%#v and confirmationCode:%v", id, confirmationCode)
+	return errors.Wrapf(err, "failed to reset login session by id:%#v and confirmationCode:%v", id, confirmationCode)
 }

@@ -113,7 +113,7 @@ func (s *service) ModifyUser( //nolint:gocritic,funlen // .
 		return nil, err
 	}
 	usr := buildUserForModification(req)
-	confirmationCode, err := s.usersProcessor.ModifyUser(users.ContextWithChecksum(ctx, req.Data.Checksum), usr, req.Data.ProfilePicture)
+	loginSession, err := s.usersProcessor.ModifyUser(users.ContextWithChecksum(ctx, req.Data.Checksum), usr, req.Data.ProfilePicture)
 	if err != nil {
 		err = errors.Wrapf(err, "failed to modify user for %#v", req.Data)
 		switch {
@@ -136,7 +136,7 @@ func (s *service) ModifyUser( //nolint:gocritic,funlen // .
 		}
 	}
 
-	return server.OK(&ModifyUserResponse{User: usr, ConfirmationCode: confirmationCode, Checksum: usr.Checksum()}), nil
+	return server.OK(&ModifyUserResponse{User: &User{User: usr, Checksum: usr.Checksum()}, LoginSession: loginSession}), nil
 }
 
 func validateModifyUser(ctx context.Context, req *server.Request[ModifyUserRequestBody, ModifyUserResponse]) *server.Response[server.ErrorResponse] {

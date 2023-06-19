@@ -28,7 +28,7 @@ type (
 	}
 	Client interface {
 		io.Closer
-		SendSignInLinkToEmail(ctx context.Context, emailValue, deviceUniqueID, language string) (loginSession, confirmationCode string, err error)
+		SendSignInLinkToEmail(ctx context.Context, emailValue, deviceUniqueID, language string) (loginSession string, err error)
 		SignIn(ctx context.Context, emailLinkPayload, confirmationCode string) error
 		RegenerateTokens(ctx context.Context, prevToken string, customClaims *users.JSON) (tokens *Tokens, err error)
 		Status(ctx context.Context, loginSession string) (tokens *Tokens, err error)

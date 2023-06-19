@@ -38,7 +38,8 @@ func (c *client) RegenerateTokens(ctx context.Context, previousRefreshToken stri
 		return nil, errors.Wrapf(err, "failed to get user by id:%v", token.Subject)
 	}
 	if usr.Email != token.Email || usr.DeviceUniqueID != token.DeviceUniqueID {
-		return nil, errors.Wrapf(ErrUserDataMismatch, "user's email:%v does not match token's email:%v", usr.Email, token.Email)
+		return nil, errors.Wrapf(ErrUserDataMismatch,
+			"user's email:%v does not match token's email:%v or deviceID:%v", usr.Email, token.Email, token.DeviceUniqueID)
 	}
 	now := time.Now()
 	if customClaims != nil {
@@ -86,7 +87,7 @@ func (c *client) incrementRefreshTokenSeq(
 			RETURNING issued_token_seq`, customClaimsClause)
 	updatedValue, err := storage.ExecOne[issuedTokenSeq](ctx, c.db, sql, params...)
 	if err != nil {
-		return 0, errors.Wrapf(err, "failed to assign refreshed token to pending email confirmation for params:%#v", params...)
+		return 0, errors.Wrapf(err, "failed to assign refreshed token to email link sign ins for params:%#v", params...)
 	}
 
 	return updatedValue.IssuedTokenSeq, nil

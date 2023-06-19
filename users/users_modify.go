@@ -16,7 +16,7 @@ import (
 )
 
 //nolint:funlen,gocognit,gocyclo,revive,cyclop // It needs a better breakdown.
-func (r *repository) ModifyUser(ctx context.Context, usr *User, profilePicture *multipart.FileHeader) (confirmationCode string, err error) {
+func (r *repository) ModifyUser(ctx context.Context, usr *User, profilePicture *multipart.FileHeader) (loginSession string, err error) {
 	if ctx.Err() != nil {
 		return "", errors.Wrap(ctx.Err(), "update user failed because context failed")
 	}
@@ -38,7 +38,7 @@ func (r *repository) ModifyUser(ctx context.Context, usr *User, profilePicture *
 		usr.LastPingCooldownEndedAt = nil
 	}
 	usr.UpdatedAt = time.Now()
-	usr.Email, confirmationCode, err = r.triggerEmailValidation(ctx, usr, oldUsr)
+	usr.Email, loginSession, err = r.triggerEmailValidation(ctx, usr, oldUsr)
 	if err != nil {
 		return "", errors.Wrapf(err, "failed to start email validaton flow due to user %v modification", usr.ID)
 	}
@@ -67,7 +67,7 @@ func (r *repository) ModifyUser(ctx context.Context, usr *User, profilePicture *
 		*usr = *r.sanitizeUser(oldUsr)
 		usr.sanitizeForUI()
 
-		return confirmationCode, nil
+		return loginSession, nil
 	}
 	if updatedRowsCount, tErr := storage.Exec(ctx, r.db, sql, params...); tErr != nil || updatedRowsCount == 0 {
 		_, tErr = detectAndParseDuplicateDatabaseError(tErr)
@@ -103,7 +103,7 @@ func (r *repository) ModifyUser(ctx context.Context, usr *User, profilePicture *
 	*usr = *us.User
 	usr.sanitizeForUI()
 
-	return confirmationCode, nil
+	return loginSession, nil
 }
 
 func (u *User) override(user *User) *User {
@@ -261,7 +261,7 @@ func resolveProfilePictureExtension(fileName string) string {
 	return ext
 }
 
-func (r *repository) triggerEmailValidation(ctx context.Context, newUser, oldUser *User) (emailForUpdate, confirmationCode string, err error) {
+func (r *repository) triggerEmailValidation(ctx context.Context, newUser, oldUser *User) (emailForUpdate, loginSession string, err error) {
 	if newUser.Email == "" || newUser.Email == oldUser.Email {
 		return "", "", nil
 	}
@@ -269,10 +269,10 @@ func (r *repository) triggerEmailValidation(ctx context.Context, newUser, oldUse
 	if confirmedEmail != "" {
 		return confirmedEmail, "", nil
 	}
-	_, confirmationCode, err = r.emailValidator.SendSignInLinkToEmail(ConfirmedEmailContext(ctx, oldUser.Email), newUser.Email, "", oldUser.Language)
+	loginSession, err = r.emailValidator.SendSignInLinkToEmail(ConfirmedEmailContext(ctx, oldUser.Email), newUser.Email, "", oldUser.Language)
 	if err != nil {
 		return "", "", errors.Wrapf(err, "can't send sign in link to email:%v", newUser.Email)
 	}
 
-	return "", confirmationCode, nil
+	return "", loginSession, nil
 }

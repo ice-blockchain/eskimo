@@ -55,9 +55,6 @@ definitions:
         type: string
       clientData:
         $ref: '#/definitions/users.JSON'
-      confirmationCode:
-        example: "123"
-        type: string
       country:
         example: US
         type: string
@@ -90,6 +87,9 @@ definitions:
         type: string
       lastName:
         example: Doe
+        type: string
+      loginSession:
+        example: eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJPbmxpbmUgSldUIEJ1aWxkZXIiLCJpYXQiOjE2ODQzMjQ0NTYsImV4cCI6MTcxNTg2MDQ1NiwiYXVkIjoiIiwic3ViIjoianJvY2tldEBleGFtcGxlLmNvbSIsIm90cCI6IjUxMzRhMzdkLWIyMWEtNGVhNi1hNzk2LTAxOGIwMjMwMmFhMCJ9.q3xa8Gwg2FVCRHLZqkSedH3aK8XBqykaIy85rRU40nM
         type: string
       miningBlockchainAccountAddress:
         example: 0x4B73C58370AEfcEf86A6021afCDe5673511376B2
@@ -464,7 +464,7 @@ paths:
           schema:
             $ref: '#/definitions/server.ErrorResponse'
         "404":
-          description: if login session not found
+          description: if login session not found or confirmation code verifying failed
           schema:
             $ref: '#/definitions/server.ErrorResponse'
         "422":

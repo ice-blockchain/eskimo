@@ -19,9 +19,9 @@ import (
 	"github.com/ice-blockchain/wintr/time"
 )
 
-func (c *client) SendSignInLinkToEmail(ctx context.Context, emailValue, deviceUniqueID, language string) (loginSession, confirmationCode string, err error) {
+func (c *client) SendSignInLinkToEmail(ctx context.Context, emailValue, deviceUniqueID, language string) (loginSession string, err error) {
 	if ctx.Err() != nil {
-		return "", "", errors.Wrap(ctx.Err(), "start email link auth failed because context failed")
+		return "", errors.Wrap(ctx.Err(), "start email link auth failed because context failed")
 	}
 	id := ID{emailValue, deviceUniqueID}
 	otp := generateOTP()
@@ -29,22 +29,22 @@ func (c *client) SendSignInLinkToEmail(ctx context.Context, emailValue, deviceUn
 	oldEmail := users.ConfirmedEmail(ctx)
 	payload, err := c.generateMagicLinkPayload(&id, oldEmail, oldEmail, otp, now)
 	if err != nil {
-		return "", "", errors.Wrapf(err, "can't generate magic link payload for id: %#v", id)
+		return "", errors.Wrapf(err, "can't generate magic link payload for id: %#v", id)
 	}
-	confirmationCode = generateConfirmationCode()
+	confirmationCode := generateConfirmationCode()
 	loginSession, err = c.generateLoginSession(&id, confirmationCode)
 	if err != nil {
-		return "", "", errors.Wrap(err, "can't call generateLoginSession")
+		return "", errors.Wrap(err, "can't call generateLoginSession")
 	}
 	if uErr := c.upsertEmailLinkSignIns(ctx, id.Email, oldEmail, id.DeviceUniqueID, otp, confirmationCode, now); uErr != nil {
-		return "", "", errors.Wrapf(uErr, "failed to store/update email link sign ins for id:%#v", id)
+		return "", errors.Wrapf(uErr, "failed to store/update email link sign ins for id:%#v", id)
 	}
 	authLink := c.getAuthLink(payload, language)
 	if sErr := c.sendValidationEmail(ctx, id.Email, language, authLink); sErr != nil {
-		return "", "", errors.Wrapf(sErr, "failed to send validation email for id:%#v", id)
+		return "", errors.Wrapf(sErr, "failed to send validation email for id:%#v", id)
 	}
 
-	return loginSession, confirmationCode, nil
+	return loginSession, nil
 }
 
 func (c *client) sendValidationEmail(ctx context.Context, toEmail, language, link string) error {

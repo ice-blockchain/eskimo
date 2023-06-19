@@ -14,8 +14,8 @@ import (
 	"github.com/ice-blockchain/wintr/time"
 )
 
-//nolint:funlen // Big rollback logic.
-func (c *client) handleEmailModification(ctx context.Context, els *emailLinkSignIns, newEmail, oldEmail, notifyEmail string) error {
+//nolint:funlen,revive // Big rollback logic.
+func (c *client) handleEmailModification(ctx context.Context, els *emailLinkSignIns, newEmail, oldEmail, notifyEmail, confirmationCode string) error {
 	usr := new(users.User)
 	usr.ID = els.UserID
 	usr.Email = newEmail
@@ -46,6 +46,12 @@ func (c *client) handleEmailModification(ctx context.Context, els *emailLinkSign
 				errors.Wrapf(sErr, "failed to send notification email about email change for userID %v email %v", els.UserID, oldEmail),
 			).ErrorOrNil()
 		}
+	}
+	if rErr := c.resetLoginSession(ctx, &ID{Email: newEmail, DeviceUniqueID: ""}, confirmationCode); rErr != nil {
+		return multierror.Append( //nolint:wrapcheck // .
+			errors.Wrapf(c.rollbackEmailModification(ctx, els.UserID, oldEmail), "[rollback] rollbackEmailModification failed for email:%v", oldEmail),
+			errors.Wrapf(rErr, "failed to reset login session email:%v", newEmail),
+		).ErrorOrNil()
 	}
 
 	return nil

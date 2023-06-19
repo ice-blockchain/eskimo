@@ -190,7 +190,7 @@ type (
 		CheckHealth(context.Context) error
 	}
 	EmailValidationStarter interface {
-		SendSignInLinkToEmail(ctx context.Context, email, deviceUniqueID, language string) (loginSession, confirmationCode string, err error)
+		SendSignInLinkToEmail(ctx context.Context, email, deviceUniqueID, language string) (loginSession string, err error)
 	}
 )
 

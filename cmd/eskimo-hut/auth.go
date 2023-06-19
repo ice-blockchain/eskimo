@@ -38,7 +38,7 @@ func (s *service) SendSignInLinkToEmail( //nolint:gocritic // .
 	ctx context.Context,
 	req *server.Request[SendSignInLinkToEmailRequestArg, Auth],
 ) (*server.Response[Auth], *server.Response[server.ErrorResponse]) {
-	loginSession, _, err := s.authEmailLinkClient.SendSignInLinkToEmail(ctx, req.Data.Email, req.Data.DeviceUniqueID, req.Data.Language)
+	loginSession, err := s.authEmailLinkClient.SendSignInLinkToEmail(ctx, req.Data.Email, req.Data.DeviceUniqueID, req.Data.Language)
 	if err != nil {
 		return nil, server.Unexpected(errors.Wrapf(err, "failed to start email link auth %#v", req.Data))
 	}
@@ -67,6 +67,8 @@ func (s *service) SignIn( //nolint:gocritic // .
 	if err := s.authEmailLinkClient.SignIn(ctx, req.Data.EmailToken, req.Data.ConfirmationCode); err != nil {
 		err = errors.Wrapf(err, "finish login using magic link failed for %#v", req.Data)
 		switch {
+		case errors.Is(err, emaillink.ErrNoPendingConfirmation):
+			return nil, server.NotFound(err, noPendingCodeConfirmationErrorCode)
 		case errors.Is(err, emaillink.ErrNoConfirmationRequired):
 			return nil, server.NotFound(err, confirmationCodeNotFoundErrorCode)
 		case errors.Is(err, emaillink.ErrExpiredToken):
@@ -141,7 +143,7 @@ func (s *service) RegenerateTokens( //nolint:gocritic // .
 //	@Success		200		{object}	Auth
 //	@Failure		422		{object}	server.ErrorResponse	"if syntax fails"
 //	@Failure		403		{object}	server.ErrorResponse	"if invalid or expired login session provided"
-//	@Failure		404		{object}	server.ErrorResponse	"if login session not found"
+//	@Failure		404		{object}	server.ErrorResponse	"if login session not found or confirmation code verifying failed"
 //	@Failure		500		{object}	server.ErrorResponse
 //	@Failure		504		{object}	server.ErrorResponse	"if request times out"
 //	@Router			/auth/status [POST].

@@ -48,7 +48,7 @@ func (c *client) SignIn(ctx context.Context, emailLinkPayload, confirmationCode 
 		return mErr.ErrorOrNil() //nolint:wrapcheck // Not needed.
 	}
 	if token.OldEmail != "" {
-		if err = c.handleEmailModification(ctx, els, email, token.OldEmail, token.NotifyEmail); err != nil {
+		if err = c.handleEmailModification(ctx, els, email, token.OldEmail, token.NotifyEmail, confirmationCode); err != nil {
 			return errors.Wrapf(err, "failed to handle email modification:%v", email)
 		}
 		els.Email = email
