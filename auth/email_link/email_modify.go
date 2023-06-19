@@ -23,9 +23,15 @@ func (c *client) handleEmailModification(ctx context.Context, els *emailLinkSign
 	if err != nil {
 		return errors.Wrapf(err, "failed to modify user %v with email modification", els.UserID)
 	}
+	if rErr := c.resetLoginSession(ctx, &loginID{Email: newEmail, DeviceUniqueID: ""}, confirmationCode); rErr != nil {
+		return multierror.Append( //nolint:wrapcheck // .
+			errors.Wrapf(c.rollbackEmailModification(ctx, els.UserID, oldEmail), "[rollback] rollbackEmailModification failed for email:%v", oldEmail),
+			errors.Wrapf(rErr, "failed to reset login session for email:%v", newEmail),
+		).ErrorOrNil()
+	}
 	if notifyEmail != "" {
 		rollbackEmailOTP, now := generateOTP(), time.Now()
-		rollbackEmailPayload, rErr := c.generateMagicLinkPayload(&ID{Email: oldEmail, DeviceUniqueID: els.DeviceUniqueID}, newEmail, "", rollbackEmailOTP, now)
+		rollbackEmailPayload, rErr := c.generateMagicLinkPayload(&loginID{Email: oldEmail, DeviceUniqueID: els.DeviceUniqueID}, newEmail, "", rollbackEmailOTP, now)
 		if rErr != nil {
 			return multierror.Append( //nolint:wrapcheck // .
 				errors.Wrapf(c.rollbackEmailModification(ctx, els.UserID, oldEmail), "[rollback] rollbackEmailModification failed for email:%v", oldEmail),
@@ -46,12 +52,6 @@ func (c *client) handleEmailModification(ctx context.Context, els *emailLinkSign
 				errors.Wrapf(sErr, "failed to send notification email about email change for userID %v email %v", els.UserID, oldEmail),
 			).ErrorOrNil()
 		}
-	}
-	if rErr := c.resetLoginSession(ctx, &ID{Email: newEmail, DeviceUniqueID: ""}, confirmationCode); rErr != nil {
-		return multierror.Append( //nolint:wrapcheck // .
-			errors.Wrapf(c.rollbackEmailModification(ctx, els.UserID, oldEmail), "[rollback] rollbackEmailModification failed for email:%v", oldEmail),
-			errors.Wrapf(rErr, "failed to reset login session email:%v", newEmail),
-		).ErrorOrNil()
 	}
 
 	return nil

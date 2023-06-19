@@ -13,12 +13,12 @@ import (
 func (c *client) Status(ctx context.Context, loginSession string) (tokens *Tokens, err error) {
 	var token loginFlowToken
 	if err = parseJwtToken(loginSession, c.cfg.LoginSession.JwtSecret, &token); err != nil {
-		return nil, errors.Wrapf(err, "can't parse login flow token token:%v", loginSession)
+		return nil, errors.Wrapf(err, "can't parse login session:%v", loginSession)
 	}
-	id := ID{Email: token.Subject, DeviceUniqueID: token.DeviceUniqueID}
+	id := loginID{Email: token.Subject, DeviceUniqueID: token.DeviceUniqueID}
 	usr, err := c.getConfirmedEmailLinkSignIns(ctx, &id, token.ConfirmationCode)
 	if storage.IsErr(err, storage.ErrNotFound) {
-		return nil, errors.Wrapf(ErrNoPendingLoginSession, "no pending login flow session:%v,id:%#v", loginSession, id)
+		return nil, errors.Wrapf(ErrNoPendingLoginSession, "no pending login session:%v,id:%#v", loginSession, id)
 	}
 	if usr.ConfirmationCode == usr.UserID || usr.OTP != usr.UserID || !usr.Confirmed {
 		return nil, errors.Wrapf(ErrStatusNotVerified, "not verified for id:%#v", id)
@@ -34,7 +34,7 @@ func (c *client) Status(ctx context.Context, loginSession string) (tokens *Token
 	return
 }
 
-func (c *client) resetLoginSession(ctx context.Context, id *ID, confirmationCode string) error {
+func (c *client) resetLoginSession(ctx context.Context, id *loginID, confirmationCode string) error {
 	sql := `UPDATE email_link_sign_ins
 				   	  SET confirmation_code = email_link_sign_ins.user_id
 				WHERE email = $1

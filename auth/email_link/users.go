@@ -11,7 +11,7 @@ import (
 	"github.com/ice-blockchain/wintr/connectors/storage/v2"
 )
 
-func (c *client) getEmailLinkSignInByPk(ctx context.Context, id *ID, oldEmail string) (*emailLinkSignIns, error) {
+func (c *client) getEmailLinkSignInByPk(ctx context.Context, id *loginID, oldEmail string) (*emailLinkSignIns, error) {
 	userID, err := c.findUser(ctx, id.Email, oldEmail)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to fetch or generate userID for email:%v", id.Email)
@@ -56,7 +56,7 @@ func (c *client) findUser(ctx context.Context, email, oldEmail string) (userID s
 }
 
 //nolint:funlen // .
-func (c *client) getUserByIDOrPk(ctx context.Context, userID string, id *ID) (*emailLinkSignIns, error) {
+func (c *client) getUserByIDOrPk(ctx context.Context, userID string, id *loginID) (*emailLinkSignIns, error) {
 	if ctx.Err() != nil {
 		return nil, errors.Wrap(ctx.Err(), "get user by id or email failed because context failed")
 	}
@@ -99,13 +99,13 @@ func (c *client) getUserByIDOrPk(ctx context.Context, userID string, id *ID) (*e
 		LIMIT 1
 	`, userID, id.Email, id.DeviceUniqueID)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to get user by id:%v or id:%#v)", id, id)
+		return nil, errors.Wrapf(err, "failed to get user by pk:%#v)", id)
 	}
 
 	return usr, nil
 }
 
-func (c *client) getConfirmedEmailLinkSignIns(ctx context.Context, id *ID, confirmationCode string) (*emailLinkSignIns, error) {
+func (c *client) getConfirmedEmailLinkSignIns(ctx context.Context, id *loginID, confirmationCode string) (*emailLinkSignIns, error) {
 	if ctx.Err() != nil {
 		return nil, errors.Wrap(ctx.Err(), "get user by id or email failed because context failed")
 	}

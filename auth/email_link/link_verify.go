@@ -19,7 +19,7 @@ func (c *client) SignIn(ctx context.Context, emailLinkPayload, confirmationCode 
 		return errors.Wrapf(err, "invalid email token:%v", emailLinkPayload)
 	}
 	email := token.Subject
-	id := ID{Email: email, DeviceUniqueID: token.DeviceUniqueID}
+	id := loginID{Email: email, DeviceUniqueID: token.DeviceUniqueID}
 	els, err := c.getEmailLinkSignInByPk(ctx, &id, token.OldEmail)
 	if err != nil {
 		if storage.IsErr(err, storage.ErrNotFound) {
@@ -40,7 +40,8 @@ func (c *client) SignIn(ctx context.Context, emailLinkPayload, confirmationCode 
 	if els.ConfirmationCode != confirmationCode {
 		var mErr *multierror.Error
 		if iErr := c.increaseWrongConfirmationCodeAttemptsCount(ctx, &id); iErr != nil {
-			mErr = multierror.Append(mErr, errors.Wrapf(iErr, "can't increment wrong device code attempts for email:%v,deviceUniqueID:%v", email, token.DeviceUniqueID))
+			mErr = multierror.Append(mErr, errors.Wrapf(iErr,
+				"can't increment wrong confirmation code attempts count for email:%v,deviceUniqueID:%v", email, token.DeviceUniqueID))
 		}
 		mErr = multierror.Append(mErr,
 			errors.Wrapf(ErrConfirmationCodeWrong, "wrong confirmation code:%v for emailLinkPayload:%v", confirmationCode, emailLinkPayload))
@@ -54,13 +55,13 @@ func (c *client) SignIn(ctx context.Context, emailLinkPayload, confirmationCode 
 		els.Email = email
 	}
 	if fErr := c.finishAuthProcess(ctx, &id, els.UserID, token.OTP); fErr != nil {
-		return errors.Wrapf(fErr, "can't insert generated token data for userID:%v,email:%v,otp:%v", els.UserID, email, token.OTP)
+		return errors.Wrapf(fErr, "can't finish auth process for userID:%v,email:%v,otp:%v", els.UserID, email, token.OTP)
 	}
 
 	return nil
 }
 
-func (c *client) increaseWrongConfirmationCodeAttemptsCount(ctx context.Context, id *ID) error {
+func (c *client) increaseWrongConfirmationCodeAttemptsCount(ctx context.Context, id *loginID) error {
 	sql := `UPDATE email_link_sign_ins
 				SET confirmation_code_wrong_attempts_count = confirmation_code_wrong_attempts_count + 1
 			WHERE email = $1
@@ -71,9 +72,9 @@ func (c *client) increaseWrongConfirmationCodeAttemptsCount(ctx context.Context,
 		"can't update email link sign ins for the user with pk:%#v", id)
 }
 
-func (c *client) finishAuthProcess(ctx context.Context, pk *ID, userID, otp string) error {
+func (c *client) finishAuthProcess(ctx context.Context, id *loginID, userID, otp string) error {
 	confirmed := true
-	params := []any{pk.Email, time.Now().Time, userID, otp, pk.DeviceUniqueID, confirmed}
+	params := []any{id.Email, time.Now().Time, userID, otp, id.DeviceUniqueID, confirmed}
 	sql := `UPDATE email_link_sign_ins
 				SET token_issued_at = $2,
 					user_id = $3,

@@ -28,14 +28,14 @@ func (c *client) RegenerateTokens(ctx context.Context, previousRefreshToken stri
 
 		return nil, errors.Wrapf(err, "failed to verify token:%v", previousRefreshToken)
 	}
-	id := ID{Email: token.Email, DeviceUniqueID: token.DeviceUniqueID}
+	id := loginID{Email: token.Email, DeviceUniqueID: token.DeviceUniqueID}
 	usr, err := c.getUserByIDOrPk(ctx, token.Subject, &id)
 	if err != nil {
 		if errors.Is(err, storage.ErrNotFound) {
-			return nil, errors.Wrapf(ErrUserNotFound, "user with id %v or email %v not found", token.Subject, token.Email)
+			return nil, errors.Wrapf(ErrUserNotFound, "user with userID:%v or email:%v not found", token.Subject, token.Email)
 		}
 
-		return nil, errors.Wrapf(err, "failed to get user by id:%v", token.Subject)
+		return nil, errors.Wrapf(err, "failed to get user by userID:%v", token.Subject)
 	}
 	if usr.Email != token.Email || usr.DeviceUniqueID != token.DeviceUniqueID {
 		return nil, errors.Wrapf(ErrUserDataMismatch,
@@ -51,7 +51,7 @@ func (c *client) RegenerateTokens(ctx context.Context, previousRefreshToken stri
 			return nil, errors.Wrapf(ErrInvalidToken, "refreshToken with wrong sequence:%v provided", token.Seq)
 		}
 
-		return nil, errors.Wrapf(err, "failed to update pending confirmation for email:%v", token.Email)
+		return nil, errors.Wrapf(err, "failed to update email link sign ins for email:%v", token.Email)
 	}
 	tokens, err = c.generateTokens(now, usr, refreshTokenSeq)
 
@@ -61,7 +61,7 @@ func (c *client) RegenerateTokens(ctx context.Context, previousRefreshToken stri
 //nolint:funlen,revive // .
 func (c *client) incrementRefreshTokenSeq(
 	ctx context.Context,
-	id *ID,
+	id *loginID,
 	userID string,
 	currentSeq int64,
 	now *time.Time,

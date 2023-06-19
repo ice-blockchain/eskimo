@@ -33,10 +33,6 @@ type (
 		RegenerateTokens(ctx context.Context, prevToken string, customClaims *users.JSON) (tokens *Tokens, err error)
 		Status(ctx context.Context, loginSession string) (tokens *Tokens, err error)
 	}
-	ID struct {
-		Email          string `json:"email,omitempty" example:"someone1@example.com"`
-		DeviceUniqueID string `json:"deviceUniqueId,omitempty" example:"6FB988F3-36F4-433D-9C7C-555887E57EB2" db:"device_unique_id"`
-	}
 	Tokens struct {
 		RefreshToken string `json:"refreshToken" example:"eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJPbmxpbmUgSldUIEJ1aWxkZXIiLCJpYXQiOjE2ODQzMjQ0NTYsImV4cCI6MTcxNTg2MDQ1NiwiYXVkIjoiIiwic3ViIjoianJvY2tldEBleGFtcGxlLmNvbSIsIm90cCI6IjUxMzRhMzdkLWIyMWEtNGVhNi1hNzk2LTAxOGIwMjMwMmFhMCJ9.q3xa8Gwg2FVCRHLZqkSedH3aK8XBqykaIy85rRU40nM"` //nolint:lll // .
 		AccessToken  string `json:"accessToken" example:"eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJPbmxpbmUgSldUIEJ1aWxkZXIiLCJpYXQiOjE2ODQzMjQ0NTYsImV4cCI6MTcxNTg2MDQ1NiwiYXVkIjoiIiwic3ViIjoianJvY2tldEBleGFtcGxlLmNvbSIsIm90cCI6IjUxMzRhMzdkLWIyMWEtNGVhNi1hNzk2LTAxOGIwMjMwMmFhMCJ9.q3xa8Gwg2FVCRHLZqkSedH3aK8XBqykaIy85rRU40nM"`  //nolint:lll // .
@@ -97,6 +93,10 @@ type (
 			ExpirationTime        stdlibtime.Duration `yaml:"expirationTime"`
 			MaxWrongAttemptsCount int64               `yaml:"maxWrongAttemptsCount"`
 		} `yaml:"confirmationCode"`
+	}
+	loginID struct {
+		Email          string `json:"email,omitempty" example:"someone1@example.com"`
+		DeviceUniqueID string `json:"deviceUniqueId,omitempty" example:"6FB988F3-36F4-433D-9C7C-555887E57EB2" db:"device_unique_id"`
 	}
 	magicLinkToken struct {
 		*jwt.RegisteredClaims

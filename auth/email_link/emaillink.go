@@ -49,7 +49,7 @@ func loadConfiguration() *config {
 	var cfg config
 	appCfg.MustLoadFromKey(applicationYamlKey, &cfg)
 	loadEmailValidationConfiguration(&cfg)
-	loadLoginsessionConfiguration(&cfg)
+	loadLoginSessionConfiguration(&cfg)
 
 	return &cfg
 }
@@ -72,7 +72,7 @@ func loadEmailValidationConfiguration(cfg *config) {
 	}
 }
 
-func loadLoginsessionConfiguration(cfg *config) {
+func loadLoginSessionConfiguration(cfg *config) {
 	if cfg.LoginSession.JwtSecret == "" {
 		module := strings.ToUpper(strings.ReplaceAll(strings.ReplaceAll(applicationYamlKey, "-", "_"), "/", "_"))
 		cfg.LoginSession.JwtSecret = os.Getenv(fmt.Sprintf("%s_LOGIN_JWT_SECRET", module))
@@ -95,7 +95,7 @@ func (cfg *config) validate() {
 		log.Panic(errors.New("no email jwt secret provided"))
 	}
 	if cfg.LoginSession.JwtSecret == "" {
-		log.Panic(errors.New("no login flow jwt secret provided"))
+		log.Panic(errors.New("no login session jwt secret provided"))
 	}
 	if cfg.EmailValidation.AuthLink == "" {
 		log.Panic("no auth link provided")
@@ -110,7 +110,7 @@ func (cfg *config) validate() {
 		log.Panic("no expiration time provided for email validation")
 	}
 	if cfg.LoginSession.ExpirationTime == 0 {
-		log.Panic("no expiration time provided for login flow")
+		log.Panic("no expiration time provided for login session")
 	}
 	if cfg.ConfirmationCode.ExpirationTime == 0 {
 		log.Panic("no expiration time provided for confirmation code")

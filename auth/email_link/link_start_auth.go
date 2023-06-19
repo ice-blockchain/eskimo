@@ -21,9 +21,9 @@ import (
 
 func (c *client) SendSignInLinkToEmail(ctx context.Context, emailValue, deviceUniqueID, language string) (loginSession string, err error) {
 	if ctx.Err() != nil {
-		return "", errors.Wrap(ctx.Err(), "start email link auth failed because context failed")
+		return "", errors.Wrap(ctx.Err(), "send sign in link to email failed because context failed")
 	}
-	id := ID{emailValue, deviceUniqueID}
+	id := loginID{emailValue, deviceUniqueID}
 	otp := generateOTP()
 	now := time.Now()
 	oldEmail := users.ConfirmedEmail(ctx)
@@ -111,7 +111,7 @@ func (c *client) upsertEmailLinkSignIns(ctx context.Context, toEmail, oldEmail, 
 	return errors.Wrapf(err, "failed to insert/update email link sign ins record for email:%v", toEmail)
 }
 
-func (c *client) generateMagicLinkPayload(id *ID, oldEmail, notifyEmail, otp string, now *time.Time) (string, error) {
+func (c *client) generateMagicLinkPayload(id *loginID, oldEmail, notifyEmail, otp string, now *time.Time) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, magicLinkToken{
 		RegisteredClaims: &jwt.RegisteredClaims{
 			Issuer:    jwtIssuer,
@@ -138,7 +138,7 @@ func (c *client) getAuthLink(token, language string) string {
 	return fmt.Sprintf("%s?token=%s&lang=%s", c.cfg.EmailValidation.AuthLink, token, language)
 }
 
-func (c *client) generateLoginSession(id *ID, confirmationCode string) (string, error) {
+func (c *client) generateLoginSession(id *loginID, confirmationCode string) (string, error) {
 	now := time.Now()
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, loginFlowToken{
 		RegisteredClaims: &jwt.RegisteredClaims{
