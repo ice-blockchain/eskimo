@@ -12,7 +12,7 @@ cmd/eskimo:
     port: 443
     certPath: cmd/eskimo/.testdata/localhost.crt
     keyPath: cmd/eskimo/.testdata/localhost.key
-  wintr/server/ice:
+  wintr/auth/ice:
     refreshExpirationTime: 24h
     accessExpirationTime: 1h
     jwtSecret: bogus
@@ -24,7 +24,7 @@ cmd/eskimo-hut:
     port: 1443
     certPath: cmd/eskimo-hut/.testdata/localhost.crt
     keyPath: cmd/eskimo-hut/.testdata/localhost.key
-  wintr/server/ice:
+  wintr/auth/ice:
     refreshExpirationTime: 24h
     accessExpirationTime: 1h
     jwtSecret: bogus

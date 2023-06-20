@@ -64,7 +64,7 @@ func (r *repository) ModifyUser(ctx context.Context, usr *User, profilePicture *
 		noOpNoOfParams++
 	}
 	if len(params) == noOpNoOfParams {
-		*usr = *r.sanitizeUser(oldUsr)
+		*usr = *r.sanitizeUser(oldUsr.User)
 		usr.sanitizeForUI()
 
 		return loginSession, nil
@@ -89,7 +89,7 @@ func (r *repository) ModifyUser(ctx context.Context, usr *User, profilePicture *
 		return "", errors.Wrapf(multierror.Append(rErr, sErr).ErrorOrNil(), "can't send contacts message for userID:%v", usr.ID)
 	}
 
-	us := &UserSnapshot{User: r.sanitizeUser(oldUsr.override(usr)), Before: r.sanitizeUser(oldUsr)}
+	us := &UserSnapshot{User: r.sanitizeUser(oldUsr.override(usr)), Before: r.sanitizeUser(oldUsr.User)}
 	if err = r.sendUserSnapshotMessage(ctx, us); err != nil {
 		_, rollBackParams := bkpUsr.genSQLUpdate(ctx, agendaBefore)
 		rollBackParams[1] = bkpUsr.UpdatedAt.Time
@@ -261,7 +261,7 @@ func resolveProfilePictureExtension(fileName string) string {
 	return ext
 }
 
-func (r *repository) triggerEmailValidation(ctx context.Context, newUser, oldUser *User) (emailForUpdate, loginSession string, err error) {
+func (r *repository) triggerEmailValidation(ctx context.Context, newUser *User, oldUser *userSignedInByEmail) (emailForUpdate, loginSession string, err error) {
 	if newUser.Email == "" || newUser.Email == oldUser.Email {
 		return "", "", nil
 	}
@@ -269,7 +269,11 @@ func (r *repository) triggerEmailValidation(ctx context.Context, newUser, oldUse
 	if confirmedEmail != "" {
 		return confirmedEmail, "", nil
 	}
-	loginSession, err = r.emailValidator.SendSignInLinkToEmail(ConfirmedEmailContext(ctx, oldUser.Email), newUser.Email, "", oldUser.Language)
+	// User uses firebase.
+	if oldUser.DeviceUniqueId == nil || *oldUser.DeviceUniqueId == "" {
+		return newUser.Email, "", nil
+	}
+	loginSession, err = r.emailValidator.SendSignInLinkToEmail(ConfirmedEmailContext(ctx, oldUser.Email), newUser.Email, *oldUser.DeviceUniqueId, oldUser.Language)
 	if err != nil {
 		return "", "", errors.Wrapf(err, "can't send sign in link to email:%v", newUser.Email)
 	}

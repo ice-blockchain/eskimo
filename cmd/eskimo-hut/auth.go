@@ -67,16 +67,12 @@ func (s *service) SignIn( //nolint:gocritic // .
 	if err := s.authEmailLinkClient.SignIn(ctx, req.Data.EmailToken, req.Data.ConfirmationCode); err != nil {
 		err = errors.Wrapf(err, "finish login using magic link failed for %#v", req.Data)
 		switch {
-		case errors.Is(err, emaillink.ErrNoPendingConfirmation):
-			return nil, server.NotFound(err, noPendingCodeConfirmationErrorCode)
 		case errors.Is(err, emaillink.ErrNoConfirmationRequired):
 			return nil, server.NotFound(err, confirmationCodeNotFoundErrorCode)
 		case errors.Is(err, emaillink.ErrExpiredToken):
 			return nil, server.BadRequest(err, linkExpiredErrorCode)
 		case errors.Is(err, emaillink.ErrInvalidToken):
 			return nil, server.BadRequest(err, invalidOTPCodeErrorCode)
-		case errors.Is(err, emaillink.ErrConfirmationCodeTimeout):
-			return nil, server.BadRequest(err, confirmationCodeTimeoutErrorCode)
 		case errors.Is(err, emaillink.ErrConfirmationCodeAttemptsExceeded):
 			return nil, server.BadRequest(err, confirmationCodeAttemptsExceededErrorCode)
 		case errors.Is(err, emaillink.ErrConfirmationCodeWrong):
@@ -114,8 +110,6 @@ func (s *service) RegenerateTokens( //nolint:gocritic // .
 	tokens, err := s.authEmailLinkClient.RegenerateTokens(ctx, tokenPayload, req.Data.CustomClaims)
 	if err != nil {
 		switch {
-		case errors.Is(err, emaillink.ErrNoPendingConfirmation):
-			return nil, server.NotFound(err, noPendingCodeConfirmationErrorCode)
 		case errors.Is(err, emaillink.ErrUserNotFound):
 			return nil, server.NotFound(err, userNotFoundErrorCode)
 		case errors.Is(err, emaillink.ErrExpiredToken):

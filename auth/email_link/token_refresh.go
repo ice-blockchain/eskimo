@@ -5,8 +5,6 @@ package emaillinkiceauth
 import (
 	"context"
 	"fmt"
-	"strconv"
-
 	"github.com/pkg/errors"
 
 	"github.com/ice-blockchain/eskimo/users"
@@ -67,10 +65,7 @@ func (c *client) incrementRefreshTokenSeq(
 	now *time.Time,
 	customClaims *users.JSON,
 ) (tokenSeq int64, err error) {
-	params := []any{id.Email, id.DeviceUniqueID, now.Time, userID}
-	if currentSeq > 0 {
-		params = append(params, strconv.FormatInt(currentSeq, 10))
-	}
+	params := []any{id.Email, id.DeviceUniqueID, now.Time, userID, currentSeq}
 	customClaimsClause := ""
 	if customClaims != nil {
 		params = append(params, customClaims)
@@ -83,11 +78,11 @@ func (c *client) incrementRefreshTokenSeq(
 				issued_token_seq = COALESCE(email_link_sign_ins.issued_token_seq, 0) + 1
 				%v
 			WHERE  (email_link_sign_ins.email = $1 AND email_link_sign_ins.device_unique_id = $2) 
-				   AND (email_link_sign_ins.user_id = $4 AND email_link_sign_ins.issued_token_seq::text = $5::text)
+				   AND (email_link_sign_ins.user_id = $4 AND email_link_sign_ins.issued_token_seq = $5)
 			RETURNING issued_token_seq`, customClaimsClause)
 	updatedValue, err := storage.ExecOne[issuedTokenSeq](ctx, c.db, sql, params...)
 	if err != nil {
-		return 0, errors.Wrapf(err, "failed to assign refreshed token to email link sign ins for params:%#v", params...)
+		return 0, errors.Wrapf(err, "failed to assign refreshed token to email link sign ins for params:%#v", params)
 	}
 
 	return updatedValue.IssuedTokenSeq, nil
@@ -98,7 +93,7 @@ func (c *client) generateTokens(now *time.Time, els *emailLinkSignIns, seq int64
 	if els.CustomClaims != nil {
 		claims = *els.CustomClaims
 	}
-	refreshToken, accessToken, err := c.authClient.GenerateTokens(now, els.UserID, els.DeviceUniqueID, els.Email, els.HashCode, seq, claims)
+	refreshToken, accessToken, err := c.authClient.GenerateTokens(now, *els.UserID, els.DeviceUniqueID, els.Email, els.HashCode, seq, claims)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to generate tokens for user:%#v", els)
 	}

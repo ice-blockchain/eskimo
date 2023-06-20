@@ -232,6 +232,11 @@ var (
 )
 
 type (
+	userSignedInByEmail struct {
+		*User
+		DeviceUniqueId *string
+	}
+
 	miningSession struct {
 		LastNaturalMiningStartedAt *time.Time          `json:"lastNaturalMiningStartedAt,omitempty" example:"2022-01-03T16:20:52.156534Z" swaggerignore:"true"`
 		StartedAt                  *time.Time          `json:"startedAt,omitempty" example:"2022-01-03T16:20:52.156534Z"`

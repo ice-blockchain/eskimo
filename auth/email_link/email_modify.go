@@ -17,15 +17,15 @@ import (
 //nolint:funlen,revive // Big rollback logic.
 func (c *client) handleEmailModification(ctx context.Context, els *emailLinkSignIns, newEmail, oldEmail, notifyEmail, confirmationCode string) error {
 	usr := new(users.User)
-	usr.ID = els.UserID
+	usr.ID = *els.UserID
 	usr.Email = newEmail
 	_, err := c.userModifier.ModifyUser(users.ConfirmedEmailContext(ctx, newEmail), usr, nil)
 	if err != nil {
 		return errors.Wrapf(err, "failed to modify user %v with email modification", els.UserID)
 	}
-	if rErr := c.resetLoginSession(ctx, &loginID{Email: newEmail, DeviceUniqueID: ""}, confirmationCode); rErr != nil {
+	if rErr := c.resetLoginSession(ctx, &loginID{Email: newEmail, DeviceUniqueID: els.DeviceUniqueID}, confirmationCode); rErr != nil {
 		return multierror.Append( //nolint:wrapcheck // .
-			errors.Wrapf(c.rollbackEmailModification(ctx, els.UserID, oldEmail), "[rollback] rollbackEmailModification failed for email:%v", oldEmail),
+			errors.Wrapf(c.rollbackEmailModification(ctx, usr.ID, oldEmail), "[rollback] rollbackEmailModification failed for email:%v", oldEmail),
 			errors.Wrapf(rErr, "failed to reset login session for email:%v", newEmail),
 		).ErrorOrNil()
 	}
@@ -34,21 +34,21 @@ func (c *client) handleEmailModification(ctx context.Context, els *emailLinkSign
 		rollbackEmailPayload, rErr := c.generateMagicLinkPayload(&loginID{Email: oldEmail, DeviceUniqueID: els.DeviceUniqueID}, newEmail, "", rollbackEmailOTP, now)
 		if rErr != nil {
 			return multierror.Append( //nolint:wrapcheck // .
-				errors.Wrapf(c.rollbackEmailModification(ctx, els.UserID, oldEmail), "[rollback] rollbackEmailModification failed for email:%v", oldEmail),
+				errors.Wrapf(c.rollbackEmailModification(ctx, usr.ID, oldEmail), "[rollback] rollbackEmailModification failed for email:%v", oldEmail),
 				errors.Wrapf(rErr, "can't generate link payload for email: %v", oldEmail),
 			).ErrorOrNil()
 		}
 		rollbackConfirmationCode := generateConfirmationCode()
 		if uErr := c.upsertEmailLinkSignIns(ctx, oldEmail, oldEmail, els.DeviceUniqueID, rollbackEmailOTP, rollbackConfirmationCode, now); uErr != nil {
 			return multierror.Append( //nolint:wrapcheck // .
-				errors.Wrapf(c.rollbackEmailModification(ctx, els.UserID, oldEmail), "[rollback] rollbackEmailModification failed for email:%v", oldEmail),
+				errors.Wrapf(c.rollbackEmailModification(ctx, usr.ID, oldEmail), "[rollback] rollbackEmailModification failed for email:%v", oldEmail),
 				errors.Wrapf(uErr, "failed to store/update email confirmation for email:%v", oldEmail),
 			).ErrorOrNil()
 		}
 		authLink := c.getRollbackAuthLink(rollbackEmailPayload, els.Language, rollbackConfirmationCode)
 		if sErr := c.sendNotifyEmailChanged(ctx, notifyEmail, authLink, els.Language); sErr != nil {
 			return multierror.Append( //nolint:wrapcheck // .
-				errors.Wrapf(c.rollbackEmailModification(ctx, els.UserID, oldEmail), "[rollback] rollbackEmailModification failed for email:%v", oldEmail),
+				errors.Wrapf(c.rollbackEmailModification(ctx, usr.ID, oldEmail), "[rollback] rollbackEmailModification failed for email:%v", oldEmail),
 				errors.Wrapf(sErr, "failed to send notification email about email change for userID %v email %v", els.UserID, oldEmail),
 			).ErrorOrNil()
 		}

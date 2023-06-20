@@ -28,12 +28,6 @@ func (c *client) SignIn(ctx context.Context, emailLinkPayload, confirmationCode 
 
 		return errors.Wrapf(err, "failed to get user info by email:%v(old email:%v)", email, token.OldEmail)
 	}
-	if els.Confirmed {
-		return errors.Wrapf(ErrNoPendingConfirmation, "no pending confirmation for id:%#v", id)
-	}
-	if time.Now().After(els.ConfirmationCodeCreatedAt.Add(c.cfg.ConfirmationCode.ExpirationTime)) {
-		return errors.Wrapf(ErrConfirmationCodeTimeout, "confirmation code timeout for id:%#v expired", id)
-	}
 	if els.ConfirmationCodeWrongAttemptsCount >= c.cfg.ConfirmationCode.MaxWrongAttemptsCount {
 		return errors.Wrapf(ErrConfirmationCodeAttemptsExceeded, "confirmation code wrong attempts count exceeded for id:%#v", id)
 	}
@@ -54,7 +48,7 @@ func (c *client) SignIn(ctx context.Context, emailLinkPayload, confirmationCode 
 		}
 		els.Email = email
 	}
-	if fErr := c.finishAuthProcess(ctx, &id, els.UserID, token.OTP); fErr != nil {
+	if fErr := c.finishAuthProcess(ctx, &id, *els.UserID, token.OTP); fErr != nil {
 		return errors.Wrapf(fErr, "can't finish auth process for userID:%v,email:%v,otp:%v", els.UserID, email, token.OTP)
 	}
 
@@ -73,14 +67,12 @@ func (c *client) increaseWrongConfirmationCodeAttemptsCount(ctx context.Context,
 }
 
 func (c *client) finishAuthProcess(ctx context.Context, id *loginID, userID, otp string) error {
-	confirmed := true
-	params := []any{id.Email, time.Now().Time, userID, otp, id.DeviceUniqueID, confirmed}
+	params := []any{id.Email, time.Now().Time, userID, otp, id.DeviceUniqueID}
 	sql := `UPDATE email_link_sign_ins
 				SET token_issued_at = $2,
 					user_id = $3,
 					otp = $3,
-					issued_token_seq = COALESCE(issued_token_seq, 0) + 1,
-					confirmed = $6
+					issued_token_seq = COALESCE(issued_token_seq, 0) + 1
 			WHERE email_link_sign_ins.email = $1
 				  AND otp = $4
 				  AND device_unique_id = $5`

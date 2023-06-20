@@ -26,7 +26,7 @@ func init() {
 	loadEmailMagicLinkTranslationTemplates()
 }
 
-func NewClient(ctx context.Context, userModifier UserModifier) Client {
+func NewClient(ctx context.Context, userModifier UserModifier, authClient auth.Client) Client {
 	cfg := loadConfiguration()
 	cfg.validate()
 	db := storage.MustConnect(ctx, ddl, applicationYamlKey)
@@ -36,7 +36,7 @@ func NewClient(ctx context.Context, userModifier UserModifier) Client {
 		shutdown:     db.Close,
 		db:           db,
 		emailClient:  email.New(applicationYamlKey),
-		authClient:   auth.New(ctx, applicationYamlKey),
+		authClient:   authClient,
 		userModifier: userModifier,
 	}
 }
@@ -108,12 +108,6 @@ func (cfg *config) validate() {
 	}
 	if cfg.EmailValidation.ExpirationTime == 0 {
 		log.Panic("no expiration time provided for email validation")
-	}
-	if cfg.LoginSession.ExpirationTime == 0 {
-		log.Panic("no expiration time provided for login session")
-	}
-	if cfg.ConfirmationCode.ExpirationTime == 0 {
-		log.Panic("no expiration time provided for confirmation code")
 	}
 	if cfg.ConfirmationCode.MaxWrongAttemptsCount == 0 {
 		log.Panic("no max wrong attempts count provided for confirmation code")

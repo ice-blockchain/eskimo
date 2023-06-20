@@ -20,10 +20,10 @@ func (r *repository) DeleteUser(ctx context.Context, userID UserID) error {
 	if err != nil {
 		return errors.Wrapf(err, "failed to get user for userID:%v", userID)
 	}
-	if err = r.deleteUser(ctx, gUser); err != nil {
+	if err = r.deleteUser(ctx, gUser.User); err != nil {
 		return errors.Wrapf(err, "failed to deleteUser for:%#v", gUser)
 	}
-	u := &UserSnapshot{Before: r.sanitizeUser(gUser)}
+	u := &UserSnapshot{Before: r.sanitizeUser(gUser.User)}
 	if err = r.sendUserSnapshotMessage(ctx, u); err != nil {
 		return errors.Wrapf(err, "failed to send deleted user message for %#v", u)
 	}
@@ -53,7 +53,7 @@ func (r *repository) deleteUser(ctx context.Context, usr *User) error { //nolint
 	if err != nil {
 		return errors.Wrapf(err, "failed to get user for userID:%v", usr.ID)
 	}
-	*usr = *gUser
+	*usr = *(gUser.User)
 	sql := `DELETE FROM users WHERE id = $1`
 	if _, tErr := storage.Exec(ctx, r.db, sql, usr.ID); tErr != nil {
 		if storage.IsErr(tErr, storage.ErrRelationNotFound) {

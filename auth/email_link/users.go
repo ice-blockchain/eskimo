@@ -12,7 +12,7 @@ import (
 )
 
 func (c *client) getEmailLinkSignInByPk(ctx context.Context, id *loginID, oldEmail string) (*emailLinkSignIns, error) {
-	userID, err := c.findUser(ctx, id.Email, oldEmail)
+	userID, err := c.findOrGenerateUserID(ctx, id.Email, oldEmail)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to fetch or generate userID for email:%v", id.Email)
 	}
@@ -24,7 +24,7 @@ func (c *client) getEmailLinkSignInByPk(ctx context.Context, id *loginID, oldEma
 	return usr, nil
 }
 
-func (c *client) findUser(ctx context.Context, email, oldEmail string) (userID string, err error) {
+func (c *client) findOrGenerateUserID(ctx context.Context, email, oldEmail string) (userID string, err error) {
 	if ctx.Err() != nil {
 		return "", errors.Wrap(ctx.Err(), "find or generate user by id or email context failed")
 	}
@@ -49,7 +49,7 @@ func (c *client) findUser(ctx context.Context, email, oldEmail string) (userID s
 		return "", errors.Wrapf(err, "failed to find user by userID:%v or email:%v", randomID, email)
 	}
 	if ids[0].ID == randomID || (len(ids) > 1) {
-		return c.findUser(ctx, email, oldEmail)
+		return c.findOrGenerateUserID(ctx, email, oldEmail)
 	}
 
 	return ids[0].ID, nil
@@ -60,10 +60,10 @@ func (c *client) getUserByIDOrPk(ctx context.Context, userID string, id *loginID
 	if ctx.Err() != nil {
 		return nil, errors.Wrap(ctx.Err(), "get user by id or email failed because context failed")
 	}
+
 	usr, err := storage.Get[emailLinkSignIns](ctx, c.db, `
 		WITH emails AS (
 			SELECT
-				confirmation_code_created_at,
 				token_issued_at,
 				issued_token_seq,
 				confirmation_code_wrong_attempts_count,
@@ -74,13 +74,11 @@ func (c *client) getUserByIDOrPk(ctx context.Context, userID string, id *loginID
 				$3 												   AS device_unique_id,
 				'en' 											   AS language,
 				COALESCE((custom_claims -> 'hash_code')::BIGINT,0) AS hash_code,
-				confirmed,
 				custom_claims
 			FROM email_link_sign_ins
 			WHERE email = $2 AND device_unique_id = $3
 		)
-		SELECT 
-				emails.confirmation_code_created_at      	  	   AS confirmation_code_created_at,
+		SELECT
 				emails.token_issued_at       			 	  	   AS token_issued_at,
 				emails.issued_token_seq       			 	  	   AS issued_token_seq,
 				emails.confirmation_code_wrong_attempts_count 	   AS confirmation_code_wrong_attempts_count,
@@ -91,7 +89,6 @@ func (c *client) getUserByIDOrPk(ctx context.Context, userID string, id *loginID
 				emails.device_unique_id 				 	  	   AS device_unique_id,
 				u.language			    				 	  	   AS language,
 				u.hash_code,
-				emails.confirmed								   AS confirmed,
 				emails.custom_claims    				 	  	   AS custom_claims
 			FROM users u, emails
 			WHERE u.id = $1
@@ -113,8 +110,7 @@ func (c *client) getConfirmedEmailLinkSignIns(ctx context.Context, id *loginID, 
 			FROM email_link_sign_ins
 			WHERE confirmation_code = $1 
 	  			  AND email = $2
-				  AND device_unique_id = $3
-				  AND confirmed = TRUE`
+				  AND device_unique_id = $3`
 	usr, err := storage.Get[emailLinkSignIns](ctx, c.db, sql, confirmationCode, id.Email, id.DeviceUniqueID)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to get user by loginSession:%v and id:%#v", confirmationCode, id)

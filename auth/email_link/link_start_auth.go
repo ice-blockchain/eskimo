@@ -81,10 +81,9 @@ func (c *client) sendValidationEmail(ctx context.Context, toEmail, language, lin
 func (c *client) upsertEmailLinkSignIns(ctx context.Context, toEmail, oldEmail, deviceUniqueID, otp, code string, now *time.Time) error {
 	customClaimsFromOldEmail := "null"
 	confirmationCodeWrongAttempts := 0
-	confirmed := false
-	params := []any{now.Time, toEmail, deviceUniqueID, otp, code, confirmationCodeWrongAttempts, confirmed}
+	params := []any{now.Time, toEmail, deviceUniqueID, otp, code, confirmationCodeWrongAttempts}
 	if oldEmail != "" {
-		customClaimsFromOldEmail = "(SELECT custom_claims FROM email_link_sign_ins WHERE email = $8 AND device_unique_id = $3)"
+		customClaimsFromOldEmail = "(SELECT custom_claims FROM email_link_sign_ins WHERE email = $7 AND device_unique_id = $3)"
 		params = append(params, oldEmail)
 	}
 	sql := fmt.Sprintf(`INSERT INTO email_link_sign_ins (
@@ -94,17 +93,13 @@ func (c *client) upsertEmailLinkSignIns(ctx context.Context, toEmail, oldEmail, 
 							otp,
 							confirmation_code,
 							confirmation_code_wrong_attempts_count,
-							confirmation_code_created_at,
-							confirmed,
 							custom_claims)
-						VALUES ($1, $2, $3, $4, $5, $6, $1, $7, %v)
+						VALUES ($1, $2, $3, $4, $5, $6, %v)
 						ON CONFLICT (email, device_unique_id) DO UPDATE 
 							SET otp           				     	   = EXCLUDED.otp, 
 								created_at    				     	   = EXCLUDED.created_at,
 								confirmation_code 		          	   = EXCLUDED.confirmation_code,
-								confirmation_code_created_at     	   = EXCLUDED.confirmation_code_created_at,
 								confirmation_code_wrong_attempts_count = EXCLUDED.confirmation_code_wrong_attempts_count,
-								confirmed 			     	   	   	   = EXCLUDED.confirmed,
 								custom_claims 				     	   = EXCLUDED.custom_claims`, customClaimsFromOldEmail)
 	_, err := storage.Exec(ctx, c.db, sql, params...)
 
@@ -145,7 +140,7 @@ func (c *client) generateLoginSession(id *loginID, confirmationCode string) (str
 			Issuer:    jwtIssuer,
 			Subject:   id.Email,
 			Audience:  nil,
-			ExpiresAt: jwt.NewNumericDate(now.Add(c.cfg.LoginSession.ExpirationTime)),
+			ExpiresAt: jwt.NewNumericDate(now.Add(c.cfg.EmailValidation.ExpirationTime)),
 			NotBefore: jwt.NewNumericDate(*now.Time),
 			IssuedAt:  jwt.NewNumericDate(*now.Time),
 		},

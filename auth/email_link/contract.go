@@ -49,11 +49,8 @@ var (
 
 	ErrConfirmationCodeWrong            = errors.New("wrong confirmation code provided")
 	ErrConfirmationCodeAttemptsExceeded = errors.New("confirmation code attempts exceeded")
-	ErrConfirmationCodeTimeout          = errors.New("confirmation code timeout")
-
-	ErrStatusNotVerified     = errors.New("not verified")
-	ErrNoPendingConfirmation = errors.New("no pending confirmation code")
-	ErrNoPendingLoginSession = errors.New("no pending login session")
+	ErrStatusNotVerified                = errors.New("not verified")
+	ErrNoPendingLoginSession            = errors.New("no pending login session")
 )
 
 // Private API.
@@ -86,12 +83,10 @@ type (
 			ExpirationTime stdlibtime.Duration `yaml:"expirationTime" mapstructure:"expirationTime"`
 		} `yaml:"emailValidation"`
 		LoginSession struct {
-			JwtSecret      string              `yaml:"jwtSecret"`
-			ExpirationTime stdlibtime.Duration `yaml:"expirationTime" mapstructure:"expirationTime"`
+			JwtSecret string `yaml:"jwtSecret"`
 		} `yaml:"loginSession"`
 		ConfirmationCode struct {
-			ExpirationTime        stdlibtime.Duration `yaml:"expirationTime"`
-			MaxWrongAttemptsCount int64               `yaml:"maxWrongAttemptsCount"`
+			MaxWrongAttemptsCount int64 `yaml:"maxWrongAttemptsCount"`
 		} `yaml:"confirmationCode"`
 	}
 	loginID struct {
@@ -116,9 +111,8 @@ type (
 	emailLinkSignIns struct {
 		CreatedAt                          *time.Time
 		TokenIssuedAt                      *time.Time
-		ConfirmationCodeCreatedAt          *time.Time
 		CustomClaims                       *users.JSON `json:"customClaims,omitempty"`
-		UserID                             string      `json:"userId" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
+		UserID                             *string     `json:"userId" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
 		Email                              string      `json:"email,omitempty" example:"someone1@example.com"`
 		OTP                                string      `json:"otp,omitempty" example:"207d0262-2554-4df9-b954-08cb42718b25"`
 		Language                           string      `json:"language,omitempty" example:"en"`
@@ -127,7 +121,6 @@ type (
 		IssuedTokenSeq                     int64       `json:"issuedTokenSeq,omitempty" example:"1"`
 		ConfirmationCodeWrongAttemptsCount int64       `json:"confirmationCodeWrongAttemptsCount,omitempty" example:"3" db:"confirmation_code_wrong_attempts_count"`
 		HashCode                           int64       `json:"hashCode,omitempty" example:"43453546464576547"`
-		Confirmed                          bool        `json:"confirmed" example:"false"`
 	}
 	emailTemplate struct {
 		subject, body *template.Template
