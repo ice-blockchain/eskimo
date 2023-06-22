@@ -138,13 +138,11 @@ const (
 	dataMismatchErrorCode   = "DATA_MISMATCH"
 
 	confirmationCodeNotFoundErrorCode         = "CONFIRMATION_CODE_NOT_FOUND"
-	confirmationCodeTimeoutErrorCode          = "CONFIRMATION_CODE_TIMEOUT"
 	confirmationCodeAttemptsExceededErrorCode = "CONFIRMATION_CODE_ATTEMPTS_EXCEEDED"
 	confirmationCodeWrongErrorCode            = "CONFIRMATION_CODE_WRONG"
 
-	noPendingLoginSessionErrorCode     = "NO_PENDING_LOGIN_SESSION"
-	noPendingCodeConfirmationErrorCode = "NO_PENDING_CODE_CONFIRMATION"
-	statusNotVerifiedErrorCode         = "NOT_VERIFIED"
+	noPendingLoginSessionErrorCode = "NO_PENDING_LOGIN_SESSION"
+	statusNotVerifiedErrorCode     = "NOT_VERIFIED"
 )
 
 // .

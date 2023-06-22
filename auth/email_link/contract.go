@@ -77,14 +77,14 @@ type (
 	config struct {
 		FromEmailName    string `yaml:"fromEmailName"`
 		FromEmailAddress string `yaml:"fromEmailAddress"`
-		EmailValidation  struct {
+		LoginSession     struct {
+			JwtSecret string `yaml:"jwtSecret"`
+		} `yaml:"loginSession"`
+		EmailValidation struct {
 			AuthLink       string              `yaml:"authLink"`
 			JwtSecret      string              `yaml:"jwtSecret"`
 			ExpirationTime stdlibtime.Duration `yaml:"expirationTime" mapstructure:"expirationTime"`
 		} `yaml:"emailValidation"`
-		LoginSession struct {
-			JwtSecret string `yaml:"jwtSecret"`
-		} `yaml:"loginSession"`
 		ConfirmationCode struct {
 			MaxWrongAttemptsCount int64 `yaml:"maxWrongAttemptsCount"`
 		} `yaml:"confirmationCode"`

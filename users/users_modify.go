@@ -270,10 +270,10 @@ func (r *repository) triggerEmailValidation(ctx context.Context, newUser *User, 
 		return confirmedEmail, "", nil
 	}
 	// User uses firebase.
-	if oldUser.DeviceUniqueId == nil || *oldUser.DeviceUniqueId == "" {
+	if oldUser.DeviceUniqueID == nil || *oldUser.DeviceUniqueID == "" {
 		return newUser.Email, "", nil
 	}
-	loginSession, err = r.emailValidator.SendSignInLinkToEmail(ConfirmedEmailContext(ctx, oldUser.Email), newUser.Email, *oldUser.DeviceUniqueId, oldUser.Language)
+	loginSession, err = r.emailValidator.SendSignInLinkToEmail(ConfirmedEmailContext(ctx, oldUser.Email), newUser.Email, *oldUser.DeviceUniqueID, oldUser.Language)
 	if err != nil {
 		return "", "", errors.Wrapf(err, "can't send sign in link to email:%v", newUser.Email)
 	}

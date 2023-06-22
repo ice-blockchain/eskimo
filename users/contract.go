@@ -234,7 +234,7 @@ var (
 type (
 	userSignedInByEmail struct {
 		*User
-		DeviceUniqueId *string
+		DeviceUniqueID *string
 	}
 
 	miningSession struct {

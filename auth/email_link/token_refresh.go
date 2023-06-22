@@ -5,6 +5,7 @@ package emaillinkiceauth
 import (
 	"context"
 	"fmt"
+
 	"github.com/pkg/errors"
 
 	"github.com/ice-blockchain/eskimo/users"
@@ -56,7 +57,7 @@ func (c *client) RegenerateTokens(ctx context.Context, previousRefreshToken stri
 	return tokens, errors.Wrapf(err, "can't generate tokens for userID:%v, email:%v", token.Subject, token.Email)
 }
 
-//nolint:funlen,revive // .
+//nolint:revive // .
 func (c *client) incrementRefreshTokenSeq(
 	ctx context.Context,
 	id *loginID,
@@ -82,7 +83,7 @@ func (c *client) incrementRefreshTokenSeq(
 			RETURNING issued_token_seq`, customClaimsClause)
 	updatedValue, err := storage.ExecOne[issuedTokenSeq](ctx, c.db, sql, params...)
 	if err != nil {
-		return 0, errors.Wrapf(err, "failed to assign refreshed token to email link sign ins for params:%#v", params)
+		return 0, errors.Wrapf(err, "failed to assign refreshed token to email link sign ins for params:%#v", params) //nolint:asasalint // Not this output.
 	}
 
 	return updatedValue.IssuedTokenSeq, nil

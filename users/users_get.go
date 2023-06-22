@@ -17,6 +17,7 @@ func (r *repository) getUserByID(ctx context.Context, id UserID) (*userSignedInB
 	if ctx.Err() != nil {
 		return nil, errors.Wrap(ctx.Err(), "get user failed because context failed")
 	}
+	//nolint:misspell // Wrong.
 	result, err := storage.Get[userSignedInByEmail](ctx, r.db, `
 	SELECT u.*, signins.device_unique_id
 		FROM users u
