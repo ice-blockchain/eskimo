@@ -5,6 +5,7 @@ package users
 import (
 	"context"
 	"fmt"
+	"math"
 	"strings"
 	stdlibtime "time"
 
@@ -16,7 +17,7 @@ import (
 	"github.com/ice-blockchain/wintr/time"
 )
 
-func (r *repository) GetUserGrowth(ctx context.Context, days uint64) (*UserGrowthStatistics, error) { //nolint:funlen,gocognit,revive // Alot of mappings.
+func (r *repository) GetUserGrowth(ctx context.Context, days uint64) (*UserGrowthStatistics, error) {
 	if ctx.Err() != nil {
 		return nil, errors.Wrap(ctx.Err(), "context failed")
 	}
@@ -26,14 +27,26 @@ func (r *repository) GetUserGrowth(ctx context.Context, days uint64) (*UserGrowt
 	now := time.Now()
 	for day := stdlibtime.Duration(0); day < stdlibtime.Duration(days); day++ {
 		currentDay := now.Add(-1 * day * r.cfg.GlobalAggregationInterval.Parent)
-		keys = append(keys, r.totalActiveUsersGlobalParentKey(&currentDay), r.totalUsersGlobalParentKey(&currentDay))
+		keys = append(append(keys, r.totalUsersGlobalParentKey(&currentDay)), r.totalActiveUsersGlobalChildrenKeys(&currentDay)...)
 	}
 	values, err := r.getGlobalValues(ctx, keys...)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to getGlobalValues for keys:%#v", keys)
 	}
+
+	return r.aggregateGlobalValuesToGrowth(days, now, values, keys), nil
+}
+
+//nolint:gocognit,revive,funlen // .
+func (r *repository) aggregateGlobalValuesToGrowth(days uint64, now *time.Time, values []*GlobalUnsigned, keys []string) *UserGrowthStatistics {
 	nsSinceParentIntervalZeroValue := r.cfg.nanosSinceGlobalAggregationIntervalParentZeroValue(now)
 	stats := make([]*UserCountTimeSeriesDataPoint, days, days) //nolint:gosimple // .
+	type activeUsersAggregation struct {
+		Count  uint64
+		Sum    uint64
+		DayIdx uint64
+	}
+	var current activeUsersAggregation
 	for ix, key := range keys {
 		if ix == 0 {
 			continue
@@ -46,22 +59,30 @@ func (r *repository) GetUserGrowth(ctx context.Context, days uint64) (*UserGrowt
 				break
 			}
 		}
-		dayIdx := (ix - 1) / totalAndActiveFactor
-		if stats[dayIdx] == nil {
-			stats[dayIdx] = new(UserCountTimeSeriesDataPoint)
-		}
-		if dayIdx == 0 && stats[dayIdx].Date == nil {
-			stats[dayIdx].Date = now
-		} else if stats[dayIdx].Date == nil {
-			fullNegativeDayDuration := -1 * r.cfg.GlobalAggregationInterval.Parent * stdlibtime.Duration(dayIdx-1)
-			stats[dayIdx].Date = time.New(now.Add(fullNegativeDayDuration).Add(-nsSinceParentIntervalZeroValue - 1))
-		}
-		if (ix-1)%totalAndActiveFactor == 0 {
-			stats[dayIdx].Active = val
+		if strings.HasPrefix(key, totalUsersGlobalKey) { //nolint:nestif // .
+			if current.DayIdx > 0 && current.Count > 0 {
+				stats[current.DayIdx-1].UserCount.Active = uint64(math.Round(float64(current.Sum) / float64(current.Count)))
+			}
+			if stats[current.DayIdx] == nil {
+				stats[current.DayIdx] = new(UserCountTimeSeriesDataPoint)
+			}
+			stats[current.DayIdx].UserCount.Total = val
+			if current.DayIdx == 0 && stats[current.DayIdx].Date == nil {
+				stats[current.DayIdx].Date = now
+			} else if stats[current.DayIdx].Date == nil {
+				fullNegativeDayDuration := -1 * r.cfg.GlobalAggregationInterval.Parent * stdlibtime.Duration(current.DayIdx-1)
+				stats[current.DayIdx].Date = time.New(now.Add(fullNegativeDayDuration).Add(-nsSinceParentIntervalZeroValue - 1))
+			}
+			current = activeUsersAggregation{Count: 0, Sum: 0, DayIdx: current.DayIdx + 1}
 		} else {
-			stats[dayIdx].Total = val
+			current.Sum += val
+			if val > 0 {
+				current.Count++
+			}
 		}
 	}
+	stats[current.DayIdx-1].UserCount.Active = uint64(math.Round(float64(current.Sum) / float64(current.Count)))
+	stats[0].Total = values[0].Value
 
 	return &UserGrowthStatistics{
 		TimeSeries: stats,
@@ -69,7 +90,7 @@ func (r *repository) GetUserGrowth(ctx context.Context, days uint64) (*UserGrowt
 			Active: stats[0].Active,
 			Total:  values[0].Value,
 		},
-	}, nil
+	}
 }
 
 func (r *repository) getGlobalValues(ctx context.Context, keys ...string) ([]*GlobalUnsigned, error) {
@@ -117,10 +138,15 @@ func (r *repository) incrementOrDecrementTotalUsers(ctx context.Context, date *t
 	params := []any{totalUsersGlobalKey, r.totalUsersGlobalParentKey(date.Time), r.totalUsersGlobalChildKey(date.Time)}
 	sqlParams := make([]string, 0, len(params))
 	for idx := range params {
-		sqlParams = append(sqlParams, fmt.Sprintf("($%v,1)", idx+1))
+		if idx > 0 {
+			sqlParams = append(sqlParams, fmt.Sprintf(
+				"($%[1]v,(select GREATEST(total.value %[2]v 1,0) FROM global total WHERE total.key = '%[3]v'))",
+				idx+1, operation, params[0]))
+		} else {
+			sqlParams = append(sqlParams, fmt.Sprintf("($%v,1)", idx+1))
+		}
 	}
-	sql := fmt.Sprintf(`INSERT INTO global (key, value) 
-									VALUES %[2]v
+	sql := fmt.Sprintf(`INSERT INTO global (key, value) VALUES %[2]v
 								ON CONFLICT (key) DO UPDATE    
 						SET value = (select GREATEST(total.value %[1]v 1,0) FROM global total WHERE total.key = '%[3]v')`, operation, strings.Join(sqlParams, ","), params[0])
 	if _, err := storage.Exec(ctx, r.db, sql, params...); err != nil && !storage.IsErr(err, storage.ErrNotFound) {
@@ -213,16 +239,24 @@ func (r *repository) totalUsersGlobalParentKey(date *stdlibtime.Time) string {
 	return fmt.Sprintf("%v_%v", totalUsersGlobalKey, date.Format(r.cfg.globalAggregationIntervalParentDateFormat()))
 }
 
-func (r *repository) totalActiveUsersGlobalParentKey(date *stdlibtime.Time) string {
-	return fmt.Sprintf("%v_%v", totalActiveUsersGlobalKey, date.Format(r.cfg.globalAggregationIntervalParentDateFormat()))
-}
-
 func (r *repository) totalUsersGlobalChildKey(date *stdlibtime.Time) string {
 	return fmt.Sprintf("%v_%v", totalUsersGlobalKey, date.Format(r.cfg.globalAggregationIntervalChildDateFormat()))
 }
 
 func (r *repository) totalActiveUsersGlobalChildKey(date *stdlibtime.Time) string {
 	return fmt.Sprintf("%v_%v", totalActiveUsersGlobalKey, date.Format(r.cfg.globalAggregationIntervalChildDateFormat()))
+}
+
+func (r *repository) totalActiveUsersGlobalChildrenKeys(date *stdlibtime.Time) []string {
+	parent := date.Truncate(r.cfg.GlobalAggregationInterval.Parent)
+	current := parent
+	keys := make([]string, 0)
+	for current.Before(parent.Add(r.cfg.GlobalAggregationInterval.Parent)) {
+		keys = append(keys, fmt.Sprintf("%v_%v", totalActiveUsersGlobalKey, current.Format(r.cfg.globalAggregationIntervalChildDateFormat())))
+		current = current.Add(r.cfg.GlobalAggregationInterval.Child)
+	}
+
+	return keys
 }
 
 func NanosSinceMidnight(now *time.Time) stdlibtime.Duration {
