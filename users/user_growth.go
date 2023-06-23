@@ -5,7 +5,6 @@ package users
 import (
 	"context"
 	"fmt"
-	"math"
 	"strings"
 	stdlibtime "time"
 
@@ -47,12 +46,8 @@ func (r *repository) generateUserGrowthKeys(now *time.Time, days uint64) []strin
 func (r *repository) aggregateGlobalValuesToGrowth(days uint64, now *time.Time, values []*GlobalUnsigned, keys []string) *UserGrowthStatistics {
 	nsSinceParentIntervalZeroValue := r.cfg.nanosSinceGlobalAggregationIntervalParentZeroValue(now)
 	stats := make([]*UserCountTimeSeriesDataPoint, days, days) //nolint:gosimple // .
-	type activeUsersAggregation struct {
-		Count  uint64
-		Sum    uint64
-		DayIdx uint64
-	}
-	var current activeUsersAggregation
+	var activeNow, activeMaxPerParent, dayIdx uint64
+	nowKey := r.totalActiveUsersGlobalChildKey(now.Time)
 	for ix, key := range keys {
 		if ix == 0 {
 			continue
@@ -66,34 +61,35 @@ func (r *repository) aggregateGlobalValuesToGrowth(days uint64, now *time.Time, 
 			}
 		}
 		if strings.HasPrefix(key, totalUsersGlobalKey) { //nolint:nestif // .
-			if current.DayIdx > 0 && current.Count > 0 {
-				stats[current.DayIdx-1].UserCount.Active = uint64(math.Round(float64(current.Sum) / float64(current.Count)))
+			if dayIdx > 0 {
+				stats[dayIdx-1].UserCount.Active = activeMaxPerParent
 			}
-			if stats[current.DayIdx] == nil {
-				stats[current.DayIdx] = new(UserCountTimeSeriesDataPoint)
+			if stats[dayIdx] == nil {
+				stats[dayIdx] = new(UserCountTimeSeriesDataPoint)
 			}
-			stats[current.DayIdx].UserCount.Total = val
-			if stats[current.DayIdx].Date == nil {
-				fullNegativeDayDuration := -1 * r.cfg.GlobalAggregationInterval.Parent * stdlibtime.Duration(current.DayIdx-1)
-				stats[current.DayIdx].Date = time.New(now.Add(fullNegativeDayDuration).Add(-nsSinceParentIntervalZeroValue - 1))
+			stats[dayIdx].UserCount.Total = val
+			if stats[dayIdx].Date == nil {
+				fullNegativeDayDuration := -1 * r.cfg.GlobalAggregationInterval.Parent * stdlibtime.Duration(dayIdx-1)
+				stats[dayIdx].Date = time.New(now.Add(fullNegativeDayDuration).Add(-nsSinceParentIntervalZeroValue - 1))
 			}
-			current = activeUsersAggregation{Count: 0, Sum: 0, DayIdx: current.DayIdx + 1}
+			activeMaxPerParent = 0
+			dayIdx++
 		} else {
-			current.Sum += val
-			if val > 0 {
-				current.Count++
+			if key == nowKey {
+				activeNow = val
+			}
+			if val > activeMaxPerParent {
+				activeMaxPerParent = val
 			}
 		}
 	}
-	if current.Count > 0 {
-		stats[current.DayIdx-1].UserCount.Active = uint64(math.Round(float64(current.Sum) / float64(current.Count)))
-	}
+	stats[dayIdx-1].UserCount.Active = activeMaxPerParent
 	stats[0].Total = values[0].Value
 
 	return &UserGrowthStatistics{
 		TimeSeries: stats,
 		UserCount: UserCount{
-			Active: stats[0].Active,
+			Active: activeNow,
 			Total:  values[0].Value,
 		},
 	}
