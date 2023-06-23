@@ -21,20 +21,26 @@ func (r *repository) GetUserGrowth(ctx context.Context, days uint64) (*UserGrowt
 	if ctx.Err() != nil {
 		return nil, errors.Wrap(ctx.Err(), "context failed")
 	}
-	const totalAndActiveFactor = 2
-	keys := make([]string, 0, totalAndActiveFactor*days+1)
-	keys = append(keys, totalUsersGlobalKey)
 	now := time.Now()
-	for day := stdlibtime.Duration(0); day < stdlibtime.Duration(days); day++ {
-		currentDay := now.Add(-1 * day * r.cfg.GlobalAggregationInterval.Parent)
-		keys = append(append(keys, r.totalUsersGlobalParentKey(&currentDay)), r.totalActiveUsersGlobalChildrenKeys(&currentDay)...)
-	}
+	keys := r.generateUserGrowthKeys(now, days)
 	values, err := r.getGlobalValues(ctx, keys...)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to getGlobalValues for keys:%#v", keys)
 	}
 
 	return r.aggregateGlobalValuesToGrowth(days, now, values, keys), nil
+}
+
+func (r *repository) generateUserGrowthKeys(now *time.Time, days uint64) []string {
+	const totalAndActiveFactor = 2
+	keys := make([]string, 0, totalAndActiveFactor*days+1)
+	keys = append(keys, totalUsersGlobalKey)
+	for day := stdlibtime.Duration(0); day < stdlibtime.Duration(days); day++ {
+		currentDay := now.Add(-1 * day * r.cfg.GlobalAggregationInterval.Parent)
+		keys = append(append(keys, r.totalUsersGlobalParentKey(&currentDay)), r.totalActiveUsersGlobalChildrenKeys(&currentDay)...)
+	}
+
+	return keys
 }
 
 //nolint:gocognit,revive,funlen // .
@@ -81,7 +87,9 @@ func (r *repository) aggregateGlobalValuesToGrowth(days uint64, now *time.Time, 
 			}
 		}
 	}
-	stats[current.DayIdx-1].UserCount.Active = uint64(math.Round(float64(current.Sum) / float64(current.Count)))
+	if current.Count > 0 {
+		stats[current.DayIdx-1].UserCount.Active = uint64(math.Round(float64(current.Sum) / float64(current.Count)))
+	}
 	stats[0].Total = values[0].Value
 
 	return &UserGrowthStatistics{
