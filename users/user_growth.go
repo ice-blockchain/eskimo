@@ -73,9 +73,7 @@ func (r *repository) aggregateGlobalValuesToGrowth(days uint64, now *time.Time, 
 				stats[current.DayIdx] = new(UserCountTimeSeriesDataPoint)
 			}
 			stats[current.DayIdx].UserCount.Total = val
-			if current.DayIdx == 0 && stats[current.DayIdx].Date == nil {
-				stats[current.DayIdx].Date = now
-			} else if stats[current.DayIdx].Date == nil {
+			if stats[current.DayIdx].Date == nil {
 				fullNegativeDayDuration := -1 * r.cfg.GlobalAggregationInterval.Parent * stdlibtime.Duration(current.DayIdx-1)
 				stats[current.DayIdx].Date = time.New(now.Add(fullNegativeDayDuration).Add(-nsSinceParentIntervalZeroValue - 1))
 			}
