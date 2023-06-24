@@ -195,11 +195,15 @@ func (ms *miningSession) detectIncrTotalActiveUsersKeys(repo *repository) []any 
 			repo.totalActiveUsersGlobalChildKey(ms.StartedAt.Time) == repo.totalActiveUsersGlobalChildKey(ms.PreviouslyEndedAt.Time)) {
 		start = start.Add(repo.cfg.GlobalAggregationInterval.Child)
 	}
+	start = start.Truncate(repo.cfg.GlobalAggregationInterval.Child)
+	end = end.Truncate(repo.cfg.GlobalAggregationInterval.Child)
 	for start.Before(end) {
 		keys = append(keys, repo.totalActiveUsersGlobalChildKey(&start))
 		start = start.Add(repo.cfg.GlobalAggregationInterval.Child)
 	}
-	keys = append(keys, repo.totalActiveUsersGlobalChildKey(&end))
+	if ms.PreviouslyEndedAt.IsNil() || repo.totalActiveUsersGlobalChildKey(&end) != repo.totalActiveUsersGlobalChildKey(ms.PreviouslyEndedAt.Time) {
+		keys = append(keys, repo.totalActiveUsersGlobalChildKey(&end))
+	}
 
 	return keys
 }
