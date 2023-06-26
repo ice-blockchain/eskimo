@@ -103,6 +103,7 @@ func (r *repository) updateReferredByForAllT1Referrals(ctx context.Context, user
 											  AND r.referred_by != r.id 
 											  AND r.username != r.id 
 											  AND r.referred_by != $1
+											  AND r.created_at < u.created_at
 										ORDER BY RANDOM() 
 										LIMIT 1
 									 ) X
