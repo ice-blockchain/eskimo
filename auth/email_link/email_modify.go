@@ -15,7 +15,7 @@ import (
 )
 
 //nolint:funlen,revive // Big rollback logic.
-func (c *client) handleEmailModification(ctx context.Context, els *emailLinkSignIns, newEmail, oldEmail, notifyEmail, confirmationCode string) error {
+func (c *client) handleEmailModification(ctx context.Context, els *emailLinkSignIn, newEmail, oldEmail, notifyEmail, confirmationCode string) error {
 	usr := new(users.User)
 	usr.ID = *els.UserID
 	usr.Email = newEmail
@@ -23,32 +23,32 @@ func (c *client) handleEmailModification(ctx context.Context, els *emailLinkSign
 	if err != nil {
 		return errors.Wrapf(err, "failed to modify user %v with email modification", els.UserID)
 	}
-	if rErr := c.resetLoginSession(ctx, &loginID{Email: newEmail, DeviceUniqueID: els.DeviceUniqueID}, confirmationCode); rErr != nil {
+	if rErr := c.resetLoginSession(ctx, &loginID{Email: newEmail, DeviceUniqueID: els.DeviceUniqueID}, els, confirmationCode); rErr != nil {
 		return multierror.Append( //nolint:wrapcheck // .
-			errors.Wrapf(c.rollbackEmailModification(ctx, usr.ID, oldEmail), "[rollback] rollbackEmailModification failed for email:%v", oldEmail),
+			errors.Wrapf(c.resetEmailModification(ctx, usr.ID, oldEmail), "[reset] resetEmailModification failed for email:%v", oldEmail),
 			errors.Wrapf(rErr, "failed to reset login session for email:%v", newEmail),
 		).ErrorOrNil()
 	}
 	if notifyEmail != "" {
-		rollbackEmailOTP, now := generateOTP(), time.Now()
-		rollbackEmailPayload, rErr := c.generateMagicLinkPayload(&loginID{Email: oldEmail, DeviceUniqueID: els.DeviceUniqueID}, newEmail, "", rollbackEmailOTP, now)
+		resetEmailOTP, now := generateOTP(), time.Now()
+		resetEmailPayload, rErr := c.generateMagicLinkPayload(&loginID{Email: oldEmail, DeviceUniqueID: els.DeviceUniqueID}, newEmail, "", resetEmailOTP, now)
 		if rErr != nil {
 			return multierror.Append( //nolint:wrapcheck // .
-				errors.Wrapf(c.rollbackEmailModification(ctx, usr.ID, oldEmail), "[rollback] rollbackEmailModification failed for email:%v", oldEmail),
+				errors.Wrapf(c.resetEmailModification(ctx, usr.ID, oldEmail), "[reset] resetEmailModification failed for email:%v", oldEmail),
 				errors.Wrapf(rErr, "can't generate link payload for email: %v", oldEmail),
 			).ErrorOrNil()
 		}
-		rollbackConfirmationCode := generateConfirmationCode()
-		if uErr := c.upsertEmailLinkSignIns(ctx, oldEmail, oldEmail, els.DeviceUniqueID, rollbackEmailOTP, rollbackConfirmationCode, now); uErr != nil {
+		resetConfirmationCode := generateConfirmationCode()
+		if uErr := c.upsertEmailLinkSignIn(ctx, oldEmail, oldEmail, els.DeviceUniqueID, resetEmailOTP, resetConfirmationCode, now); uErr != nil {
 			return multierror.Append( //nolint:wrapcheck // .
-				errors.Wrapf(c.rollbackEmailModification(ctx, usr.ID, oldEmail), "[rollback] rollbackEmailModification failed for email:%v", oldEmail),
+				errors.Wrapf(c.resetEmailModification(ctx, usr.ID, oldEmail), "[reset] resetEmailModification failed for email:%v", oldEmail),
 				errors.Wrapf(uErr, "failed to store/update email confirmation for email:%v", oldEmail),
 			).ErrorOrNil()
 		}
-		authLink := c.getRollbackAuthLink(rollbackEmailPayload, els.Language, rollbackConfirmationCode)
+		authLink := c.getResetAuthLink(resetEmailPayload, els.Language, resetConfirmationCode)
 		if sErr := c.sendNotifyEmailChanged(ctx, notifyEmail, authLink, els.Language); sErr != nil {
 			return multierror.Append( //nolint:wrapcheck // .
-				errors.Wrapf(c.rollbackEmailModification(ctx, usr.ID, oldEmail), "[rollback] rollbackEmailModification failed for email:%v", oldEmail),
+				errors.Wrapf(c.resetEmailModification(ctx, usr.ID, oldEmail), "[reset] resetEmailModification failed for email:%v", oldEmail),
 				errors.Wrapf(sErr, "failed to send notification email about email change for userID %v email %v", els.UserID, oldEmail),
 			).ErrorOrNil()
 		}
@@ -57,11 +57,11 @@ func (c *client) handleEmailModification(ctx context.Context, els *emailLinkSign
 	return nil
 }
 
-func (c *client) getRollbackAuthLink(token, language, confirmationCode string) string {
+func (c *client) getResetAuthLink(token, language, confirmationCode string) string {
 	return fmt.Sprintf("%s?token=%s&lang=%s&confirmationCode=%s", c.cfg.EmailValidation.AuthLink, token, language, confirmationCode)
 }
 
-func (c *client) rollbackEmailModification(ctx context.Context, userID users.UserID, oldEmail string) error {
+func (c *client) resetEmailModification(ctx context.Context, userID users.UserID, oldEmail string) error {
 	usr := new(users.User)
 	usr.ID = userID
 	usr.Email = oldEmail

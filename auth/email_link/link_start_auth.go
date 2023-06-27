@@ -19,13 +19,23 @@ import (
 	"github.com/ice-blockchain/wintr/time"
 )
 
+//nolint:funlen,gocognit // .
 func (c *client) SendSignInLinkToEmail(ctx context.Context, emailValue, deviceUniqueID, language string) (loginSession string, err error) {
 	if ctx.Err() != nil {
 		return "", errors.Wrap(ctx.Err(), "send sign in link to email failed because context failed")
 	}
 	id := loginID{emailValue, deviceUniqueID}
-	otp := generateOTP()
+	gUsr, err := c.getEmailLinkSignIn(ctx, &id)
+	if err != nil && !storage.IsErr(err, storage.ErrNotFound) {
+		return "", errors.Wrapf(err, "can't get user by:%#v", id)
+	}
 	now := time.Now()
+	if gUsr != nil && gUsr.BlockedUntil != nil {
+		if gUsr.BlockedUntil.After(*now.Time) {
+			return "", errors.Wrapf(ErrUserBlocked, "user:%#v is blocked", id)
+		}
+	}
+	otp := generateOTP()
 	oldEmail := users.ConfirmedEmail(ctx)
 	payload, err := c.generateMagicLinkPayload(&id, oldEmail, oldEmail, otp, now)
 	if err != nil {
@@ -36,22 +46,28 @@ func (c *client) SendSignInLinkToEmail(ctx context.Context, emailValue, deviceUn
 	if err != nil {
 		return "", errors.Wrap(err, "can't call generateLoginSession")
 	}
-	if uErr := c.upsertEmailLinkSignIns(ctx, id.Email, oldEmail, id.DeviceUniqueID, otp, confirmationCode, now); uErr != nil {
+	if uErr := c.upsertEmailLinkSignIn(ctx, id.Email, oldEmail, id.DeviceUniqueID, otp, confirmationCode, now); uErr != nil {
 		return "", errors.Wrapf(uErr, "failed to store/update email link sign ins for id:%#v", id)
 	}
 	authLink := c.getAuthLink(payload, language)
-	if sErr := c.sendValidationEmail(ctx, id.Email, language, authLink); sErr != nil {
+	var emailType string
+	if oldEmail != "" {
+		emailType = ModifyEmailType
+	} else {
+		emailType = SignInEmailType
+	}
+	if sErr := c.sendEmailWithType(ctx, emailType, id.Email, language, authLink); sErr != nil {
 		return "", errors.Wrapf(sErr, "failed to send validation email for id:%#v", id)
 	}
 
 	return loginSession, nil
 }
 
-func (c *client) sendValidationEmail(ctx context.Context, toEmail, language, link string) error {
+func (c *client) sendEmailWithType(ctx context.Context, emailType, toEmail, language, link string) error {
 	var tmpl *emailTemplate
-	tmpl, ok := allEmailLinkTemplates[ValidationEmailType][language]
+	tmpl, ok := allEmailLinkTemplates[emailType][language]
 	if !ok {
-		tmpl = allEmailLinkTemplates[ValidationEmailType][defaultLanguage]
+		tmpl = allEmailLinkTemplates[emailType][defaultLanguage]
 	}
 	data := struct {
 		Email string
@@ -74,11 +90,11 @@ func (c *client) sendValidationEmail(ctx context.Context, toEmail, language, lin
 	}, email.Participant{
 		Name:  "",
 		Email: toEmail,
-	}), "failed to send validation email for user with email:%v", toEmail)
+	}), "failed to send email with type:%v for user with email:%v", emailType, toEmail)
 }
 
 //nolint:revive // .
-func (c *client) upsertEmailLinkSignIns(ctx context.Context, toEmail, oldEmail, deviceUniqueID, otp, code string, now *time.Time) error {
+func (c *client) upsertEmailLinkSignIn(ctx context.Context, toEmail, oldEmail, deviceUniqueID, otp, code string, now *time.Time) error {
 	customClaimsFromOldEmail := "null"
 	confirmationCodeWrongAttempts := 0
 	params := []any{now.Time, toEmail, deviceUniqueID, otp, code, confirmationCodeWrongAttempts}

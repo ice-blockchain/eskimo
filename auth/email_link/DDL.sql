@@ -3,8 +3,9 @@
 CREATE TABLE IF NOT EXISTS email_link_sign_ins (
            created_at                             timestamp NOT NULL,
            token_issued_at                        timestamp,
-           issued_token_seq                       BIGINT DEFAULT 0,
-           confirmation_code_wrong_attempts_count BIGINT DEFAULT 0,
+           blocked_until                          timestamp,
+           issued_token_seq                       BIGINT DEFAULT 0 NOT NULL,
+           confirmation_code_wrong_attempts_count BIGINT DEFAULT 0 NOT NULL,
            email                                  TEXT NOT NULL,
            otp                                    TEXT NOT NULL,
            confirmation_code                      TEXT,

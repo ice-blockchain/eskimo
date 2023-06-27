@@ -190,7 +190,7 @@ func (s *service) emailUpdateRequested(
 	}
 	if loginSession, err = s.authEmailLinkClient.SendSignInLinkToEmail(
 		users.ConfirmedEmailContext(ctx, loggedInUser.Email),
-		newEmail, deviceID, oldUser.Email,
+		newEmail, deviceID, oldUser.Language,
 	); err != nil {
 		return "", "", errors.Wrapf(err, "can't send sign in link to email:%v", newEmail)
 	}

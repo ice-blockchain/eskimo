@@ -89,7 +89,7 @@ func (c *client) incrementRefreshTokenSeq(
 	return updatedValue.IssuedTokenSeq, nil
 }
 
-func (c *client) generateTokens(now *time.Time, els *emailLinkSignIns, seq int64) (tokens *Tokens, err error) {
+func (c *client) generateTokens(now *time.Time, els *emailLinkSignIn, seq int64) (tokens *Tokens, err error) {
 	var claims map[string]any
 	if els.CustomClaims != nil {
 		claims = *els.CustomClaims

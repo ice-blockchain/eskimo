@@ -43,6 +43,7 @@ auth/email-link:
     authLink: https://localhost:1443/v1w/auth/finish
     jwtSecret: bogus
     expirationTime: 1h
+    blockDuration: 10m
   loginSession:
     jwtSecret: bogus
     expirationTime: 20m

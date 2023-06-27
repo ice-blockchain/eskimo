@@ -11,7 +11,7 @@ import (
 	"github.com/ice-blockchain/wintr/connectors/storage/v2"
 )
 
-func (c *client) getEmailLinkSignInByPk(ctx context.Context, id *loginID, oldEmail string) (*emailLinkSignIns, error) {
+func (c *client) getEmailLinkSignInByPk(ctx context.Context, id *loginID, oldEmail string) (*emailLinkSignIn, error) {
 	userID, err := c.findOrGenerateUserID(ctx, id.Email, oldEmail)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to fetch or generate userID for email:%v", id.Email)
@@ -36,10 +36,14 @@ func (c *client) findOrGenerateUserID(ctx context.Context, email, oldEmail strin
 	type dbUserID struct {
 		ID string
 	}
-	sql := `SELECT 
-				id 
-			FROM users 
-			WHERE email = $1 OR id = $2`
+	sql := `SELECT id 
+				FROM users 
+					WHERE email = $1
+			UNION ALL
+			SELECT COALESCE(user_id, $2) AS id 
+				FROM email_link_sign_ins
+					WHERE email = $1
+			LIMIT 1`
 	ids, err := storage.Select[dbUserID](ctx, c.db, sql, searchEmail, randomID)
 	if err != nil || len(ids) == 0 {
 		if storage.IsErr(err, storage.ErrNotFound) || len(ids) == 0 {
@@ -48,24 +52,21 @@ func (c *client) findOrGenerateUserID(ctx context.Context, email, oldEmail strin
 
 		return "", errors.Wrapf(err, "failed to find user by userID:%v or email:%v", randomID, email)
 	}
-	if ids[0].ID == randomID || (len(ids) > 1) {
-		return c.findOrGenerateUserID(ctx, email, oldEmail)
-	}
 
 	return ids[0].ID, nil
 }
 
 //nolint:funlen // .
-func (c *client) getUserByIDOrPk(ctx context.Context, userID string, id *loginID) (*emailLinkSignIns, error) {
+func (c *client) getUserByIDOrPk(ctx context.Context, userID string, id *loginID) (*emailLinkSignIn, error) {
 	if ctx.Err() != nil {
 		return nil, errors.Wrap(ctx.Err(), "get user by id or email failed because context failed")
 	}
-
-	usr, err := storage.Get[emailLinkSignIns](ctx, c.db, `
+	usr, err := storage.Get[emailLinkSignIn](ctx, c.db, `
 		WITH emails AS (
 			SELECT
 				token_issued_at,
 				issued_token_seq,
+				blocked_until,
 				confirmation_code_wrong_attempts_count,
 				otp,
 				confirmation_code,
@@ -81,6 +82,7 @@ func (c *client) getUserByIDOrPk(ctx context.Context, userID string, id *loginID
 		SELECT
 				emails.token_issued_at       			 	  	   AS token_issued_at,
 				emails.issued_token_seq       			 	  	   AS issued_token_seq,
+				emails.blocked_until       			 	  	   	   AS blocked_until,
 				emails.confirmation_code_wrong_attempts_count 	   AS confirmation_code_wrong_attempts_count,
 				emails.otp       						 	  	   AS otp,
 				emails.confirmation_code       			 	  	   AS confirmation_code,
@@ -102,7 +104,7 @@ func (c *client) getUserByIDOrPk(ctx context.Context, userID string, id *loginID
 	return usr, nil
 }
 
-func (c *client) getConfirmedEmailLinkSignIns(ctx context.Context, id *loginID, confirmationCode string) (*emailLinkSignIns, error) {
+func (c *client) getConfirmedEmailLinkSignIn(ctx context.Context, id *loginID, confirmationCode string) (*emailLinkSignIn, error) {
 	if ctx.Err() != nil {
 		return nil, errors.Wrap(ctx.Err(), "get user by id or email failed because context failed")
 	}
@@ -111,9 +113,25 @@ func (c *client) getConfirmedEmailLinkSignIns(ctx context.Context, id *loginID, 
 			WHERE confirmation_code = $1 
 	  			  AND email = $2
 				  AND device_unique_id = $3`
-	usr, err := storage.Get[emailLinkSignIns](ctx, c.db, sql, confirmationCode, id.Email, id.DeviceUniqueID)
+	usr, err := storage.Get[emailLinkSignIn](ctx, c.db, sql, confirmationCode, id.Email, id.DeviceUniqueID)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to get user by loginSession:%v and id:%#v", confirmationCode, id)
+		return nil, errors.Wrapf(err, "failed to get user by confirmation code:%v and id:%#v", confirmationCode, id)
+	}
+
+	return usr, nil
+}
+
+func (c *client) getEmailLinkSignIn(ctx context.Context, id *loginID) (*emailLinkSignIn, error) {
+	if ctx.Err() != nil {
+		return nil, errors.Wrap(ctx.Err(), "get user by id or email failed because context failed")
+	}
+	sql := `SELECT *
+			FROM email_link_sign_ins
+			WHERE email = $1
+				  AND device_unique_id = $2`
+	usr, err := storage.Get[emailLinkSignIn](ctx, c.db, sql, id.Email, id.DeviceUniqueID)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to get email sign in by id:%#v", id)
 	}
 
 	return usr, nil

@@ -51,6 +51,7 @@ var (
 	ErrConfirmationCodeAttemptsExceeded = errors.New("confirmation code attempts exceeded")
 	ErrStatusNotVerified                = errors.New("not verified")
 	ErrNoPendingLoginSession            = errors.New("no pending login session")
+	ErrUserBlocked                      = errors.New("user is blocked")
 )
 
 // Private API.
@@ -60,8 +61,9 @@ const (
 	jwtIssuer          = "ice.io"
 	defaultLanguage    = "en"
 
-	ValidationEmailType    string = "validation"
+	SignInEmailType        string = "signin"
 	NotifyEmailChangedType string = "notify_changed"
+	ModifyEmailType        string = "modify_email"
 )
 
 type (
@@ -84,6 +86,7 @@ type (
 			AuthLink       string              `yaml:"authLink"`
 			JwtSecret      string              `yaml:"jwtSecret"`
 			ExpirationTime stdlibtime.Duration `yaml:"expirationTime" mapstructure:"expirationTime"`
+			BlockDuration  stdlibtime.Duration `yaml:"blockDuration"`
 		} `yaml:"emailValidation"`
 		ConfirmationCode struct {
 			MaxWrongAttemptsCount int64 `yaml:"maxWrongAttemptsCount"`
@@ -108,9 +111,10 @@ type (
 	issuedTokenSeq struct {
 		IssuedTokenSeq int64 `db:"issued_token_seq"`
 	}
-	emailLinkSignIns struct {
+	emailLinkSignIn struct {
 		CreatedAt                          *time.Time
 		TokenIssuedAt                      *time.Time
+		BlockedUntil                       *time.Time
 		CustomClaims                       *users.JSON `json:"customClaims,omitempty"`
 		UserID                             *string     `json:"userId" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
 		Email                              string      `json:"email,omitempty" example:"someone1@example.com"`
@@ -140,7 +144,8 @@ var (
 
 	//nolint:gochecknoglobals // It's just for more descriptive validation messages.
 	allEmailTypes = users.Enum[string]{
-		"validation",
-		"notify_changed",
+		SignInEmailType,
+		ModifyEmailType,
+		NotifyEmailChangedType,
 	}
 )

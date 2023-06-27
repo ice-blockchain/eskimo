@@ -40,6 +40,10 @@ func (s *service) SendSignInLinkToEmail( //nolint:gocritic // .
 ) (*server.Response[Auth], *server.Response[server.ErrorResponse]) {
 	loginSession, err := s.authEmailLinkClient.SendSignInLinkToEmail(ctx, req.Data.Email, req.Data.DeviceUniqueID, req.Data.Language)
 	if err != nil {
+		if errors.Is(err, emaillink.ErrUserBlocked) {
+			return nil, server.BadRequest(err, userBlockedErrorCode)
+		}
+
 		return nil, server.Unexpected(errors.Wrapf(err, "failed to start email link auth %#v", req.Data))
 	}
 
