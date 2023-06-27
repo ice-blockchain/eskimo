@@ -13,6 +13,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/ice-blockchain/eskimo/users"
+	"github.com/ice-blockchain/wintr/auth"
 	"github.com/ice-blockchain/wintr/log"
 	"github.com/ice-blockchain/wintr/server"
 	"github.com/ice-blockchain/wintr/terror"
@@ -65,6 +66,10 @@ func (s *service) CreateUser( //nolint:gocritic // .
 			return nil, server.Unexpected(err)
 		}
 	}
+	err := server.Auth(ctx).UpdateCustomClaims(ctx, usr.ID, map[string]any{"hashCode": fmt.Sprint(usr.HashCode)})
+	if err != nil && !errors.Is(err, auth.ErrUserNotFound) {
+		return nil, server.Unexpected(errors.Wrapf(err, "failed to update auth CustomClaims for:%#v", usr))
+	}
 	usr.HashCode = 0
 
 	return server.Created(&User{User: usr, Checksum: usr.Checksum()}), nil
@@ -113,7 +118,12 @@ func (s *service) ModifyUser( //nolint:gocritic,funlen // .
 		return nil, err
 	}
 	usr := buildUserForModification(req)
-	loginSession, err := s.usersProcessor.ModifyUser(users.ContextWithChecksum(ctx, req.Data.Checksum), usr, req.Data.ProfilePicture)
+	var err error
+	var loginSession string
+	if usr.Email, loginSession, err = s.emailUpdateRequested(ctx, &req.AuthenticatedUser, usr.Email); err != nil {
+		return nil, server.Unexpected(errors.Wrapf(err, "failed to trigger email modification for request:%#v", req.Data))
+	}
+	err = s.usersProcessor.ModifyUser(users.ContextWithChecksum(ctx, req.Data.Checksum), usr, req.Data.ProfilePicture)
 	if err != nil {
 		err = errors.Wrapf(err, "failed to modify user for %#v", req.Data)
 		switch {
@@ -158,6 +168,34 @@ func validateModifyUser(ctx context.Context, req *server.Request[ModifyUserReque
 	}
 
 	return validateHiddenProfileElements(req)
+}
+
+func (s *service) emailUpdateRequested(
+	ctx context.Context,
+	loggedInUser *server.AuthenticatedUser,
+	newEmail string,
+) (emailForUpdate, loginSession string, err error) {
+	if newEmail == "" || newEmail == loggedInUser.Email {
+		return "", "", nil
+	}
+	// User uses firebase.
+	if strings.HasPrefix(loggedInUser.Provider, "https://securetoken.google.com") {
+		return newEmail, "", nil
+	}
+	deviceID := loggedInUser.Claims[deviceIDTokenClaim].(string) //nolint:errcheck,forcetypeassert // .
+	// Ask FE to add header with language to avoid extra db call?
+	oldUser, err := s.usersProcessor.GetUserByID(ctx, loggedInUser.UserID)
+	if err != nil {
+		return "", "", errors.Wrapf(err, "get user %v failed", loggedInUser.UserID)
+	}
+	if loginSession, err = s.authEmailLinkClient.SendSignInLinkToEmail(
+		users.ConfirmedEmailContext(ctx, loggedInUser.Email),
+		newEmail, deviceID, oldUser.Email,
+	); err != nil {
+		return "", "", errors.Wrapf(err, "can't send sign in link to email:%v", newEmail)
+	}
+
+	return "", loginSession, nil
 }
 
 func validateHiddenProfileElements(req *server.Request[ModifyUserRequestBody, ModifyUserResponse]) *server.Response[server.ErrorResponse] {
@@ -298,7 +336,7 @@ func (s *service) DeleteUser( //nolint:gocritic // False negative.
 
 		return nil, server.Unexpected(errors.Wrapf(err, "failed to delete user with id: %v", req.Data.UserID))
 	}
-	if err := server.Auth(ctx).DeleteUser(ctx, req.Data.UserID); err != nil {
+	if err := server.Auth(ctx).DeleteUser(ctx, req.Data.UserID); err != nil && !errors.Is(err, auth.ErrUserNotFound) {
 		return nil, server.Unexpected(errors.Wrapf(err, "failed to delete auth user:%#v", req.Data.UserID))
 	}
 

@@ -15,10 +15,10 @@ import (
 func (s *service) setupAuthRoutes(router *server.Router) {
 	router.
 		Group("v1w").
-		POST("auth", server.RootHandler(s.SendSignInLinkToEmail)).
-		POST("auth/refresh", server.RootHandler(s.RegenerateTokens)).
-		GET("auth/finish", server.RootHandler(s.SignIn)).
-		POST("auth/status", server.RootHandler(s.Status))
+		POST("auth/sendSignInLinkToEmail", server.RootHandler(s.SendSignInLinkToEmail)).
+		POST("auth/refreshTokens", server.RootHandler(s.RegenerateTokens)).
+		POST("auth/signInWithEmailLink", server.RootHandler(s.SignIn)).
+		POST("auth/getSignInWithEmailLinkStatus", server.RootHandler(s.Status))
 }
 
 // SendSignInLinkToEmail godoc
@@ -33,7 +33,7 @@ func (s *service) setupAuthRoutes(router *server.Router) {
 //	@Failure		422		{object}	server.ErrorResponse	"if syntax fails"
 //	@Failure		500		{object}	server.ErrorResponse
 //	@Failure		504		{object}	server.ErrorResponse	"if request times out"
-//	@Router			/auth [POST].
+//	@Router			/auth/sendSignInLinkToEmail [POST].
 func (s *service) SendSignInLinkToEmail( //nolint:gocritic // .
 	ctx context.Context,
 	req *server.Request[SendSignInLinkToEmailRequestArg, Auth],
@@ -52,14 +52,14 @@ func (s *service) SendSignInLinkToEmail( //nolint:gocritic // .
 //	@Description	Finishes login flow using magic link
 //	@Tags			Auth
 //	@Produce		json
-//	@Param			token	query		string	true	"Request params"
+//	@Param			request	body		MagicLinkPayload	true	"Request params"
 //	@Success		200		{object}	any
 //	@Failure		400		{object}	server.ErrorResponse	"if invalid or expired payload provided"
 //	@Failure		404		{object}	server.ErrorResponse	"if email does not need to be confirmed by magic link"
 //	@Failure		422		{object}	server.ErrorResponse	"if syntax fails"
 //	@Failure		500		{object}	server.ErrorResponse
 //	@Failure		504		{object}	server.ErrorResponse	"if request times out"
-//	@Router			/auth/finish [GET].
+//	@Router			/auth/signInWithEmailLink [POST].
 func (s *service) SignIn( //nolint:gocritic // .
 	ctx context.Context,
 	req *server.Request[MagicLinkPayload, any],
@@ -101,7 +101,7 @@ func (s *service) SignIn( //nolint:gocritic // .
 //	@Failure		422				{object}	server.ErrorResponse	"if syntax fails"
 //	@Failure		500				{object}	server.ErrorResponse
 //	@Failure		504				{object}	server.ErrorResponse	"if request times out"
-//	@Router			/auth/refresh [POST].
+//	@Router			/auth/refreshTokens [POST].
 func (s *service) RegenerateTokens( //nolint:gocritic // .
 	ctx context.Context,
 	req *server.Request[RefreshToken, RefreshedToken],
@@ -140,7 +140,7 @@ func (s *service) RegenerateTokens( //nolint:gocritic // .
 //	@Failure		404		{object}	server.ErrorResponse	"if login session not found or confirmation code verifying failed"
 //	@Failure		500		{object}	server.ErrorResponse
 //	@Failure		504		{object}	server.ErrorResponse	"if request times out"
-//	@Router			/auth/status [POST].
+//	@Router			/auth/getSignInWithEmailLinkStatus [POST].
 func (s *service) Status( //nolint:gocritic // .
 	ctx context.Context,
 	req *server.Request[StatusArg, RefreshedToken],

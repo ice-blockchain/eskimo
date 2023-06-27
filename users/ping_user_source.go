@@ -35,7 +35,6 @@ func (s *userPingSource) Process(ctx context.Context, msg *messagebroker.Message
 	usr := new(User)
 	usr.ID = message.UserID
 	usr.LastPingCooldownEndedAt = message.LastPingCooldownEndedAt
-	_, err := s.ModifyUser(ctx, usr, nil)
 
-	return errors.Wrapf(err, "failed to modify user's LastPingCooldownEndedAt for %#v", usr)
+	return errors.Wrapf(s.ModifyUser(ctx, usr, nil), "failed to modify user's LastPingCooldownEndedAt for %#v", usr)
 }

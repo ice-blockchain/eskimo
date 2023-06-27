@@ -24,7 +24,7 @@ import (
 
 type (
 	UserModifier interface {
-		ModifyUser(ctx context.Context, usr *users.User, profilePicture *multipart.FileHeader) (confirmationCode string, err error)
+		ModifyUser(ctx context.Context, usr *users.User, profilePicture *multipart.FileHeader) error
 	}
 	Client interface {
 		io.Closer

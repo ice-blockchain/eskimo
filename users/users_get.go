@@ -13,16 +13,14 @@ import (
 	"github.com/ice-blockchain/wintr/time"
 )
 
-func (r *repository) getUserByID(ctx context.Context, id UserID) (*userSignedInByEmail, error) {
+func (r *repository) getUserByID(ctx context.Context, id UserID) (*User, error) {
 	if ctx.Err() != nil {
 		return nil, errors.Wrap(ctx.Err(), "get user failed because context failed")
 	}
-	//nolint:misspell // Wrong.
-	result, err := storage.Get[userSignedInByEmail](ctx, r.db, `
-	SELECT u.*, signins.device_unique_id
-		FROM users u
-		LEFT JOIN email_link_sign_ins signins ON u.email = signins.email and u.id = signins.user_id
-		WHERE u.id = $1`, id)
+	result, err := storage.Get[User](ctx, r.db, `
+	SELECT *
+		FROM users
+		WHERE id = $1`, id)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to get user by id %v", id)
 	}
@@ -59,11 +57,10 @@ func (r *repository) getOtherUserByID(ctx context.Context, userID string) (*User
 	if ctx.Err() != nil {
 		return nil, errors.Wrap(ctx.Err(), "get user failed because context failed")
 	}
-	usrSignedIn, err := r.getUserByID(ctx, userID)
+	usr, err := r.getUserByID(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
-	usr := usrSignedIn.User
 	*usr = User{
 		HiddenProfileElements: usr.HiddenProfileElements,
 		PublicUserInformation: usr.PublicUserInformation,

@@ -19,9 +19,9 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/auth": {
+        "/auth/getSignInWithEmailLinkStatus": {
             "post": {
-                "description": "Starts email link auth process",
+                "description": "Status of the auth process",
                 "consumes": [
                     "application/json"
                 ],
@@ -38,7 +38,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/main.SendSignInLinkToEmailRequestArg"
+                            "$ref": "#/definitions/main.StatusArg"
                         }
                     }
                 ],
@@ -49,60 +49,14 @@ const docTemplate = `{
                             "$ref": "#/definitions/main.Auth"
                         }
                     },
-                    "422": {
-                        "description": "if syntax fails",
-                        "schema": {
-                            "$ref": "#/definitions/server.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/server.ErrorResponse"
-                        }
-                    },
-                    "504": {
-                        "description": "if request times out",
-                        "schema": {
-                            "$ref": "#/definitions/server.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/auth/finish": {
-            "get": {
-                "description": "Finishes login flow using magic link",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Auth"
-                ],
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Request params",
-                        "name": "token",
-                        "in": "query",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object"
-                        }
-                    },
-                    "400": {
-                        "description": "if invalid or expired payload provided",
+                    "403": {
+                        "description": "if invalid or expired login session provided",
                         "schema": {
                             "$ref": "#/definitions/server.ErrorResponse"
                         }
                     },
                     "404": {
-                        "description": "if email does not need to be confirmed by magic link",
+                        "description": "if login session not found or confirmation code verifying failed",
                         "schema": {
                             "$ref": "#/definitions/server.ErrorResponse"
                         }
@@ -128,7 +82,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/auth/refresh": {
+        "/auth/refreshTokens": {
             "post": {
                 "description": "Issues new access token",
                 "consumes": [
@@ -205,9 +159,9 @@ const docTemplate = `{
                 }
             }
         },
-        "/auth/status": {
+        "/auth/sendSignInLinkToEmail": {
             "post": {
-                "description": "Status of the auth process",
+                "description": "Starts email link auth process",
                 "consumes": [
                     "application/json"
                 ],
@@ -224,7 +178,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/main.StatusArg"
+                            "$ref": "#/definitions/main.SendSignInLinkToEmailRequestArg"
                         }
                     }
                 ],
@@ -235,14 +189,62 @@ const docTemplate = `{
                             "$ref": "#/definitions/main.Auth"
                         }
                     },
-                    "403": {
-                        "description": "if invalid or expired login session provided",
+                    "422": {
+                        "description": "if syntax fails",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    },
+                    "504": {
+                        "description": "if request times out",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/signInWithEmailLink": {
+            "post": {
+                "description": "Finishes login flow using magic link",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "parameters": [
+                    {
+                        "description": "Request params",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.MagicLinkPayload"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object"
+                        }
+                    },
+                    "400": {
+                        "description": "if invalid or expired payload provided",
                         "schema": {
                             "$ref": "#/definitions/server.ErrorResponse"
                         }
                     },
                     "404": {
-                        "description": "if login session not found or confirmation code verifying failed",
+                        "description": "if email does not need to be confirmed by magic link",
                         "schema": {
                             "$ref": "#/definitions/server.ErrorResponse"
                         }
@@ -870,6 +872,19 @@ const docTemplate = `{
                     "description": "Optional. Required only if ` + "`" + `phoneNumber` + "`" + ` is set.",
                     "type": "string",
                     "example": "Ef86A6021afCDe5673511376B2"
+                }
+            }
+        },
+        "main.MagicLinkPayload": {
+            "type": "object",
+            "properties": {
+                "confirmationCode": {
+                    "type": "string",
+                    "example": "999"
+                },
+                "emailToken": {
+                    "type": "string",
+                    "example": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJPbmxpbmUgSldUIEJ1aWxkZXIiLCJpYXQiOjE2ODQzMjQ0NTYsImV4cCI6MTcxNTg2MDQ1NiwiYXVkIjoiIiwic3ViIjoianJvY2tldEBleGFtcGxlLmNvbSIsIm90cCI6IjUxMzRhMzdkLWIyMWEtNGVhNi1hNzk2LTAxOGIwMjMwMmFhMCJ9.q3xa8Gwg2FVCRHLZqkSedH3aK8XBqykaIy85rRU40nM"
                 }
             }
         },

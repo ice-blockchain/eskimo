@@ -106,8 +106,8 @@ type (
 		*emaillink.Tokens
 	}
 	MagicLinkPayload struct {
-		EmailToken       string `form:"token" required:"true" allowUnauthorized:"true" example:"eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJPbmxpbmUgSldUIEJ1aWxkZXIiLCJpYXQiOjE2ODQzMjQ0NTYsImV4cCI6MTcxNTg2MDQ1NiwiYXVkIjoiIiwic3ViIjoianJvY2tldEBleGFtcGxlLmNvbSIsIm90cCI6IjUxMzRhMzdkLWIyMWEtNGVhNi1hNzk2LTAxOGIwMjMwMmFhMCJ9.q3xa8Gwg2FVCRHLZqkSedH3aK8XBqykaIy85rRU40nM"` //nolint:lll // .
-		ConfirmationCode string `form:"confirmationCode" required:"true" example:"999"`
+		EmailToken       string `json:"emailToken" required:"true" allowUnauthorized:"true" example:"eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJPbmxpbmUgSldUIEJ1aWxkZXIiLCJpYXQiOjE2ODQzMjQ0NTYsImV4cCI6MTcxNTg2MDQ1NiwiYXVkIjoiIiwic3ViIjoianJvY2tldEBleGFtcGxlLmNvbSIsIm90cCI6IjUxMzRhMzdkLWIyMWEtNGVhNi1hNzk2LTAxOGIwMjMwMmFhMCJ9.q3xa8Gwg2FVCRHLZqkSedH3aK8XBqykaIy85rRU40nM"` //nolint:lll // .
+		ConfirmationCode string `json:"confirmationCode" required:"true" example:"999"`
 	}
 	RefreshToken struct {
 		// Optional. In null - current claims are used, if any value - it would be overwritten. Example {"role":"new_role"}.
@@ -143,6 +143,8 @@ const (
 
 	noPendingLoginSessionErrorCode = "NO_PENDING_LOGIN_SESSION"
 	statusNotVerifiedErrorCode     = "NOT_VERIFIED"
+
+	deviceIDTokenClaim = "deviceUniqueID" //nolint:gosec // .
 )
 
 // .

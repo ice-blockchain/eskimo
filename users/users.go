@@ -69,10 +69,6 @@ func StartProcessor(ctx context.Context, cancel context.CancelFunc) Processor {
 	return prc
 }
 
-func (r *repository) SetEmailValidationStarter(evs EmailValidationStarter) {
-	r.emailValidator = evs
-}
-
 func (r *repository) Close() error {
 	return errors.Wrap(r.shutdown(), "closing users repository failed")
 }

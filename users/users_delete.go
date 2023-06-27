@@ -20,10 +20,10 @@ func (r *repository) DeleteUser(ctx context.Context, userID UserID) error {
 	if err != nil {
 		return errors.Wrapf(err, "failed to get user for userID:%v", userID)
 	}
-	if err = r.deleteUser(ctx, gUser.User); err != nil {
+	if err = r.deleteUser(ctx, gUser); err != nil {
 		return errors.Wrapf(err, "failed to deleteUser for:%#v", gUser)
 	}
-	u := &UserSnapshot{Before: r.sanitizeUser(gUser.User)}
+	u := &UserSnapshot{Before: r.sanitizeUser(gUser)}
 	if err = r.sendUserSnapshotMessage(ctx, u); err != nil {
 		return errors.Wrapf(err, "failed to send deleted user message for %#v", u)
 	}
@@ -53,7 +53,7 @@ func (r *repository) deleteUser(ctx context.Context, usr *User) error { //nolint
 	if err != nil {
 		return errors.Wrapf(err, "failed to get user for userID:%v", usr.ID)
 	}
-	*usr = *(gUser.User)
+	*usr = *(gUser)
 	sql := `DELETE FROM users WHERE id = $1`
 	if _, tErr := storage.Exec(ctx, r.db, sql, usr.ID); tErr != nil {
 		if storage.IsErr(tErr, storage.ErrRelationNotFound) {
@@ -136,8 +136,7 @@ func (r *repository) updateReferredByForAllT1Referrals(ctx context.Context, user
 			res[ix].User.ReferredBy = res[ix].NewReferredBy
 			valTrue := true
 			res[ix].User.RandomReferredBy = &valTrue
-			_, mErr := r.ModifyUser(ctx, &res[ix].User, nil)
-			errChan <- errors.Wrapf(mErr,
+			errChan <- errors.Wrapf(r.ModifyUser(ctx, &res[ix].User, nil),
 				"failed to update referred by for userID:%v", res[ix].User.ID)
 		}(ii)
 	}

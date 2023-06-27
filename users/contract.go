@@ -174,8 +174,7 @@ type (
 	WriteRepository interface {
 		CreateUser(ctx context.Context, usr *User, clientIP net.IP) error
 		DeleteUser(ctx context.Context, userID UserID) error
-		ModifyUser(ctx context.Context, usr *User, profilePicture *multipart.FileHeader) (string, error)
-		SetEmailValidationStarter(evs EmailValidationStarter)
+		ModifyUser(ctx context.Context, usr *User, profilePicture *multipart.FileHeader) error
 	}
 	// Repository main API exposed that handles all the features of this package.
 	Repository interface {
@@ -188,9 +187,6 @@ type (
 	Processor interface {
 		Repository
 		CheckHealth(context.Context) error
-	}
-	EmailValidationStarter interface {
-		SendSignInLinkToEmail(ctx context.Context, email, deviceUniqueID, language string) (loginSession string, err error)
 	}
 )
 
@@ -232,11 +228,6 @@ var (
 )
 
 type (
-	userSignedInByEmail struct {
-		*User
-		DeviceUniqueID *string
-	}
-
 	miningSession struct {
 		LastNaturalMiningStartedAt *time.Time          `json:"lastNaturalMiningStartedAt,omitempty" example:"2022-01-03T16:20:52.156534Z" swaggerignore:"true"`
 		StartedAt                  *time.Time          `json:"startedAt,omitempty" example:"2022-01-03T16:20:52.156534Z"`
@@ -265,7 +256,6 @@ type (
 		pictureClient  picture.Client
 		trackingClient tracking.Client
 		shutdown       func() error
-		emailValidator EmailValidationStarter
 	}
 
 	processor struct {

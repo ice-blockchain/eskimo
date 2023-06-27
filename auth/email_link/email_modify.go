@@ -19,7 +19,7 @@ func (c *client) handleEmailModification(ctx context.Context, els *emailLinkSign
 	usr := new(users.User)
 	usr.ID = *els.UserID
 	usr.Email = newEmail
-	_, err := c.userModifier.ModifyUser(users.ConfirmedEmailContext(ctx, newEmail), usr, nil)
+	err := c.userModifier.ModifyUser(users.ConfirmedEmailContext(ctx, newEmail), usr, nil)
 	if err != nil {
 		return errors.Wrapf(err, "failed to modify user %v with email modification", els.UserID)
 	}
@@ -65,9 +65,8 @@ func (c *client) rollbackEmailModification(ctx context.Context, userID users.Use
 	usr := new(users.User)
 	usr.ID = userID
 	usr.Email = oldEmail
-	_, err := c.userModifier.ModifyUser(users.ConfirmedEmailContext(ctx, oldEmail), usr, nil)
 
-	return errors.Wrapf(err,
+	return errors.Wrapf(c.userModifier.ModifyUser(users.ConfirmedEmailContext(ctx, oldEmail), usr, nil),
 		"[rollback] failed to modify user:%v", userID)
 }
 
