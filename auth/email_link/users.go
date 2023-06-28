@@ -92,7 +92,8 @@ func (c *client) getUserByIDOrPk(ctx context.Context, userID string, id *loginID
 				u.language			    				 	  	   AS language,
 				u.hash_code,
 				emails.custom_claims    				 	  	   AS custom_claims
-			FROM users u, emails
+			FROM users u
+			JOIN emails ON u.email = emails.email and u.id = emails.user_id
 			WHERE u.id = $1
 		UNION ALL (select * from emails)
 		LIMIT 1
