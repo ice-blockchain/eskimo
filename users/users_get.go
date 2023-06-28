@@ -28,12 +28,12 @@ func (r *repository) getUserByID(ctx context.Context, id UserID) (*User, error) 
 	return result, nil
 }
 
-func (r *repository) GetUserByID(ctx context.Context, userID string) (*UserProfile, error) { //nolint:revive // Its fine.
+func (r *repository) GetUserByID(ctx context.Context, userIDs ...string) (*UserProfile, error) { //nolint:revive // Its fine.
 	if ctx.Err() != nil {
 		return nil, errors.Wrap(ctx.Err(), "get user failed because context failed")
 	}
-	if userID != requestingUserID(ctx) {
-		return r.getOtherUserByID(ctx, userID)
+	if userIDs[0] != requestingUserID(ctx) {
+		return r.getOtherUserByID(ctx, userIDs[0])
 	}
 	sql := `
 		SELECT  	
@@ -43,10 +43,10 @@ func (r *repository) GetUserByID(ctx context.Context, userID string) (*UserProfi
 		FROM users u 
 				LEFT JOIN referral_acquisition_history refs
 						ON refs.user_id = u.id
-		WHERE u.id = $1`
-	res, err := storage.Get[UserProfile](ctx, r.db, sql, userID)
+		WHERE u.id IN $1`
+	res, err := storage.Get[UserProfile](ctx, r.db, sql, userIDs)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to select user by id %v", userID)
+		return nil, errors.Wrapf(err, "failed to select user by id %v", userIDs)
 	}
 	r.sanitizeUser(res.User).sanitizeForUI()
 

@@ -80,13 +80,26 @@ func (s *service) GetUserByID( //nolint:gocritic // False negative.
 	ctx context.Context,
 	req *server.Request[GetUserByIDArg, User],
 ) (*server.Response[User], *server.Response[server.ErrorResponse]) {
-	usr, err := s.usersRepository.GetUserByID(ctx, req.Data.UserID)
+	currentlyFirebase := strings.HasPrefix(req.AuthenticatedUser.Provider, "https://securetoken.google.com")
+	userIDs := append(make([]string, 0, 1+1), req.Data.UserID)
+	if req.AuthenticatedUser.UserID == req.Data.UserID && currentlyFirebase {
+		if iceID, err := s.iceClient.IceUserID(ctx, req.AuthenticatedUser.Email); err == nil {
+			userIDs = append(userIDs, iceID)
+		}
+	}
+	usr, err := s.usersRepository.GetUserByID(ctx, userIDs...)
 	if err != nil {
 		if errors.Is(err, users.ErrNotFound) {
 			return nil, server.NotFound(errors.Wrapf(err, "user with id `%v` was not found", req.Data.UserID), userNotFoundErrorCode)
 		}
 
 		return nil, server.Unexpected(errors.Wrapf(err, "failed to get user by id: %v", req.Data.UserID))
+	}
+	// Move to FE?
+	if currentlyFirebase && req.Data.UserID != usr.ID {
+		if err = server.Auth(ctx).UpdateCustomClaims(ctx, req.Data.UserID, map[string]any{"iceID": usr.ID}); err != nil {
+			return nil, server.Unexpected(err)
+		}
 	}
 
 	return server.OK(&User{UserProfile: usr, Checksum: usr.Checksum()}), nil

@@ -41,6 +41,15 @@ func NewClient(ctx context.Context, userModifier UserModifier, authClient auth.C
 	}
 }
 
+func NewROClient(ctx context.Context) IceUserIDClient {
+	db := storage.MustConnect(ctx, ddl, applicationYamlKey)
+
+	return &client{
+		shutdown: db.Close,
+		db:       db,
+	}
+}
+
 func (c *client) Close() error {
 	return errors.Wrap(c.shutdown(), "closing auth/emaillink repository failed")
 }

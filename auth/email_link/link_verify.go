@@ -87,7 +87,11 @@ func (c *client) finishAuthProcess(ctx context.Context, id *loginID, userID, otp
 				SET token_issued_at = $2,
 					user_id = $3,
 					otp = $3,
-					issued_token_seq = COALESCE(issued_token_seq, 0) + 1
+					issued_token_seq = COALESCE(issued_token_seq, 0) + 1,
+				    custom_claims = (CASE 
+				   						 WHEN (SELECT id FROM users WHERE id = $3)=$3 AND (SELECT user_id FROM email_link_sign_ins WHERE email = $1) is NULL
+											THEN jsonb_build_object('firebaseID', $3)
+				    				ELSE null END)
 			WHERE email_link_sign_ins.email = $1
 				  AND otp = $4
 				  AND device_unique_id = $5

@@ -27,11 +27,15 @@ type (
 		ModifyUser(ctx context.Context, usr *users.User, profilePicture *multipart.FileHeader) error
 	}
 	Client interface {
-		io.Closer
+		IceUserIDClient
 		SendSignInLinkToEmail(ctx context.Context, emailValue, deviceUniqueID, language string) (loginSession string, err error)
 		SignIn(ctx context.Context, emailLinkPayload, confirmationCode string) error
 		RegenerateTokens(ctx context.Context, prevToken string, customClaims *users.JSON) (tokens *Tokens, err error)
 		Status(ctx context.Context, loginSession string) (tokens *Tokens, err error)
+	}
+	IceUserIDClient interface {
+		io.Closer
+		IceUserID(ctx context.Context, mail string) (string, error)
 	}
 	Tokens struct {
 		RefreshToken string `json:"refreshToken" example:"eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJPbmxpbmUgSldUIEJ1aWxkZXIiLCJpYXQiOjE2ODQzMjQ0NTYsImV4cCI6MTcxNTg2MDQ1NiwiYXVkIjoiIiwic3ViIjoianJvY2tldEBleGFtcGxlLmNvbSIsIm90cCI6IjUxMzRhMzdkLWIyMWEtNGVhNi1hNzk2LTAxOGIwMjMwMmFhMCJ9.q3xa8Gwg2FVCRHLZqkSedH3aK8XBqykaIy85rRU40nM"` //nolint:lll // .

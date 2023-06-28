@@ -33,6 +33,11 @@ func (c *client) findOrGenerateUserID(ctx context.Context, email, oldEmail strin
 	if oldEmail != "" {
 		searchEmail = oldEmail
 	}
+
+	return c.getUserIDFromEmail(ctx, searchEmail, randomID)
+}
+
+func (c *client) getUserIDFromEmail(ctx context.Context, searchEmail, idIfNotFound string) (userID string, err error) {
 	type dbUserID struct {
 		ID string
 	}
@@ -44,13 +49,13 @@ func (c *client) findOrGenerateUserID(ctx context.Context, email, oldEmail strin
 				FROM email_link_sign_ins
 					WHERE email = $1
 			LIMIT 1`
-	ids, err := storage.Select[dbUserID](ctx, c.db, sql, searchEmail, randomID)
+	ids, err := storage.Select[dbUserID](ctx, c.db, sql, searchEmail, idIfNotFound)
 	if err != nil || len(ids) == 0 {
 		if storage.IsErr(err, storage.ErrNotFound) || len(ids) == 0 {
-			return randomID, nil
+			return idIfNotFound, nil
 		}
 
-		return "", errors.Wrapf(err, "failed to find user by userID:%v or email:%v", randomID, email)
+		return "", errors.Wrapf(err, "failed to find user by email:%v", searchEmail)
 	}
 
 	return ids[0].ID, nil
@@ -136,4 +141,13 @@ func (c *client) getEmailLinkSignIn(ctx context.Context, id *loginID) (*emailLin
 	}
 
 	return usr, nil
+}
+
+func (c *client) IceUserID(ctx context.Context, email string) (string, error) {
+	userID, err := c.getUserIDFromEmail(ctx, email, "")
+	if err != nil {
+		return "", errors.Wrapf(err, "failed to fetch userID by email:%v", email)
+	}
+
+	return userID, nil
 }
