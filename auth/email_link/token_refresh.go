@@ -41,10 +41,7 @@ func (c *client) RegenerateTokens(ctx context.Context, previousRefreshToken stri
 			"user's email:%v does not match token's email:%v or deviceID:%v", usr.Email, token.Email, token.DeviceUniqueID)
 	}
 	now := time.Now()
-	if customClaims != nil {
-		usr.CustomClaims = customClaims
-	}
-	refreshTokenSeq, err := c.incrementRefreshTokenSeq(ctx, &id, token.Subject, token.Seq, now, customClaims)
+	refreshTokenSeq, mergedCustomClaims, err := c.incrementRefreshTokenSeq(ctx, &id, token.Subject, token.Seq, now, customClaims)
 	if err != nil {
 		if storage.IsErr(err, storage.ErrNotFound) {
 			return nil, errors.Wrapf(ErrInvalidToken, "refreshToken with wrong sequence:%v provided", token.Seq)
@@ -52,6 +49,7 @@ func (c *client) RegenerateTokens(ctx context.Context, previousRefreshToken stri
 
 		return nil, errors.Wrapf(err, "failed to update email link sign ins for email:%v", token.Email)
 	}
+	usr.CustomClaims = mergedCustomClaims
 	tokens, err = c.generateTokens(now, usr, refreshTokenSeq)
 
 	return tokens, errors.Wrapf(err, "can't generate tokens for userID:%v, email:%v", token.Subject, token.Email)
@@ -65,12 +63,16 @@ func (c *client) incrementRefreshTokenSeq(
 	currentSeq int64,
 	now *time.Time,
 	customClaims *users.JSON,
-) (tokenSeq int64, err error) {
+) (tokenSeq int64, mergedCustomClaims *users.JSON, err error) {
 	params := []any{id.Email, id.DeviceUniqueID, now.Time, userID, currentSeq}
 	customClaimsClause := ""
 	if customClaims != nil {
 		params = append(params, customClaims)
 		customClaimsClause = ",\n\t\t\t\tcustom_claims = (COALESCE(email_link_sign_ins.custom_claims,'{}'::jsonb)||$6::jsonb)"
+	}
+	type resp struct {
+		IssuedTokenSeq int64
+		CustomClaims   *users.JSON
 	}
 	sql := fmt.Sprintf(`
 		UPDATE email_link_sign_ins
@@ -80,13 +82,13 @@ func (c *client) incrementRefreshTokenSeq(
 				%v
 			WHERE  (email_link_sign_ins.email = $1 AND email_link_sign_ins.device_unique_id = $2) 
 				   AND (email_link_sign_ins.user_id = $4 AND email_link_sign_ins.issued_token_seq = $5)
-			RETURNING issued_token_seq`, customClaimsClause)
-	updatedValue, err := storage.ExecOne[issuedTokenSeq](ctx, c.db, sql, params...)
+			RETURNING issued_token_seq, custom_claims`, customClaimsClause)
+	updatedValue, err := storage.ExecOne[resp](ctx, c.db, sql, params...)
 	if err != nil {
-		return 0, errors.Wrapf(err, "failed to assign refreshed token to email link sign ins for params:%#v", params) //nolint:asasalint // Not this output.
+		return 0, nil, errors.Wrapf(err, "failed to assign refreshed token to email link sign ins for params:%#v", params) //nolint:asasalint // Not this output.
 	}
 
-	return updatedValue.IssuedTokenSeq, nil
+	return updatedValue.IssuedTokenSeq, updatedValue.CustomClaims, nil
 }
 
 func (c *client) generateTokens(now *time.Time, els *emailLinkSignIn, seq int64) (tokens *Tokens, err error) {
