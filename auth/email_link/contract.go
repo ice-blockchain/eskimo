@@ -113,9 +113,6 @@ type (
 		DeviceUniqueID   string `json:"deviceUniqueId,omitempty"`
 		ConfirmationCode string `json:"confirmationCode,omitempty"`
 	}
-	issuedTokenSeq struct {
-		IssuedTokenSeq int64 `db:"issued_token_seq"`
-	}
 	emailLinkSignIn struct {
 		CreatedAt                          *time.Time
 		TokenIssuedAt                      *time.Time
