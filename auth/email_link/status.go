@@ -39,13 +39,12 @@ func (c *client) Status(ctx context.Context, loginSession string) (tokens *Token
 
 func (c *client) resetLoginSession(ctx context.Context, id *loginID, els *emailLinkSignIn, confirmationCode string) error {
 	sql := `UPDATE email_link_sign_ins
-				   	  SET confirmation_code = email_link_sign_ins.user_id
-				WHERE email = $1
-					  AND device_unique_id = $2
-					  AND user_id = $3
+				   	  SET confirmation_code = $1
+				WHERE email = $2
+					  AND device_unique_id = $3
 					  AND otp = $4
 					  AND confirmation_code = $5`
-	_, err := storage.Exec(ctx, c.db, sql, id.Email, id.DeviceUniqueID, els.UserID, els.OTP, confirmationCode)
+	_, err := storage.Exec(ctx, c.db, sql, els.UserID, id.Email, id.DeviceUniqueID, els.OTP, confirmationCode)
 
 	return errors.Wrapf(err, "failed to reset login session by id:%#v and confirmationCode:%v", id, confirmationCode)
 }
