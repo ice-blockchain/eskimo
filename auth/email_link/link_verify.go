@@ -89,10 +89,10 @@ func (c *client) finishAuthProcess(ctx context.Context, id *loginID, userID, otp
 					user_id = $3,
 					otp = $3,
 					issued_token_seq = COALESCE(issued_token_seq, 0) + 1,
-				    custom_claims = (CASE 
-				   						 WHEN (SELECT id FROM users WHERE id = $3)=$3 AND (SELECT user_id FROM email_link_sign_ins WHERE email = $1) is NULL
+				    custom_claims = (COALESCE(email_link_sign_ins.custom_claims,'{}'::jsonb)||(CASE 
+				   						 WHEN (SELECT id FROM users WHERE id = $3)=$3 AND (SELECT user_id FROM email_link_sign_ins WHERE user_id = $3) is NULL 
 											THEN jsonb_build_object('%[1]v', $3, '%[2]v', '%[3]v')
-				    				ELSE jsonb_build_object('%[2]v', '%[4]v') END)
+				    				ELSE jsonb_build_object('%[2]v', '%[4]v') END))
 			WHERE email_link_sign_ins.email = $1
 				  AND otp = $4
 				  AND device_unique_id = $5

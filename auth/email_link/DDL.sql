@@ -14,3 +14,4 @@ CREATE TABLE IF NOT EXISTS email_link_sign_ins (
            custom_claims                          JSONB,
            primary key(email, device_unique_id))
            WITH (FILLFACTOR = 70);
+CREATE INDEX IF NOT EXISTS email_link_sign_ins_user_id_ix ON email_link_sign_ins (user_id);
