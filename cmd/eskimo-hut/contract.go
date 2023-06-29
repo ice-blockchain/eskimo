@@ -143,7 +143,6 @@ const (
 	confirmationCodeWrongErrorCode            = "CONFIRMATION_CODE_WRONG"
 
 	noPendingLoginSessionErrorCode = "NO_PENDING_LOGIN_SESSION"
-	statusNotVerifiedErrorCode     = "NOT_VERIFIED"
 
 	deviceIDTokenClaim = "deviceUniqueID" //nolint:gosec // .
 )

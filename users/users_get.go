@@ -32,8 +32,14 @@ func (r *repository) GetUserByID(ctx context.Context, userIDs ...string) (*UserP
 	if ctx.Err() != nil {
 		return nil, errors.Wrap(ctx.Err(), "get user failed because context failed")
 	}
-	if userIDs[0] != requestingUserID(ctx) {
-		return r.getOtherUserByID(ctx, userIDs[0])
+	anotherUserID := userIDs[0]
+	for _, usrID := range userIDs {
+		if usrID == requestingUserID(ctx) {
+			anotherUserID = ""
+		}
+	}
+	if anotherUserID != "" {
+		return r.getOtherUserByID(ctx, anotherUserID)
 	}
 	sql := `
 		SELECT  	
@@ -43,7 +49,7 @@ func (r *repository) GetUserByID(ctx context.Context, userIDs ...string) (*UserP
 		FROM users u 
 				LEFT JOIN referral_acquisition_history refs
 						ON refs.user_id = u.id
-		WHERE u.id IN $1`
+		WHERE u.id = ANY($1)`
 	res, err := storage.Get[UserProfile](ctx, r.db, sql, userIDs)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to select user by id %v", userIDs)

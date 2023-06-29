@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 
+	"github.com/ice-blockchain/wintr/auth"
 	"github.com/ice-blockchain/wintr/connectors/storage/v2"
 	"github.com/ice-blockchain/wintr/time"
 )
@@ -83,19 +84,19 @@ func (c *client) increaseWrongConfirmationCodeAttemptsCount(ctx context.Context,
 
 func (c *client) finishAuthProcess(ctx context.Context, id *loginID, userID, otp string, issuedTokenSeq int64) error {
 	params := []any{id.Email, time.Now().Time, userID, otp, id.DeviceUniqueID, issuedTokenSeq}
-	sql := `UPDATE email_link_sign_ins
+	sql := fmt.Sprintf(`UPDATE email_link_sign_ins
 				SET token_issued_at = $2,
 					user_id = $3,
 					otp = $3,
 					issued_token_seq = COALESCE(issued_token_seq, 0) + 1,
 				    custom_claims = (CASE 
 				   						 WHEN (SELECT id FROM users WHERE id = $3)=$3 AND (SELECT user_id FROM email_link_sign_ins WHERE email = $1) is NULL
-											THEN jsonb_build_object('firebaseID', $3)
-				    				ELSE null END)
+											THEN jsonb_build_object('%[1]v', $3, '%[2]v', '%[3]v')
+				    				ELSE jsonb_build_object('%[2]v', '%[4]v') END)
 			WHERE email_link_sign_ins.email = $1
 				  AND otp = $4
 				  AND device_unique_id = $5
-				  AND issued_token_seq = $6`
+				  AND issued_token_seq = $6`, auth.FirebaseIDClaim, auth.RegisteredWithProviderClaim, auth.ProviderFirebase, auth.ProviderIce)
 
 	_, err := storage.Exec(ctx, c.db, sql, params...)
 	if err != nil {

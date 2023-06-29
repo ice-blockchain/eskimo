@@ -66,7 +66,10 @@ func (s *service) CreateUser( //nolint:gocritic // .
 			return nil, server.Unexpected(err)
 		}
 	}
-	err := server.Auth(ctx).UpdateCustomClaims(ctx, usr.ID, map[string]any{"hashCode": fmt.Sprint(usr.HashCode)})
+	err := server.Auth(ctx).UpdateCustomClaims(ctx, usr.ID, map[string]any{
+		"hashCode":                       fmt.Sprint(usr.HashCode),
+		auth.RegisteredWithProviderClaim: req.AuthenticatedUser.Provider,
+	})
 	if err != nil && !errors.Is(err, auth.ErrUserNotFound) {
 		return nil, server.Unexpected(errors.Wrapf(err, "failed to update auth CustomClaims for:%#v", usr))
 	}
@@ -179,7 +182,7 @@ func (s *service) emailUpdateRequested(
 		return "", "", nil
 	}
 	// User uses firebase.
-	if strings.HasPrefix(loggedInUser.Provider, "https://securetoken.google.com") {
+	if loggedInUser.Token.IsFirebase() {
 		return newEmail, "", nil
 	}
 	deviceID := loggedInUser.Claims[deviceIDTokenClaim].(string) //nolint:errcheck,forcetypeassert // .

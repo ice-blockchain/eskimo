@@ -157,7 +157,7 @@ func (s *service) Status( //nolint:gocritic // .
 			case errors.Is(err, emaillink.ErrNoPendingLoginSession):
 				return nil, server.NotFound(err, noPendingLoginSessionErrorCode)
 			case errors.Is(err, emaillink.ErrStatusNotVerified):
-				return nil, server.NotFound(err, statusNotVerifiedErrorCode)
+				return server.OK(&RefreshedToken{}), nil
 			case errors.Is(err, emaillink.ErrInvalidToken):
 				return nil, server.Forbidden(err)
 			case errors.Is(err, emaillink.ErrExpiredToken):

@@ -20,8 +20,11 @@ func (c *client) Status(ctx context.Context, loginSession string) (tokens *Token
 	if storage.IsErr(err, storage.ErrNotFound) {
 		return nil, errors.Wrapf(ErrNoPendingLoginSession, "no pending login session:%v,id:%#v", loginSession, id)
 	}
-	if els.UserID == nil || els.ConfirmationCode == *els.UserID || els.OTP != *els.UserID {
+	if els.UserID == nil || els.OTP != *els.UserID {
 		return nil, errors.Wrapf(ErrStatusNotVerified, "not verified for id:%#v", id)
+	}
+	if els.ConfirmationCode == *els.UserID {
+		return nil, errors.Wrapf(ErrNoPendingLoginSession, "tokens already provided for id:%#v", id)
 	}
 	tokens, err = c.generateTokens(els.TokenIssuedAt, els, els.IssuedTokenSeq)
 	if err != nil {

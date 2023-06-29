@@ -70,7 +70,7 @@ func (c *client) incrementRefreshTokenSeq(
 	customClaimsClause := ""
 	if customClaims != nil {
 		params = append(params, customClaims)
-		customClaimsClause = ",\n\t\t\t\tcustom_claims = $6::jsonb"
+		customClaimsClause = ",\n\t\t\t\tcustom_claims = (COALESCE(email_link_sign_ins.custom_claims,'{}'::jsonb)||$6::jsonb)"
 	}
 	sql := fmt.Sprintf(`
 		UPDATE email_link_sign_ins

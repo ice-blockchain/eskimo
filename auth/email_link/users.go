@@ -51,7 +51,7 @@ func (c *client) getUserIDFromEmail(ctx context.Context, searchEmail, idIfNotFou
 			LIMIT 1`
 	ids, err := storage.Select[dbUserID](ctx, c.db, sql, searchEmail, idIfNotFound)
 	if err != nil || len(ids) == 0 {
-		if storage.IsErr(err, storage.ErrNotFound) || len(ids) == 0 {
+		if storage.IsErr(err, storage.ErrNotFound) || (err == nil && len(ids) == 0) {
 			return idIfNotFound, nil
 		}
 
