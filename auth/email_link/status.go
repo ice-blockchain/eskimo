@@ -43,8 +43,9 @@ func (c *client) resetLoginSession(ctx context.Context, id *loginID, els *emailL
 				WHERE email = $2
 					  AND device_unique_id = $3
 					  AND otp = $4
-					  AND confirmation_code = $5`
-	_, err := storage.Exec(ctx, c.db, sql, els.UserID, id.Email, id.DeviceUniqueID, els.OTP, confirmationCode)
+					  AND confirmation_code = $5
+					  AND issued_token_seq = $6`
+	_, err := storage.Exec(ctx, c.db, sql, els.UserID, id.Email, id.DeviceUniqueID, els.OTP, confirmationCode, els.IssuedTokenSeq)
 
 	return errors.Wrapf(err, "failed to reset login session by id:%#v and confirmationCode:%v", id, confirmationCode)
 }

@@ -147,7 +147,7 @@ func randomBetween(left, right uint64) uint64 {
 }
 
 func requestingUserID(ctx context.Context) (requestingUserID string) {
-	requestingUserID, _ = ctx.Value(requestingUserIDCtxValueKey).(string) //nolint:errcheck // Not needed.
+	requestingUserID, _ = ctx.Value(RequestingUserIDCtxValueKey).(string) //nolint:errcheck // Not needed.
 
 	return
 }

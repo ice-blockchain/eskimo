@@ -582,7 +582,7 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "if validations fail",
+                        "description": "if validations fail or user for modification email is blocked",
                         "schema": {
                             "$ref": "#/definitions/server.ErrorResponse"
                         }

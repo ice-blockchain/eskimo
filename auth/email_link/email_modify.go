@@ -46,7 +46,7 @@ func (c *client) handleEmailModification(ctx context.Context, els *emailLinkSign
 			).ErrorOrNil()
 		}
 		authLink := c.getResetAuthLink(resetEmailPayload, els.Language, resetConfirmationCode)
-		if sErr := c.sendNotifyEmailChanged(ctx, notifyEmail, authLink, els.Language); sErr != nil {
+		if sErr := c.sendNotifyEmailChanged(ctx, notifyEmail, newEmail, authLink, els.Language); sErr != nil {
 			return multierror.Append( //nolint:wrapcheck // .
 				errors.Wrapf(c.resetEmailModification(ctx, usr.ID, oldEmail), "[reset] resetEmailModification failed for email:%v", oldEmail),
 				errors.Wrapf(sErr, "failed to send notification email about email change for userID %v email %v", els.UserID, oldEmail),
@@ -70,17 +70,17 @@ func (c *client) resetEmailModification(ctx context.Context, userID users.UserID
 		"[rollback] failed to modify user:%v", userID)
 }
 
-func (c *client) sendNotifyEmailChanged(ctx context.Context, toEmail, link, language string) error {
+func (c *client) sendNotifyEmailChanged(ctx context.Context, notifyEmail, newEmail, link, language string) error {
 	var tmpl *emailTemplate
-	tmpl, ok := allEmailLinkTemplates[NotifyEmailChangedType][language]
+	tmpl, ok := allEmailLinkTemplates[notifyEmailChangedType][language]
 	if !ok {
-		tmpl = allEmailLinkTemplates[NotifyEmailChangedType][defaultLanguage]
+		tmpl = allEmailLinkTemplates[notifyEmailChangedType][defaultLanguage]
 	}
 	data := struct {
 		NewEmail string
 		Link     string
 	}{
-		NewEmail: toEmail,
+		NewEmail: newEmail,
 		Link:     link,
 	}
 
@@ -96,6 +96,6 @@ func (c *client) sendNotifyEmailChanged(ctx context.Context, toEmail, link, lang
 		},
 	}, email.Participant{
 		Name:  "",
-		Email: toEmail,
-	}), "failed to send notify email changed for user with email:%v", toEmail)
+		Email: notifyEmail,
+	}), "failed to send notify email changed for user with email:%v", notifyEmail)
 }

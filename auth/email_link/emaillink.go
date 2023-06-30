@@ -143,7 +143,7 @@ func (t *emailTemplate) getBody(data any) string {
 	return bf.String()
 }
 
-func loadEmailMagicLinkTranslationTemplates() {
+func loadEmailMagicLinkTranslationTemplates() { //nolint:funlen,gocognit,revive // .
 	const totalLanguages = 50
 	allEmailLinkTemplates = make(map[string]map[languageCode]*emailTemplate, len(allEmailTypes))
 	for _, emailType := range allEmailTypes {
@@ -157,15 +157,37 @@ func loadEmailMagicLinkTranslationTemplates() {
 			if fErr != nil {
 				panic(fErr)
 			}
+			fileName := strings.Split(file.Name(), ".")
+			language := fileName[0]
+			ext := fileName[1]
 			var tmpl emailTemplate
-			err = json.Unmarshal(content, &tmpl)
-			if err != nil {
-				panic(err)
+			switch ext {
+			case textExtension:
+				err = json.Unmarshal(content, &tmpl)
+				if err != nil {
+					panic(err)
+				}
+				subject := template.Must(template.New(fmt.Sprintf("email_%v_%v_subject", emailType, language)).Parse(tmpl.Subject))
+				if allEmailLinkTemplates[emailType][language] != nil {
+					allEmailLinkTemplates[emailType][language].subject = subject
+					allEmailLinkTemplates[emailType][language].Subject = tmpl.Subject
+				} else {
+					tmpl.subject = subject
+					allEmailLinkTemplates[emailType][language] = &tmpl
+				}
+			case htmlExtension:
+				body := template.Must(template.New(fmt.Sprintf("email_%v_%v_body", emailType, language)).Parse(string(content)))
+				if allEmailLinkTemplates[emailType][language] != nil {
+					allEmailLinkTemplates[emailType][language].body = body
+					allEmailLinkTemplates[emailType][language].Body = string(content)
+				} else {
+					tmpl.body = body
+					tmpl.Body = string(content)
+					allEmailLinkTemplates[emailType][language] = &tmpl
+				}
+			default:
+				log.Panic("wrong translation file extension")
 			}
-			language := strings.Split(file.Name(), ".")[0]
-			tmpl.subject = template.Must(template.New(fmt.Sprintf("email_%v_%v_subject", emailType, language)).Parse(tmpl.Subject))
-			tmpl.body = template.Must(template.New(fmt.Sprintf("email_%v_%v_body", emailType, language)).Parse(tmpl.Body))
-			allEmailLinkTemplates[emailType][language] = &tmpl
 		}
 	}
 }

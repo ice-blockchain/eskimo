@@ -19,7 +19,7 @@ import (
 	"github.com/ice-blockchain/wintr/time"
 )
 
-//nolint:funlen,gocognit // .
+//nolint:funlen,gocognit,gocyclo,revive,cyclop // .
 func (c *client) SendSignInLinkToEmail(ctx context.Context, emailValue, deviceUniqueID, language string) (loginSession string, err error) {
 	if ctx.Err() != nil {
 		return "", errors.Wrap(ctx.Err(), "send sign in link to email failed because context failed")
@@ -35,8 +35,20 @@ func (c *client) SendSignInLinkToEmail(ctx context.Context, emailValue, deviceUn
 			return "", errors.Wrapf(ErrUserBlocked, "user:%#v is blocked", id)
 		}
 	}
-	otp := generateOTP()
 	oldEmail := users.ConfirmedEmail(ctx)
+	if oldEmail != "" {
+		oldID := loginID{oldEmail, deviceUniqueID}
+		gOldUsr, gErr := c.getEmailLinkSignIn(ctx, &oldID)
+		if gErr != nil && !storage.IsErr(gErr, storage.ErrNotFound) {
+			return "", errors.Wrapf(gErr, "can't get user by:%#v", id)
+		}
+		if gOldUsr != nil && gOldUsr.BlockedUntil != nil {
+			if gOldUsr.BlockedUntil.After(*now.Time) {
+				return "", errors.Wrapf(ErrUserBlocked, "user:%#v is blocked", oldID)
+			}
+		}
+	}
+	otp := generateOTP()
 	payload, err := c.generateMagicLinkPayload(&id, oldEmail, oldEmail, otp, now)
 	if err != nil {
 		return "", errors.Wrapf(err, "can't generate magic link payload for id: %#v", id)
@@ -52,9 +64,9 @@ func (c *client) SendSignInLinkToEmail(ctx context.Context, emailValue, deviceUn
 	authLink := c.getAuthLink(payload, language)
 	var emailType string
 	if oldEmail != "" {
-		emailType = ModifyEmailType
+		emailType = modifyEmailType
 	} else {
-		emailType = SignInEmailType
+		emailType = signInEmailType
 	}
 	if sErr := c.sendEmailWithType(ctx, emailType, id.Email, language, authLink); sErr != nil {
 		return "", errors.Wrapf(sErr, "failed to send validation email for id:%#v", id)

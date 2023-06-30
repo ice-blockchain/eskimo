@@ -66,11 +66,14 @@ const (
 	jwtIssuer          = "ice.io"
 	defaultLanguage    = "en"
 
-	SignInEmailType        string = "signin"
-	NotifyEmailChangedType string = "notify_changed"
-	ModifyEmailType        string = "modify_email"
+	signInEmailType        string = "signin"
+	notifyEmailChangedType string = "notify_changed"
+	modifyEmailType        string = "modify_email"
 
 	iceIDPrefix = "ice_"
+
+	textExtension = "txt"
+	htmlExtension = "html"
 )
 
 type (
@@ -148,8 +151,8 @@ var (
 
 	//nolint:gochecknoglobals // It's just for more descriptive validation messages.
 	allEmailTypes = users.Enum[string]{
-		SignInEmailType,
-		ModifyEmailType,
-		NotifyEmailChangedType,
+		signInEmailType,
+		modifyEmailType,
+		notifyEmailChangedType,
 	}
 )

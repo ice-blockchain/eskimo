@@ -27,7 +27,8 @@ import (
 // Public API.
 
 const (
-	UsernameRegex = `^[.a-zA-Z0-9]{4,30}$`
+	UsernameRegex               = `^[.a-zA-Z0-9]{4,30}$`
+	RequestingUserIDCtxValueKey = "requestingUserIDCtxValueKey"
 )
 
 const (
@@ -207,7 +208,6 @@ const (
 	totalUsersGlobalKey                 = "TOTAL_USERS"
 	totalActiveUsersGlobalKey           = "TOTAL_ACTIVE_USERS"
 	checksumCtxValueKey                 = "versioningChecksumCtxValueKey"
-	requestingUserIDCtxValueKey         = "requestingUserIDCtxValueKey"
 	confirmedEmailCtxValueKey           = "confirmedEmailCtxValueKey"
 	totalNoOfDefaultProfilePictures     = 20
 	defaultProfilePictureName           = "default-profile-picture-%v.png"

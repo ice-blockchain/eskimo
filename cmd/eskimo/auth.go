@@ -42,12 +42,11 @@ func (s *service) Account( //nolint:funlen,gocognit,gocritic,revive // Fallback 
 			if iErr != nil {
 				return nil, server.NotFound(multierror.Append(
 					errors.Wrapf(err, "user with id `%v` was not found", req.AuthenticatedUser.UserID),
-					errors.Wrapf(iErr, "failed to fetch iceID for email `%v` was not found", req.AuthenticatedUser.Email),
+					errors.Wrapf(iErr, "failed to fetch iceID for email `%v`", req.AuthenticatedUser.Email),
 				).ErrorOrNil(), userNotFoundErrorCode)
 			}
 			if iceID != "" {
-				const requestingUserIDCtxValueKey = "requestingUserIDCtxValueKey"
-				iceIDCtx := context.WithValue(ctx, requestingUserIDCtxValueKey, iceID) //nolint:staticcheck,revive // To bypass profile ownership check.
+				iceIDCtx := context.WithValue(ctx, users.RequestingUserIDCtxValueKey, iceID) //nolint:staticcheck // To bypass profile ownership check.
 				usr, iErr = s.usersRepository.GetUserByID(iceIDCtx, iceID)
 				if iErr != nil {
 					if errors.Is(iErr, users.ErrNotFound) {
