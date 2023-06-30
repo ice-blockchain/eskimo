@@ -38,7 +38,7 @@ auth/email-link:
     replicaURLs:
       - postgresql://root:pass@localhost:5433/eskimo
   fromEmailAddress: no-reply@ice.io
-  fromEmailName: ICE
+  fromEmailName: ice
   emailValidation:
     authLink: https://localhost:1443/v1w/auth/finish
     jwtSecret: bogus
@@ -113,7 +113,7 @@ users: &users
     emailBodyHTMLTemplate: |
       <strong>{{.code}}<strong> is your ice verification code. This code expires in <strong>{{.expirationTime}}<strong> minutes.
     fromEmailAddress: no-reply@ice.io
-    fromEmailName: ICE
+    fromEmailName: ice
     expirationTime: 3m
   globalAggregationInterval:
     parent: 60m
