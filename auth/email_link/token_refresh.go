@@ -80,8 +80,8 @@ func (c *client) incrementRefreshTokenSeq(
 				user_id = $4,
 				issued_token_seq = COALESCE(email_link_sign_ins.issued_token_seq, 0) + 1
 				%v
-			WHERE  (email_link_sign_ins.email = $1 AND email_link_sign_ins.device_unique_id = $2) 
-				   AND (email_link_sign_ins.user_id = $4 AND email_link_sign_ins.issued_token_seq = $5)
+			WHERE  email_link_sign_ins.email = $1 AND email_link_sign_ins.device_unique_id = $2
+				   AND email_link_sign_ins.user_id = $4 AND email_link_sign_ins.issued_token_seq = $5
 			RETURNING custom_claims, issued_token_seq`, customClaimsClause)
 	updatedValue, err := storage.ExecOne[resp](ctx, c.db, sql, params...)
 	if err != nil {

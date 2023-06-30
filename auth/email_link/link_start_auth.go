@@ -116,7 +116,13 @@ func (c *client) upsertEmailLinkSignIn(ctx context.Context, toEmail, oldEmail, d
 								created_at    				     	   = EXCLUDED.created_at,
 								confirmation_code 		          	   = EXCLUDED.confirmation_code,
 								confirmation_code_wrong_attempts_count = EXCLUDED.confirmation_code_wrong_attempts_count,
-								custom_claims 				     	   = EXCLUDED.custom_claims`, customClaimsFromOldEmail)
+								custom_claims 				     	   = EXCLUDED.custom_claims
+						WHERE   email_link_sign_ins.otp                                    != EXCLUDED.otp
+						   OR   email_link_sign_ins.created_at    				     	   != EXCLUDED.created_at
+						   OR   email_link_sign_ins.confirmation_code 		          	   != EXCLUDED.confirmation_code
+						   OR   email_link_sign_ins.confirmation_code_wrong_attempts_count != EXCLUDED.confirmation_code_wrong_attempts_count
+						   OR   email_link_sign_ins.custom_claims 				     	   != EXCLUDED.custom_claims
+`, customClaimsFromOldEmail)
 	_, err := storage.Exec(ctx, c.db, sql, params...)
 
 	return errors.Wrapf(err, "failed to insert/update email link sign ins record for email:%v", toEmail)

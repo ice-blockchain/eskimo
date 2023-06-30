@@ -4,6 +4,7 @@ package emaillinkiceauth
 
 import (
 	"context"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
@@ -28,7 +29,7 @@ func (c *client) findOrGenerateUserID(ctx context.Context, email, oldEmail strin
 	if ctx.Err() != nil {
 		return "", errors.Wrap(ctx.Err(), "find or generate user by id or email context failed")
 	}
-	randomID := uuid.NewString()
+	randomID := iceIDPrefix + uuid.NewString()
 	searchEmail := email
 	if oldEmail != "" {
 		searchEmail = oldEmail
@@ -45,9 +46,9 @@ func (c *client) getUserIDFromEmail(ctx context.Context, searchEmail, idIfNotFou
 				FROM users 
 					WHERE email = $1
 			UNION ALL
-			SELECT COALESCE(user_id, $2) AS id 
+			(SELECT COALESCE(user_id, $2) AS id 
 				FROM email_link_sign_ins
-					WHERE email = $1
+					WHERE email = $1)
 			LIMIT 1`
 	ids, err := storage.Select[dbUserID](ctx, c.db, sql, searchEmail, idIfNotFound)
 	if err != nil || len(ids) == 0 {
@@ -148,6 +149,9 @@ func (c *client) IceUserID(ctx context.Context, email string) (string, error) {
 	if err != nil {
 		return "", errors.Wrapf(err, "failed to fetch userID by email:%v", email)
 	}
+	if strings.HasPrefix(userID, iceIDPrefix) {
+		return userID, nil
+	}
 
-	return userID, nil
+	return "", nil
 }

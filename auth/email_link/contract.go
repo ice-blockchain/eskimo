@@ -69,6 +69,8 @@ const (
 	SignInEmailType        string = "signin"
 	NotifyEmailChangedType string = "notify_changed"
 	ModifyEmailType        string = "modify_email"
+
+	iceIDPrefix = "ice_"
 )
 
 type (

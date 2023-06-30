@@ -186,14 +186,18 @@ func (s *service) emailUpdateRequested(
 		return newEmail, "", nil
 	}
 	deviceID := loggedInUser.Claims[deviceIDTokenClaim].(string) //nolint:errcheck,forcetypeassert // .
-	// Ask FE to add header with language to avoid extra db call?
-	oldUser, err := s.usersProcessor.GetUserByID(ctx, loggedInUser.UserID)
-	if err != nil {
-		return "", "", errors.Wrapf(err, "get user %v failed", loggedInUser.UserID)
+	language := loggedInUser.Language
+	if language == "" {
+		oldUser, err := s.usersProcessor.GetUserByID(ctx, loggedInUser.UserID)
+		if err != nil {
+			return "", "", errors.Wrapf(err, "get user %v failed: no language", loggedInUser.UserID)
+		}
+		language = oldUser.Language
 	}
+
 	if loginSession, err = s.authEmailLinkClient.SendSignInLinkToEmail(
 		users.ConfirmedEmailContext(ctx, loggedInUser.Email),
-		newEmail, deviceID, oldUser.Language,
+		newEmail, deviceID, language,
 	); err != nil {
 		return "", "", errors.Wrapf(err, "can't send sign in link to email:%v", newEmail)
 	}

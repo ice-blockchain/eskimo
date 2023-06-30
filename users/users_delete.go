@@ -53,7 +53,7 @@ func (r *repository) deleteUser(ctx context.Context, usr *User) error { //nolint
 	if err != nil {
 		return errors.Wrapf(err, "failed to get user for userID:%v", usr.ID)
 	}
-	*usr = *(gUser)
+	*usr = *gUser
 	sql := `DELETE FROM users WHERE id = $1`
 	if _, tErr := storage.Exec(ctx, r.db, sql, usr.ID); tErr != nil {
 		if storage.IsErr(tErr, storage.ErrRelationNotFound) {

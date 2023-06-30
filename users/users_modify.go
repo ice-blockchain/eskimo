@@ -16,7 +16,7 @@ import (
 )
 
 //nolint:funlen,gocognit,gocyclo,revive,cyclop // It needs a better breakdown.
-func (r *repository) ModifyUser(ctx context.Context, usr *User, profilePicture *multipart.FileHeader) (err error) {
+func (r *repository) ModifyUser(ctx context.Context, usr *User, profilePicture *multipart.FileHeader) error {
 	if ctx.Err() != nil {
 		return errors.Wrap(ctx.Err(), "update user failed because context failed")
 	}
@@ -67,7 +67,7 @@ func (r *repository) ModifyUser(ctx context.Context, usr *User, profilePicture *
 	}
 	if updatedRowsCount, tErr := storage.Exec(ctx, r.db, sql, params...); tErr != nil || updatedRowsCount == 0 {
 		_, tErr = detectAndParseDuplicateDatabaseError(tErr)
-		if !storage.IsErr(tErr, storage.ErrDuplicate) && (storage.IsErr(tErr, storage.ErrNotFound) || updatedRowsCount == 0) {
+		if tErr == nil && updatedRowsCount == 0 {
 			return ErrRaceCondition
 		}
 
