@@ -12,6 +12,8 @@ import (
 // Public API.
 
 type (
+	GetAccountArg struct{}
+
 	GetUsersArg struct {
 		Keyword string `form:"keyword" required:"true" example:"john"`
 		Limit   uint64 `form:"limit" maximum:"1000" example:"10"` // 10 by default.

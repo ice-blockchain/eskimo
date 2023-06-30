@@ -188,7 +188,8 @@ func (s *service) emailUpdateRequested(
 	deviceID := loggedInUser.Claims[deviceIDTokenClaim].(string) //nolint:errcheck,forcetypeassert // .
 	language := loggedInUser.Language
 	if language == "" {
-		oldUser, err := s.usersProcessor.GetUserByID(ctx, loggedInUser.UserID)
+		var oldUser *users.UserProfile
+		oldUser, err = s.usersProcessor.GetUserByID(ctx, loggedInUser.UserID)
 		if err != nil {
 			return "", "", errors.Wrapf(err, "get user %v failed: no language", loggedInUser.UserID)
 		}

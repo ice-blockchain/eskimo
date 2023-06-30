@@ -9,7 +9,6 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/ice-blockchain/eskimo/users"
-	"github.com/ice-blockchain/wintr/auth"
 	"github.com/ice-blockchain/wintr/server"
 )
 
@@ -81,11 +80,7 @@ func (s *service) GetUserByID( //nolint:gocritic // False negative.
 	ctx context.Context,
 	req *server.Request[GetUserByIDArg, User],
 ) (*server.Response[User], *server.Response[server.ErrorResponse]) {
-	userIDs := []string{req.Data.UserID}
-	if iceID := s.findIceID(ctx, &req.AuthenticatedUser, req.Data.UserID); iceID != "" {
-		userIDs = append(userIDs, iceID)
-	}
-	usr, err := s.usersRepository.GetUserByID(ctx, userIDs...)
+	usr, err := s.usersRepository.GetUserByID(ctx, req.Data.UserID)
 	if err != nil {
 		if errors.Is(err, users.ErrNotFound) {
 			return nil, server.NotFound(errors.Wrapf(err, "user with id `%v` was not found", req.Data.UserID), userNotFoundErrorCode)
@@ -93,42 +88,8 @@ func (s *service) GetUserByID( //nolint:gocritic // False negative.
 
 		return nil, server.Unexpected(errors.Wrapf(err, "failed to get user by id: %v", req.Data.UserID))
 	}
-	// Move to FE?
-	if _, iceIDExists := req.AuthenticatedUser.Token.Claims[auth.IceIDClaim]; req.Data.UserID != usr.ID && (!iceIDExists && req.AuthenticatedUser.IsFirebase()) {
-		if err = server.Auth(ctx).UpdateCustomClaims(ctx, req.Data.UserID, map[string]any{
-			auth.IceIDClaim:                  usr.ID,
-			auth.RegisteredWithProviderClaim: auth.ProviderIce,
-		}); err != nil {
-			return nil, server.Unexpected(err)
-		}
-	}
 
 	return server.OK(&User{UserProfile: usr, Checksum: usr.Checksum()}), nil
-}
-
-//nolint:gocognit,revive // .
-func (s *service) findIceID(ctx context.Context, loggedInUser *server.AuthenticatedUser, requestedUserID string) string {
-	//nolint:nestif // .
-	if loggedInUser.IsFirebase() {
-		firebaseID := ""
-		if firebaseIDClaim, ok := loggedInUser.Token.Claims["user_id"]; ok {
-			if str, isStr := firebaseIDClaim.(string); isStr && str != "" {
-				firebaseID = str
-			}
-		}
-		if loggedInUser.UserID == requestedUserID || firebaseID == requestedUserID {
-			if iceIDClaim, ok := loggedInUser.Token.Claims[auth.IceIDClaim]; ok {
-				if str, isStr := iceIDClaim.(string); isStr && str != "" {
-					return str
-				}
-			}
-			if iceIDByEmail, err := s.iceClient.IceUserID(ctx, loggedInUser.Email); err == nil && iceIDByEmail != "" {
-				return iceIDByEmail
-			}
-		}
-	}
-
-	return ""
 }
 
 // GetUserByUsername godoc
