@@ -65,6 +65,7 @@ func (s *service) CreateUser( //nolint:gocritic // .
 			return nil, server.Unexpected(err)
 		}
 	}
+	usr.HashCode = 0
 
 	return server.Created(&User{User: usr, Checksum: usr.Checksum()}), nil
 }
