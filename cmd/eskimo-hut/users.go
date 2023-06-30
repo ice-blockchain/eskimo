@@ -65,9 +65,6 @@ func (s *service) CreateUser( //nolint:gocritic // .
 			return nil, server.Unexpected(err)
 		}
 	}
-	if err := server.Auth(ctx).UpdateCustomClaims(ctx, usr.ID, map[string]any{"hashCode": fmt.Sprint(usr.HashCode)}); err != nil {
-		return nil, server.Unexpected(errors.Wrapf(err, "failed to update auth CustomClaims for:%#v", usr))
-	}
 	usr.HashCode = 0
 
 	return server.Created(&User{User: usr, Checksum: usr.Checksum()}), nil
