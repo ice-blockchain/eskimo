@@ -62,6 +62,18 @@ func (c *client) getUserIDFromEmail(ctx context.Context, searchEmail, idIfNotFou
 	return ids[0].ID, nil
 }
 
+func (c *client) isUserExist(ctx context.Context, email string) error {
+	type dbUser struct {
+		ID string
+	}
+	sql := `SELECT id 
+				FROM users 
+					WHERE email = $1`
+	_, err := storage.Get[dbUser](ctx, c.db, sql, email)
+
+	return errors.Wrapf(err, "failed to find user by email:%v", email)
+}
+
 //nolint:funlen // .
 func (c *client) getUserByIDOrPk(ctx context.Context, userID string, id *loginID) (*emailLinkSignIn, error) {
 	if ctx.Err() != nil {

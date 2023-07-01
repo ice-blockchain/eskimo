@@ -438,6 +438,10 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/main.Auth'
+        "409":
+          description: if email conflicts with another user's
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
         "422":
           description: if syntax fails
           schema:
@@ -717,8 +721,7 @@ paths:
           schema:
             $ref: '#/definitions/server.ErrorResponse'
         "409":
-          description: if username, email or phoneNumber conflict with another other
-            user's
+          description: if username, email or phoneNumber conflict with another user's
           schema:
             $ref: '#/definitions/server.ErrorResponse'
         "422":

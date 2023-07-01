@@ -109,7 +109,7 @@ func buildUserForCreation(req *server.Request[CreateUserRequestBody, User]) *use
 //	@Failure		401					{object}	server.ErrorResponse	"if not authorized"
 //	@Failure		403					{object}	server.ErrorResponse	"not allowed"
 //	@Failure		404					{object}	server.ErrorResponse	"user is not found; or the referred by is not found"
-//	@Failure		409					{object}	server.ErrorResponse	"if username, email or phoneNumber conflict with another other user's"
+//	@Failure		409					{object}	server.ErrorResponse	"if username, email or phoneNumber conflict with another user's"
 //	@Failure		422					{object}	server.ErrorResponse	"if syntax fails"
 //	@Failure		500					{object}	server.ErrorResponse
 //	@Failure		504					{object}	server.ErrorResponse	"if request times out"
@@ -130,6 +130,8 @@ func (s *service) ModifyUser( //nolint:gocritic,funlen // .
 			return nil, server.NotFound(errors.Wrapf(err, "user with id `%v` was not found", req.AuthenticatedUser.UserID), userNotFoundErrorCode)
 		case errors.Is(err, emaillink.ErrUserBlocked):
 			return nil, server.BadRequest(err, userBlockedErrorCode)
+		case errors.Is(err, emaillink.ErrUserDuplicate):
+			return nil, server.Conflict(err, duplicateUserErrorCode)
 		default:
 			return nil, server.Unexpected(errors.Wrapf(err, "failed to trigger email modification for request:%#v", req.Data))
 		}

@@ -9,7 +9,9 @@ import (
 	"github.com/pkg/errors"
 
 	emaillink "github.com/ice-blockchain/eskimo/auth/email_link"
+	"github.com/ice-blockchain/eskimo/users"
 	"github.com/ice-blockchain/wintr/server"
+	"github.com/ice-blockchain/wintr/terror"
 )
 
 func (s *service) setupAuthRoutes(router *server.Router) {
@@ -30,6 +32,7 @@ func (s *service) setupAuthRoutes(router *server.Router) {
 //	@Produce		json
 //	@Param			request	body		SendSignInLinkToEmailRequestArg	true	"Request params"
 //	@Success		200		{object}	Auth
+//	@Failure		409		{object}	server.ErrorResponse	"if email conflicts with another user's"
 //	@Failure		422		{object}	server.ErrorResponse	"if syntax fails"
 //	@Failure		500		{object}	server.ErrorResponse
 //	@Failure		504		{object}	server.ErrorResponse	"if request times out"
@@ -40,11 +43,14 @@ func (s *service) SendSignInLinkToEmail( //nolint:gocritic // .
 ) (*server.Response[Auth], *server.Response[server.ErrorResponse]) {
 	loginSession, err := s.authEmailLinkClient.SendSignInLinkToEmail(ctx, req.Data.Email, req.Data.DeviceUniqueID, req.Data.Language)
 	if err != nil {
-		if errors.Is(err, emaillink.ErrUserBlocked) {
+		switch {
+		case errors.Is(err, emaillink.ErrUserBlocked):
 			return nil, server.BadRequest(err, userBlockedErrorCode)
+		case errors.Is(err, emaillink.ErrUserDuplicate):
+			return nil, server.Conflict(err, duplicateUserErrorCode)
+		default:
+			return nil, server.Unexpected(errors.Wrapf(err, "failed to start email link auth %#v", req.Data))
 		}
-
-		return nil, server.Unexpected(errors.Wrapf(err, "failed to start email link auth %#v", req.Data))
 	}
 
 	return server.OK[Auth](&Auth{LoginSession: loginSession}), nil
@@ -71,6 +77,14 @@ func (s *service) SignIn( //nolint:gocritic // .
 	if err := s.authEmailLinkClient.SignIn(ctx, req.Data.EmailToken, req.Data.ConfirmationCode); err != nil {
 		err = errors.Wrapf(err, "finish login using magic link failed for %#v", req.Data)
 		switch {
+		case errors.Is(err, users.ErrRaceCondition):
+			return nil, server.BadRequest(err, raceConditionErrorCode)
+		case errors.Is(err, users.ErrNotFound):
+			return nil, server.NotFound(err, userNotFoundErrorCode)
+		case errors.Is(err, users.ErrDuplicate):
+			if tErr := terror.As(err); tErr != nil {
+				return nil, server.Conflict(err, duplicateUserErrorCode, tErr.Data)
+			}
 		case errors.Is(err, emaillink.ErrNoConfirmationRequired):
 			return nil, server.NotFound(err, confirmationCodeNotFoundErrorCode)
 		case errors.Is(err, emaillink.ErrExpiredToken):

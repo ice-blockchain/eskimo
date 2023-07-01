@@ -189,6 +189,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/main.Auth"
                         }
                     },
+                    "409": {
+                        "description": "if email conflicts with another user's",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    },
                     "422": {
                         "description": "if syntax fails",
                         "schema": {
@@ -606,7 +612,7 @@ const docTemplate = `{
                         }
                     },
                     "409": {
-                        "description": "if username, email or phoneNumber conflict with another other user's",
+                        "description": "if username, email or phoneNumber conflict with another user's",
                         "schema": {
                             "$ref": "#/definitions/server.ErrorResponse"
                         }
