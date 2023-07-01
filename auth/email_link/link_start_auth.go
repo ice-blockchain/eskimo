@@ -19,47 +19,80 @@ import (
 	"github.com/ice-blockchain/wintr/time"
 )
 
-//nolint:funlen,gocognit,gocyclo,revive,cyclop // .
 func (c *client) SendSignInLinkToEmail(ctx context.Context, emailValue, deviceUniqueID, language string) (loginSession string, err error) {
 	if ctx.Err() != nil {
 		return "", errors.Wrap(ctx.Err(), "send sign in link to email failed because context failed")
 	}
 	id := loginID{emailValue, deviceUniqueID}
-	gUsr, err := c.getEmailLinkSignIn(ctx, &id)
-	if err != nil && !storage.IsErr(err, storage.ErrNotFound) {
-		return "", errors.Wrapf(err, "can't get user by:%#v", id)
-	}
-	now := time.Now()
-	if gUsr != nil && gUsr.BlockedUntil != nil {
-		if gUsr.BlockedUntil.After(*now.Time) {
-			return "", errors.Wrapf(ErrUserBlocked, "user:%#v is blocked", id)
-		}
+	if vErr := c.validateEmailSignIn(ctx, &id); vErr != nil {
+		return "", errors.Wrapf(vErr, "can't validate email sign in for:%#v", id)
 	}
 	oldEmail := users.ConfirmedEmail(ctx)
 	if oldEmail != "" {
 		oldID := loginID{oldEmail, deviceUniqueID}
-		gOldUsr, gErr := c.getEmailLinkSignIn(ctx, &oldID)
-		if gErr != nil && !storage.IsErr(gErr, storage.ErrNotFound) {
-			return "", errors.Wrapf(gErr, "can't get user by:%#v", id)
-		}
-		if gOldUsr != nil && gOldUsr.BlockedUntil != nil {
-			if gOldUsr.BlockedUntil.After(*now.Time) {
-				return "", errors.Wrapf(ErrUserBlocked, "user:%#v is blocked", oldID)
-			}
+		if vErr := c.validateEmailModification(ctx, emailValue, &oldID); vErr != nil {
+			return "", errors.Wrapf(vErr, "can't validate modification email for:%#v", oldID)
 		}
 	}
 	otp := generateOTP()
-	payload, err := c.generateMagicLinkPayload(&id, oldEmail, oldEmail, otp, now)
-	if err != nil {
-		return "", errors.Wrapf(err, "can't generate magic link payload for id: %#v", id)
-	}
 	confirmationCode := generateConfirmationCode()
 	loginSession, err = c.generateLoginSession(&id, confirmationCode)
 	if err != nil {
 		return "", errors.Wrap(err, "can't call generateLoginSession")
 	}
+	now := time.Now()
 	if uErr := c.upsertEmailLinkSignIn(ctx, id.Email, oldEmail, id.DeviceUniqueID, otp, confirmationCode, now); uErr != nil {
 		return "", errors.Wrapf(uErr, "failed to store/update email link sign ins for id:%#v", id)
+	}
+	if sErr := c.sendMagicLink(ctx, &id, oldEmail, otp, language, now); sErr != nil {
+		return "", errors.Wrapf(sErr, "can't send magic link for id:%#v", id)
+	}
+
+	return loginSession, nil
+}
+
+func (c *client) validateEmailSignIn(ctx context.Context, id *loginID) error {
+	gUsr, err := c.getEmailLinkSignIn(ctx, id)
+	if err != nil && !storage.IsErr(err, storage.ErrNotFound) {
+		return errors.Wrapf(err, "can't get email link sign in information by:%#v", id)
+	}
+	if gUsr != nil && gUsr.BlockedUntil != nil {
+		now := time.Now()
+		if gUsr.BlockedUntil.After(*now.Time) {
+			return errors.Wrapf(ErrUserBlocked, "user:%#v is blocked", id)
+		}
+	}
+
+	return nil
+}
+
+func (c *client) validateEmailModification(ctx context.Context, newEmail string, oldID *loginID) error {
+	if iErr := c.isUserExist(ctx, newEmail); !storage.IsErr(iErr, storage.ErrNotFound) {
+		if iErr != nil {
+			return errors.Wrapf(iErr, "can't check if user exists for email:%v", newEmail)
+		}
+
+		return errors.Wrapf(ErrUserDuplicate, "user with such email already exists:%v", newEmail)
+	}
+	gOldUsr, gErr := c.getEmailLinkSignIn(ctx, oldID)
+	if gErr != nil && !storage.IsErr(gErr, storage.ErrNotFound) {
+		return errors.Wrapf(gErr, "can't get email link sign in information by:%#v", oldID)
+	}
+	if gOldUsr != nil && gOldUsr.BlockedUntil != nil {
+		now := time.Now()
+		if gOldUsr.BlockedUntil.After(*now.Time) {
+			return errors.Wrapf(ErrUserBlocked, "user:%#v is blocked", oldID)
+		}
+	}
+
+	return nil
+}
+
+//nolint:revive // .
+func (c *client) sendMagicLink(ctx context.Context, id *loginID, oldEmail, otp, language string, now *time.Time) error {
+	payload, err := c.generateMagicLinkPayload(id, oldEmail, oldEmail, otp, now)
+	if err != nil {
+		return errors.Wrapf(err, "can't generate magic link payload for id: %#v", id)
 	}
 	authLink := c.getAuthLink(payload, language)
 	var emailType string
@@ -68,11 +101,8 @@ func (c *client) SendSignInLinkToEmail(ctx context.Context, emailValue, deviceUn
 	} else {
 		emailType = signInEmailType
 	}
-	if sErr := c.sendEmailWithType(ctx, emailType, id.Email, language, authLink); sErr != nil {
-		return "", errors.Wrapf(sErr, "failed to send validation email for id:%#v", id)
-	}
 
-	return loginSession, nil
+	return errors.Wrapf(c.sendEmailWithType(ctx, emailType, id.Email, language, authLink), "failed to send validation email for id:%#v", id)
 }
 
 func (c *client) sendEmailWithType(ctx context.Context, emailType, toEmail, language, link string) error {

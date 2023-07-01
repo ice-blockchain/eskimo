@@ -50,6 +50,7 @@ var (
 
 	ErrUserDataMismatch = errors.New("parameters were not equal to user data in db")
 	ErrUserNotFound     = storage.ErrNotFound
+	ErrUserDuplicate    = errors.New("such user already exists")
 
 	ErrConfirmationCodeWrong            = errors.New("wrong confirmation code provided")
 	ErrConfirmationCodeAttemptsExceeded = errors.New("confirmation code attempts exceeded")
