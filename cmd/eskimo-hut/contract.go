@@ -119,9 +119,7 @@ type (
 		ConfirmationCode string `json:"confirmationCode" required:"true" example:"999"`
 	}
 	RefreshToken struct {
-		// Optional. In null - current claims are used, if any value - it would be overwritten. Example {"role":"new_role"}.
-		CustomClaims  *users.JSON `json:"customClaims"`
-		Authorization string      `header:"Authorization" swaggerignore:"true" required:"true" allowForbiddenWriteOperation:"true" allowUnauthorized:"true"`
+		Authorization string `header:"Authorization" swaggerignore:"true" required:"true" allowForbiddenWriteOperation:"true" allowUnauthorized:"true"`
 	}
 )
 

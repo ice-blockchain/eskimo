@@ -500,6 +500,11 @@ paths:
         name: Authorization
         required: true
         type: string
+      - default: <Add metadata token here>
+        description: Insert your metadata token
+        in: header
+        name: X-Account-Metadata
+        type: string
       - description: ID of the user
         in: path
         name: userId

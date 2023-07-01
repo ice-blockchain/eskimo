@@ -66,15 +66,16 @@ func (s *service) GetUsers( //nolint:gocritic // False negative.
 //	@Tags			Accounts
 //	@Accept			json
 //	@Produce		json
-//	@Param			Authorization	header		string	true	"Insert your access token"	default(Bearer <Add access token here>)
-//	@Param			userId			path		string	true	"ID of the user"
-//	@Success		200				{object}	User
-//	@Failure		400				{object}	server.ErrorResponse	"if validations fail"
-//	@Failure		401				{object}	server.ErrorResponse	"if not authorized"
-//	@Failure		404				{object}	server.ErrorResponse	"if not found"
-//	@Failure		422				{object}	server.ErrorResponse	"if syntax fails"
-//	@Failure		500				{object}	server.ErrorResponse
-//	@Failure		504				{object}	server.ErrorResponse	"if request times out"
+//	@Param			Authorization		header		string	true	"Insert your access token"		default(Bearer <Add access token here>)
+//	@Param			X-Account-Metadata	header		string	false	"Insert your metadata token"	default(<Add metadata token here>)
+//	@Param			userId				path		string	true	"ID of the user"
+//	@Success		200					{object}	User
+//	@Failure		400					{object}	server.ErrorResponse	"if validations fail"
+//	@Failure		401					{object}	server.ErrorResponse	"if not authorized"
+//	@Failure		404					{object}	server.ErrorResponse	"if not found"
+//	@Failure		422					{object}	server.ErrorResponse	"if syntax fails"
+//	@Failure		500					{object}	server.ErrorResponse
+//	@Failure		504					{object}	server.ErrorResponse	"if request times out"
 //	@Router			/users/{userId} [GET].
 func (s *service) GetUserByID( //nolint:gocritic // False negative.
 	ctx context.Context,

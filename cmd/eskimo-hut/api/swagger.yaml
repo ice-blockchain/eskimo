@@ -120,12 +120,6 @@ definitions:
         type: string
     type: object
   main.RefreshToken:
-    properties:
-      customClaims:
-        allOf:
-        - $ref: '#/definitions/users.JSON'
-        description: Optional. In null - current claims are used, if any value - it
-          would be overwritten. Example {"role":"new_role"}.
     type: object
   main.RefreshedToken:
     properties:

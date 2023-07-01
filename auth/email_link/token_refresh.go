@@ -40,11 +40,11 @@ func (c *client) RegenerateTokens(ctx context.Context, previousRefreshToken stri
 			"user's email:%v does not match token's email:%v or deviceID:%v", usr.Email, token.Email, token.DeviceUniqueID)
 	}
 	if metadata != nil {
-		mergedMetadata, err := c.UpdateMetadata(ctx, token.Subject, metadata)
+		metadata, err = c.UpdateMetadata(ctx, token.Subject, metadata)
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to update metadata:%v(userID:%v)", token.Email, token.Subject)
 		}
-		usr.Metadata = mergedMetadata
+		usr.Metadata = metadata
 	}
 	now := time.Now()
 	refreshTokenSeq, err := c.incrementRefreshTokenSeq(ctx, &id, token.Subject, token.Seq, now)

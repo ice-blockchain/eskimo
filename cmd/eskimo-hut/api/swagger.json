@@ -986,17 +986,7 @@
             }
         },
         "main.RefreshToken": {
-            "type": "object",
-            "properties": {
-                "customClaims": {
-                    "description": "Optional. In null - current claims are used, if any value - it would be overwritten. Example {\"role\":\"new_role\"}.",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/users.JSON"
-                        }
-                    ]
-                }
-            }
+            "type": "object"
         },
         "main.RefreshedToken": {
             "type": "object",
