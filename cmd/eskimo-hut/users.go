@@ -67,8 +67,13 @@ func (s *service) CreateUser( //nolint:gocritic // .
 			return nil, server.Unexpected(err)
 		}
 	}
+	var idMetadataField = auth.FirebaseIDClaim
+	if req.AuthenticatedUser.IsIce() {
+		idMetadataField = auth.IceIDClaim
+	}
 	md := users.JSON(map[string]any{
 		auth.RegisteredWithProviderClaim: req.AuthenticatedUser.Provider,
+		idMetadataField:                  req.AuthenticatedUser.UserID,
 	})
 	_, err := s.authEmailLinkClient.UpdateMetadata(ctx, usr.ID, &md)
 	if err != nil {

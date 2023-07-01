@@ -11,6 +11,7 @@ import (
 
 	"github.com/ice-blockchain/eskimo/users"
 	"github.com/ice-blockchain/wintr/connectors/storage/v2"
+	"github.com/ice-blockchain/wintr/time"
 )
 
 func (c *client) getEmailLinkSignInByPk(ctx context.Context, id *loginID, oldEmail string) (*emailLinkSignIn, error) {
@@ -177,12 +178,22 @@ func (c *client) UpdateMetadata(ctx context.Context, userID string, data *users.
 				SET metadata = (COALESCE(user_metadata.metadata,'{}'::jsonb)||EXCLUDED.metadata::jsonb)
 			WHERE user_metadata.metadata != EXCLUDED.metadata
 			RETURNING user_metadata.metadata`
-	type metadata struct {
-		Metadata *users.JSON
-	}
 	m, err := storage.ExecOne[metadata](ctx, c.db, sql, userID, data)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to update user metadata for userID:%v", userID)
 	}
 	return m.Metadata, nil
+}
+
+func (c *client) Metadata(ctx context.Context, userID string) (string, error) {
+	md, err := storage.Get[metadata](ctx, c.db, `SELECT * FROM user_metadata WHERE user_id = $1`, userID)
+	if err != nil {
+		return "", errors.Wrapf(err, "failed to get user metadata %v", userID)
+	}
+	encoded, err := c.authClient.GenerateMetadata(time.Now(), userID, *md.Metadata)
+	if err != nil {
+		return "", errors.Wrapf(err, "failed to encode metadata for userID %v: %#v", userID, md)
+	}
+
+	return encoded, nil
 }

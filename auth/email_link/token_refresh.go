@@ -4,6 +4,7 @@ package emaillinkiceauth
 
 import (
 	"context"
+
 	"github.com/pkg/errors"
 
 	"github.com/ice-blockchain/eskimo/users"

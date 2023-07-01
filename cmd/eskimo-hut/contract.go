@@ -13,10 +13,10 @@ import (
 // Public API.
 
 type (
-	GetAccountArg struct{}
-	Profile       struct {
-		*users.UserProfile
-		Checksum string `json:"checksum,omitempty" example:"1232412415326543647657"`
+	GetMetadataArg struct{}
+	Metadata       struct {
+		UserID   string `json:"userID"`
+		Metadata string `json:"metadata,omitempty"`
 	}
 	CreateUserRequestBody struct {
 		// Optional. Example: `{"key1":{"something":"somethingElse"},"key2":"value"}`.
