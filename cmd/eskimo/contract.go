@@ -5,12 +5,15 @@ package main
 import (
 	"regexp"
 
+	emaillink "github.com/ice-blockchain/eskimo/auth/email_link"
 	"github.com/ice-blockchain/eskimo/users"
 )
 
 // Public API.
 
 type (
+	GetAccountArg struct{}
+
 	GetUsersArg struct {
 		Keyword string `form:"keyword" required:"true" example:"john"`
 		Limit   uint64 `form:"limit" maximum:"1000" example:"10"` // 10 by default.
@@ -72,6 +75,7 @@ type (
 	// | service implements server.State and is responsible for managing the state and lifecycle of the package.
 	service struct {
 		usersRepository users.Repository
+		iceClient       emaillink.IceUserIDClient
 	}
 	config struct {
 		Host    string `yaml:"host"`

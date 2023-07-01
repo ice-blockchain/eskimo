@@ -6,6 +6,7 @@ import (
 	_ "embed"
 	"mime/multipart"
 
+	emaillink "github.com/ice-blockchain/eskimo/auth/email_link"
 	"github.com/ice-blockchain/eskimo/users"
 )
 
@@ -82,9 +83,36 @@ type (
 		Bogus          string `json:"bogus" swaggerignore:"true"` // It's just for the router to register the JSON body binder.
 		users.DeviceMetadata
 	}
+	SendSignInLinkToEmailRequestArg struct {
+		Email          string `json:"email" allowUnauthorized:"true" required:"true" example:"jdoe@gmail.com"`
+		DeviceUniqueID string `json:"deviceUniqueId" required:"true" example:"70063ABB-E69F-4FD2-8B83-90DD372802DA"`
+		Language       string `json:"language" required:"true" example:"en"`
+	}
+	StatusArg struct {
+		LoginSession string `json:"loginSession" allowUnauthorized:"true" required:"true" example:"eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJPbmxpbmUgSldUIEJ1aWxkZXIiLCJpYXQiOjE2ODQzMjQ0NTYsImV4cCI6MTcxNTg2MDQ1NiwiYXVkIjoiIiwic3ViIjoianJvY2tldEBleGFtcGxlLmNvbSIsIm90cCI6IjUxMzRhMzdkLWIyMWEtNGVhNi1hNzk2LTAxOGIwMjMwMmFhMCJ9.q3xa8Gwg2FVCRHLZqkSedH3aK8XBqykaIy85rRU40nM"` //nolint:lll // .
+	}
+	ModifyUserResponse struct {
+		*User
+		LoginSession string `json:"loginSession,omitempty" example:"eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJPbmxpbmUgSldUIEJ1aWxkZXIiLCJpYXQiOjE2ODQzMjQ0NTYsImV4cCI6MTcxNTg2MDQ1NiwiYXVkIjoiIiwic3ViIjoianJvY2tldEBleGFtcGxlLmNvbSIsIm90cCI6IjUxMzRhMzdkLWIyMWEtNGVhNi1hNzk2LTAxOGIwMjMwMmFhMCJ9.q3xa8Gwg2FVCRHLZqkSedH3aK8XBqykaIy85rRU40nM"` //nolint:lll // .
+	}
 	User struct {
 		*users.User
 		Checksum string `json:"checksum,omitempty" example:"1232412415326543647657"`
+	}
+	Auth struct {
+		LoginSession string `json:"loginSession" example:"eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJPbmxpbmUgSldUIEJ1aWxkZXIiLCJpYXQiOjE2ODQzMjQ0NTYsImV4cCI6MTcxNTg2MDQ1NiwiYXVkIjoiIiwic3ViIjoianJvY2tldEBleGFtcGxlLmNvbSIsIm90cCI6IjUxMzRhMzdkLWIyMWEtNGVhNi1hNzk2LTAxOGIwMjMwMmFhMCJ9.q3xa8Gwg2FVCRHLZqkSedH3aK8XBqykaIy85rRU40nM"` //nolint:lll // .
+	}
+	RefreshedToken struct {
+		*emaillink.Tokens
+	}
+	MagicLinkPayload struct {
+		EmailToken       string `json:"emailToken" required:"true" allowUnauthorized:"true" example:"eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJPbmxpbmUgSldUIEJ1aWxkZXIiLCJpYXQiOjE2ODQzMjQ0NTYsImV4cCI6MTcxNTg2MDQ1NiwiYXVkIjoiIiwic3ViIjoianJvY2tldEBleGFtcGxlLmNvbSIsIm90cCI6IjUxMzRhMzdkLWIyMWEtNGVhNi1hNzk2LTAxOGIwMjMwMmFhMCJ9.q3xa8Gwg2FVCRHLZqkSedH3aK8XBqykaIy85rRU40nM"` //nolint:lll // .
+		ConfirmationCode string `json:"confirmationCode" required:"true" example:"999"`
+	}
+	RefreshToken struct {
+		// Optional. In null - current claims are used, if any value - it would be overwritten. Example {"role":"new_role"}.
+		CustomClaims  *users.JSON `json:"customClaims"`
+		Authorization string      `header:"Authorization" swaggerignore:"true" required:"true" allowForbiddenWriteOperation:"true" allowUnauthorized:"true"`
 	}
 )
 
@@ -100,10 +128,23 @@ const (
 	deviceMetadataAppUpdateRequireErrorCode = "UPDATE_REQUIRED"
 	invalidUsernameErrorCode                = "INVALID_USERNAME"
 	userNotFoundErrorCode                   = "USER_NOT_FOUND"
+	userBlockedErrorCode                    = "USER_BLOCKED"
 	duplicateUserErrorCode                  = "CONFLICT_WITH_ANOTHER_USER"
 	referralNotFoundErrorCode               = "REFERRAL_NOT_FOUND"
 	raceConditionErrorCode                  = "RACE_CONDITION"
 	invalidPropertiesErrorCode              = "INVALID_PROPERTIES"
+
+	linkExpiredErrorCode    = "EXPIRED_LINK"
+	invalidOTPCodeErrorCode = "INVALID_OTP"
+	dataMismatchErrorCode   = "DATA_MISMATCH"
+
+	confirmationCodeNotFoundErrorCode         = "CONFIRMATION_CODE_NOT_FOUND"
+	confirmationCodeAttemptsExceededErrorCode = "CONFIRMATION_CODE_ATTEMPTS_EXCEEDED"
+	confirmationCodeWrongErrorCode            = "CONFIRMATION_CODE_WRONG"
+
+	noPendingLoginSessionErrorCode = "NO_PENDING_LOGIN_SESSION"
+
+	deviceIDTokenClaim = "deviceUniqueID" //nolint:gosec // .
 )
 
 // .
@@ -115,7 +156,8 @@ var (
 type (
 	// | service implements server.State and is responsible for managing the state and lifecycle of the package.
 	service struct {
-		usersProcessor users.Processor
+		usersProcessor      users.Processor
+		authEmailLinkClient emaillink.Client
 	}
 	config struct {
 		Host    string `yaml:"host"`

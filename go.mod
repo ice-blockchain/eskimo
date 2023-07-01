@@ -4,16 +4,17 @@ go 1.20
 
 require (
 	github.com/goccy/go-json v0.10.2
+	github.com/golang-jwt/jwt/v5 v5.0.0
 	github.com/google/uuid v1.3.0
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/ice-blockchain/go-tarantool-client v0.0.0-20230327200757-4fc71fa3f7bb
-	github.com/ice-blockchain/wintr v1.116.0
+	github.com/ice-blockchain/wintr v1.117.0
 	github.com/ip2location/ip2location-go/v9 v9.6.0
 	github.com/jackc/pgx/v5 v5.4.1
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.8.4
 	github.com/swaggo/swag v1.16.1
-	github.com/testcontainers/testcontainers-go v0.20.1
+	github.com/testcontainers/testcontainers-go v0.21.0
 	github.com/zeebo/xxh3 v1.0.2
 	golang.org/x/mod v0.11.0
 	golang.org/x/net v0.11.0
@@ -95,7 +96,7 @@ require (
 	github.com/morikuni/aec v1.0.0 // indirect
 	github.com/onsi/ginkgo/v2 v2.11.0 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
-	github.com/opencontainers/image-spec v1.1.0-rc3 // indirect
+	github.com/opencontainers/image-spec v1.1.0-rc4 // indirect
 	github.com/opencontainers/runc v1.1.7 // indirect
 	github.com/pelletier/go-toml/v2 v2.0.8 // indirect
 	github.com/pierrec/lz4/v4 v4.1.18 // indirect
@@ -106,6 +107,8 @@ require (
 	github.com/quic-go/quic-go v0.36.0 // indirect
 	github.com/refraction-networking/utls v1.3.2 // indirect
 	github.com/rs/zerolog v1.29.1 // indirect
+	github.com/sendgrid/rest v2.6.9+incompatible // indirect
+	github.com/sendgrid/sendgrid-go v3.12.0+incompatible // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/spf13/afero v1.9.5 // indirect
 	github.com/spf13/cast v1.5.1 // indirect
@@ -149,7 +152,6 @@ require (
 replace (
 	github.com/containerd/containerd => github.com/containerd/containerd v1.6.19
 	github.com/docker/docker => github.com/docker/docker v20.10.22+incompatible
-	github.com/ice-blockchain/wintr => github.com/ice-blockchain/wintr v1.114.0
 	// https://github.com/quic-go/quic-go/issues/3907
 	github.com/quic-go/qtls-go1-20 => github.com/quic-go/qtls-go1-20 v0.2.2
 	github.com/testcontainers/testcontainers-go => github.com/testcontainers/testcontainers-go v0.15.0

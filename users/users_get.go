@@ -17,7 +17,10 @@ func (r *repository) getUserByID(ctx context.Context, id UserID) (*User, error) 
 	if ctx.Err() != nil {
 		return nil, errors.Wrap(ctx.Err(), "get user failed because context failed")
 	}
-	result, err := storage.Get[User](ctx, r.db, `SELECT * FROM users u WHERE id = $1`, id)
+	result, err := storage.Get[User](ctx, r.db, `
+	SELECT *
+		FROM users
+		WHERE id = $1`, id)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to get user by id %v", id)
 	}

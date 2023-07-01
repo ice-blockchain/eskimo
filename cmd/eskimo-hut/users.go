@@ -12,7 +12,9 @@ import (
 	"github.com/goccy/go-json"
 	"github.com/pkg/errors"
 
+	emaillink "github.com/ice-blockchain/eskimo/auth/email_link"
 	"github.com/ice-blockchain/eskimo/users"
+	"github.com/ice-blockchain/wintr/auth"
 	"github.com/ice-blockchain/wintr/log"
 	"github.com/ice-blockchain/wintr/server"
 	"github.com/ice-blockchain/wintr/terror"
@@ -65,6 +67,13 @@ func (s *service) CreateUser( //nolint:gocritic // .
 			return nil, server.Unexpected(err)
 		}
 	}
+	//nolint:gocritic,godot // Temporary.
+	// err := server.Auth(ctx).UpdateCustomClaims(ctx, usr.ID, map[string]any{ "hashCode": fmt.Sprint(usr.HashCode), // .
+	// 	auth.RegisteredWithProviderClaim: req.AuthenticatedUser.Provider, // .
+	// }) // .
+	// if err != nil && !errors.Is(err, auth.ErrUserNotFound) { // .
+	// 	return nil, server.Unexpected(errors.Wrapf(err, "failed to update auth CustomClaims for:%#v", usr)) // .
+	// } // .
 	usr.HashCode = 0
 
 	return server.Created(&User{User: usr, Checksum: usr.Checksum()}), nil
@@ -95,8 +104,8 @@ func buildUserForCreation(req *server.Request[CreateUserRequestBody, User]) *use
 //	@Param			userId				path		string					true	"ID of the user"
 //	@Param			multiPartFormData	formData	ModifyUserRequestBody	true	"Request params"
 //	@Param			profilePicture		formData	file					false	"The new profile picture for the user"
-//	@Success		200					{object}	User
-//	@Failure		400					{object}	server.ErrorResponse	"if validations fail"
+//	@Success		200					{object}	ModifyUserResponse
+//	@Failure		400					{object}	server.ErrorResponse	"if validations fail or user for modification email is blocked"
 //	@Failure		401					{object}	server.ErrorResponse	"if not authorized"
 //	@Failure		403					{object}	server.ErrorResponse	"not allowed"
 //	@Failure		404					{object}	server.ErrorResponse	"user is not found; or the referred by is not found"
@@ -105,15 +114,28 @@ func buildUserForCreation(req *server.Request[CreateUserRequestBody, User]) *use
 //	@Failure		500					{object}	server.ErrorResponse
 //	@Failure		504					{object}	server.ErrorResponse	"if request times out"
 //	@Router			/users/{userId} [PATCH].
-func (s *service) ModifyUser( //nolint:gocritic // .
+func (s *service) ModifyUser( //nolint:gocritic,funlen // .
 	ctx context.Context,
-	req *server.Request[ModifyUserRequestBody, User],
-) (*server.Response[User], *server.Response[server.ErrorResponse]) {
+	req *server.Request[ModifyUserRequestBody, ModifyUserResponse],
+) (*server.Response[ModifyUserResponse], *server.Response[server.ErrorResponse]) {
 	if err := validateModifyUser(ctx, req); err != nil {
 		return nil, err
 	}
 	usr := buildUserForModification(req)
-	if err := s.usersProcessor.ModifyUser(users.ContextWithChecksum(ctx, req.Data.Checksum), usr, req.Data.ProfilePicture); err != nil {
+	var err error
+	var loginSession string
+	if usr.Email, loginSession, err = s.emailUpdateRequested(ctx, &req.AuthenticatedUser, usr.Email); err != nil {
+		switch {
+		case errors.Is(err, users.ErrNotFound):
+			return nil, server.NotFound(errors.Wrapf(err, "user with id `%v` was not found", req.AuthenticatedUser.UserID), userNotFoundErrorCode)
+		case errors.Is(err, emaillink.ErrUserBlocked):
+			return nil, server.BadRequest(err, userBlockedErrorCode)
+		default:
+			return nil, server.Unexpected(errors.Wrapf(err, "failed to trigger email modification for request:%#v", req.Data))
+		}
+	}
+	err = s.usersProcessor.ModifyUser(users.ContextWithChecksum(ctx, req.Data.Checksum), usr, req.Data.ProfilePicture)
+	if err != nil {
 		err = errors.Wrapf(err, "failed to modify user for %#v", req.Data)
 		switch {
 		case errors.Is(err, users.ErrRaceCondition):
@@ -135,10 +157,10 @@ func (s *service) ModifyUser( //nolint:gocritic // .
 		}
 	}
 
-	return server.OK(&User{User: usr, Checksum: usr.Checksum()}), nil
+	return server.OK(&ModifyUserResponse{User: &User{User: usr, Checksum: usr.Checksum()}, LoginSession: loginSession}), nil
 }
 
-func validateModifyUser(ctx context.Context, req *server.Request[ModifyUserRequestBody, User]) *server.Response[server.ErrorResponse] {
+func validateModifyUser(ctx context.Context, req *server.Request[ModifyUserRequestBody, ModifyUserResponse]) *server.Response[server.ErrorResponse] {
 	if err := req.Data.verifyIfAtLeastOnePropertyProvided(); err != nil {
 		return err
 	}
@@ -159,7 +181,40 @@ func validateModifyUser(ctx context.Context, req *server.Request[ModifyUserReque
 	return validateHiddenProfileElements(req)
 }
 
-func validateHiddenProfileElements(req *server.Request[ModifyUserRequestBody, User]) *server.Response[server.ErrorResponse] {
+func (s *service) emailUpdateRequested(
+	ctx context.Context,
+	loggedInUser *server.AuthenticatedUser,
+	newEmail string,
+) (emailForUpdate, loginSession string, err error) {
+	if newEmail == "" || newEmail == loggedInUser.Email {
+		return "", "", nil
+	}
+	// User uses firebase.
+	if loggedInUser.Token.IsFirebase() {
+		return newEmail, "", nil
+	}
+	deviceID := loggedInUser.Claims[deviceIDTokenClaim].(string) //nolint:errcheck,forcetypeassert // .
+	language := loggedInUser.Language
+	if language == "" {
+		var oldUser *users.UserProfile
+		oldUser, err = s.usersProcessor.GetUserByID(ctx, loggedInUser.UserID)
+		if err != nil {
+			return "", "", errors.Wrapf(err, "get user %v failed: no language", loggedInUser.UserID)
+		}
+		language = oldUser.Language
+	}
+
+	if loginSession, err = s.authEmailLinkClient.SendSignInLinkToEmail(
+		users.ConfirmedEmailContext(ctx, loggedInUser.Email),
+		newEmail, deviceID, language,
+	); err != nil {
+		return "", "", errors.Wrapf(err, "can't send sign in link to email:%v", newEmail)
+	}
+
+	return "", loginSession, nil
+}
+
+func validateHiddenProfileElements(req *server.Request[ModifyUserRequestBody, ModifyUserResponse]) *server.Response[server.ErrorResponse] {
 	if req.Data.HiddenProfileElements == nil {
 		return nil
 	}
@@ -190,7 +245,7 @@ func validateHiddenProfileElements(req *server.Request[ModifyUserRequestBody, Us
 	return nil
 }
 
-func buildUserForModification(req *server.Request[ModifyUserRequestBody, User]) *users.User { //nolint:funlen // .
+func buildUserForModification(req *server.Request[ModifyUserRequestBody, ModifyUserResponse]) *users.User { //nolint:funlen // .
 	usr := new(users.User)
 	usr.ID = req.Data.UserID
 	usr.ReferredBy = req.Data.ReferredBy
@@ -297,7 +352,7 @@ func (s *service) DeleteUser( //nolint:gocritic // False negative.
 
 		return nil, server.Unexpected(errors.Wrapf(err, "failed to delete user with id: %v", req.Data.UserID))
 	}
-	if err := server.Auth(ctx).DeleteUser(ctx, req.Data.UserID); err != nil {
+	if err := server.Auth(ctx).DeleteUser(ctx, req.Data.UserID); err != nil && !errors.Is(err, auth.ErrUserNotFound) {
 		return nil, server.Unexpected(errors.Wrapf(err, "failed to delete auth user:%#v", req.Data.UserID))
 	}
 

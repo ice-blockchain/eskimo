@@ -5,8 +5,10 @@ package main
 import (
 	"context"
 
+	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 
+	emaillink "github.com/ice-blockchain/eskimo/auth/email_link"
 	"github.com/ice-blockchain/eskimo/cmd/eskimo-hut/api"
 	"github.com/ice-blockchain/eskimo/users"
 	appCfg "github.com/ice-blockchain/wintr/config"
@@ -35,10 +37,12 @@ func main() {
 func (s *service) RegisterRoutes(router *server.Router) {
 	s.setupUserRoutes(router)
 	s.setupDevicesRoutes(router)
+	s.setupAuthRoutes(router)
 }
 
 func (s *service) Init(ctx context.Context, cancel context.CancelFunc) {
 	s.usersProcessor = users.StartProcessor(ctx, cancel)
+	s.authEmailLinkClient = emaillink.NewClient(ctx, s.usersProcessor, server.Auth(ctx))
 }
 
 func (s *service) Close(ctx context.Context) error {
@@ -46,7 +50,10 @@ func (s *service) Close(ctx context.Context) error {
 		return errors.Wrap(ctx.Err(), "could not close usersProcessor because context ended")
 	}
 
-	return errors.Wrap(s.usersProcessor.Close(), "could not close usersProcessor")
+	return multierror.Append( //nolint:wrapcheck // Not needed.
+		errors.Wrap(s.authEmailLinkClient.Close(), "could not close authEmailLinkClient"),
+		errors.Wrap(s.usersProcessor.Close(), "could not close usersProcessor"),
+	).ErrorOrNil()
 }
 
 func (s *service) CheckHealth(ctx context.Context) error {

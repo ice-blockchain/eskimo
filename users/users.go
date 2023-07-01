@@ -147,7 +147,7 @@ func randomBetween(left, right uint64) uint64 {
 }
 
 func requestingUserID(ctx context.Context) (requestingUserID string) {
-	requestingUserID, _ = ctx.Value(requestingUserIDCtxValueKey).(string) //nolint:errcheck // Not needed.
+	requestingUserID, _ = ctx.Value(RequestingUserIDCtxValueKey).(string) //nolint:errcheck // Not needed.
 
 	return
 }
@@ -209,19 +209,25 @@ func (Enum[T]) ScanIndexType() any {
 }
 
 func (j *JSON) Scan(src any) error {
-	val, isStr := src.(string)
-	if isStr {
+	valBytes, isBytes := src.([]byte)
+	if !isBytes {
+		val, isStr := src.(string)
+		if !isStr {
+			return errors.Errorf("unexpected type for src:%#v(%T)", src, src)
+		}
 		if val == "" {
 			return nil
 		}
 		if val == "{}" {
 			*j = make(JSON, 0)
 		}
-
-		return errors.Wrapf(json.UnmarshalContext(context.Background(), []byte(val), j), "failed to json.Unmarshall(%v,*JSON)", val)
+		valBytes = []byte(val)
+	}
+	if len(valBytes) > 2 { //nolint:gomnd // {}
+		return errors.Wrapf(json.UnmarshalContext(context.Background(), valBytes, j), "failed to json.Unmarshall(%v,*JSON)", string(valBytes))
 	}
 
-	return errors.Errorf("unexpected type for src:%#v(%T)", src, src)
+	return nil
 }
 
 func (u *User) Checksum() string {
@@ -437,4 +443,17 @@ func generateUsernameKeywords(username string) []string {
 	}
 
 	return keywords
+}
+
+func ConfirmedEmailContext(ctx context.Context, emailValue string) context.Context {
+	return context.WithValue(ctx, confirmedEmailCtxValueKey, emailValue) //nolint:revive,staticcheck // .
+}
+
+func ConfirmedEmail(ctx context.Context) string {
+	email, ok := ctx.Value(confirmedEmailCtxValueKey).(string)
+	if ok {
+		return email
+	}
+
+	return ""
 }

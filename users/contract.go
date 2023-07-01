@@ -27,7 +27,8 @@ import (
 // Public API.
 
 const (
-	UsernameRegex = `^[.a-zA-Z0-9]{4,30}$`
+	UsernameRegex               = `^[.a-zA-Z0-9]{4,30}$`
+	RequestingUserIDCtxValueKey = "requestingUserIDCtxValueKey"
 )
 
 const (
@@ -152,21 +153,6 @@ type (
 		TimeSeries []*UserCountTimeSeriesDataPoint `json:"timeSeries"`
 		UserCount
 	}
-	PhoneNumberValidation struct {
-		// `Read Only`.
-		CreatedAt       *time.Time `json:"createdAt,omitempty" example:"2022-01-03T16:20:52.156534Z"`
-		UserID          UserID     `json:"userId,omitempty" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
-		PhoneNumber     string     `json:"phoneNumber,omitempty" example:"+12345678"`
-		PhoneNumberHash string     `json:"phoneNumberHash,omitempty" example:"Ef86A6021afCDe5673511376B2"`
-		ValidationCode  string     `json:"validationCode,omitempty" example:"1234"`
-	}
-	EmailValidation struct {
-		// `Read Only`.
-		CreatedAt      *time.Time `json:"createdAt,omitempty" example:"2022-01-03T16:20:52.156534Z"`
-		UserID         UserID     `json:"userId,omitempty" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
-		Email          string     `json:"email,omitempty" example:"someone1@example.com"`
-		ValidationCode string     `json:"validationCode,omitempty" example:"1234"`
-	}
 	GlobalUnsigned struct {
 		Key   string `json:"key" example:"TOTAL_USERS_2022-01-22:16"`
 		Value uint64 `json:"value" example:"123676"`
@@ -222,7 +208,7 @@ const (
 	totalUsersGlobalKey                 = "TOTAL_USERS"
 	totalActiveUsersGlobalKey           = "TOTAL_ACTIVE_USERS"
 	checksumCtxValueKey                 = "versioningChecksumCtxValueKey"
-	requestingUserIDCtxValueKey         = "requestingUserIDCtxValueKey"
+	confirmedEmailCtxValueKey           = "confirmedEmailCtxValueKey"
 	totalNoOfDefaultProfilePictures     = 20
 	defaultProfilePictureName           = "default-profile-picture-%v.png"
 	defaultProfilePictureNameRegex      = "default-profile-picture-\\d+[.]png"

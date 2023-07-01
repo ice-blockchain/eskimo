@@ -5,8 +5,10 @@ package main
 import (
 	"context"
 
+	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 
+	emaillink "github.com/ice-blockchain/eskimo/auth/email_link"
 	"github.com/ice-blockchain/eskimo/cmd/eskimo/api"
 	"github.com/ice-blockchain/eskimo/users"
 	appCfg "github.com/ice-blockchain/wintr/config"
@@ -36,10 +38,12 @@ func (s *service) RegisterRoutes(router *server.Router) {
 	s.setupUserRoutes(router)
 	s.setupUserReferralRoutes(router)
 	s.setupUserStatisticsRoutes(router)
+	s.setupAuthRoutes(router)
 }
 
 func (s *service) Init(ctx context.Context, cancel context.CancelFunc) {
 	s.usersRepository = users.New(ctx, cancel)
+	s.iceClient = emaillink.NewROClient(ctx)
 }
 
 func (s *service) Close(ctx context.Context) error {
@@ -47,7 +51,10 @@ func (s *service) Close(ctx context.Context) error {
 		return errors.Wrap(ctx.Err(), "could not close repository because context ended")
 	}
 
-	return errors.Wrap(s.usersRepository.Close(), "could not close repository")
+	return multierror.Append( //nolint:wrapcheck //.
+		errors.Wrapf(s.iceClient.Close(), "could not close iceClient"),
+		errors.Wrapf(s.usersRepository.Close(), "could not close repository"),
+	).ErrorOrNil()
 }
 
 func (s *service) CheckHealth(ctx context.Context) error {

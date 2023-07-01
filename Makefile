@@ -251,8 +251,9 @@ format-imports:
 	gci write -s standard -s default -s "prefix(github.com/ice-blockchain)" ./..
 	goimports -w -local github.com/ice-blockchain ./..
 
-print-token-%:
-	go run -v local.go --generateAuth $*
+# examples: print-firebase-token-author, print-ice-token-admin
+print-%:
+	go run -v local.go $(shell echo --generate$(shell echo $(firstword $(subst -, ,$*)) | awk '{print toupper(substr($$0,1,1))tolower(substr($$0,2))}')Auth) $(lastword $(subst -, ,$*))
 
 start-seeding:
 	go run -v local.go --startSeeding true
