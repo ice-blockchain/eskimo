@@ -46,10 +46,8 @@ auth/email-link:
     blockDuration: 10m
   loginSession:
     jwtSecret: bogus
-    expirationTime: 20m
   confirmationCode:
     maxWrongAttemptsCount: 3
-    expirationTime: 20m
 users: &users
   wintr/connectors/storage/v2:
     runDDL: true

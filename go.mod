@@ -2,10 +2,6 @@ module github.com/ice-blockchain/eskimo
 
 go 1.20
 
-replace (
-	github.com/ice-blockchain/wintr => ../wintr
-)
-
 require (
 	github.com/goccy/go-json v0.10.2
 	github.com/golang-jwt/jwt/v5 v5.0.0
@@ -18,7 +14,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.8.4
 	github.com/swaggo/swag v1.16.1
-	github.com/testcontainers/testcontainers-go v0.20.1
+	github.com/testcontainers/testcontainers-go v0.21.0
 	github.com/zeebo/xxh3 v1.0.2
 	golang.org/x/mod v0.11.0
 	golang.org/x/net v0.11.0
@@ -156,7 +152,6 @@ require (
 replace (
 	github.com/containerd/containerd => github.com/containerd/containerd v1.6.19
 	github.com/docker/docker => github.com/docker/docker v20.10.22+incompatible
-	github.com/ice-blockchain/wintr => github.com/ice-blockchain/wintr v1.114.0
 	// https://github.com/quic-go/quic-go/issues/3907
 	github.com/quic-go/qtls-go1-20 => github.com/quic-go/qtls-go1-20 v0.2.2
 	github.com/testcontainers/testcontainers-go => github.com/testcontainers/testcontainers-go v0.15.0
