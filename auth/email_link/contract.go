@@ -44,7 +44,7 @@ type (
 		AccessToken  string `json:"accessToken,omitempty" example:"eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJPbmxpbmUgSldUIEJ1aWxkZXIiLCJpYXQiOjE2ODQzMjQ0NTYsImV4cCI6MTcxNTg2MDQ1NiwiYXVkIjoiIiwic3ViIjoianJvY2tldEBleGFtcGxlLmNvbSIsIm90cCI6IjUxMzRhMzdkLWIyMWEtNGVhNi1hNzk2LTAxOGIwMjMwMmFhMCJ9.q3xa8Gwg2FVCRHLZqkSedH3aK8XBqykaIy85rRU40nM"`  //nolint:lll // .
 	}
 	Metadata struct {
-		UserID   string `json:"userID" example:"1c0b9801-cfb2-4c4e-b48a-db18ce0894f9"`
+		UserID   string `json:"userId" example:"1c0b9801-cfb2-4c4e-b48a-db18ce0894f9"`
 		Metadata string `json:"metadata"`
 	}
 )
@@ -147,8 +147,8 @@ type (
 		Body          string `json:"body"`    //nolint:revive // That's intended.
 	}
 	metadata struct {
-		UserID   string
 		Metadata *users.JSON
+		UserID   string
 	}
 )
 

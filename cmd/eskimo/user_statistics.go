@@ -25,16 +25,17 @@ func (s *service) setupUserStatisticsRoutes(router *server.Router) {
 //	@Tags			Statistics
 //	@Accept			json
 //	@Produce		json
-//	@Param			Authorization	header		string	true	"Insert your access token"	default(Bearer <Add access token here>)
-//	@Param			keyword			query		string	false	"a keyword to look for in all country codes or names"
-//	@Param			limit			query		uint64	false	"Limit of elements to return. Defaults to 10"
-//	@Param			offset			query		uint64	false	"Number of elements to skip before collecting elements to return"
-//	@Success		200				{array}		users.CountryStatistics
-//	@Failure		400				{object}	server.ErrorResponse	"if validations fail"
-//	@Failure		401				{object}	server.ErrorResponse	"if not authorized"
-//	@Failure		422				{object}	server.ErrorResponse	"if syntax fails"
-//	@Failure		500				{object}	server.ErrorResponse
-//	@Failure		504				{object}	server.ErrorResponse	"if request times out"
+//	@Param			Authorization		header		string	true	"Insert your access token"		default(Bearer <Add access token here>)
+//	@Param			X-Account-Metadata	header		string	false	"Insert your metadata token"	default(<Add metadata token here>)
+//	@Param			keyword				query		string	false	"a keyword to look for in all country codes or names"
+//	@Param			limit				query		uint64	false	"Limit of elements to return. Defaults to 10"
+//	@Param			offset				query		uint64	false	"Number of elements to skip before collecting elements to return"
+//	@Success		200					{array}		users.CountryStatistics
+//	@Failure		400					{object}	server.ErrorResponse	"if validations fail"
+//	@Failure		401					{object}	server.ErrorResponse	"if not authorized"
+//	@Failure		422					{object}	server.ErrorResponse	"if syntax fails"
+//	@Failure		500					{object}	server.ErrorResponse
+//	@Failure		504					{object}	server.ErrorResponse	"if request times out"
 //	@Router			/user-statistics/top-countries [GET].
 func (s *service) GetTopCountries( //nolint:gocritic // False negative.
 	ctx context.Context,
@@ -58,14 +59,15 @@ func (s *service) GetTopCountries( //nolint:gocritic // False negative.
 //	@Tags			Statistics
 //	@Accept			json
 //	@Produce		json
-//	@Param			Authorization	header		string	true	"Insert your access token"	default(Bearer <Add access token here>)
-//	@Param			days			query		uint64	false	"number of days in the past to look for. Defaults to 3. Max is 90."
-//	@Success		200				{object}	users.UserGrowthStatistics
-//	@Failure		400				{object}	server.ErrorResponse	"if validations fail"
-//	@Failure		401				{object}	server.ErrorResponse	"if not authorized"
-//	@Failure		422				{object}	server.ErrorResponse	"if syntax fails"
-//	@Failure		500				{object}	server.ErrorResponse
-//	@Failure		504				{object}	server.ErrorResponse	"if request times out"
+//	@Param			Authorization		header		string	true	"Insert your access token"		default(Bearer <Add access token here>)
+//	@Param			X-Account-Metadata	header		string	false	"Insert your metadata token"	default(<Add metadata token here>)
+//	@Param			days				query		uint64	false	"number of days in the past to look for. Defaults to 3. Max is 90."
+//	@Success		200					{object}	users.UserGrowthStatistics
+//	@Failure		400					{object}	server.ErrorResponse	"if validations fail"
+//	@Failure		401					{object}	server.ErrorResponse	"if not authorized"
+//	@Failure		422					{object}	server.ErrorResponse	"if syntax fails"
+//	@Failure		500					{object}	server.ErrorResponse
+//	@Failure		504					{object}	server.ErrorResponse	"if request times out"
 //	@Router			/user-statistics/user-growth [GET].
 func (s *service) GetUserGrowth( //nolint:gocritic // False negative.
 	ctx context.Context,

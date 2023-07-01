@@ -41,7 +41,7 @@ func (c *client) SendSignInLinkToEmail(ctx context.Context, emailValue, deviceUn
 		return "", errors.Wrap(err, "can't call generateLoginSession")
 	}
 	now := time.Now()
-	if uErr := c.upsertEmailLinkSignIn(ctx, id.Email, oldEmail, id.DeviceUniqueID, otp, confirmationCode, now); uErr != nil {
+	if uErr := c.upsertEmailLinkSignIn(ctx, id.Email, id.DeviceUniqueID, otp, confirmationCode, now); uErr != nil {
 		return "", errors.Wrapf(uErr, "failed to store/update email link sign ins for id:%#v", id)
 	}
 	if sErr := c.sendMagicLink(ctx, &id, oldEmail, otp, language, now); sErr != nil {
@@ -136,7 +136,7 @@ func (c *client) sendEmailWithType(ctx context.Context, emailType, toEmail, lang
 }
 
 //nolint:revive,funlen // .
-func (c *client) upsertEmailLinkSignIn(ctx context.Context, toEmail, oldEmail, deviceUniqueID, otp, code string, now *time.Time) error {
+func (c *client) upsertEmailLinkSignIn(ctx context.Context, toEmail, deviceUniqueID, otp, code string, now *time.Time) error {
 	confirmationCodeWrongAttempts := 0
 	params := []any{now.Time, toEmail, deviceUniqueID, otp, code, confirmationCodeWrongAttempts}
 	sql := `INSERT INTO email_link_sign_ins (

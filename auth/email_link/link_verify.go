@@ -32,26 +32,8 @@ func (c *client) SignIn(ctx context.Context, emailLinkPayload, confirmationCode 
 
 		return errors.Wrapf(err, "failed to get user info by email:%v(old email:%v)", email, token.OldEmail)
 	}
-	if els.OTP == *els.UserID {
-		return errors.Wrapf(ErrNoConfirmationRequired, "no pending confirmation for email:%v", email)
-	}
-	if els.ConfirmationCodeWrongAttemptsCount >= c.cfg.ConfirmationCode.MaxWrongAttemptsCount {
-		return errors.Wrapf(ErrConfirmationCodeAttemptsExceeded, "confirmation code wrong attempts count exceeded for id:%#v", id)
-	}
-	if els.ConfirmationCode != confirmationCode {
-		var shouldBeBlocked bool
-		if els.ConfirmationCodeWrongAttemptsCount+1 == c.cfg.ConfirmationCode.MaxWrongAttemptsCount {
-			shouldBeBlocked = true
-		}
-		var mErr *multierror.Error
-		if iErr := c.increaseWrongConfirmationCodeAttemptsCount(ctx, &id, shouldBeBlocked); iErr != nil {
-			mErr = multierror.Append(mErr, errors.Wrapf(iErr,
-				"can't increment wrong confirmation code attempts count for email:%v,deviceUniqueID:%v", email, token.DeviceUniqueID))
-		}
-		mErr = multierror.Append(mErr,
-			errors.Wrapf(ErrConfirmationCodeWrong, "wrong confirmation code:%v for emailLinkPayload:%v", confirmationCode, emailLinkPayload))
-
-		return mErr.ErrorOrNil() //nolint:wrapcheck // Not needed.
+	if vErr := c.verifySignIn(ctx, els, &id, emailLinkPayload, confirmationCode); vErr != nil {
+		return errors.Wrapf(vErr, "can't verify sign in for id:%#v", id)
 	}
 	var emailConfirmed bool
 	if token.OldEmail != "" {
@@ -71,6 +53,32 @@ func (c *client) SignIn(ctx context.Context, emailLinkPayload, confirmationCode 
 	}
 	if fErr := c.finishAuthProcess(ctx, &id, *els.UserID, token.OTP, els.IssuedTokenSeq, emailConfirmed); fErr != nil {
 		return errors.Wrapf(fErr, "can't finish auth process for userID:%v,email:%v,otp:%v", els.UserID, email, token.OTP)
+	}
+
+	return nil
+}
+
+func (c *client) verifySignIn(ctx context.Context, els *emailLinkSignIn, id *loginID, emailLinkPayload, confirmationCode string) error {
+	if els.OTP == *els.UserID {
+		return errors.Wrapf(ErrNoConfirmationRequired, "no pending confirmation for email:%v", id.Email)
+	}
+	if els.ConfirmationCodeWrongAttemptsCount >= c.cfg.ConfirmationCode.MaxWrongAttemptsCount {
+		return errors.Wrapf(ErrConfirmationCodeAttemptsExceeded, "confirmation code wrong attempts count exceeded for id:%#v", id)
+	}
+	if els.ConfirmationCode != confirmationCode {
+		var shouldBeBlocked bool
+		if els.ConfirmationCodeWrongAttemptsCount+1 == c.cfg.ConfirmationCode.MaxWrongAttemptsCount {
+			shouldBeBlocked = true
+		}
+		var mErr *multierror.Error
+		if iErr := c.increaseWrongConfirmationCodeAttemptsCount(ctx, id, shouldBeBlocked); iErr != nil {
+			mErr = multierror.Append(mErr, errors.Wrapf(iErr,
+				"can't increment wrong confirmation code attempts count for email:%v,deviceUniqueID:%v", id.Email, id.DeviceUniqueID))
+		}
+		mErr = multierror.Append(mErr,
+			errors.Wrapf(ErrConfirmationCodeWrong, "wrong confirmation code:%v for emailLinkPayload:%v", confirmationCode, emailLinkPayload))
+
+		return mErr.ErrorOrNil() //nolint:wrapcheck // Not needed.
 	}
 
 	return nil

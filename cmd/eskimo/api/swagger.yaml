@@ -292,6 +292,11 @@ paths:
         name: Authorization
         required: true
         type: string
+      - default: <Add metadata token here>
+        description: Insert your metadata token
+        in: header
+        name: X-Account-Metadata
+        type: string
       - description: a keyword to look for in all country codes or names
         in: query
         name: keyword
@@ -347,6 +352,11 @@ paths:
         name: Authorization
         required: true
         type: string
+      - default: <Add metadata token here>
+        description: Insert your metadata token
+        in: header
+        name: X-Account-Metadata
+        type: string
       - description: number of days in the past to look for. Defaults to 3. Max is
           90.
         in: query
@@ -393,6 +403,11 @@ paths:
         in: header
         name: Authorization
         required: true
+        type: string
+      - default: <Add metadata token here>
+        description: Insert your metadata token
+        in: header
+        name: X-Account-Metadata
         type: string
       - description: username of the user. It will validate it first
         in: query
@@ -443,6 +458,11 @@ paths:
         in: header
         name: Authorization
         required: true
+        type: string
+      - default: <Add metadata token here>
+        description: Insert your metadata token
+        in: header
+        name: X-Account-Metadata
         type: string
       - description: A keyword to look for in the usernames
         in: query
@@ -556,6 +576,11 @@ paths:
         name: Authorization
         required: true
         type: string
+      - default: <Add metadata token here>
+        description: Insert your metadata token
+        in: header
+        name: X-Account-Metadata
+        type: string
       - description: ID of the user
         in: path
         name: userId
@@ -611,6 +636,11 @@ paths:
         in: header
         name: Authorization
         required: true
+        type: string
+      - default: <Add metadata token here>
+        description: Insert your metadata token
+        in: header
+        name: X-Account-Metadata
         type: string
       - description: ID of the user
         in: path

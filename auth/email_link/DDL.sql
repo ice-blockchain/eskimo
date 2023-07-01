@@ -17,6 +17,6 @@ CREATE TABLE IF NOT EXISTS email_link_sign_ins (
 CREATE INDEX IF NOT EXISTS email_link_sign_ins_user_id_ix ON email_link_sign_ins (user_id);
 
 CREATE TABLE IF NOT EXISTS user_metadata (
-    user_id                                TEXT NOT NULL PRIMARY KEY,
-    metadata                               JSONB NOT NULL
-) WITH (FILLFACTOR = 70);
+           user_id                                TEXT PRIMARY KEY,
+           metadata                               JSONB NOT NULL)
+           WITH (FILLFACTOR = 70);

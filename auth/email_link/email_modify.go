@@ -33,7 +33,7 @@ func (c *client) handleEmailModification(ctx context.Context, els *emailLinkSign
 			).ErrorOrNil()
 		}
 		resetConfirmationCode := generateConfirmationCode()
-		if uErr := c.upsertEmailLinkSignIn(ctx, oldEmail, oldEmail, els.DeviceUniqueID, resetEmailOTP, resetConfirmationCode, now); uErr != nil {
+		if uErr := c.upsertEmailLinkSignIn(ctx, oldEmail, els.DeviceUniqueID, resetEmailOTP, resetConfirmationCode, now); uErr != nil {
 			return multierror.Append( //nolint:wrapcheck // .
 				errors.Wrapf(c.resetEmailModification(ctx, usr.ID, oldEmail), "[reset] resetEmailModification failed for email:%v", oldEmail),
 				errors.Wrapf(uErr, "failed to store/update email confirmation for email:%v", oldEmail),

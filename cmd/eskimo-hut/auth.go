@@ -227,7 +227,7 @@ func (s *service) Metadata( //nolint:funlen,gocognit,gocritic,revive // Fallback
 						return server.OK(&Metadata{UserID: iceID}), nil
 					}
 
-					return nil, server.Unexpected(err)
+					return nil, server.Unexpected(iErr)
 				}
 				if req.AuthenticatedUser.IsFirebase() {
 					if md, err = s.updateMetadataWithFirebaseID(ctx, &req.AuthenticatedUser, iceID); err != nil {
@@ -253,12 +253,13 @@ func (s *service) updateMetadataWithFirebaseID(ctx context.Context, loggedInUser
 		auth.FirebaseIDClaim: loggedInUser.UserID,
 	})
 	if updatedMetadata, err = s.authEmailLinkClient.UpdateMetadata(ctx, iceID, &mdToUpdate); err != nil {
-		return "", err
+		return "", errors.Wrapf(err, "can't update metadata for iceID:%v", iceID)
 	}
 	if updatedMetadata != nil {
 		if md, err = server.Auth(ctx).GenerateMetadata(time.Now(), loggedInUser.UserID, *updatedMetadata); err != nil {
-			return "", err
+			return "", errors.Wrapf(err, "can't generate metadata for:%v", loggedInUser.UserID)
 		}
 	}
+
 	return md, nil
 }

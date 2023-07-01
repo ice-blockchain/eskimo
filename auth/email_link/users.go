@@ -174,14 +174,17 @@ func (c *client) IceUserID(ctx context.Context, email string) (string, error) {
 
 func (c *client) UpdateMetadata(ctx context.Context, userID string, data *users.JSON) (*users.JSON, error) {
 	sql := `INSERT INTO user_metadata(user_id, metadata)
- 			VALUES ($1,$2) ON CONFLICT(user_id) DO UPDATE
-				SET metadata = (COALESCE(user_metadata.metadata,'{}'::jsonb)||EXCLUDED.metadata::jsonb)
+ 				VALUES ($1, $2) 
+				ON CONFLICT(user_id)
+				DO UPDATE
+					SET metadata = (COALESCE(user_metadata.metadata,'{}'::jsonb) || EXCLUDED.metadata::jsonb)
 			WHERE user_metadata.metadata != EXCLUDED.metadata
 			RETURNING user_metadata.metadata`
 	m, err := storage.ExecOne[metadata](ctx, c.db, sql, userID, data)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to update user metadata for userID:%v", userID)
 	}
+
 	return m.Metadata, nil
 }
 
@@ -192,7 +195,7 @@ func (c *client) Metadata(ctx context.Context, userID string) (string, error) {
 	}
 	encoded, err := c.authClient.GenerateMetadata(time.Now(), userID, *md.Metadata)
 	if err != nil {
-		return "", errors.Wrapf(err, "failed to encode metadata for userID %v: %#v", userID, md)
+		return "", errors.Wrapf(err, "failed to encode metadata:%#v for userID:%v", md, userID)
 	}
 
 	return encoded, nil

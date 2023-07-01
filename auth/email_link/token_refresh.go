@@ -13,7 +13,7 @@ import (
 	time "github.com/ice-blockchain/wintr/time"
 )
 
-//nolint:funlen // .
+//nolint:funlen,revive,gocognit // .
 func (c *client) RegenerateTokens(ctx context.Context, previousRefreshToken string, metadata *users.JSON) (tokens *Tokens, err error) {
 	token, err := c.authClient.ParseToken(previousRefreshToken)
 	if err != nil {
@@ -40,11 +40,11 @@ func (c *client) RegenerateTokens(ctx context.Context, previousRefreshToken stri
 			"user's email:%v does not match token's email:%v or deviceID:%v", usr.Email, token.Email, token.DeviceUniqueID)
 	}
 	if metadata != nil {
-		metadata, err = c.UpdateMetadata(ctx, token.Subject, metadata)
-		if err != nil {
-			return nil, errors.Wrapf(err, "failed to update metadata:%v(userID:%v)", token.Email, token.Subject)
+		updMetadata, uErr := c.UpdateMetadata(ctx, token.Subject, metadata)
+		if uErr != nil {
+			return nil, errors.Wrapf(uErr, "failed to update metadata:%v(userID:%v)", token.Email, token.Subject)
 		}
-		usr.Metadata = metadata
+		usr.Metadata = updMetadata
 	}
 	now := time.Now()
 	refreshTokenSeq, err := c.incrementRefreshTokenSeq(ctx, &id, token.Subject, token.Seq, now)
@@ -60,7 +60,6 @@ func (c *client) RegenerateTokens(ctx context.Context, previousRefreshToken stri
 	return tokens, errors.Wrapf(err, "can't generate tokens for userID:%v, email:%v", token.Subject, token.Email)
 }
 
-//nolint:revive,funlen // .
 func (c *client) incrementRefreshTokenSeq(
 	ctx context.Context,
 	id *loginID,
