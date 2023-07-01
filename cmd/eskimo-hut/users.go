@@ -67,13 +67,13 @@ func (s *service) CreateUser( //nolint:gocritic // .
 			return nil, server.Unexpected(err)
 		}
 	}
-	//nolint:gocritic,godot // Temporary.
-	// err := server.Auth(ctx).UpdateCustomClaims(ctx, usr.ID, map[string]any{ "hashCode": fmt.Sprint(usr.HashCode), // .
-	// 	auth.RegisteredWithProviderClaim: req.AuthenticatedUser.Provider, // .
-	// }) // .
-	// if err != nil && !errors.Is(err, auth.ErrUserNotFound) { // .
-	// 	return nil, server.Unexpected(errors.Wrapf(err, "failed to update auth CustomClaims for:%#v", usr)) // .
-	// } // .
+	md := users.JSON(map[string]any{
+		auth.RegisteredWithProviderClaim: req.AuthenticatedUser.Provider,
+	})
+	_, err := s.authEmailLinkClient.UpdateMetadata(ctx, usr.ID, &md)
+	if err != nil {
+		return nil, server.Unexpected(errors.Wrapf(err, "failed to update auth metadata for:%#v", usr))
+	}
 	usr.HashCode = 0
 
 	return server.Created(&User{User: usr, Checksum: usr.Checksum()}), nil

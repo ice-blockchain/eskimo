@@ -280,37 +280,6 @@ info:
   title: User Accounts, User Devices, User Statistics API
   version: latest
 paths:
-  /auth/account:
-    get:
-      description: Fetches user's account based on token's data
-      parameters:
-      - default: Bearer <Add access token here>
-        description: Insert your access token
-        in: header
-        name: Authorization
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/main.User'
-        "404":
-          description: if user do not have an account yet
-          schema:
-            $ref: '#/definitions/server.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/server.ErrorResponse'
-        "504":
-          description: if request times out
-          schema:
-            $ref: '#/definitions/server.ErrorResponse'
-      tags:
-      - Auth
   /user-statistics/top-countries:
     get:
       consumes:

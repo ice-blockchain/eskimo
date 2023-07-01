@@ -4,8 +4,6 @@ package emaillinkiceauth
 
 import (
 	"context"
-	"fmt"
-
 	"github.com/pkg/errors"
 
 	"github.com/ice-blockchain/eskimo/users"
@@ -15,7 +13,7 @@ import (
 )
 
 //nolint:funlen // .
-func (c *client) RegenerateTokens(ctx context.Context, previousRefreshToken string, customClaims *users.JSON) (tokens *Tokens, err error) {
+func (c *client) RegenerateTokens(ctx context.Context, previousRefreshToken string, metadata *users.JSON) (tokens *Tokens, err error) {
 	token, err := c.authClient.ParseToken(previousRefreshToken)
 	if err != nil {
 		if errors.Is(err, auth.ErrExpiredToken) {
@@ -40,8 +38,15 @@ func (c *client) RegenerateTokens(ctx context.Context, previousRefreshToken stri
 		return nil, errors.Wrapf(ErrUserDataMismatch,
 			"user's email:%v does not match token's email:%v or deviceID:%v", usr.Email, token.Email, token.DeviceUniqueID)
 	}
+	if metadata != nil {
+		mergedMetadata, err := c.UpdateMetadata(ctx, token.Subject, metadata)
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to update metadata:%v(userID:%v)", token.Email, token.Subject)
+		}
+		usr.Metadata = mergedMetadata
+	}
 	now := time.Now()
-	refreshTokenSeq, mergedCustomClaims, err := c.incrementRefreshTokenSeq(ctx, &id, token.Subject, token.Seq, now, customClaims)
+	refreshTokenSeq, err := c.incrementRefreshTokenSeq(ctx, &id, token.Subject, token.Seq, now)
 	if err != nil {
 		if storage.IsErr(err, storage.ErrNotFound) {
 			return nil, errors.Wrapf(ErrInvalidToken, "refreshToken with wrong sequence:%v provided", token.Seq)
@@ -49,7 +54,6 @@ func (c *client) RegenerateTokens(ctx context.Context, previousRefreshToken stri
 
 		return nil, errors.Wrapf(err, "failed to update email link sign ins for email:%v", token.Email)
 	}
-	usr.CustomClaims = mergedCustomClaims
 	tokens, err = c.generateTokens(now, usr, refreshTokenSeq)
 
 	return tokens, errors.Wrapf(err, "can't generate tokens for userID:%v, email:%v", token.Subject, token.Email)
@@ -62,39 +66,30 @@ func (c *client) incrementRefreshTokenSeq(
 	userID string,
 	currentSeq int64,
 	now *time.Time,
-	customClaims *users.JSON,
-) (tokenSeq int64, mergedCustomClaims *users.JSON, err error) {
+) (tokenSeq int64, err error) {
 	params := []any{id.Email, id.DeviceUniqueID, now.Time, userID, currentSeq}
-	customClaimsClause := ""
-	if customClaims != nil {
-		params = append(params, customClaims)
-		customClaimsClause = ",\n\t\t\t\tcustom_claims = (COALESCE(email_link_sign_ins.custom_claims,'{}'::jsonb)||$6::jsonb)"
-	}
 	type resp struct {
-		CustomClaims   *users.JSON
 		IssuedTokenSeq int64
 	}
-	sql := fmt.Sprintf(`
-		UPDATE email_link_sign_ins
+	sql := `UPDATE email_link_sign_ins
 			SET token_issued_at = $3,
 				user_id = $4,
 				issued_token_seq = COALESCE(email_link_sign_ins.issued_token_seq, 0) + 1
-				%v
 			WHERE  email_link_sign_ins.email = $1 AND email_link_sign_ins.device_unique_id = $2
 				   AND email_link_sign_ins.user_id = $4 AND email_link_sign_ins.issued_token_seq = $5
-			RETURNING custom_claims, issued_token_seq`, customClaimsClause)
+			RETURNING issued_token_seq`
 	updatedValue, err := storage.ExecOne[resp](ctx, c.db, sql, params...)
 	if err != nil {
-		return 0, nil, errors.Wrapf(err, "failed to assign refreshed token to email link sign ins for params:%#v", params) //nolint:asasalint // Not this output.
+		return 0, errors.Wrapf(err, "failed to assign refreshed token to email link sign ins for params:%#v", params) //nolint:asasalint // Not this output.
 	}
 
-	return updatedValue.IssuedTokenSeq, updatedValue.CustomClaims, nil
+	return updatedValue.IssuedTokenSeq, nil
 }
 
 func (c *client) generateTokens(now *time.Time, els *emailLinkSignIn, seq int64) (tokens *Tokens, err error) {
 	var claims map[string]any
-	if els.CustomClaims != nil {
-		claims = *els.CustomClaims
+	if els.Metadata != nil {
+		claims = *els.Metadata
 	}
 	refreshToken, accessToken, err := c.authClient.GenerateTokens(now, *els.UserID, els.DeviceUniqueID, els.Email, els.HashCode, seq, claims)
 	if err != nil {

@@ -137,34 +137,26 @@ func (c *client) sendEmailWithType(ctx context.Context, emailType, toEmail, lang
 
 //nolint:revive,funlen // .
 func (c *client) upsertEmailLinkSignIn(ctx context.Context, toEmail, oldEmail, deviceUniqueID, otp, code string, now *time.Time) error {
-	customClaimsFromOldEmail := "null" //nolint:goconst // .
 	confirmationCodeWrongAttempts := 0
 	params := []any{now.Time, toEmail, deviceUniqueID, otp, code, confirmationCodeWrongAttempts}
-	if oldEmail != "" {
-		customClaimsFromOldEmail = "(SELECT custom_claims FROM email_link_sign_ins WHERE email = $7 AND device_unique_id = $3)"
-		params = append(params, oldEmail)
-	}
-	sql := fmt.Sprintf(`INSERT INTO email_link_sign_ins (
+	sql := `INSERT INTO email_link_sign_ins (
 							created_at,
 							email,
 							device_unique_id,
 							otp,
 							confirmation_code,
-							confirmation_code_wrong_attempts_count,
-							custom_claims)
-						VALUES ($1, $2, $3, $4, $5, $6, %v)
+							confirmation_code_wrong_attempts_count)
+						VALUES ($1, $2, $3, $4, $5, $6)
 						ON CONFLICT (email, device_unique_id) DO UPDATE 
 							SET otp           				     	   = EXCLUDED.otp, 
 								created_at    				     	   = EXCLUDED.created_at,
 								confirmation_code 		          	   = EXCLUDED.confirmation_code,
 								confirmation_code_wrong_attempts_count = EXCLUDED.confirmation_code_wrong_attempts_count,
-						        email_confirmed_at                     = null,
-								custom_claims 				     	   = EXCLUDED.custom_claims
+						        email_confirmed_at                     = null
 						WHERE   email_link_sign_ins.otp                                    != EXCLUDED.otp
 						   OR   email_link_sign_ins.created_at    				     	   != EXCLUDED.created_at
 						   OR   email_link_sign_ins.confirmation_code 		          	   != EXCLUDED.confirmation_code
-						   OR   email_link_sign_ins.confirmation_code_wrong_attempts_count != EXCLUDED.confirmation_code_wrong_attempts_count
-						   OR   email_link_sign_ins.custom_claims 				     	   != EXCLUDED.custom_claims`, customClaimsFromOldEmail)
+						   OR   email_link_sign_ins.confirmation_code_wrong_attempts_count != EXCLUDED.confirmation_code_wrong_attempts_count`
 	_, err := storage.Exec(ctx, c.db, sql, params...)
 
 	return errors.Wrapf(err, "failed to insert/update email link sign ins record for email:%v", toEmail)

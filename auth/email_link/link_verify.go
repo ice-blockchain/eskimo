@@ -5,10 +5,12 @@ package emaillinkiceauth
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 
+	"github.com/ice-blockchain/eskimo/users"
 	"github.com/ice-blockchain/wintr/auth"
 	"github.com/ice-blockchain/wintr/connectors/storage/v2"
 	"github.com/ice-blockchain/wintr/time"
@@ -59,6 +61,14 @@ func (c *client) SignIn(ctx context.Context, emailLinkPayload, confirmationCode 
 		emailConfirmed = true
 		els.Email = email
 	}
+	if strings.HasPrefix(*els.UserID, iceIDPrefix) {
+		md := users.JSON(map[string]any{
+			auth.IceIDClaim: *els.UserID,
+		})
+		if _, mErr := c.UpdateMetadata(ctx, *els.UserID, &md); mErr != nil {
+			return errors.Wrapf(mErr, "can't update users metadata %v to %#v", *els.UserID, md)
+		}
+	}
 	if fErr := c.finishAuthProcess(ctx, &id, *els.UserID, token.OTP, els.IssuedTokenSeq, emailConfirmed); fErr != nil {
 		return errors.Wrapf(fErr, "can't finish auth process for userID:%v,email:%v,otp:%v", els.UserID, email, token.OTP)
 	}
@@ -95,16 +105,12 @@ func (c *client) finishAuthProcess(ctx context.Context, id *loginID, userID, otp
 				SET token_issued_at = $2,
 					user_id = $3,
 					otp = $3,
-					email_confirmed_at = %[5]v,
+					email_confirmed_at = %[1]v,
 					issued_token_seq = COALESCE(issued_token_seq, 0) + 1,
-				    custom_claims = (COALESCE(email_link_sign_ins.custom_claims,'{}'::jsonb)||(CASE 
-				   						 WHEN (SELECT id FROM users WHERE id = $3) = $3 AND (SELECT user_id FROM email_link_sign_ins WHERE user_id = $3 LIMIT 1) is NULL 
-											THEN jsonb_build_object('%[1]v', $3, '%[2]v', '%[3]v')
-				    				ELSE jsonb_build_object('%[2]v', '%[4]v') END))
 			WHERE email_link_sign_ins.email = $1
 				  AND otp = $4
 				  AND device_unique_id = $5
-				  AND issued_token_seq = $6`, auth.FirebaseIDClaim, auth.RegisteredWithProviderClaim, auth.ProviderFirebase, auth.ProviderIce, emailConfirmedAt)
+				  AND issued_token_seq = $6`, emailConfirmedAt)
 
 	_, err := storage.Exec(ctx, c.db, sql, params...)
 	if err != nil {
