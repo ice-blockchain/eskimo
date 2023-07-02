@@ -82,6 +82,53 @@ const docTemplate = `{
                 }
             }
         },
+        "/auth/metadata": {
+            "get": {
+                "description": "Fetches user's metadata based on token's data",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "parameters": [
+                    {
+                        "type": "string",
+                        "default": "Bearer \u003cAdd access token here\u003e",
+                        "description": "Insert your access token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.Metadata"
+                        }
+                    },
+                    "404": {
+                        "description": "if user do not have a metadata yet",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    },
+                    "504": {
+                        "description": "if request times out",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/auth/refreshTokens": {
             "post": {
                 "description": "Issues new access token",
@@ -305,6 +352,13 @@ const docTemplate = `{
                         "in": "header"
                     },
                     {
+                        "type": "string",
+                        "default": "\u003cAdd metadata token here\u003e",
+                        "description": "Insert your metadata token",
+                        "name": "X-Account-Metadata",
+                        "in": "header"
+                    },
+                    {
                         "description": "Request params",
                         "name": "request",
                         "in": "body",
@@ -383,6 +437,13 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
+                        "default": "\u003cAdd metadata token here\u003e",
+                        "description": "Insert your metadata token",
+                        "name": "X-Account-Metadata",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
                         "description": "ID of the User",
                         "name": "userId",
                         "in": "path",
@@ -453,6 +514,13 @@ const docTemplate = `{
                         "name": "Authorization",
                         "in": "header",
                         "required": true
+                    },
+                    {
+                        "type": "string",
+                        "default": "\u003cAdd metadata token here\u003e",
+                        "description": "Insert your metadata token",
+                        "name": "X-Account-Metadata",
+                        "in": "header"
                     },
                     {
                         "type": "string",
@@ -668,6 +736,13 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
+                        "default": "\u003cAdd metadata token here\u003e",
+                        "description": "Insert your metadata token",
+                        "name": "X-Account-Metadata",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
                         "description": "ID of the user",
                         "name": "userId",
                         "in": "path",
@@ -764,6 +839,13 @@ const docTemplate = `{
                         "default": "1.1.1.1",
                         "description": "Client IP",
                         "name": "X-Forwarded-For",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "default": "\u003cAdd metadata token here\u003e",
+                        "description": "Insert your metadata token",
+                        "name": "X-Account-Metadata",
                         "in": "header"
                     },
                     {
@@ -891,6 +973,18 @@ const docTemplate = `{
                 "emailToken": {
                     "type": "string",
                     "example": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJPbmxpbmUgSldUIEJ1aWxkZXIiLCJpYXQiOjE2ODQzMjQ0NTYsImV4cCI6MTcxNTg2MDQ1NiwiYXVkIjoiIiwic3ViIjoianJvY2tldEBleGFtcGxlLmNvbSIsIm90cCI6IjUxMzRhMzdkLWIyMWEtNGVhNi1hNzk2LTAxOGIwMjMwMmFhMCJ9.q3xa8Gwg2FVCRHLZqkSedH3aK8XBqykaIy85rRU40nM"
+                }
+            }
+        },
+        "main.Metadata": {
+            "type": "object",
+            "properties": {
+                "metadata": {
+                    "type": "string"
+                },
+                "userId": {
+                    "type": "string",
+                    "example": "did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"
                 }
             }
         },

@@ -10,6 +10,7 @@ import (
 	"github.com/pkg/errors"
 
 	emaillink "github.com/ice-blockchain/eskimo/auth/email_link"
+	"github.com/ice-blockchain/eskimo/users"
 	"github.com/ice-blockchain/wintr/auth"
 	"github.com/ice-blockchain/wintr/server"
 	"github.com/ice-blockchain/wintr/terror"
@@ -22,7 +23,7 @@ func (s *service) setupAuthRoutes(router *server.Router) {
 		POST("auth/sendSignInLinkToEmail", server.RootHandler(s.SendSignInLinkToEmail)).
 		POST("auth/refreshTokens", server.RootHandler(s.RegenerateTokens)).
 		POST("auth/signInWithEmailLink", server.RootHandler(s.SignIn)).
-		POST("auth/getConfirmationStatus", server.RootHandler(s.Status))
+		POST("auth/getConfirmationStatus", server.RootHandler(s.Status)).
 		GET("auth/metadata", server.RootHandler(s.Metadata))
 }
 
