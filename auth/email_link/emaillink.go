@@ -207,7 +207,7 @@ func parseJwtToken(jwtToken, secret string, res jwt.Claims) error {
 			return errors.Wrapf(ErrExpiredToken, "expired or not valid yet token:%v", jwtToken)
 		}
 
-		return errors.Wrapf(err, "invalid token:%v", jwtToken)
+		return errors.Wrapf(ErrInvalidToken, "invalid token:%v (token:%v)", err.Error(), jwtToken)
 	}
 
 	return nil
