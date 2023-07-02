@@ -86,12 +86,16 @@ func (c *client) increaseWrongConfirmationCodeAttemptsCount(ctx context.Context,
 
 //nolint:revive // We need them to reduce write load.
 func (c *client) finishAuthProcess(ctx context.Context, id *loginID, userID, otp string, issuedTokenSeq int64, emailConfirmed bool) error {
-	params := []any{id.Email, time.Now().Time, userID, otp, id.DeviceUniqueID, issuedTokenSeq, emailConfirmed}
+	emailConfirmedAt := "null"
+	if emailConfirmed {
+		emailConfirmedAt = "$2"
+	}
+	params := []any{id.Email, time.Now().Time, userID, otp, id.DeviceUniqueID, issuedTokenSeq}
 	sql := fmt.Sprintf(`UPDATE email_link_sign_ins
 				SET token_issued_at = $2,
 					user_id = $3,
 					otp = $3,
-					email_confirmed = $7,
+					email_confirmed_at = %[5]v,
 					issued_token_seq = COALESCE(issued_token_seq, 0) + 1,
 				    custom_claims = (COALESCE(email_link_sign_ins.custom_claims,'{}'::jsonb)||(CASE 
 				   						 WHEN (SELECT id FROM users WHERE id = $3) = $3 AND (SELECT user_id FROM email_link_sign_ins WHERE user_id = $3 LIMIT 1) is NULL 
@@ -100,7 +104,7 @@ func (c *client) finishAuthProcess(ctx context.Context, id *loginID, userID, otp
 			WHERE email_link_sign_ins.email = $1
 				  AND otp = $4
 				  AND device_unique_id = $5
-				  AND issued_token_seq = $6`, auth.FirebaseIDClaim, auth.RegisteredWithProviderClaim, auth.ProviderFirebase, auth.ProviderIce)
+				  AND issued_token_seq = $6`, auth.FirebaseIDClaim, auth.RegisteredWithProviderClaim, auth.ProviderFirebase, auth.ProviderIce, emailConfirmedAt)
 
 	_, err := storage.Exec(ctx, c.db, sql, params...)
 	if err != nil {

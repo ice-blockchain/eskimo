@@ -137,7 +137,7 @@ func (c *client) sendEmailWithType(ctx context.Context, emailType, toEmail, lang
 
 //nolint:revive,funlen // .
 func (c *client) upsertEmailLinkSignIn(ctx context.Context, toEmail, oldEmail, deviceUniqueID, otp, code string, now *time.Time) error {
-	customClaimsFromOldEmail := "null"
+	customClaimsFromOldEmail := "null" //nolint:goconst // .
 	confirmationCodeWrongAttempts := 0
 	params := []any{now.Time, toEmail, deviceUniqueID, otp, code, confirmationCodeWrongAttempts}
 	if oldEmail != "" {
@@ -158,7 +158,7 @@ func (c *client) upsertEmailLinkSignIn(ctx context.Context, toEmail, oldEmail, d
 								created_at    				     	   = EXCLUDED.created_at,
 								confirmation_code 		          	   = EXCLUDED.confirmation_code,
 								confirmation_code_wrong_attempts_count = EXCLUDED.confirmation_code_wrong_attempts_count,
-						        email_confirmed                        = false,
+						        email_confirmed_at                     = null,
 								custom_claims 				     	   = EXCLUDED.custom_claims
 						WHERE   email_link_sign_ins.otp                                    != EXCLUDED.otp
 						   OR   email_link_sign_ins.created_at    				     	   != EXCLUDED.created_at

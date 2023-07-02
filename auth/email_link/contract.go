@@ -123,6 +123,7 @@ type (
 		CreatedAt                          *time.Time
 		TokenIssuedAt                      *time.Time
 		BlockedUntil                       *time.Time
+		EmailConfirmedAt                   *time.Time
 		CustomClaims                       *users.JSON `json:"customClaims,omitempty"`
 		UserID                             *string     `json:"userId" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
 		Email                              string      `json:"email,omitempty" example:"someone1@example.com"`
@@ -133,7 +134,6 @@ type (
 		IssuedTokenSeq                     int64       `json:"issuedTokenSeq,omitempty" example:"1"`
 		ConfirmationCodeWrongAttemptsCount int64       `json:"confirmationCodeWrongAttemptsCount,omitempty" example:"3" db:"confirmation_code_wrong_attempts_count"`
 		HashCode                           int64       `json:"hashCode,omitempty" example:"43453546464576547"`
-		EmailConfirmed                     bool        `json:"emailConfirmed,omitempty" example:"false"`
 	}
 	emailTemplate struct {
 		subject, body *template.Template

@@ -33,7 +33,7 @@ func (c *client) Status(ctx context.Context, loginSession string) (tokens *Token
 	if rErr := c.resetLoginSession(ctx, &id, els, token.ConfirmationCode); rErr != nil {
 		return nil, false, errors.Wrapf(rErr, "can't reset login session for id:%#v", id)
 	}
-	emailConfirmed = els.EmailConfirmed
+	emailConfirmed = els.EmailConfirmedAt != nil
 
 	return
 }
