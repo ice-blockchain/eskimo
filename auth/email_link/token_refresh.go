@@ -7,14 +7,13 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/ice-blockchain/eskimo/users"
 	"github.com/ice-blockchain/wintr/auth"
 	"github.com/ice-blockchain/wintr/connectors/storage/v2"
 	time "github.com/ice-blockchain/wintr/time"
 )
 
-//nolint:funlen,revive,gocognit // .
-func (c *client) RegenerateTokens(ctx context.Context, previousRefreshToken string, metadata *users.JSON) (tokens *Tokens, err error) {
+//nolint:funlen // .
+func (c *client) RegenerateTokens(ctx context.Context, previousRefreshToken string) (tokens *Tokens, err error) {
 	token, err := c.authClient.ParseToken(previousRefreshToken)
 	if err != nil {
 		if errors.Is(err, auth.ErrExpiredToken) {
@@ -38,13 +37,6 @@ func (c *client) RegenerateTokens(ctx context.Context, previousRefreshToken stri
 	if usr.Email != token.Email || usr.DeviceUniqueID != token.DeviceUniqueID {
 		return nil, errors.Wrapf(ErrUserDataMismatch,
 			"user's email:%v does not match token's email:%v or deviceID:%v", usr.Email, token.Email, token.DeviceUniqueID)
-	}
-	if metadata != nil {
-		updMetadata, uErr := c.UpdateMetadata(ctx, token.Subject, metadata)
-		if uErr != nil {
-			return nil, errors.Wrapf(uErr, "failed to update metadata:%v(userID:%v)", token.Email, token.Subject)
-		}
-		usr.Metadata = updMetadata
 	}
 	now := time.Now()
 	refreshTokenSeq, err := c.incrementRefreshTokenSeq(ctx, &id, token.Subject, token.Seq, now)
@@ -87,11 +79,13 @@ func (c *client) incrementRefreshTokenSeq(
 }
 
 func (c *client) generateTokens(now *time.Time, els *emailLinkSignIn, seq int64) (tokens *Tokens, err error) {
-	var claims map[string]any
+	role := ""
 	if els.Metadata != nil {
-		claims = *els.Metadata
+		if roleInterface, found := (*els.Metadata)["role"]; found {
+			role = roleInterface.(string) //nolint:errcheck,forcetypeassert // .
+		}
 	}
-	refreshToken, accessToken, err := c.authClient.GenerateTokens(now, *els.UserID, els.DeviceUniqueID, els.Email, els.HashCode, seq, claims)
+	refreshToken, accessToken, err := c.authClient.GenerateTokens(now, *els.UserID, els.DeviceUniqueID, els.Email, els.HashCode, seq, role)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to generate tokens for user:%#v", els)
 	}

@@ -128,7 +128,7 @@ func (s *service) RegenerateTokens( //nolint:gocritic // .
 	req *server.Request[RefreshToken, RefreshedToken],
 ) (*server.Response[RefreshedToken], *server.Response[server.ErrorResponse]) {
 	tokenPayload := strings.TrimPrefix(req.Data.Authorization, "Bearer ")
-	tokens, err := s.authEmailLinkClient.RegenerateTokens(ctx, tokenPayload, nil)
+	tokens, err := s.authEmailLinkClient.RegenerateTokens(ctx, tokenPayload)
 	if err != nil {
 		switch {
 		case errors.Is(err, emaillink.ErrUserNotFound):
