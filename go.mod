@@ -47,7 +47,7 @@ require (
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.2 // indirect
-	github.com/gaukas/godicttls v0.0.3 // indirect
+	github.com/gaukas/godicttls v0.0.4 // indirect
 	github.com/georgysavva/scany/v2 v2.0.0 // indirect
 	github.com/gin-contrib/sse v0.1.0 // indirect
 	github.com/gin-gonic/gin v1.9.1 // indirect
@@ -104,7 +104,7 @@ require (
 	github.com/quic-go/qpack v0.4.0 // indirect
 	github.com/quic-go/qtls-go1-19 v0.3.2 // indirect
 	github.com/quic-go/qtls-go1-20 v0.3.0 // indirect
-	github.com/quic-go/quic-go v0.36.0 // indirect
+	github.com/quic-go/quic-go v0.36.1 // indirect
 	github.com/refraction-networking/utls v1.3.2 // indirect
 	github.com/rs/zerolog v1.29.1 // indirect
 	github.com/sendgrid/rest v2.6.9+incompatible // indirect

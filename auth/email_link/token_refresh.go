@@ -25,7 +25,7 @@ func (c *client) RegenerateTokens(ctx context.Context, previousRefreshToken stri
 			return nil, errors.Wrapf(ErrInvalidToken, "failed to verify due to invalid token:%v", previousRefreshToken)
 		}
 
-		return nil, errors.Wrapf(err, "failed to verify token:%v", previousRefreshToken)
+		return nil, errors.Wrapf(ErrInvalidToken, "failed to verify token:%v (token:%v)", err.Error(), previousRefreshToken)
 	}
 	id := loginID{Email: token.Email, DeviceUniqueID: token.DeviceUniqueID}
 	usr, err := c.getUserByIDOrPk(ctx, token.Subject, &id)
