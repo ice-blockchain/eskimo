@@ -14,7 +14,7 @@
     },
     "basePath": "/v1w",
     "paths": {
-        "/auth/getSignInWithEmailLinkStatus": {
+        "/auth/getConfirmationStatus": {
             "post": {
                 "description": "Status of the auth process",
                 "consumes": [

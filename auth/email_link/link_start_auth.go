@@ -135,7 +135,7 @@ func (c *client) sendEmailWithType(ctx context.Context, emailType, toEmail, lang
 	}), "failed to send email with type:%v for user with email:%v", emailType, toEmail)
 }
 
-//nolint:revive // .
+//nolint:revive,funlen // .
 func (c *client) upsertEmailLinkSignIn(ctx context.Context, toEmail, oldEmail, deviceUniqueID, otp, code string, now *time.Time) error {
 	customClaimsFromOldEmail := "null"
 	confirmationCodeWrongAttempts := 0
@@ -158,6 +158,7 @@ func (c *client) upsertEmailLinkSignIn(ctx context.Context, toEmail, oldEmail, d
 								created_at    				     	   = EXCLUDED.created_at,
 								confirmation_code 		          	   = EXCLUDED.confirmation_code,
 								confirmation_code_wrong_attempts_count = EXCLUDED.confirmation_code_wrong_attempts_count,
+						        email_confirmed                        = false,
 								custom_claims 				     	   = EXCLUDED.custom_claims
 						WHERE   email_link_sign_ins.otp                                    != EXCLUDED.otp
 						   OR   email_link_sign_ins.created_at    				     	   != EXCLUDED.created_at

@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS email_link_sign_ins (
            blocked_until                          timestamp,
            issued_token_seq                       BIGINT DEFAULT 0 NOT NULL,
            confirmation_code_wrong_attempts_count BIGINT DEFAULT 0 NOT NULL,
+           email_confirmed                        BOOLEAN DEFAULT false NOT NULL,
            email                                  TEXT NOT NULL,
            otp                                    TEXT NOT NULL,
            confirmation_code                      TEXT,

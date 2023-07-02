@@ -31,7 +31,7 @@ type (
 		SendSignInLinkToEmail(ctx context.Context, emailValue, deviceUniqueID, language string) (loginSession string, err error)
 		SignIn(ctx context.Context, emailLinkPayload, confirmationCode string) error
 		RegenerateTokens(ctx context.Context, prevToken string, customClaims *users.JSON) (tokens *Tokens, err error)
-		Status(ctx context.Context, loginSession string) (tokens *Tokens, err error)
+		Status(ctx context.Context, loginSession string) (tokens *Tokens, emailConfirmed bool, err error)
 	}
 	IceUserIDClient interface {
 		io.Closer
@@ -133,6 +133,7 @@ type (
 		IssuedTokenSeq                     int64       `json:"issuedTokenSeq,omitempty" example:"1"`
 		ConfirmationCodeWrongAttemptsCount int64       `json:"confirmationCodeWrongAttemptsCount,omitempty" example:"3" db:"confirmation_code_wrong_attempts_count"`
 		HashCode                           int64       `json:"hashCode,omitempty" example:"43453546464576547"`
+		EmailConfirmed                     bool        `json:"emailConfirmed,omitempty" example:"false"`
 	}
 	emailTemplate struct {
 		subject, body *template.Template

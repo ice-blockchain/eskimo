@@ -20,7 +20,7 @@ func (s *service) setupAuthRoutes(router *server.Router) {
 		POST("auth/sendSignInLinkToEmail", server.RootHandler(s.SendSignInLinkToEmail)).
 		POST("auth/refreshTokens", server.RootHandler(s.RegenerateTokens)).
 		POST("auth/signInWithEmailLink", server.RootHandler(s.SignIn)).
-		POST("auth/getSignInWithEmailLinkStatus", server.RootHandler(s.Status))
+		POST("auth/getConfirmationStatus", server.RootHandler(s.Status))
 }
 
 // SendSignInLinkToEmail godoc
@@ -158,12 +158,12 @@ func (s *service) RegenerateTokens( //nolint:gocritic // .
 //	@Failure		404		{object}	server.ErrorResponse	"if login session not found or confirmation code verifying failed"
 //	@Failure		500		{object}	server.ErrorResponse
 //	@Failure		504		{object}	server.ErrorResponse	"if request times out"
-//	@Router			/auth/getSignInWithEmailLinkStatus [POST].
+//	@Router			/auth/getConfirmationStatus [POST].
 func (s *service) Status( //nolint:gocritic // .
 	ctx context.Context,
-	req *server.Request[StatusArg, RefreshedToken],
-) (*server.Response[RefreshedToken], *server.Response[server.ErrorResponse]) {
-	tokens, err := s.authEmailLinkClient.Status(ctx, req.Data.LoginSession)
+	req *server.Request[StatusArg, Status],
+) (*server.Response[Status], *server.Response[server.ErrorResponse]) {
+	tokens, emailConfirmed, err := s.authEmailLinkClient.Status(ctx, req.Data.LoginSession)
 	if err != nil {
 		err = errors.Wrapf(err, "failed to get status for: %#v", req.Data)
 		if err != nil {
@@ -171,7 +171,7 @@ func (s *service) Status( //nolint:gocritic // .
 			case errors.Is(err, emaillink.ErrNoPendingLoginSession):
 				return nil, server.NotFound(err, noPendingLoginSessionErrorCode)
 			case errors.Is(err, emaillink.ErrStatusNotVerified):
-				return server.OK(&RefreshedToken{}), nil
+				return server.OK(&Status{}), nil
 			case errors.Is(err, emaillink.ErrInvalidToken):
 				return nil, server.Forbidden(err)
 			case errors.Is(err, emaillink.ErrExpiredToken):
@@ -181,6 +181,12 @@ func (s *service) Status( //nolint:gocritic // .
 			}
 		}
 	}
+	if emailConfirmed {
+		tokens = nil
+	}
 
-	return server.OK(&RefreshedToken{Tokens: tokens}), nil
+	return server.OK(&Status{
+		RefreshedToken: &RefreshedToken{Tokens: tokens},
+		EmailConfirmed: emailConfirmed,
+	}), nil
 }
