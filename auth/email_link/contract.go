@@ -31,7 +31,7 @@ type (
 		SendSignInLinkToEmail(ctx context.Context, emailValue, deviceUniqueID, language string) (loginSession string, err error)
 		SignIn(ctx context.Context, emailLinkPayload, confirmationCode string) error
 		RegenerateTokens(ctx context.Context, prevToken string, customClaims *users.JSON) (tokens *Tokens, err error)
-		Status(ctx context.Context, loginSession string) (tokens *Tokens, err error)
+		Status(ctx context.Context, loginSession string) (tokens *Tokens, emailConfirmed bool, err error)
 	}
 	IceUserIDClient interface {
 		io.Closer
@@ -123,6 +123,7 @@ type (
 		CreatedAt                          *time.Time
 		TokenIssuedAt                      *time.Time
 		BlockedUntil                       *time.Time
+		EmailConfirmedAt                   *time.Time
 		CustomClaims                       *users.JSON `json:"customClaims,omitempty"`
 		UserID                             *string     `json:"userId" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
 		Email                              string      `json:"email,omitempty" example:"someone1@example.com"`

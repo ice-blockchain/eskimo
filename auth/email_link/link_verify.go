@@ -51,13 +51,15 @@ func (c *client) SignIn(ctx context.Context, emailLinkPayload, confirmationCode 
 
 		return mErr.ErrorOrNil() //nolint:wrapcheck // Not needed.
 	}
+	var emailConfirmed bool
 	if token.OldEmail != "" {
-		if err = c.handleEmailModification(ctx, els, email, token.OldEmail, token.NotifyEmail, confirmationCode); err != nil {
+		if err = c.handleEmailModification(ctx, els, email, token.OldEmail, token.NotifyEmail); err != nil {
 			return errors.Wrapf(err, "failed to handle email modification:%v", email)
 		}
+		emailConfirmed = true
 		els.Email = email
 	}
-	if fErr := c.finishAuthProcess(ctx, &id, *els.UserID, token.OTP, els.IssuedTokenSeq); fErr != nil {
+	if fErr := c.finishAuthProcess(ctx, &id, *els.UserID, token.OTP, els.IssuedTokenSeq, emailConfirmed); fErr != nil {
 		return errors.Wrapf(fErr, "can't finish auth process for userID:%v,email:%v,otp:%v", els.UserID, email, token.OTP)
 	}
 
@@ -82,12 +84,18 @@ func (c *client) increaseWrongConfirmationCodeAttemptsCount(ctx context.Context,
 	return errors.Wrapf(err, "can't update email link sign ins for the user with pk:%#v", id)
 }
 
-func (c *client) finishAuthProcess(ctx context.Context, id *loginID, userID, otp string, issuedTokenSeq int64) error {
+//nolint:revive // We need them to reduce write load.
+func (c *client) finishAuthProcess(ctx context.Context, id *loginID, userID, otp string, issuedTokenSeq int64, emailConfirmed bool) error {
+	emailConfirmedAt := "null"
+	if emailConfirmed {
+		emailConfirmedAt = "$2"
+	}
 	params := []any{id.Email, time.Now().Time, userID, otp, id.DeviceUniqueID, issuedTokenSeq}
 	sql := fmt.Sprintf(`UPDATE email_link_sign_ins
 				SET token_issued_at = $2,
 					user_id = $3,
 					otp = $3,
+					email_confirmed_at = %[5]v,
 					issued_token_seq = COALESCE(issued_token_seq, 0) + 1,
 				    custom_claims = (COALESCE(email_link_sign_ins.custom_claims,'{}'::jsonb)||(CASE 
 				   						 WHEN (SELECT id FROM users WHERE id = $3) = $3 AND (SELECT user_id FROM email_link_sign_ins WHERE user_id = $3 LIMIT 1) is NULL 
@@ -96,7 +104,7 @@ func (c *client) finishAuthProcess(ctx context.Context, id *loginID, userID, otp
 			WHERE email_link_sign_ins.email = $1
 				  AND otp = $4
 				  AND device_unique_id = $5
-				  AND issued_token_seq = $6`, auth.FirebaseIDClaim, auth.RegisteredWithProviderClaim, auth.ProviderFirebase, auth.ProviderIce)
+				  AND issued_token_seq = $6`, auth.FirebaseIDClaim, auth.RegisteredWithProviderClaim, auth.ProviderFirebase, auth.ProviderIce, emailConfirmedAt)
 
 	_, err := storage.Exec(ctx, c.db, sql, params...)
 	if err != nil {

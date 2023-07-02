@@ -19,7 +19,7 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/auth/getSignInWithEmailLinkStatus": {
+        "/auth/getConfirmationStatus": {
             "post": {
                 "description": "Status of the auth process",
                 "consumes": [

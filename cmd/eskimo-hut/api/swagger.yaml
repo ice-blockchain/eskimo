@@ -327,7 +327,7 @@ info:
   title: User Accounts, User Devices, User Statistics API
   version: latest
 paths:
-  /auth/getSignInWithEmailLinkStatus:
+  /auth/getConfirmationStatus:
     post:
       consumes:
       - application/json
