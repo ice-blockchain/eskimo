@@ -30,16 +30,22 @@ type (
 		IceUserIDClient
 		SendSignInLinkToEmail(ctx context.Context, emailValue, deviceUniqueID, language string) (loginSession string, err error)
 		SignIn(ctx context.Context, emailLinkPayload, confirmationCode string) error
-		RegenerateTokens(ctx context.Context, prevToken string, customClaims *users.JSON) (tokens *Tokens, err error)
+		RegenerateTokens(ctx context.Context, prevToken string) (tokens *Tokens, err error)
 		Status(ctx context.Context, loginSession string) (tokens *Tokens, emailConfirmed bool, err error)
+		UpdateMetadata(ctx context.Context, userID string, metadata *users.JSON) (*users.JSON, error)
 	}
 	IceUserIDClient interface {
 		io.Closer
-		IceUserID(ctx context.Context, mail string) (string, error)
+		IceUserID(ctx context.Context, mail string) (iceID string, err error)
+		Metadata(ctx context.Context, userID, emailAddress string) (metadata string, err error)
 	}
 	Tokens struct {
 		RefreshToken string `json:"refreshToken,omitempty" example:"eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJPbmxpbmUgSldUIEJ1aWxkZXIiLCJpYXQiOjE2ODQzMjQ0NTYsImV4cCI6MTcxNTg2MDQ1NiwiYXVkIjoiIiwic3ViIjoianJvY2tldEBleGFtcGxlLmNvbSIsIm90cCI6IjUxMzRhMzdkLWIyMWEtNGVhNi1hNzk2LTAxOGIwMjMwMmFhMCJ9.q3xa8Gwg2FVCRHLZqkSedH3aK8XBqykaIy85rRU40nM"` //nolint:lll // .
 		AccessToken  string `json:"accessToken,omitempty" example:"eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJPbmxpbmUgSldUIEJ1aWxkZXIiLCJpYXQiOjE2ODQzMjQ0NTYsImV4cCI6MTcxNTg2MDQ1NiwiYXVkIjoiIiwic3ViIjoianJvY2tldEBleGFtcGxlLmNvbSIsIm90cCI6IjUxMzRhMzdkLWIyMWEtNGVhNi1hNzk2LTAxOGIwMjMwMmFhMCJ9.q3xa8Gwg2FVCRHLZqkSedH3aK8XBqykaIy85rRU40nM"`  //nolint:lll // .
+	}
+	Metadata struct {
+		UserID   string `json:"userId" example:"1c0b9801-cfb2-4c4e-b48a-db18ce0894f9"`
+		Metadata string `json:"metadata"`
 	}
 )
 
@@ -124,7 +130,7 @@ type (
 		TokenIssuedAt                      *time.Time
 		BlockedUntil                       *time.Time
 		EmailConfirmedAt                   *time.Time
-		CustomClaims                       *users.JSON `json:"customClaims,omitempty"`
+		Metadata                           *users.JSON `json:"metadata,omitempty"`
 		UserID                             *string     `json:"userId" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
 		Email                              string      `json:"email,omitempty" example:"someone1@example.com"`
 		OTP                                string      `json:"otp,omitempty" example:"207d0262-2554-4df9-b954-08cb42718b25"`
@@ -139,6 +145,11 @@ type (
 		subject, body *template.Template
 		Subject       string `json:"subject"` //nolint:revive // That's intended.
 		Body          string `json:"body"`    //nolint:revive // That's intended.
+	}
+	metadata struct {
+		Metadata *users.JSON
+		Email    *string
+		UserID   string
 	}
 )
 

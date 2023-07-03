@@ -12,7 +12,11 @@ CREATE TABLE IF NOT EXISTS email_link_sign_ins (
            confirmation_code                      TEXT,
            user_id                                TEXT,
            device_unique_id                       TEXT,
-           custom_claims                          JSONB,
            primary key(email, device_unique_id))
            WITH (FILLFACTOR = 70);
 CREATE INDEX IF NOT EXISTS email_link_sign_ins_user_id_ix ON email_link_sign_ins (user_id);
+
+CREATE TABLE IF NOT EXISTS account_metadata (
+           user_id                                TEXT PRIMARY KEY,
+           metadata                               JSONB NOT NULL)
+           WITH (FILLFACTOR = 70);

@@ -7,9 +7,12 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/imdario/mergo"
 	"github.com/pkg/errors"
 
+	"github.com/ice-blockchain/eskimo/users"
 	"github.com/ice-blockchain/wintr/connectors/storage/v2"
+	"github.com/ice-blockchain/wintr/time"
 )
 
 func (c *client) getEmailLinkSignInByPk(ctx context.Context, id *loginID, oldEmail string) (*emailLinkSignIn, error) {
@@ -92,9 +95,10 @@ func (c *client) getUserByIDOrPk(ctx context.Context, userID string, id *loginID
 				email,
 				$3 												   AS device_unique_id,
 				'en' 											   AS language,
-				COALESCE((custom_claims -> 'hash_code')::BIGINT,0) AS hash_code,
-				custom_claims
+				COALESCE((account_metadata.metadata -> 'hash_code')::BIGINT,0) AS hash_code,
+				account_metadata.metadata
 			FROM email_link_sign_ins
+			LEFT JOIN account_metadata ON account_metadata.user_id = $1
 			WHERE email = $2 AND device_unique_id = $3
 		)
 		SELECT
@@ -109,9 +113,10 @@ func (c *client) getUserByIDOrPk(ctx context.Context, userID string, id *loginID
 				emails.device_unique_id 				 	  	   AS device_unique_id,
 				u.language			    				 	  	   AS language,
 				u.hash_code,
-				emails.custom_claims    				 	  	   AS custom_claims
+				account_metadata.metadata    				 	   AS metadata
 			FROM users u
 			LEFT JOIN emails ON emails.email = $2 and u.id = emails.user_id
+			LEFT JOIN account_metadata ON u.id = account_metadata.user_id
 			WHERE u.id = $1
 		UNION ALL (select * from emails)
 		LIMIT 1
@@ -166,4 +171,63 @@ func (c *client) IceUserID(ctx context.Context, email string) (string, error) {
 	}
 
 	return "", nil
+}
+
+//nolint:funlen // .
+func (c *client) UpdateMetadata(ctx context.Context, userID string, newData *users.JSON) (*users.JSON, error) {
+	if ctx.Err() != nil {
+		return nil, errors.Wrap(ctx.Err(), "update account metadata failed because context failed")
+	}
+	md, err := storage.Get[metadata](ctx, c.db, `SELECT * FROM account_metadata WHERE user_id = $1`, userID)
+	if err != nil && !errors.Is(err, storage.ErrNotFound) {
+		return nil, errors.Wrapf(err, "failed to get account metadata for userID %v", userID)
+	}
+	if md == nil {
+		md = &metadata{Metadata: nil}
+	}
+	prev := md.Metadata
+	if md.Metadata == nil {
+		empty := users.JSON(map[string]any{})
+		md.Metadata = &empty
+	}
+	if err = mergo.Merge(newData, md.Metadata, mergo.WithOverride, mergo.WithTypeCheck); err != nil {
+		return nil, errors.Wrapf(err, "failed to merge %#v and %#v", md, newData)
+	}
+	sql := `INSERT INTO account_metadata(user_id, metadata)
+ 				VALUES ($1, $2) 
+				ON CONFLICT(user_id) DO UPDATE
+					SET metadata = EXCLUDED.metadata
+			WHERE account_metadata.metadata = $3::jsonb`
+	var rowsUpdated uint64
+	rowsUpdated, err = storage.Exec(ctx, c.db, sql, userID, newData, prev)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to update account metadata for userID:%v", userID)
+	}
+	if rowsUpdated == 0 {
+		return c.UpdateMetadata(ctx, userID, newData)
+	}
+
+	return newData, nil
+}
+
+func (c *client) Metadata(ctx context.Context, userID, email string) (string, error) {
+	md, err := storage.Get[metadata](ctx, c.db, `
+		SELECT account_metadata.*, u.email 
+		FROM account_metadata 
+		LEFT JOIN users u ON u.id = $1
+		WHERE user_id = $1`, userID)
+	if err != nil {
+		return "", errors.Wrapf(err, "failed to get user metadata %v", userID)
+	}
+	if md.Email != nil {
+		if email != *md.Email {
+			return "", errors.Wrapf(ErrUserDataMismatch, "actual email is %v, requested for %v", *md.Email, email)
+		}
+	}
+	encoded, err := c.authClient.GenerateMetadata(time.Now(), userID, *md.Metadata)
+	if err != nil {
+		return "", errors.Wrapf(err, "failed to encode metadata:%#v for userID:%v", md, userID)
+	}
+
+	return encoded, nil
 }

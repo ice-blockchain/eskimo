@@ -13,6 +13,11 @@ import (
 // Public API.
 
 type (
+	GetMetadataArg struct{}
+	Metadata       struct {
+		UserID   string `json:"userId" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
+		Metadata string `json:"metadata,omitempty"`
+	}
 	CreateUserRequestBody struct {
 		// Optional. Example: `{"key1":{"something":"somethingElse"},"key2":"value"}`.
 		ClientData *users.JSON `json:"clientData"`
@@ -114,9 +119,7 @@ type (
 		ConfirmationCode string `json:"confirmationCode" required:"true" example:"999"`
 	}
 	RefreshToken struct {
-		// Optional. In null - current claims are used, if any value - it would be overwritten. Example {"role":"new_role"}.
-		CustomClaims  *users.JSON `json:"customClaims"`
-		Authorization string      `header:"Authorization" swaggerignore:"true" required:"true" allowForbiddenWriteOperation:"true" allowUnauthorized:"true"`
+		Authorization string `header:"Authorization" swaggerignore:"true" required:"true" allowForbiddenWriteOperation:"true" allowUnauthorized:"true"`
 	}
 )
 
@@ -132,6 +135,7 @@ const (
 	deviceMetadataAppUpdateRequireErrorCode = "UPDATE_REQUIRED"
 	invalidUsernameErrorCode                = "INVALID_USERNAME"
 	userNotFoundErrorCode                   = "USER_NOT_FOUND"
+	metadataNotFoundErrorCode               = "METADATA_NOT_FOUND"
 	userBlockedErrorCode                    = "USER_BLOCKED"
 	duplicateUserErrorCode                  = "CONFLICT_WITH_ANOTHER_USER"
 	referralNotFoundErrorCode               = "REFERRAL_NOT_FOUND"

@@ -6,12 +6,15 @@ import (
 	"context"
 	"strings"
 
+	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 
 	emaillink "github.com/ice-blockchain/eskimo/auth/email_link"
 	"github.com/ice-blockchain/eskimo/users"
+	"github.com/ice-blockchain/wintr/auth"
 	"github.com/ice-blockchain/wintr/server"
 	"github.com/ice-blockchain/wintr/terror"
+	"github.com/ice-blockchain/wintr/time"
 )
 
 func (s *service) setupAuthRoutes(router *server.Router) {
@@ -20,7 +23,8 @@ func (s *service) setupAuthRoutes(router *server.Router) {
 		POST("auth/sendSignInLinkToEmail", server.RootHandler(s.SendSignInLinkToEmail)).
 		POST("auth/refreshTokens", server.RootHandler(s.RegenerateTokens)).
 		POST("auth/signInWithEmailLink", server.RootHandler(s.SignIn)).
-		POST("auth/getConfirmationStatus", server.RootHandler(s.Status))
+		POST("auth/getConfirmationStatus", server.RootHandler(s.Status)).
+		POST("auth/getMetadata", server.RootHandler(s.Metadata))
 }
 
 // SendSignInLinkToEmail godoc
@@ -70,7 +74,7 @@ func (s *service) SendSignInLinkToEmail( //nolint:gocritic // .
 //	@Failure		500		{object}	server.ErrorResponse
 //	@Failure		504		{object}	server.ErrorResponse	"if request times out"
 //	@Router			/auth/signInWithEmailLink [POST].
-func (s *service) SignIn( //nolint:gocritic // .
+func (s *service) SignIn( //nolint:gocritic //.
 	ctx context.Context,
 	req *server.Request[MagicLinkPayload, any],
 ) (*server.Response[any], *server.Response[server.ErrorResponse]) {
@@ -125,7 +129,7 @@ func (s *service) RegenerateTokens( //nolint:gocritic // .
 	req *server.Request[RefreshToken, RefreshedToken],
 ) (*server.Response[RefreshedToken], *server.Response[server.ErrorResponse]) {
 	tokenPayload := strings.TrimPrefix(req.Data.Authorization, "Bearer ")
-	tokens, err := s.authEmailLinkClient.RegenerateTokens(ctx, tokenPayload, req.Data.CustomClaims)
+	tokens, err := s.authEmailLinkClient.RegenerateTokens(ctx, tokenPayload)
 	if err != nil {
 		switch {
 		case errors.Is(err, emaillink.ErrUserNotFound):
@@ -189,4 +193,78 @@ func (s *service) Status( //nolint:gocritic // .
 		RefreshedToken: &RefreshedToken{Tokens: tokens},
 		EmailConfirmed: emailConfirmed,
 	}), nil
+}
+
+// Metadata godoc
+//
+//	@Schemes
+//	@Description	Fetches user's metadata based on token's data
+//	@Tags			Auth
+//	@Produce		json
+//	@Param			Authorization	header		string	true	"Insert your access token"	default(Bearer <Add access token here>)
+//	@Success		200				{object}	Metadata
+//	@Failure		404				{object}	server.ErrorResponse	"if user do not have a metadata yet"
+//	@Failure		500				{object}	server.ErrorResponse
+//	@Failure		504				{object}	server.ErrorResponse	"if request times out"
+//	@Router			/auth/getMetadata [POST].
+func (s *service) Metadata( //nolint:funlen,gocognit,gocritic,revive // Fallback logic with iceID
+	ctx context.Context,
+	req *server.Request[GetMetadataArg, Metadata],
+) (*server.Response[Metadata], *server.Response[server.ErrorResponse]) {
+	md, err := s.authEmailLinkClient.Metadata(ctx, req.AuthenticatedUser.UserID, req.AuthenticatedUser.Email)
+	if err != nil { //nolint:nestif // Fallback logic.
+		if errors.Is(err, emaillink.ErrUserNotFound) {
+			iceID, iErr := s.authEmailLinkClient.IceUserID(ctx, req.AuthenticatedUser.Email)
+			if iErr != nil {
+				return nil, server.NotFound(multierror.Append(
+					errors.Wrapf(err, "metadata for user with id `%v` was not found", req.AuthenticatedUser.UserID),
+					errors.Wrapf(iErr, "failed to fetch iceID for email `%v`", req.AuthenticatedUser.Email),
+				).ErrorOrNil(), metadataNotFoundErrorCode)
+			}
+			if iceID != "" {
+				md, iErr = s.authEmailLinkClient.Metadata(ctx, iceID, req.AuthenticatedUser.Email)
+				if iErr != nil {
+					if errors.Is(iErr, emaillink.ErrUserNotFound) {
+						return server.OK(&Metadata{UserID: iceID}), nil
+					} else if errors.Is(iErr, emaillink.ErrUserDataMismatch) {
+						return nil, server.BadRequest(iErr, dataMismatchErrorCode)
+					}
+
+					return nil, server.Unexpected(iErr)
+				}
+				if req.AuthenticatedUser.IsFirebase() {
+					if md, err = s.updateMetadataWithFirebaseID(ctx, &req.AuthenticatedUser, iceID); err != nil {
+						return nil, server.Unexpected(err)
+					}
+				}
+
+				return server.OK(&Metadata{Metadata: md, UserID: iceID}), nil
+			}
+
+			return nil, server.NotFound(errors.Wrapf(err, "metadata for user with id `%v` was not found", req.AuthenticatedUser.UserID), metadataNotFoundErrorCode)
+		} else if errors.Is(err, emaillink.ErrUserDataMismatch) {
+			return nil, server.BadRequest(err, dataMismatchErrorCode)
+		}
+
+		return nil, server.Unexpected(errors.Wrapf(err, "failed to get metadata for user by id: %v", req.AuthenticatedUser.UserID))
+	}
+
+	return server.OK(&Metadata{Metadata: md, UserID: req.AuthenticatedUser.UserID}), nil
+}
+
+func (s *service) updateMetadataWithFirebaseID(ctx context.Context, loggedInUser *server.AuthenticatedUser, iceID string) (md string, err error) {
+	var updatedMetadata *users.JSON
+	mdToUpdate := users.JSON(map[string]any{
+		auth.FirebaseIDClaim: loggedInUser.UserID,
+	})
+	if updatedMetadata, err = s.authEmailLinkClient.UpdateMetadata(ctx, iceID, &mdToUpdate); err != nil {
+		return "", errors.Wrapf(err, "can't update metadata for iceID:%v", iceID)
+	}
+	if updatedMetadata != nil {
+		if md, err = server.Auth(ctx).GenerateMetadata(time.Now(), loggedInUser.UserID, *updatedMetadata); err != nil {
+			return "", errors.Wrapf(err, "can't generate metadata for:%v", loggedInUser.UserID)
+		}
+	}
+
+	return md, nil
 }

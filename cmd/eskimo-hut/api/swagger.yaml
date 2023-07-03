@@ -48,6 +48,14 @@ definitions:
         example: eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJPbmxpbmUgSldUIEJ1aWxkZXIiLCJpYXQiOjE2ODQzMjQ0NTYsImV4cCI6MTcxNTg2MDQ1NiwiYXVkIjoiIiwic3ViIjoianJvY2tldEBleGFtcGxlLmNvbSIsIm90cCI6IjUxMzRhMzdkLWIyMWEtNGVhNi1hNzk2LTAxOGIwMjMwMmFhMCJ9.q3xa8Gwg2FVCRHLZqkSedH3aK8XBqykaIy85rRU40nM
         type: string
     type: object
+  main.Metadata:
+    properties:
+      metadata:
+        type: string
+      userId:
+        example: did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2
+        type: string
+    type: object
   main.ModifyUserResponse:
     properties:
       agendaPhoneNumberHashes:
@@ -120,12 +128,6 @@ definitions:
         type: string
     type: object
   main.RefreshToken:
-    properties:
-      customClaims:
-        allOf:
-        - $ref: '#/definitions/users.JSON'
-        description: Optional. In null - current claims are used, if any value - it
-          would be overwritten. Example {"role":"new_role"}.
     type: object
   main.RefreshedToken:
     properties:
@@ -368,6 +370,37 @@ paths:
             $ref: '#/definitions/server.ErrorResponse'
       tags:
       - Auth
+  /auth/getMetadata:
+    post:
+      description: Fetches user's metadata based on token's data
+      parameters:
+      - default: Bearer <Add access token here>
+        description: Insert your access token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.Metadata'
+        "404":
+          description: if user do not have a metadata yet
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "504":
+          description: if request times out
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+      tags:
+      - Auth
   /auth/refreshTokens:
     post:
       consumes:
@@ -512,6 +545,11 @@ paths:
         in: header
         name: X-Forwarded-For
         type: string
+      - default: <Add metadata token here>
+        description: Insert your metadata token
+        in: header
+        name: X-Account-Metadata
+        type: string
       - description: Request params
         in: body
         name: request
@@ -563,6 +601,11 @@ paths:
         name: Authorization
         required: true
         type: string
+      - default: <Add metadata token here>
+        description: Insert your metadata token
+        in: header
+        name: X-Account-Metadata
+        type: string
       - description: ID of the User
         in: path
         name: userId
@@ -611,6 +654,11 @@ paths:
         in: header
         name: Authorization
         required: true
+        type: string
+      - default: <Add metadata token here>
+        description: Insert your metadata token
+        in: header
+        name: X-Account-Metadata
         type: string
       - description: ID of the user
         in: path
@@ -755,6 +803,11 @@ paths:
         in: header
         name: X-Forwarded-For
         type: string
+      - default: <Add metadata token here>
+        description: Insert your metadata token
+        in: header
+        name: X-Account-Metadata
+        type: string
       - description: ID of the user
         in: path
         name: userId
@@ -822,6 +875,11 @@ paths:
         description: Client IP
         in: header
         name: X-Forwarded-For
+        type: string
+      - default: <Add metadata token here>
+        description: Insert your metadata token
+        in: header
+        name: X-Account-Metadata
         type: string
       - description: ID of the user. Is optional, set an `-` if none.
         in: path

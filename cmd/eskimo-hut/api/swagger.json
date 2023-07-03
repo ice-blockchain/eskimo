@@ -77,6 +77,53 @@
                 }
             }
         },
+        "/auth/getMetadata": {
+            "post": {
+                "description": "Fetches user's metadata based on token's data",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "parameters": [
+                    {
+                        "type": "string",
+                        "default": "Bearer \u003cAdd access token here\u003e",
+                        "description": "Insert your access token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.Metadata"
+                        }
+                    },
+                    "404": {
+                        "description": "if user do not have a metadata yet",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    },
+                    "504": {
+                        "description": "if request times out",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/auth/refreshTokens": {
             "post": {
                 "description": "Issues new access token",
@@ -300,6 +347,13 @@
                         "in": "header"
                     },
                     {
+                        "type": "string",
+                        "default": "\u003cAdd metadata token here\u003e",
+                        "description": "Insert your metadata token",
+                        "name": "X-Account-Metadata",
+                        "in": "header"
+                    },
+                    {
                         "description": "Request params",
                         "name": "request",
                         "in": "body",
@@ -378,6 +432,13 @@
                     },
                     {
                         "type": "string",
+                        "default": "\u003cAdd metadata token here\u003e",
+                        "description": "Insert your metadata token",
+                        "name": "X-Account-Metadata",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
                         "description": "ID of the User",
                         "name": "userId",
                         "in": "path",
@@ -448,6 +509,13 @@
                         "name": "Authorization",
                         "in": "header",
                         "required": true
+                    },
+                    {
+                        "type": "string",
+                        "default": "\u003cAdd metadata token here\u003e",
+                        "description": "Insert your metadata token",
+                        "name": "X-Account-Metadata",
+                        "in": "header"
                     },
                     {
                         "type": "string",
@@ -663,6 +731,13 @@
                     },
                     {
                         "type": "string",
+                        "default": "\u003cAdd metadata token here\u003e",
+                        "description": "Insert your metadata token",
+                        "name": "X-Account-Metadata",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
                         "description": "ID of the user",
                         "name": "userId",
                         "in": "path",
@@ -759,6 +834,13 @@
                         "default": "1.1.1.1",
                         "description": "Client IP",
                         "name": "X-Forwarded-For",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "default": "\u003cAdd metadata token here\u003e",
+                        "description": "Insert your metadata token",
+                        "name": "X-Account-Metadata",
                         "in": "header"
                     },
                     {
@@ -889,6 +971,18 @@
                 }
             }
         },
+        "main.Metadata": {
+            "type": "object",
+            "properties": {
+                "metadata": {
+                    "type": "string"
+                },
+                "userId": {
+                    "type": "string",
+                    "example": "did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"
+                }
+            }
+        },
         "main.ModifyUserResponse": {
             "type": "object",
             "properties": {
@@ -986,17 +1080,7 @@
             }
         },
         "main.RefreshToken": {
-            "type": "object",
-            "properties": {
-                "customClaims": {
-                    "description": "Optional. In null - current claims are used, if any value - it would be overwritten. Example {\"role\":\"new_role\"}.",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/users.JSON"
-                        }
-                    ]
-                }
-            }
+            "type": "object"
         },
         "main.RefreshedToken": {
             "type": "object",

@@ -7,14 +7,15 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/go-multierror"
+	"github.com/imdario/mergo"
 	"github.com/pkg/errors"
 
+	"github.com/ice-blockchain/eskimo/users"
 	"github.com/ice-blockchain/wintr/auth"
 	"github.com/ice-blockchain/wintr/connectors/storage/v2"
 	"github.com/ice-blockchain/wintr/time"
 )
 
-//nolint:funlen // .
 func (c *client) SignIn(ctx context.Context, emailLinkPayload, confirmationCode string) error {
 	var token magicLinkToken
 	if err := parseJwtToken(emailLinkPayload, c.cfg.EmailValidation.JwtSecret, &token); err != nil {
@@ -30,8 +31,27 @@ func (c *client) SignIn(ctx context.Context, emailLinkPayload, confirmationCode 
 
 		return errors.Wrapf(err, "failed to get user info by email:%v(old email:%v)", email, token.OldEmail)
 	}
+	if vErr := c.verifySignIn(ctx, els, &id, emailLinkPayload, confirmationCode); vErr != nil {
+		return errors.Wrapf(vErr, "can't verify sign in for id:%#v", id)
+	}
+	var emailConfirmed bool
+	if token.OldEmail != "" {
+		if err = c.handleEmailModification(ctx, els, email, token.OldEmail, token.NotifyEmail); err != nil {
+			return errors.Wrapf(err, "failed to handle email modification:%v", email)
+		}
+		emailConfirmed = true
+		els.Email = email
+	}
+	if fErr := c.finishAuthProcess(ctx, &id, *els.UserID, token.OTP, els.IssuedTokenSeq, emailConfirmed, els.Metadata); fErr != nil {
+		return errors.Wrapf(fErr, "can't finish auth process for userID:%v,email:%v,otp:%v", els.UserID, email, token.OTP)
+	}
+
+	return nil
+}
+
+func (c *client) verifySignIn(ctx context.Context, els *emailLinkSignIn, id *loginID, emailLinkPayload, confirmationCode string) error {
 	if els.OTP == *els.UserID {
-		return errors.Wrapf(ErrNoConfirmationRequired, "no pending confirmation for email:%v", email)
+		return errors.Wrapf(ErrNoConfirmationRequired, "no pending confirmation for email:%v", id.Email)
 	}
 	if els.ConfirmationCodeWrongAttemptsCount >= c.cfg.ConfirmationCode.MaxWrongAttemptsCount {
 		return errors.Wrapf(ErrConfirmationCodeAttemptsExceeded, "confirmation code wrong attempts count exceeded for id:%#v", id)
@@ -42,25 +62,14 @@ func (c *client) SignIn(ctx context.Context, emailLinkPayload, confirmationCode 
 			shouldBeBlocked = true
 		}
 		var mErr *multierror.Error
-		if iErr := c.increaseWrongConfirmationCodeAttemptsCount(ctx, &id, shouldBeBlocked); iErr != nil {
+		if iErr := c.increaseWrongConfirmationCodeAttemptsCount(ctx, id, shouldBeBlocked); iErr != nil {
 			mErr = multierror.Append(mErr, errors.Wrapf(iErr,
-				"can't increment wrong confirmation code attempts count for email:%v,deviceUniqueID:%v", email, token.DeviceUniqueID))
+				"can't increment wrong confirmation code attempts count for email:%v,deviceUniqueID:%v", id.Email, id.DeviceUniqueID))
 		}
 		mErr = multierror.Append(mErr,
 			errors.Wrapf(ErrConfirmationCodeWrong, "wrong confirmation code:%v for emailLinkPayload:%v", confirmationCode, emailLinkPayload))
 
 		return mErr.ErrorOrNil() //nolint:wrapcheck // Not needed.
-	}
-	var emailConfirmed bool
-	if token.OldEmail != "" {
-		if err = c.handleEmailModification(ctx, els, email, token.OldEmail, token.NotifyEmail); err != nil {
-			return errors.Wrapf(err, "failed to handle email modification:%v", email)
-		}
-		emailConfirmed = true
-		els.Email = email
-	}
-	if fErr := c.finishAuthProcess(ctx, &id, *els.UserID, token.OTP, els.IssuedTokenSeq, emailConfirmed); fErr != nil {
-		return errors.Wrapf(fErr, "can't finish auth process for userID:%v,email:%v,otp:%v", els.UserID, email, token.OTP)
 	}
 
 	return nil
@@ -84,27 +93,38 @@ func (c *client) increaseWrongConfirmationCodeAttemptsCount(ctx context.Context,
 	return errors.Wrapf(err, "can't update email link sign ins for the user with pk:%#v", id)
 }
 
-//nolint:revive // We need them to reduce write load.
-func (c *client) finishAuthProcess(ctx context.Context, id *loginID, userID, otp string, issuedTokenSeq int64, emailConfirmed bool) error {
+//nolint:revive,funlen // .
+func (c *client) finishAuthProcess(ctx context.Context, id *loginID, userID, otp string, issuedTokenSeq int64, emailConfirmed bool, md *users.JSON) error {
 	emailConfirmedAt := "null"
 	if emailConfirmed {
 		emailConfirmedAt = "$2"
 	}
-	params := []any{id.Email, time.Now().Time, userID, otp, id.DeviceUniqueID, issuedTokenSeq}
-	sql := fmt.Sprintf(`UPDATE email_link_sign_ins
+	mdToUpdate := users.JSON(map[string]any{auth.IceIDClaim: userID})
+	if md == nil {
+		empty := users.JSON(map[string]any{})
+		md = &empty
+	}
+	if err := mergo.Merge(&mdToUpdate, md, mergo.WithOverride, mergo.WithTypeCheck); err != nil {
+		return errors.Wrapf(err, "failed to merge %#v and %v:%v", md, auth.IceIDClaim, userID)
+	}
+	params := []any{id.Email, time.Now().Time, userID, otp, id.DeviceUniqueID, issuedTokenSeq, mdToUpdate}
+	sql := fmt.Sprintf(`
+			with metadata_update as (
+				INSERT INTO account_metadata(user_id, metadata)
+				VALUES ($3, $7::jsonb) ON CONFLICT(user_id) DO UPDATE
+					SET metadata = EXCLUDED.metadata
+				WHERE account_metadata.metadata != EXCLUDED.metadata
+			) 
+			UPDATE email_link_sign_ins
 				SET token_issued_at = $2,
 					user_id = $3,
 					otp = $3,
-					email_confirmed_at = %[5]v,
-					issued_token_seq = COALESCE(issued_token_seq, 0) + 1,
-				    custom_claims = (COALESCE(email_link_sign_ins.custom_claims,'{}'::jsonb)||(CASE 
-				   						 WHEN (SELECT id FROM users WHERE id = $3) = $3 AND (SELECT user_id FROM email_link_sign_ins WHERE user_id = $3 LIMIT 1) is NULL 
-											THEN jsonb_build_object('%[1]v', $3, '%[2]v', '%[3]v')
-				    				ELSE jsonb_build_object('%[2]v', '%[4]v') END))
+					email_confirmed_at = %[1]v,
+					issued_token_seq = COALESCE(issued_token_seq, 0) + 1
 			WHERE email_link_sign_ins.email = $1
 				  AND otp = $4
 				  AND device_unique_id = $5
-				  AND issued_token_seq = $6`, auth.FirebaseIDClaim, auth.RegisteredWithProviderClaim, auth.ProviderFirebase, auth.ProviderIce, emailConfirmedAt)
+				  AND issued_token_seq = $6`, emailConfirmedAt)
 
 	_, err := storage.Exec(ctx, c.db, sql, params...)
 	if err != nil {
