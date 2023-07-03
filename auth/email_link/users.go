@@ -188,10 +188,19 @@ func (c *client) UpdateMetadata(ctx context.Context, userID string, data *users.
 	return m.Metadata, nil
 }
 
-func (c *client) Metadata(ctx context.Context, userID string) (string, error) {
-	md, err := storage.Get[metadata](ctx, c.db, `SELECT * FROM user_metadata WHERE user_id = $1`, userID)
+func (c *client) Metadata(ctx context.Context, userID, email string) (string, error) {
+	md, err := storage.Get[metadata](ctx, c.db, `
+		SELECT user_metadata.*, u.email 
+		FROM user_metadata 
+		LEFT JOIN users u ON u.id = $1
+		WHERE user_id = $1`, userID)
 	if err != nil {
 		return "", errors.Wrapf(err, "failed to get user metadata %v", userID)
+	}
+	if md.Email != nil {
+		if email != *md.Email {
+			return "", errors.Wrapf(ErrUserDataMismatch, "actual email is %v, requested for %v", *md.Email, email)
+		}
 	}
 	encoded, err := c.authClient.GenerateMetadata(time.Now(), userID, *md.Metadata)
 	if err != nil {

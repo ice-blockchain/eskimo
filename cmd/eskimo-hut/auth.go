@@ -211,7 +211,7 @@ func (s *service) Metadata( //nolint:funlen,gocognit,gocritic,revive // Fallback
 	ctx context.Context,
 	req *server.Request[GetMetadataArg, Metadata],
 ) (*server.Response[Metadata], *server.Response[server.ErrorResponse]) {
-	md, err := s.authEmailLinkClient.Metadata(ctx, req.AuthenticatedUser.UserID)
+	md, err := s.authEmailLinkClient.Metadata(ctx, req.AuthenticatedUser.UserID, req.AuthenticatedUser.Email)
 	if err != nil { //nolint:nestif // Fallback logic.
 		if errors.Is(err, emaillink.ErrUserNotFound) {
 			iceID, iErr := s.authEmailLinkClient.IceUserID(ctx, req.AuthenticatedUser.Email)
@@ -219,13 +219,15 @@ func (s *service) Metadata( //nolint:funlen,gocognit,gocritic,revive // Fallback
 				return nil, server.NotFound(multierror.Append(
 					errors.Wrapf(err, "metadata for user with id `%v` was not found", req.AuthenticatedUser.UserID),
 					errors.Wrapf(iErr, "failed to fetch iceID for email `%v`", req.AuthenticatedUser.Email),
-				).ErrorOrNil(), userNotFoundErrorCode)
+				).ErrorOrNil(), metadataNotFoundErrorCode)
 			}
 			if iceID != "" {
-				md, iErr = s.authEmailLinkClient.Metadata(ctx, iceID)
+				md, iErr = s.authEmailLinkClient.Metadata(ctx, iceID, req.AuthenticatedUser.Email)
 				if iErr != nil {
 					if errors.Is(iErr, emaillink.ErrUserNotFound) {
 						return server.OK(&Metadata{UserID: iceID}), nil
+					} else if errors.Is(iErr, emaillink.ErrUserDataMismatch) {
+						return nil, server.BadRequest(iErr, dataMismatchErrorCode)
 					}
 
 					return nil, server.Unexpected(iErr)
@@ -239,7 +241,9 @@ func (s *service) Metadata( //nolint:funlen,gocognit,gocritic,revive // Fallback
 				return server.OK(&Metadata{Metadata: md, UserID: iceID}), nil
 			}
 
-			return nil, server.NotFound(errors.Wrapf(err, "metadata for user with id `%v` was not found", req.AuthenticatedUser.UserID), userNotFoundErrorCode)
+			return nil, server.NotFound(errors.Wrapf(err, "metadata for user with id `%v` was not found", req.AuthenticatedUser.UserID), metadataNotFoundErrorCode)
+		} else if errors.Is(err, emaillink.ErrUserDataMismatch) {
+			return nil, server.BadRequest(err, dataMismatchErrorCode)
 		}
 
 		return nil, server.Unexpected(errors.Wrapf(err, "failed to get metadata for user by id: %v", req.AuthenticatedUser.UserID))

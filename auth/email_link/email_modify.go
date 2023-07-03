@@ -10,7 +10,9 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/ice-blockchain/eskimo/users"
+	"github.com/ice-blockchain/wintr/auth"
 	"github.com/ice-blockchain/wintr/email"
+	"github.com/ice-blockchain/wintr/server"
 	"github.com/ice-blockchain/wintr/time"
 )
 
@@ -45,6 +47,16 @@ func (c *client) handleEmailModification(ctx context.Context, els *emailLinkSign
 				errors.Wrapf(c.resetEmailModification(ctx, usr.ID, oldEmail), "[reset] resetEmailModification failed for email:%v", oldEmail),
 				errors.Wrapf(sErr, "failed to send notification email about email change for userID %v email %v", els.UserID, oldEmail),
 			).ErrorOrNil()
+		}
+	}
+	if els.Metadata != nil {
+		if firebaseID, hasFirebaseID := (*els.Metadata)[auth.FirebaseIDClaim]; hasFirebaseID {
+			if fErr := server.Auth(ctx).UpdateEmail(ctx, firebaseID.(string), newEmail); fErr != nil { //nolint:forcetypeassert // .
+				return multierror.Append( //nolint:wrapcheck // .
+					errors.Wrapf(c.resetEmailModification(ctx, usr.ID, oldEmail), "[reset] resetEmailModification failed for email:%v", oldEmail),
+					errors.Wrapf(fErr, "failed to change email in firebase to:%v", newEmail),
+				).ErrorOrNil()
+			}
 		}
 	}
 

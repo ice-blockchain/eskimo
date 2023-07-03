@@ -5,7 +5,6 @@ package emaillinkiceauth
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
@@ -16,7 +15,6 @@ import (
 	"github.com/ice-blockchain/wintr/time"
 )
 
-//nolint:funlen // .
 func (c *client) SignIn(ctx context.Context, emailLinkPayload, confirmationCode string) error {
 	var token magicLinkToken
 	if err := parseJwtToken(emailLinkPayload, c.cfg.EmailValidation.JwtSecret, &token); err != nil {
@@ -42,14 +40,6 @@ func (c *client) SignIn(ctx context.Context, emailLinkPayload, confirmationCode 
 		}
 		emailConfirmed = true
 		els.Email = email
-	}
-	if strings.HasPrefix(*els.UserID, iceIDPrefix) {
-		md := users.JSON(map[string]any{
-			auth.IceIDClaim: *els.UserID,
-		})
-		if _, mErr := c.UpdateMetadata(ctx, *els.UserID, &md); mErr != nil {
-			return errors.Wrapf(mErr, "can't update users metadata %v to %#v", *els.UserID, md)
-		}
 	}
 	if fErr := c.finishAuthProcess(ctx, &id, *els.UserID, token.OTP, els.IssuedTokenSeq, emailConfirmed); fErr != nil {
 		return errors.Wrapf(fErr, "can't finish auth process for userID:%v,email:%v,otp:%v", els.UserID, email, token.OTP)
@@ -102,14 +92,24 @@ func (c *client) increaseWrongConfirmationCodeAttemptsCount(ctx context.Context,
 	return errors.Wrapf(err, "can't update email link sign ins for the user with pk:%#v", id)
 }
 
-//nolint:revive // We need them to reduce write load.
+//nolint:revive,funlen // .
 func (c *client) finishAuthProcess(ctx context.Context, id *loginID, userID, otp string, issuedTokenSeq int64, emailConfirmed bool) error {
 	emailConfirmedAt := "null"
 	if emailConfirmed {
 		emailConfirmedAt = "$2"
 	}
-	params := []any{id.Email, time.Now().Time, userID, otp, id.DeviceUniqueID, issuedTokenSeq}
-	sql := fmt.Sprintf(`UPDATE email_link_sign_ins
+	md := users.JSON(map[string]any{
+		auth.IceIDClaim: userID,
+	})
+	params := []any{id.Email, time.Now().Time, userID, otp, id.DeviceUniqueID, issuedTokenSeq, &md}
+	sql := fmt.Sprintf(`
+			with metadata_update as (
+				INSERT INTO user_metadata(user_id, metadata)
+				VALUES ($3, $7::jsonb) ON CONFLICT(user_id) DO UPDATE
+					SET metadata = (COALESCE(user_metadata.metadata,'{}'::jsonb) || EXCLUDED.metadata::jsonb)
+				WHERE user_metadata.metadata != EXCLUDED.metadata
+			) 
+			UPDATE email_link_sign_ins
 				SET token_issued_at = $2,
 					user_id = $3,
 					otp = $3,
