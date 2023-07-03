@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/go-multierror"
+	"github.com/imdario/mergo"
 	"github.com/pkg/errors"
 
 	"github.com/ice-blockchain/eskimo/users"
@@ -41,7 +42,7 @@ func (c *client) SignIn(ctx context.Context, emailLinkPayload, confirmationCode 
 		emailConfirmed = true
 		els.Email = email
 	}
-	if fErr := c.finishAuthProcess(ctx, &id, *els.UserID, token.OTP, els.IssuedTokenSeq, emailConfirmed); fErr != nil {
+	if fErr := c.finishAuthProcess(ctx, &id, *els.UserID, token.OTP, els.IssuedTokenSeq, emailConfirmed, els.Metadata); fErr != nil {
 		return errors.Wrapf(fErr, "can't finish auth process for userID:%v,email:%v,otp:%v", els.UserID, email, token.OTP)
 	}
 
@@ -93,21 +94,26 @@ func (c *client) increaseWrongConfirmationCodeAttemptsCount(ctx context.Context,
 }
 
 //nolint:revive,funlen // .
-func (c *client) finishAuthProcess(ctx context.Context, id *loginID, userID, otp string, issuedTokenSeq int64, emailConfirmed bool) error {
+func (c *client) finishAuthProcess(ctx context.Context, id *loginID, userID, otp string, issuedTokenSeq int64, emailConfirmed bool, md *users.JSON) error {
 	emailConfirmedAt := "null"
 	if emailConfirmed {
 		emailConfirmedAt = "$2"
 	}
-	md := users.JSON(map[string]any{
-		auth.IceIDClaim: userID,
-	})
-	params := []any{id.Email, time.Now().Time, userID, otp, id.DeviceUniqueID, issuedTokenSeq, &md}
+	mdToUpdate := users.JSON(map[string]any{auth.IceIDClaim: userID})
+	if md == nil {
+		empty := users.JSON(map[string]any{})
+		md = &empty
+	}
+	if err := mergo.Merge(&mdToUpdate, md, mergo.WithOverride, mergo.WithTypeCheck); err != nil {
+		return errors.Wrapf(err, "failed to merge %#v and %v:%v", md, auth.IceIDClaim, userID)
+	}
+	params := []any{id.Email, time.Now().Time, userID, otp, id.DeviceUniqueID, issuedTokenSeq, mdToUpdate}
 	sql := fmt.Sprintf(`
 			with metadata_update as (
-				INSERT INTO user_metadata(user_id, metadata)
+				INSERT INTO account_metadata(user_id, metadata)
 				VALUES ($3, $7::jsonb) ON CONFLICT(user_id) DO UPDATE
-					SET metadata = (COALESCE(user_metadata.metadata,'{}'::jsonb) || EXCLUDED.metadata::jsonb)
-				WHERE user_metadata.metadata != EXCLUDED.metadata
+					SET metadata = EXCLUDED.metadata
+				WHERE account_metadata.metadata != EXCLUDED.metadata
 			) 
 			UPDATE email_link_sign_ins
 				SET token_issued_at = $2,

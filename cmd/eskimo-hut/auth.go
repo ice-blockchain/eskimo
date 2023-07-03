@@ -24,7 +24,7 @@ func (s *service) setupAuthRoutes(router *server.Router) {
 		POST("auth/refreshTokens", server.RootHandler(s.RegenerateTokens)).
 		POST("auth/signInWithEmailLink", server.RootHandler(s.SignIn)).
 		POST("auth/getConfirmationStatus", server.RootHandler(s.Status)).
-		GET("auth/metadata", server.RootHandler(s.Metadata))
+		POST("auth/getMetadata", server.RootHandler(s.Metadata))
 }
 
 // SendSignInLinkToEmail godoc
@@ -195,7 +195,7 @@ func (s *service) Status( //nolint:gocritic // .
 	}), nil
 }
 
-// Account godoc
+// Metadata godoc
 //
 //	@Schemes
 //	@Description	Fetches user's metadata based on token's data
@@ -206,7 +206,7 @@ func (s *service) Status( //nolint:gocritic // .
 //	@Failure		404				{object}	server.ErrorResponse	"if user do not have a metadata yet"
 //	@Failure		500				{object}	server.ErrorResponse
 //	@Failure		504				{object}	server.ErrorResponse	"if request times out"
-//	@Router			/auth/metadata [GET].
+//	@Router			/auth/getMetadata [POST].
 func (s *service) Metadata( //nolint:funlen,gocognit,gocritic,revive // Fallback logic with iceID
 	ctx context.Context,
 	req *server.Request[GetMetadataArg, Metadata],

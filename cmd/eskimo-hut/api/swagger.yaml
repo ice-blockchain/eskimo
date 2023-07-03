@@ -370,8 +370,8 @@ paths:
             $ref: '#/definitions/server.ErrorResponse'
       tags:
       - Auth
-  /auth/metadata:
-    get:
+  /auth/getMetadata:
+    post:
       description: Fetches user's metadata based on token's data
       parameters:
       - default: Bearer <Add access token here>

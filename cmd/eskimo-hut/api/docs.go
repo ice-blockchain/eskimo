@@ -82,8 +82,8 @@ const docTemplate = `{
                 }
             }
         },
-        "/auth/metadata": {
-            "get": {
+        "/auth/getMetadata": {
+            "post": {
                 "description": "Fetches user's metadata based on token's data",
                 "produces": [
                     "application/json"
