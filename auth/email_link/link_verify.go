@@ -16,6 +16,7 @@ import (
 	"github.com/ice-blockchain/wintr/time"
 )
 
+//nolint:funlen // .
 func (c *client) SignIn(ctx context.Context, emailLinkPayload, confirmationCode string) error {
 	var token magicLinkToken
 	if err := parseJwtToken(emailLinkPayload, c.cfg.EmailValidation.JwtSecret, &token); err != nil {
@@ -43,31 +44,50 @@ func (c *client) SignIn(ctx context.Context, emailLinkPayload, confirmationCode 
 		els.Email = email
 	}
 	if fErr := c.finishAuthProcess(ctx, &id, *els.UserID, token.OTP, els.IssuedTokenSeq, emailConfirmed, els.Metadata); fErr != nil {
-		return errors.Wrapf(fErr, "can't finish auth process for userID:%v,email:%v,otp:%v", els.UserID, email, token.OTP)
+		var mErr *multierror.Error
+		if token.OldEmail != "" {
+			mErr = multierror.Append(mErr,
+				errors.Wrapf(c.resetEmailModification(ctx, *els.UserID, token.OldEmail),
+					"[reset] resetEmailModification failed for email:%v", token.OldEmail),
+				errors.Wrapf(c.resetFirebaseEmailModification(ctx, els.Metadata, token.OldEmail),
+					"[reset] resetEmailModification failed for email:%v", token.OldEmail),
+			)
+		}
+		mErr = multierror.Append(mErr, errors.Wrapf(fErr, "can't finish auth process for userID:%v,email:%v,otp:%v", els.UserID, email, token.OTP))
+
+		return mErr.ErrorOrNil() //nolint:wrapcheck // .
 	}
 
 	return nil
 }
 
+//nolint:gocognit // .
 func (c *client) verifySignIn(ctx context.Context, els *emailLinkSignIn, id *loginID, emailLinkPayload, confirmationCode string) error {
 	if els.OTP == *els.UserID {
 		return errors.Wrapf(ErrNoConfirmationRequired, "no pending confirmation for email:%v", id.Email)
 	}
+	var shouldBeBlocked bool
+	var mErr *multierror.Error
 	if els.ConfirmationCodeWrongAttemptsCount >= c.cfg.ConfirmationCode.MaxWrongAttemptsCount {
-		return errors.Wrapf(ErrConfirmationCodeAttemptsExceeded, "confirmation code wrong attempts count exceeded for id:%#v", id)
-	}
-	if els.ConfirmationCode != confirmationCode {
-		var shouldBeBlocked bool
-		if els.ConfirmationCodeWrongAttemptsCount+1 == c.cfg.ConfirmationCode.MaxWrongAttemptsCount {
+		blockEndTime := time.Now().Add(c.cfg.EmailValidation.BlockDuration)
+		blockTimeFitsNow := (els.BlockedUntil.Before(blockEndTime) && els.BlockedUntil.After(*els.CreatedAt.Time))
+		if els.BlockedUntil == nil || !blockTimeFitsNow {
 			shouldBeBlocked = true
 		}
-		var mErr *multierror.Error
+		if !shouldBeBlocked {
+			return errors.Wrapf(ErrConfirmationCodeAttemptsExceeded, "confirmation code wrong attempts count exceeded for id:%#v", id)
+		}
+		mErr = multierror.Append(mErr, errors.Wrapf(ErrConfirmationCodeAttemptsExceeded, "confirmation code wrong attempts count exceeded for id:%#v", id))
+	}
+	if els.ConfirmationCode != confirmationCode || shouldBeBlocked {
+		if els.ConfirmationCodeWrongAttemptsCount+1 >= c.cfg.ConfirmationCode.MaxWrongAttemptsCount {
+			shouldBeBlocked = true
+		}
 		if iErr := c.increaseWrongConfirmationCodeAttemptsCount(ctx, id, shouldBeBlocked); iErr != nil {
 			mErr = multierror.Append(mErr, errors.Wrapf(iErr,
 				"can't increment wrong confirmation code attempts count for email:%v,deviceUniqueID:%v", id.Email, id.DeviceUniqueID))
 		}
-		mErr = multierror.Append(mErr,
-			errors.Wrapf(ErrConfirmationCodeWrong, "wrong confirmation code:%v for emailLinkPayload:%v", confirmationCode, emailLinkPayload))
+		mErr = multierror.Append(mErr, errors.Wrapf(ErrConfirmationCodeWrong, "wrong confirmation code:%v for linkPayload:%v", confirmationCode, emailLinkPayload))
 
 		return mErr.ErrorOrNil() //nolint:wrapcheck // Not needed.
 	}
