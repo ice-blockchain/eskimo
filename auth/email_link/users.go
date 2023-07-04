@@ -45,14 +45,17 @@ func (c *client) getUserIDFromEmail(ctx context.Context, searchEmail, idIfNotFou
 	type dbUserID struct {
 		ID string
 	}
-	sql := `SELECT id 
-				FROM users 
-					WHERE email = $1
-			UNION ALL
-			(SELECT COALESCE(user_id, $2) AS id 
-				FROM email_link_sign_ins
-					WHERE email = $1)
-			LIMIT 1`
+	sql := `SELECT id FROM (
+				SELECT users.id, 1 as idx
+					FROM users 
+						WHERE email = $1
+				UNION ALL
+				(SELECT COALESCE(user_id, $2) AS id, 2 as idx
+					FROM email_link_sign_ins
+						WHERE email = $1)
+				ORDER BY idx
+				LIMIT 1
+			) t`
 	ids, err := storage.Select[dbUserID](ctx, c.db, sql, searchEmail, idIfNotFound)
 	if err != nil || len(ids) == 0 {
 		if storage.IsErr(err, storage.ErrNotFound) || (err == nil && len(ids) == 0) {
@@ -83,43 +86,63 @@ func (c *client) getUserByIDOrPk(ctx context.Context, userID string, id *loginID
 		return nil, errors.Wrap(ctx.Err(), "get user by id or email failed because context failed")
 	}
 	usr, err := storage.Get[emailLinkSignIn](ctx, c.db, `
-		WITH emails AS (
+		SELECT 		created_at,
+					token_issued_at,
+					issued_token_seq,
+					blocked_until,
+					confirmation_code_wrong_attempts_count,
+					otp,
+					confirmation_code,
+					user_id,
+					email,
+					device_unique_id,
+					language,
+		    		hash_code,
+		    		metadata
+		FROM (
+			WITH emails AS (
+				SELECT
+					created_at,
+					token_issued_at,
+					issued_token_seq,
+					blocked_until,
+					confirmation_code_wrong_attempts_count,
+					otp,
+					confirmation_code,
+					$1 												   AS user_id,
+					email,
+					$3 												   AS device_unique_id,
+					'en' 											   AS language,
+					COALESCE((account_metadata.metadata -> 'hash_code')::BIGINT,0) AS hash_code,
+					account_metadata.metadata,
+					1                                                  AS idx
+				FROM email_link_sign_ins
+				LEFT JOIN account_metadata ON account_metadata.user_id = $1
+				WHERE email = $2 AND device_unique_id = $3
+			)
 			SELECT
-				token_issued_at,
-				issued_token_seq,
-				blocked_until,
-				confirmation_code_wrong_attempts_count,
-				otp,
-				confirmation_code,
-				$1 												   AS user_id,
-				email,
-				$3 												   AS device_unique_id,
-				'en' 											   AS language,
-				COALESCE((account_metadata.metadata -> 'hash_code')::BIGINT,0) AS hash_code,
-				account_metadata.metadata
-			FROM email_link_sign_ins
-			LEFT JOIN account_metadata ON account_metadata.user_id = $1
-			WHERE email = $2 AND device_unique_id = $3
-		)
-		SELECT
-				emails.token_issued_at       			 	  	   AS token_issued_at,
-				emails.issued_token_seq       			 	  	   AS issued_token_seq,
-				emails.blocked_until       			 	  	   	   AS blocked_until,
-				emails.confirmation_code_wrong_attempts_count 	   AS confirmation_code_wrong_attempts_count,
-				emails.otp       						 	  	   AS otp,
-				emails.confirmation_code       			 	  	   AS confirmation_code,
-				u.id 									 	  	   AS user_id,
-				u.email,
-				emails.device_unique_id 				 	  	   AS device_unique_id,
-				u.language			    				 	  	   AS language,
-				u.hash_code,
-				account_metadata.metadata    				 	   AS metadata
-			FROM users u
-			LEFT JOIN emails ON emails.email = $2 and u.id = emails.user_id
-			LEFT JOIN account_metadata ON u.id = account_metadata.user_id
-			WHERE u.id = $1
-		UNION ALL (select * from emails)
-		LIMIT 1
+					emails.created_at                                  AS created_at,
+					emails.token_issued_at       			 	  	   AS token_issued_at,
+					emails.issued_token_seq       			 	  	   AS issued_token_seq,
+					emails.blocked_until       			 	  	   	   AS blocked_until,
+					emails.confirmation_code_wrong_attempts_count 	   AS confirmation_code_wrong_attempts_count,
+					emails.otp       						 	  	   AS otp,
+					emails.confirmation_code       			 	  	   AS confirmation_code,
+					u.id 									 	  	   AS user_id,
+					u.email,
+					emails.device_unique_id 				 	  	   AS device_unique_id,
+					u.language			    				 	  	   AS language,
+					u.hash_code,
+					account_metadata.metadata    				 	   AS metadata,
+					2 												   AS idx
+				FROM users u
+				LEFT JOIN emails ON emails.email = $2 and u.id = emails.user_id
+				LEFT JOIN account_metadata ON u.id = account_metadata.user_id
+				WHERE u.id = $1
+			UNION ALL (select * from emails)
+			ORDER BY idx
+			LIMIT 1
+		) t
 	`, userID, id.Email, id.DeviceUniqueID)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to get user by pk:%#v)", id)
@@ -212,16 +235,20 @@ func (c *client) UpdateMetadata(ctx context.Context, userID string, newData *use
 
 func (c *client) Metadata(ctx context.Context, userID, email string) (string, error) {
 	md, err := storage.Get[metadata](ctx, c.db, `
-	SELECT account_metadata.*, u.email 
-      FROM users u 
-      LEFT JOIN account_metadata ON account_metadata.user_id = $1
-      WHERE u.id = $1
-    UNION ALL (
-      SELECT account_metadata.*, u.email 
-      FROM account_metadata 
-      LEFT JOIN users u ON u.id = $1
-      WHERE account_metadata.user_id = $1
-    ) LIMIT 1`, userID)
+	SELECT user_id, metadata, email FROM (
+		SELECT account_metadata.*, u.email, 1 as idx 
+		  FROM users u 
+		  LEFT JOIN account_metadata ON account_metadata.user_id = $1
+		  WHERE u.id = $1
+		UNION ALL (
+		  SELECT account_metadata.*, u.email, 2 as idx
+		  FROM account_metadata 
+		  LEFT JOIN users u ON u.id = $1
+		  WHERE account_metadata.user_id = $1
+		)
+		ORDER BY idx
+		LIMIT 1
+    ) t`, userID)
 	if err != nil {
 		return "", errors.Wrapf(err, "failed to get user metadata %v", userID)
 	}
