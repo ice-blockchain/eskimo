@@ -220,7 +220,7 @@ func (c *client) UpdateMetadata(ctx context.Context, userID string, newData *use
 	var rowsUpdated uint64
 	rowsUpdated, err = storage.Exec(ctx, c.db, sql, userID, newData, prev)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to update account metadata for userID:%v", userID)
+		return nil, errors.Wrapf(err, "failed to update account metadata for userID:%v to %#v", userID, newData)
 	}
 	if rowsUpdated == 0 {
 		return c.UpdateMetadata(ctx, userID, newData)
@@ -229,7 +229,7 @@ func (c *client) UpdateMetadata(ctx context.Context, userID string, newData *use
 	return newData, nil
 }
 
-func (c *client) Metadata(ctx context.Context, userID, email string) (string, error) {
+func (c *client) Metadata(ctx context.Context, userID, email string) (string, *users.JSON, error) {
 	md, err := storage.Get[metadata](ctx, c.db, `
 	SELECT user_id, metadata, email FROM (
 		SELECT account_metadata.*, u.email, 1 as idx 
@@ -244,19 +244,19 @@ func (c *client) Metadata(ctx context.Context, userID, email string) (string, er
 		)
     ) t ORDER BY idx LIMIT 1`, userID)
 	if err != nil {
-		return "", errors.Wrapf(err, "failed to get user metadata %v", userID)
+		return "", nil, errors.Wrapf(err, "failed to get user metadata %v", userID)
 	}
 	if md.Email != nil {
 		if email != *md.Email {
-			return "", errors.Wrapf(ErrUserDataMismatch, "actual email is %v, requested for %v", *md.Email, email)
+			return "", nil, errors.Wrapf(ErrUserDataMismatch, "actual email is %v, requested for %v", *md.Email, email)
 		}
 	}
 	encoded := ""
 	if md.Metadata != nil {
 		if encoded, err = c.authClient.GenerateMetadata(time.Now(), userID, *md.Metadata); err != nil {
-			return "", errors.Wrapf(err, "failed to encode metadata:%#v for userID:%v", md, userID)
+			return "", nil, errors.Wrapf(err, "failed to encode metadata:%#v for userID:%v", md, userID)
 		}
 	}
 
-	return encoded, nil
+	return encoded, md.Metadata, nil
 }

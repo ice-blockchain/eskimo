@@ -13,11 +13,9 @@ import (
 	"github.com/ice-blockchain/eskimo/users"
 	"github.com/ice-blockchain/wintr/auth"
 	"github.com/ice-blockchain/wintr/connectors/storage/v2"
-	"github.com/ice-blockchain/wintr/log"
 	"github.com/ice-blockchain/wintr/time"
 )
 
-//nolint:funlen // Logs
 func (c *client) SignIn(ctx context.Context, emailLinkPayload, confirmationCode string) error {
 	var token magicLinkToken
 	if err := parseJwtToken(emailLinkPayload, c.cfg.EmailValidation.JwtSecret, &token); err != nil {
@@ -45,11 +43,8 @@ func (c *client) SignIn(ctx context.Context, emailLinkPayload, confirmationCode 
 		els.Email = email
 	}
 	if fErr := c.finishAuthProcess(ctx, &id, *els.UserID, token.OTP, els.IssuedTokenSeq, emailConfirmed, els.Metadata); fErr != nil {
-		log.Debug(fmt.Sprintf("[auth/SignIn] failed to finish %#v %#v %#v", id, *els, token))
-
 		return errors.Wrapf(fErr, "can't finish auth process for userID:%v,email:%v,otp:%v", els.UserID, email, token.OTP)
 	}
-	log.Debug("[auth/SignIn] ok")
 
 	return nil
 }
