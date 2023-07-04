@@ -53,9 +53,7 @@ func (c *client) getUserIDFromEmail(ctx context.Context, searchEmail, idIfNotFou
 				(SELECT COALESCE(user_id, $2) AS id, 2 as idx
 					FROM email_link_sign_ins
 						WHERE email = $1)
-				ORDER BY idx
-				LIMIT 1
-			) t`
+			) t ORDER BY idx LIMIT 1`
 	ids, err := storage.Select[dbUserID](ctx, c.db, sql, searchEmail, idIfNotFound)
 	if err != nil || len(ids) == 0 {
 		if storage.IsErr(err, storage.ErrNotFound) || (err == nil && len(ids) == 0) {
@@ -140,9 +138,7 @@ func (c *client) getUserByIDOrPk(ctx context.Context, userID string, id *loginID
 				LEFT JOIN account_metadata ON u.id = account_metadata.user_id
 				WHERE u.id = $1
 			UNION ALL (select * from emails)
-			ORDER BY idx
-			LIMIT 1
-		) t
+		) t ORDER BY idx LIMIT 1
 	`, userID, id.Email, id.DeviceUniqueID)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to get user by pk:%#v)", id)
@@ -246,9 +242,7 @@ func (c *client) Metadata(ctx context.Context, userID, email string) (string, er
 		  LEFT JOIN users u ON u.id = $1
 		  WHERE account_metadata.user_id = $1
 		)
-		ORDER BY idx
-		LIMIT 1
-    ) t`, userID)
+    ) t ORDER BY idx LIMIT 1`, userID)
 	if err != nil {
 		return "", errors.Wrapf(err, "failed to get user metadata %v", userID)
 	}
