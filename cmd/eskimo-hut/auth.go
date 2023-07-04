@@ -45,7 +45,7 @@ func (s *service) SendSignInLinkToEmail( //nolint:gocritic // .
 	ctx context.Context,
 	req *server.Request[SendSignInLinkToEmailRequestArg, Auth],
 ) (*server.Response[Auth], *server.Response[server.ErrorResponse]) {
-	loginSession, err := s.authEmailLinkClient.SendSignInLinkToEmail(ctx, req.Data.Email, req.Data.DeviceUniqueID, req.Data.Language)
+	loginSession, err := s.authEmailLinkClient.SendSignInLinkToEmail(ctx, strings.ToLower(req.Data.Email), req.Data.DeviceUniqueID, req.Data.Language)
 	if err != nil {
 		switch {
 		case errors.Is(err, emaillink.ErrUserBlocked):
