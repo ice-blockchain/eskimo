@@ -149,7 +149,7 @@ type (
 	metadata struct {
 		Metadata *users.JSON
 		Email    *string
-		UserID   string
+		UserID   *string
 	}
 )
 

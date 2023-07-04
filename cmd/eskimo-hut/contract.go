@@ -16,7 +16,7 @@ type (
 	GetMetadataArg struct{}
 	Metadata       struct {
 		UserID   string `json:"userId" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
-		Metadata string `json:"metadata,omitempty"`
+		Metadata string `json:"metadata"`
 	}
 	CreateUserRequestBody struct {
 		// Optional. Example: `{"key1":{"something":"somethingElse"},"key2":"value"}`.
