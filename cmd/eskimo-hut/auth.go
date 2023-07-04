@@ -211,7 +211,7 @@ func (s *service) Metadata( //nolint:funlen,gocognit,gocritic,revive // Fallback
 	ctx context.Context,
 	req *server.Request[GetMetadataArg, Metadata],
 ) (*server.Response[Metadata], *server.Response[server.ErrorResponse]) {
-	md, err := s.authEmailLinkClient.Metadata(ctx, req.AuthenticatedUser.UserID, req.AuthenticatedUser.Email)
+	md, mdFields, err := s.authEmailLinkClient.Metadata(ctx, req.AuthenticatedUser.UserID, req.AuthenticatedUser.Email)
 	if err != nil { //nolint:nestif // Fallback logic.
 		if errors.Is(err, emaillink.ErrUserNotFound) {
 			iceID, iErr := s.authEmailLinkClient.IceUserID(ctx, req.AuthenticatedUser.Email)
@@ -222,7 +222,7 @@ func (s *service) Metadata( //nolint:funlen,gocognit,gocritic,revive // Fallback
 				).ErrorOrNil(), metadataNotFoundErrorCode)
 			}
 			if iceID != "" {
-				md, iErr = s.authEmailLinkClient.Metadata(ctx, iceID, req.AuthenticatedUser.Email)
+				md, mdFields, iErr = s.authEmailLinkClient.Metadata(ctx, iceID, req.AuthenticatedUser.Email)
 				if iErr != nil {
 					if errors.Is(iErr, emaillink.ErrUserNotFound) {
 						return server.OK(&Metadata{UserID: iceID}), nil
@@ -233,8 +233,11 @@ func (s *service) Metadata( //nolint:funlen,gocognit,gocritic,revive // Fallback
 					return nil, server.Unexpected(iErr)
 				}
 				if req.AuthenticatedUser.IsFirebase() {
-					if md, err = s.updateMetadataWithFirebaseID(ctx, &req.AuthenticatedUser, iceID); err != nil {
+					var mdUpd string
+					if mdUpd, err = s.updateMetadataWithFirebaseID(ctx, &req.AuthenticatedUser, mdFields, iceID); err != nil {
 						return nil, server.Unexpected(err)
+					} else if mdUpd != "" {
+						md = mdUpd
 					}
 				}
 
@@ -248,21 +251,41 @@ func (s *service) Metadata( //nolint:funlen,gocognit,gocritic,revive // Fallback
 
 		return nil, server.Unexpected(errors.Wrapf(err, "failed to get metadata for user by id: %v", req.AuthenticatedUser.UserID))
 	}
+	if req.AuthenticatedUser.IsFirebase() {
+		var updMD string
+		if updMD, err = s.updateMetadataWithFirebaseID(ctx, &req.AuthenticatedUser, mdFields, req.AuthenticatedUser.UserID); err != nil {
+			return nil, server.Unexpected(err)
+		} else if updMD != "" {
+			md = updMD
+		}
+	}
 
 	return server.OK(&Metadata{Metadata: md, UserID: req.AuthenticatedUser.UserID}), nil
 }
 
-func (s *service) updateMetadataWithFirebaseID(ctx context.Context, loggedInUser *server.AuthenticatedUser, iceID string) (md string, err error) {
-	var updatedMetadata *users.JSON
-	mdToUpdate := users.JSON(map[string]any{
-		auth.FirebaseIDClaim: loggedInUser.UserID,
-	})
-	if updatedMetadata, err = s.authEmailLinkClient.UpdateMetadata(ctx, iceID, &mdToUpdate); err != nil {
-		return "", errors.Wrapf(err, "can't update metadata for iceID:%v", iceID)
+func (s *service) updateMetadataWithFirebaseID(
+	ctx context.Context,
+	loggedInUser *server.AuthenticatedUser,
+	mdFields *users.JSON,
+	userID string,
+) (md string, err error) {
+	fields := mdFields //nolint:ifshort // .
+	if fields == nil {
+		empty := users.JSON(map[string]any{})
+		fields = &empty
 	}
-	if updatedMetadata != nil {
-		if md, err = server.Auth(ctx).GenerateMetadata(time.Now(), loggedInUser.UserID, *updatedMetadata); err != nil {
-			return "", errors.Wrapf(err, "can't generate metadata for:%v", loggedInUser.UserID)
+	if _, hasFirebaseID := (*fields)[auth.FirebaseIDClaim]; !hasFirebaseID {
+		var updatedMetadata *users.JSON
+		mdToUpdate := users.JSON(map[string]any{
+			auth.FirebaseIDClaim: loggedInUser.UserID,
+		})
+		if updatedMetadata, err = s.authEmailLinkClient.UpdateMetadata(ctx, userID, &mdToUpdate); err != nil {
+			return "", errors.Wrapf(err, "can't update metadata for userIDID:%v", userID)
+		}
+		if updatedMetadata != nil {
+			if md, err = server.Auth(ctx).GenerateMetadata(time.Now(), loggedInUser.UserID, *updatedMetadata); err != nil {
+				return "", errors.Wrapf(err, "can't generate metadata for:%v", loggedInUser.UserID)
+			}
 		}
 	}
 
