@@ -1,0 +1,3 @@
+{
+"subject": "Zweryfikuj swój adres e-mail dla ice"
+}

@@ -1,0 +1,3 @@
+{
+"subject": "Xác minh email của bạn cho ice"
+}
