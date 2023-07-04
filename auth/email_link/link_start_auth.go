@@ -152,7 +152,8 @@ func (c *client) upsertEmailLinkSignIn(ctx context.Context, toEmail, deviceUniqu
 								created_at    				     	   = EXCLUDED.created_at,
 								confirmation_code 		          	   = EXCLUDED.confirmation_code,
 								confirmation_code_wrong_attempts_count = EXCLUDED.confirmation_code_wrong_attempts_count,
-						        email_confirmed_at                     = null
+						        email_confirmed_at                     = null,
+						        user_id                                = null
 						WHERE   email_link_sign_ins.otp                                    != EXCLUDED.otp
 						   OR   email_link_sign_ins.created_at    				     	   != EXCLUDED.created_at
 						   OR   email_link_sign_ins.confirmation_code 		          	   != EXCLUDED.confirmation_code
