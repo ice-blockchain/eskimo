@@ -212,10 +212,16 @@ func (c *client) UpdateMetadata(ctx context.Context, userID string, newData *use
 
 func (c *client) Metadata(ctx context.Context, userID, email string) (string, error) {
 	md, err := storage.Get[metadata](ctx, c.db, `
-		SELECT account_metadata.*, u.email 
-		FROM account_metadata 
-		LEFT JOIN users u ON u.id = $1
-		WHERE user_id = $1`, userID)
+	SELECT account_metadata.*, u.email 
+      FROM users u 
+      LEFT JOIN account_metadata ON account_metadata.user_id = $1
+      WHERE u.id = $1
+    UNION ALL (
+      SELECT account_metadata.*, u.email 
+      FROM account_metadata 
+      LEFT JOIN users u ON u.id = $1
+      WHERE account_metadata.user_id = $1
+    ) LIMIT 1`, userID)
 	if err != nil {
 		return "", errors.Wrapf(err, "failed to get user metadata %v", userID)
 	}
@@ -224,9 +230,11 @@ func (c *client) Metadata(ctx context.Context, userID, email string) (string, er
 			return "", errors.Wrapf(ErrUserDataMismatch, "actual email is %v, requested for %v", *md.Email, email)
 		}
 	}
-	encoded, err := c.authClient.GenerateMetadata(time.Now(), userID, *md.Metadata)
-	if err != nil {
-		return "", errors.Wrapf(err, "failed to encode metadata:%#v for userID:%v", md, userID)
+	encoded := ""
+	if md.Metadata != nil {
+		if encoded, err = c.authClient.GenerateMetadata(time.Now(), userID, *md.Metadata); err != nil {
+			return "", errors.Wrapf(err, "failed to encode metadata:%#v for userID:%v", md, userID)
+		}
 	}
 
 	return encoded, nil
