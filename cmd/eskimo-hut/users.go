@@ -121,7 +121,7 @@ func buildUserForCreation(req *server.Request[CreateUserRequestBody, User]) *use
 //	@Failure		500					{object}	server.ErrorResponse
 //	@Failure		504					{object}	server.ErrorResponse	"if request times out"
 //	@Router			/users/{userId} [PATCH].
-func (s *service) ModifyUser( //nolint:gocritic,funlen // .
+func (s *service) ModifyUser( //nolint:gocritic,funlen,revive,cyclop // .
 	ctx context.Context,
 	req *server.Request[ModifyUserRequestBody, ModifyUserResponse],
 ) (*server.Response[ModifyUserResponse], *server.Response[server.ErrorResponse]) {
@@ -138,7 +138,9 @@ func (s *service) ModifyUser( //nolint:gocritic,funlen // .
 		case errors.Is(err, emaillink.ErrUserBlocked):
 			return nil, server.BadRequest(err, userBlockedErrorCode)
 		case errors.Is(err, emaillink.ErrUserDuplicate):
-			return nil, server.Conflict(err, duplicateUserErrorCode)
+			if tErr := terror.As(err); tErr != nil {
+				return nil, server.Conflict(err, duplicateUserErrorCode, tErr.Data)
+			}
 		default:
 			return nil, server.Unexpected(errors.Wrapf(err, "failed to trigger email modification for request:%#v", req.Data))
 		}

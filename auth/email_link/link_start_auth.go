@@ -16,6 +16,7 @@ import (
 	"github.com/ice-blockchain/wintr/connectors/storage/v2"
 	"github.com/ice-blockchain/wintr/email"
 	"github.com/ice-blockchain/wintr/log"
+	"github.com/ice-blockchain/wintr/terror"
 	"github.com/ice-blockchain/wintr/time"
 )
 
@@ -72,7 +73,7 @@ func (c *client) validateEmailModification(ctx context.Context, newEmail string,
 			return errors.Wrapf(iErr, "can't check if user exists for email:%v", newEmail)
 		}
 
-		return errors.Wrapf(ErrUserDuplicate, "user with such email already exists:%v", newEmail)
+		return errors.Wrapf(terror.New(ErrUserDuplicate, map[string]any{"field": "email"}), "user with such email already exists:%v", newEmail)
 	}
 	gOldUsr, gErr := c.getEmailLinkSignIn(ctx, oldID)
 	if gErr != nil && !storage.IsErr(gErr, storage.ErrNotFound) {
