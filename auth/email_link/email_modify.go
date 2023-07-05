@@ -25,12 +25,23 @@ func (c *client) handleEmailModification(ctx context.Context, els *emailLinkSign
 	if err != nil {
 		return errors.Wrapf(err, "failed to modify user %v with email modification", els.UserID)
 	}
+	if els.Metadata != nil {
+		if firebaseID, hasFirebaseID := (*els.Metadata)[auth.FirebaseIDClaim]; hasFirebaseID {
+			if fErr := server.Auth(ctx).UpdateEmail(ctx, firebaseID.(string), newEmail); fErr != nil { //nolint:forcetypeassert // .
+				return multierror.Append( //nolint:wrapcheck // .
+					errors.Wrapf(c.resetEmailModification(ctx, usr.ID, oldEmail), "[reset] resetEmailModification failed for email:%v", oldEmail),
+					errors.Wrapf(fErr, "failed to change email in firebase to:%v fbUserID:%v", newEmail, firebaseID),
+				).ErrorOrNil()
+			}
+		}
+	}
 	if notifyEmail != "" {
 		resetEmailOTP, now := generateOTP(), time.Now()
 		resetEmailPayload, rErr := c.generateMagicLinkPayload(&loginID{Email: oldEmail, DeviceUniqueID: els.DeviceUniqueID}, newEmail, "", resetEmailOTP, now)
 		if rErr != nil {
 			return multierror.Append( //nolint:wrapcheck // .
 				errors.Wrapf(c.resetEmailModification(ctx, usr.ID, oldEmail), "[reset] resetEmailModification failed for email:%v", oldEmail),
+				errors.Wrapf(c.resetFirebaseEmailModification(ctx, els.Metadata, oldEmail), "[reset] updateEmail in firebase failed for email:%v", oldEmail),
 				errors.Wrapf(rErr, "can't generate link payload for email: %v", oldEmail),
 			).ErrorOrNil()
 		}
@@ -38,6 +49,7 @@ func (c *client) handleEmailModification(ctx context.Context, els *emailLinkSign
 		if uErr := c.upsertEmailLinkSignIn(ctx, oldEmail, els.DeviceUniqueID, resetEmailOTP, resetConfirmationCode, now); uErr != nil {
 			return multierror.Append( //nolint:wrapcheck // .
 				errors.Wrapf(c.resetEmailModification(ctx, usr.ID, oldEmail), "[reset] resetEmailModification failed for email:%v", oldEmail),
+				errors.Wrapf(c.resetFirebaseEmailModification(ctx, els.Metadata, oldEmail), "[reset] updateEmail in firebase failed for email:%v", oldEmail),
 				errors.Wrapf(uErr, "failed to store/update email confirmation for email:%v", oldEmail),
 			).ErrorOrNil()
 		}
@@ -45,18 +57,9 @@ func (c *client) handleEmailModification(ctx context.Context, els *emailLinkSign
 		if sErr := c.sendNotifyEmailChanged(ctx, notifyEmail, newEmail, authLink, els.Language); sErr != nil {
 			return multierror.Append( //nolint:wrapcheck // .
 				errors.Wrapf(c.resetEmailModification(ctx, usr.ID, oldEmail), "[reset] resetEmailModification failed for email:%v", oldEmail),
+				errors.Wrapf(c.resetFirebaseEmailModification(ctx, els.Metadata, oldEmail), "[reset] updateEmail in firebase failed for email:%v", oldEmail),
 				errors.Wrapf(sErr, "failed to send notification email about email change for userID %v email %v", els.UserID, oldEmail),
 			).ErrorOrNil()
-		}
-	}
-	if els.Metadata != nil {
-		if firebaseID, hasFirebaseID := (*els.Metadata)[auth.FirebaseIDClaim]; hasFirebaseID {
-			if fErr := server.Auth(ctx).UpdateEmail(ctx, firebaseID.(string), newEmail); fErr != nil { //nolint:forcetypeassert // .
-				return multierror.Append( //nolint:wrapcheck // .
-					errors.Wrapf(c.resetEmailModification(ctx, usr.ID, oldEmail), "[reset] resetEmailModification failed for email:%v", oldEmail),
-					errors.Wrapf(fErr, "failed to change email in firebase to:%v", newEmail),
-				).ErrorOrNil()
-			}
 		}
 	}
 
@@ -74,6 +77,19 @@ func (c *client) resetEmailModification(ctx context.Context, userID users.UserID
 
 	return errors.Wrapf(c.userModifier.ModifyUser(users.ConfirmedEmailContext(ctx, oldEmail), usr, nil),
 		"[rollback] failed to modify user:%v", userID)
+}
+
+func (*client) resetFirebaseEmailModification(ctx context.Context, md *users.JSON, oldEmail string) error {
+	if md != nil {
+		if firebaseID, hasFirebaseID := (*md)[auth.FirebaseIDClaim]; hasFirebaseID {
+			return errors.Wrapf(
+				server.Auth(ctx).UpdateEmail(ctx, firebaseID.(string), oldEmail), //nolint:forcetypeassert // .
+				"failed to change email in firebase to:%v fbUserID:%v", oldEmail, firebaseID,
+			)
+		}
+	}
+
+	return nil
 }
 
 func (c *client) sendNotifyEmailChanged(ctx context.Context, notifyEmail, newEmail, link, language string) error {
