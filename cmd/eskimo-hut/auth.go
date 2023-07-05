@@ -45,7 +45,8 @@ func (s *service) SendSignInLinkToEmail( //nolint:gocritic // .
 	ctx context.Context,
 	req *server.Request[SendSignInLinkToEmailRequestArg, Auth],
 ) (*server.Response[Auth], *server.Response[server.ErrorResponse]) {
-	loginSession, err := s.authEmailLinkClient.SendSignInLinkToEmail(ctx, strings.ToLower(req.Data.Email), req.Data.DeviceUniqueID, req.Data.Language)
+	email := strings.TrimSpace(strings.ToLower(req.Data.Email))
+	loginSession, err := s.authEmailLinkClient.SendSignInLinkToEmail(ctx, email, req.Data.DeviceUniqueID, req.Data.Language)
 	if err != nil {
 		switch {
 		case errors.Is(err, emaillink.ErrUserBlocked):
@@ -227,7 +228,7 @@ func (s *service) Metadata( //nolint:funlen,gocognit,gocritic,revive // Fallback
 					if errors.Is(iErr, emaillink.ErrUserNotFound) {
 						return server.OK(&Metadata{UserID: iceID}), nil
 					} else if errors.Is(iErr, emaillink.ErrUserDataMismatch) {
-						return nil, server.BadRequest(iErr, dataMismatchErrorCode)
+						return nil, server.BadRequest(s.handleFirebaseEmailMismatch(ctx, &req.AuthenticatedUser, iErr), dataMismatchErrorCode)
 					}
 
 					return nil, server.Unexpected(iErr)
@@ -246,7 +247,7 @@ func (s *service) Metadata( //nolint:funlen,gocognit,gocritic,revive // Fallback
 
 			return nil, server.NotFound(errors.Wrapf(err, "metadata for user with id `%v` was not found", req.AuthenticatedUser.UserID), metadataNotFoundErrorCode)
 		} else if errors.Is(err, emaillink.ErrUserDataMismatch) {
-			return nil, server.BadRequest(err, dataMismatchErrorCode)
+			return nil, server.BadRequest(s.handleFirebaseEmailMismatch(ctx, &req.AuthenticatedUser, err), dataMismatchErrorCode)
 		}
 
 		return nil, server.Unexpected(errors.Wrapf(err, "failed to get metadata for user by id: %v", req.AuthenticatedUser.UserID))
@@ -261,6 +262,24 @@ func (s *service) Metadata( //nolint:funlen,gocognit,gocritic,revive // Fallback
 	}
 
 	return server.OK(&Metadata{Metadata: md, UserID: req.AuthenticatedUser.UserID}), nil
+}
+
+func (*service) handleFirebaseEmailMismatch(ctx context.Context, loggedInUser *server.AuthenticatedUser, err error) error {
+	emailErr := terror.As(err)
+	actualEmail := emailErr.Data["email"].(string) //nolint:forcetypeassert,errcheck // .
+	if loggedInUser.IsFirebase() {
+		if fbErr := server.Auth(ctx).UpdateEmail(ctx, loggedInUser.UserID, actualEmail); fbErr != nil {
+			return errors.Wrapf(
+				emaillink.ErrUserDataMismatch,
+				"actual email is %v, requested for %v and failed to update in firebase %v",
+				actualEmail, loggedInUser.Email, fbErr.Error(),
+			)
+		}
+
+		return nil
+	}
+
+	return errors.Wrapf(emaillink.ErrUserDataMismatch, "actual email is %v, requested for %v", actualEmail, loggedInUser.Email)
 }
 
 func (s *service) updateMetadataWithFirebaseID(
