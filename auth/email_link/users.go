@@ -12,6 +12,7 @@ import (
 
 	"github.com/ice-blockchain/eskimo/users"
 	"github.com/ice-blockchain/wintr/connectors/storage/v2"
+	"github.com/ice-blockchain/wintr/terror"
 	"github.com/ice-blockchain/wintr/time"
 )
 
@@ -113,7 +114,7 @@ func (c *client) getUserByIDOrPk(ctx context.Context, userID string, id *loginID
 					'en' 											   AS language,
 					COALESCE((account_metadata.metadata -> 'hash_code')::BIGINT,0) AS hash_code,
 					account_metadata.metadata,
-					1                                                  AS idx
+					2                                                  AS idx
 				FROM email_link_sign_ins
 				LEFT JOIN account_metadata ON account_metadata.user_id = $1
 				WHERE email = $2 AND device_unique_id = $3
@@ -132,7 +133,7 @@ func (c *client) getUserByIDOrPk(ctx context.Context, userID string, id *loginID
 					u.language			    				 	  	   AS language,
 					u.hash_code,
 					account_metadata.metadata    				 	   AS metadata,
-					2 												   AS idx
+					1 												   AS idx
 				FROM users u
 				LEFT JOIN emails ON emails.email = $2 and u.id = emails.user_id
 				LEFT JOIN account_metadata ON u.id = account_metadata.user_id
@@ -181,6 +182,9 @@ func (c *client) getEmailLinkSignIn(ctx context.Context, id *loginID) (*emailLin
 }
 
 func (c *client) IceUserID(ctx context.Context, email string) (string, error) {
+	if email == "" {
+		return "", nil
+	}
 	userID, err := c.getUserIDFromEmail(ctx, email, "")
 	if err != nil {
 		return "", errors.Wrapf(err, "failed to fetch userID by email:%v", email)
@@ -229,15 +233,15 @@ func (c *client) UpdateMetadata(ctx context.Context, userID string, newData *use
 	return newData, nil
 }
 
-func (c *client) Metadata(ctx context.Context, userID, email string) (string, *users.JSON, error) {
+func (c *client) Metadata(ctx context.Context, userID, tokenEmail string) (string, *users.JSON, error) {
 	md, err := storage.Get[metadata](ctx, c.db, `
-	SELECT user_id, metadata, email FROM (
-		SELECT account_metadata.*, u.email, 1 as idx 
+	SELECT COALESCE(user_id, id) as user_id, metadata, email FROM (
+		SELECT account_metadata.*, u.email, u.id, 1 as idx 
 		  FROM users u 
 		  LEFT JOIN account_metadata ON account_metadata.user_id = $1
 		  WHERE u.id = $1
 		UNION ALL (
-		  SELECT account_metadata.*, u.email, 2 as idx
+		  SELECT account_metadata.*, u.email, u.id, 2 as idx
 		  FROM account_metadata 
 		  LEFT JOIN users u ON u.id = $1
 		  WHERE account_metadata.user_id = $1
@@ -247,8 +251,9 @@ func (c *client) Metadata(ctx context.Context, userID, email string) (string, *u
 		return "", nil, errors.Wrapf(err, "failed to get user metadata %v", userID)
 	}
 	if md.Email != nil {
-		if email != *md.Email {
-			return "", nil, errors.Wrapf(ErrUserDataMismatch, "actual email is %v, requested for %v", *md.Email, email)
+		emailEmpty := *md.Email == "" || *md.Email == *md.UserID
+		if tokenEmail != "" && !emailEmpty && tokenEmail != *md.Email { //nolint:gosec // .
+			return "", nil, terror.New(ErrUserDataMismatch, map[string]any{"email": *md.Email})
 		}
 	}
 	encoded := ""
