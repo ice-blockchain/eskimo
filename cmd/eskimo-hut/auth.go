@@ -52,7 +52,9 @@ func (s *service) SendSignInLinkToEmail( //nolint:gocritic // .
 		case errors.Is(err, emaillink.ErrUserBlocked):
 			return nil, server.BadRequest(err, userBlockedErrorCode)
 		case errors.Is(err, emaillink.ErrUserDuplicate):
-			return nil, server.Conflict(err, duplicateUserErrorCode)
+			if tErr := terror.As(err); tErr != nil {
+				return nil, server.Conflict(err, duplicateUserErrorCode, tErr.Data)
+			}
 		default:
 			return nil, server.Unexpected(errors.Wrapf(err, "failed to start email link auth %#v", req.Data))
 		}
