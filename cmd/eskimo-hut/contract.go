@@ -141,6 +141,7 @@ const (
 	referralNotFoundErrorCode               = "REFERRAL_NOT_FOUND"
 	raceConditionErrorCode                  = "RACE_CONDITION"
 	invalidPropertiesErrorCode              = "INVALID_PROPERTIES"
+	invalidEmail                            = "INVALID_EMAIL"
 
 	linkExpiredErrorCode    = "EXPIRED_LINK"
 	invalidOTPCodeErrorCode = "INVALID_OTP"

@@ -4,6 +4,7 @@ package main
 
 import (
 	"context"
+	"net/mail"
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
@@ -46,6 +47,9 @@ func (s *service) SendSignInLinkToEmail( //nolint:gocritic // .
 	req *server.Request[SendSignInLinkToEmailRequestArg, Auth],
 ) (*server.Response[Auth], *server.Response[server.ErrorResponse]) {
 	email := strings.TrimSpace(strings.ToLower(req.Data.Email))
+	if _, err := mail.ParseAddress(email); err != nil {
+		return nil, server.BadRequest(err, invalidEmail)
+	}
 	loginSession, err := s.authEmailLinkClient.SendSignInLinkToEmail(ctx, email, req.Data.DeviceUniqueID, req.Data.Language)
 	if err != nil {
 		switch {
