@@ -222,7 +222,7 @@ func (s *service) Metadata(
 	if err != nil {
 		switch {
 		case errors.Is(err, emaillink.ErrUserNotFound):
-			return s.findMetadataUsingIceID(ctx, &req.AuthenticatedUser)
+			return s.findMetadataUsingIceID(ctx, &req.AuthenticatedUser, err)
 		case errors.Is(err, emaillink.ErrUserDataMismatch):
 			if fbErr := s.handleFirebaseEmailMismatch(ctx, &req.AuthenticatedUser, err); fbErr != nil {
 				return nil, server.BadRequest(fbErr, dataMismatchErrorCode)
@@ -244,11 +244,10 @@ func (s *service) Metadata(
 }
 
 //nolint:funlen,gocognit,revive // .
-func (s *service) findMetadataUsingIceID(ctx context.Context, loggedInUser *server.AuthenticatedUser) (
+func (s *service) findMetadataUsingIceID(ctx context.Context, loggedInUser *server.AuthenticatedUser, err error) (
 	successResp *server.Response[Metadata],
 	errorResp *server.Response[server.ErrorResponse],
 ) {
-	var err error
 	var md string
 	var mdFields *users.JSON
 	iceID, iErr := s.authEmailLinkClient.IceUserID(ctx, loggedInUser.Email)
