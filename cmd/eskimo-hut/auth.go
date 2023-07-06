@@ -210,49 +210,22 @@ func (s *service) Status( //nolint:gocritic // .
 //	@Failure		500				{object}	server.ErrorResponse
 //	@Failure		504				{object}	server.ErrorResponse	"if request times out"
 //	@Router			/auth/getMetadata [POST].
-func (s *service) Metadata( //nolint:funlen,gocognit,gocritic,revive // Fallback logic with iceID
+func (s *service) Metadata(
 	ctx context.Context,
 	req *server.Request[GetMetadataArg, Metadata],
-) (*server.Response[Metadata], *server.Response[server.ErrorResponse]) {
+) (successResp *server.Response[Metadata], errorResp *server.Response[server.ErrorResponse]) {
 	md, mdFields, err := s.authEmailLinkClient.Metadata(ctx, req.AuthenticatedUser.UserID, req.AuthenticatedUser.Email)
-	if err != nil { //nolint:nestif // Fallback logic.
-		if errors.Is(err, emaillink.ErrUserNotFound) {
-			iceID, iErr := s.authEmailLinkClient.IceUserID(ctx, req.AuthenticatedUser.Email)
-			if iErr != nil {
-				return nil, server.NotFound(multierror.Append(
-					errors.Wrapf(err, "metadata for user with id `%v` was not found", req.AuthenticatedUser.UserID),
-					errors.Wrapf(iErr, "failed to fetch iceID for email `%v`", req.AuthenticatedUser.Email),
-				).ErrorOrNil(), metadataNotFoundErrorCode)
+	if err != nil {
+		switch {
+		case errors.Is(err, emaillink.ErrUserNotFound):
+			return s.findMetadataUsingIceID(ctx, &req.AuthenticatedUser)
+		case errors.Is(err, emaillink.ErrUserDataMismatch):
+			if fbErr := s.handleFirebaseEmailMismatch(ctx, &req.AuthenticatedUser, err); fbErr != nil {
+				return nil, server.BadRequest(fbErr, dataMismatchErrorCode)
 			}
-			if iceID != "" {
-				md, mdFields, iErr = s.authEmailLinkClient.Metadata(ctx, iceID, req.AuthenticatedUser.Email)
-				if iErr != nil {
-					if errors.Is(iErr, emaillink.ErrUserNotFound) {
-						return server.OK(&Metadata{UserID: iceID}), nil
-					} else if errors.Is(iErr, emaillink.ErrUserDataMismatch) {
-						return nil, server.BadRequest(s.handleFirebaseEmailMismatch(ctx, &req.AuthenticatedUser, iErr), dataMismatchErrorCode)
-					}
-
-					return nil, server.Unexpected(iErr)
-				}
-				if req.AuthenticatedUser.IsFirebase() {
-					var mdUpd string
-					if mdUpd, err = s.updateMetadataWithFirebaseID(ctx, &req.AuthenticatedUser, mdFields, iceID); err != nil {
-						return nil, server.Unexpected(err)
-					} else if mdUpd != "" {
-						md = mdUpd
-					}
-				}
-
-				return server.OK(&Metadata{Metadata: md, UserID: iceID}), nil
-			}
-
-			return nil, server.NotFound(errors.Wrapf(err, "metadata for user with id `%v` was not found", req.AuthenticatedUser.UserID), metadataNotFoundErrorCode)
-		} else if errors.Is(err, emaillink.ErrUserDataMismatch) {
-			return nil, server.BadRequest(s.handleFirebaseEmailMismatch(ctx, &req.AuthenticatedUser, err), dataMismatchErrorCode)
+		default:
+			return nil, server.Unexpected(errors.Wrapf(err, "failed to get metadata for user by id: %v", req.AuthenticatedUser.UserID))
 		}
-
-		return nil, server.Unexpected(errors.Wrapf(err, "failed to get metadata for user by id: %v", req.AuthenticatedUser.UserID))
 	}
 	if req.AuthenticatedUser.IsFirebase() {
 		var updMD string
@@ -264,6 +237,50 @@ func (s *service) Metadata( //nolint:funlen,gocognit,gocritic,revive // Fallback
 	}
 
 	return server.OK(&Metadata{Metadata: md, UserID: req.AuthenticatedUser.UserID}), nil
+}
+
+//nolint:funlen,gocognit,revive // .
+func (s *service) findMetadataUsingIceID(ctx context.Context, loggedInUser *server.AuthenticatedUser) (
+	successResp *server.Response[Metadata],
+	errorResp *server.Response[server.ErrorResponse],
+) {
+	var err error
+	var md string
+	var mdFields *users.JSON
+	iceID, iErr := s.authEmailLinkClient.IceUserID(ctx, loggedInUser.Email)
+	if iErr != nil {
+		return nil, server.NotFound(multierror.Append(
+			errors.Wrapf(err, "metadata for user with id `%v` was not found", loggedInUser.UserID),
+			errors.Wrapf(iErr, "failed to fetch iceID for email `%v`", loggedInUser.Email),
+		).ErrorOrNil(), metadataNotFoundErrorCode)
+	}
+	if iceID != "" { //nolint:nestif // Error processing
+		md, mdFields, iErr = s.authEmailLinkClient.Metadata(ctx, iceID, loggedInUser.Email)
+		if iErr != nil {
+			switch {
+			case errors.Is(iErr, emaillink.ErrUserNotFound):
+				return server.OK(&Metadata{UserID: iceID}), nil
+			case errors.Is(iErr, emaillink.ErrUserDataMismatch):
+				if fbErr := s.handleFirebaseEmailMismatch(ctx, loggedInUser, iErr); fbErr != nil {
+					return nil, server.BadRequest(fbErr, dataMismatchErrorCode)
+				}
+			default:
+				return nil, server.Unexpected(iErr)
+			}
+		}
+		if loggedInUser.IsFirebase() {
+			var mdUpd string
+			if mdUpd, err = s.updateMetadataWithFirebaseID(ctx, loggedInUser, mdFields, iceID); err != nil {
+				return nil, server.Unexpected(err)
+			} else if mdUpd != "" {
+				md = mdUpd
+			}
+		}
+
+		return server.OK(&Metadata{Metadata: md, UserID: iceID}), nil
+	}
+
+	return nil, server.NotFound(errors.Wrapf(err, "metadata for user with id `%v` was not found", loggedInUser.UserID), metadataNotFoundErrorCode)
 }
 
 func (*service) handleFirebaseEmailMismatch(ctx context.Context, loggedInUser *server.AuthenticatedUser, err error) error {
