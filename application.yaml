@@ -116,6 +116,7 @@ users: &users
   globalAggregationInterval:
     parent: 60m
     child: 1m
+    minMiningSessionDuration: 30s
 users_test:
   <<: *users
   messageBroker:

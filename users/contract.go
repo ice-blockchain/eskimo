@@ -276,8 +276,9 @@ type (
 		} `yaml:"emailValidation"`
 		messagebroker.Config      `mapstructure:",squash"` //nolint:tagliatelle // Nope.
 		GlobalAggregationInterval struct {
-			Parent stdlibtime.Duration `yaml:"parent"`
-			Child  stdlibtime.Duration `yaml:"child"`
+			MinMiningSessionDuration stdlibtime.Duration `yaml:"minMiningSessionDuration"`
+			Parent                   stdlibtime.Duration `yaml:"parent"`
+			Child                    stdlibtime.Duration `yaml:"child"`
 		} `yaml:"globalAggregationInterval"`
 	}
 )
