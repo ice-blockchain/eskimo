@@ -4,6 +4,7 @@ package users
 
 import (
 	"context"
+	stdlibtime "time"
 
 	"github.com/goccy/go-json"
 	"github.com/pkg/errors"
@@ -43,7 +44,12 @@ func (s *miningSessionSource) updateMiningSession(ctx context.Context, ses *mini
 	        WHERE id = $4
 	          AND ((last_mining_started_at IS NULL OR last_mining_started_at != $2)
 				   OR (last_mining_ended_at IS NULL OR last_mining_ended_at != $3))`
-	affectedRows, err := storage.Exec(ctx, s.db, sql, time.Now().Time, ses.LastNaturalMiningStartedAt.Time, ses.EndedAt.Time, ses.UserID)
+	affectedRows, err := storage.Exec(ctx, s.db, sql,
+		time.Now().Time,
+		ses.LastNaturalMiningStartedAt.Time.Truncate(stdlibtime.Second),
+		ses.EndedAt.Time.Truncate(stdlibtime.Second),
+		ses.UserID,
+	)
 	if affectedRows == 0 && err == nil {
 		err = ErrDuplicate
 	}
