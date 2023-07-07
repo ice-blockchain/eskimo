@@ -167,7 +167,7 @@ type (
 		GetUserByID(ctx context.Context, userID string) (*UserProfile, error)
 
 		GetTopCountries(ctx context.Context, keyword string, limit, offset uint64) ([]*CountryStatistics, error)
-		GetUserGrowth(ctx context.Context, days uint64) (*UserGrowthStatistics, error)
+		GetUserGrowth(ctx context.Context, days uint64, tz *stdlibtime.Location) (*UserGrowthStatistics, error)
 
 		GetReferrals(ctx context.Context, userID string, referralType ReferralType, limit, offset uint64) (*Referrals, error)
 		GetReferralAcquisitionHistory(ctx context.Context, userID string) ([]*ReferralAcquisition, error)

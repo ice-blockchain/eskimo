@@ -5,6 +5,7 @@ package users
 import (
 	"context"
 	"fmt"
+	"math"
 	"strings"
 	stdlibtime "time"
 
@@ -16,7 +17,7 @@ import (
 	"github.com/ice-blockchain/wintr/time"
 )
 
-func (r *repository) GetUserGrowth(ctx context.Context, days uint64) (*UserGrowthStatistics, error) {
+func (r *repository) GetUserGrowth(ctx context.Context, days uint64, tz *stdlibtime.Location) (*UserGrowthStatistics, error) {
 	if ctx.Err() != nil {
 		return nil, errors.Wrap(ctx.Err(), "context failed")
 	}
@@ -27,7 +28,7 @@ func (r *repository) GetUserGrowth(ctx context.Context, days uint64) (*UserGrowt
 		return nil, errors.Wrapf(err, "failed to getGlobalValues for keys:%#v", keys)
 	}
 
-	return r.aggregateGlobalValuesToGrowth(days, now, values, keys), nil
+	return r.aggregateGlobalValuesToGrowth(days, now, values, keys, tz), nil
 }
 
 func (r *repository) generateUserGrowthKeys(now *time.Time, days uint64) []string {
@@ -43,11 +44,17 @@ func (r *repository) generateUserGrowthKeys(now *time.Time, days uint64) []strin
 }
 
 //nolint:gocognit,revive,funlen // .
-func (r *repository) aggregateGlobalValuesToGrowth(days uint64, now *time.Time, values []*GlobalUnsigned, keys []string) *UserGrowthStatistics {
+func (r *repository) aggregateGlobalValuesToGrowth(
+	days uint64, now *time.Time,
+	values []*GlobalUnsigned,
+	keys []string,
+	tz *stdlibtime.Location,
+) *UserGrowthStatistics {
 	nsSinceParentIntervalZeroValue := r.cfg.nanosSinceGlobalAggregationIntervalParentZeroValue(now)
 	stats := make([]*UserCountTimeSeriesDataPoint, days, days) //nolint:gosimple // .
 	var activeNow, activeMaxPerParent, dayIdx uint64
 	nowKey := r.totalActiveUsersGlobalChildKey(now.Time)
+	nowInTZ := time.New(now.In(tz))
 	for ix, key := range keys {
 		if ix == 0 {
 			continue
@@ -69,8 +76,23 @@ func (r *repository) aggregateGlobalValuesToGrowth(days uint64, now *time.Time, 
 			}
 			stats[dayIdx].UserCount.Total = val
 			if stats[dayIdx].Date == nil {
-				fullNegativeDayDuration := -1 * r.cfg.GlobalAggregationInterval.Parent * stdlibtime.Duration(dayIdx-1)
-				stats[dayIdx].Date = time.New(now.Add(fullNegativeDayDuration).Add(-nsSinceParentIntervalZeroValue - 1))
+				if dayIdx == 0 {
+					stats[dayIdx].Date = now
+				} else {
+					nowInTzWithUTC := time.New(stdlibtime.Date(
+						nowInTZ.Year(), nowInTZ.Month(), nowInTZ.Day(),
+						nowInTZ.Hour(), nowInTZ.Minute(), nowInTZ.Second(), nowInTZ.Nanosecond(),
+						stdlibtime.UTC,
+					))
+					if math.Abs(float64(nowInTzWithUTC.Sub(*now.Time))) > float64(r.cfg.GlobalAggregationInterval.Parent) {
+						nowInTzWithUTC = now
+					}
+					fullNegativeDayDuration := (-1) * r.cfg.GlobalAggregationInterval.Parent * stdlibtime.Duration(dayIdx-1)
+					stats[dayIdx].Date = time.New(nowInTzWithUTC.Add(fullNegativeDayDuration).Add(-nsSinceParentIntervalZeroValue - 1))
+					if stats[dayIdx].Date.Truncate(r.cfg.GlobalAggregationInterval.Parent).Equal(stats[dayIdx-1].Date.Truncate(r.cfg.GlobalAggregationInterval.Parent)) {
+						stats[dayIdx].Date = time.New(stats[dayIdx].Date.Add(-r.cfg.GlobalAggregationInterval.Parent))
+					}
+				}
 			}
 			activeMaxPerParent = 0
 			dayIdx++
