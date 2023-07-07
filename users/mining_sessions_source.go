@@ -38,15 +38,15 @@ func (s *miningSessionSource) updateMiningSession(ctx context.Context, ses *mini
 	if ctx.Err() != nil {
 		return errors.Wrap(ctx.Err(), "unexpected deadline ")
 	}
-	sql := fmt.Sprintf(`UPDATE users
-   			SET updated_at = $1,
-   				last_mining_started_at = $2,
-   				last_mining_ended_at = $3
-	        WHERE id = $4
-	          AND (
-	            (last_mining_started_at IS NULL OR (extract(epoch from last_mining_started_at)::bigint/%[1]v) != (extract(epoch from $2::timestamp)::bigint/%[1]v))
-			 OR (last_mining_ended_at IS NULL OR (extract(epoch from last_mining_ended_at)::bigint/%[1]v) != (extract(epoch from $3::timestamp)::bigint/%[1]v))
-	          )`,
+	sql := fmt.Sprintf(`
+		UPDATE users
+		SET updated_at = $1,
+			last_mining_started_at = $2,
+			last_mining_ended_at = $3
+		WHERE id = $4
+		  AND (last_mining_started_at IS NULL OR (extract(epoch from last_mining_started_at)::bigint/%[1]v) != (extract(epoch from $2::timestamp)::bigint/%[1]v))
+		  AND (last_mining_ended_at IS NULL OR (extract(epoch from last_mining_ended_at)::bigint/%[1]v) != (extract(epoch from $3::timestamp)::bigint/%[1]v))
+	          `,
 		uint64(s.cfg.GlobalAggregationInterval.MinMiningSessionDuration/stdlibtime.Second))
 	affectedRows, err := storage.Exec(ctx, s.db, sql,
 		time.Now().Time,
