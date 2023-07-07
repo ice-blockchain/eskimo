@@ -5,6 +5,7 @@ package emaillinkiceauth
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/imdario/mergo"
@@ -123,6 +124,13 @@ func (c *client) finishAuthProcess(ctx context.Context, id *loginID, userID, otp
 	if md == nil {
 		empty := users.JSON(map[string]any{})
 		md = &empty
+	}
+	if _, hasRegisteredWith := (*md)[auth.RegisteredWithProviderClaim]; !hasRegisteredWith {
+		if firebaseID, hasFirebaseID := (*md)[auth.FirebaseIDClaim]; hasFirebaseID {
+			if !strings.HasPrefix(firebaseID.(string), iceIDPrefix) && !strings.HasPrefix(userID, iceIDPrefix) { //nolint:forcetypeassert
+				mdToUpdate[auth.RegisteredWithProviderClaim] = auth.ProviderFirebase
+			}
+		}
 	}
 	if err := mergo.Merge(&mdToUpdate, md, mergo.WithOverride, mergo.WithTypeCheck); err != nil {
 		return errors.Wrapf(err, "failed to merge %#v and %v:%v", md, auth.IceIDClaim, userID)
