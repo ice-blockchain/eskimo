@@ -152,6 +152,7 @@ const (
 	confirmationCodeNotFoundErrorCode         = "CONFIRMATION_CODE_NOT_FOUND"
 	confirmationCodeAttemptsExceededErrorCode = "CONFIRMATION_CODE_ATTEMPTS_EXCEEDED"
 	confirmationCodeWrongErrorCode            = "CONFIRMATION_CODE_WRONG"
+	confirmationAlreadyInProgress             = "CONFIRMATION_ALREADY_IN_PROGRESS"
 
 	noPendingLoginSessionErrorCode = "NO_PENDING_LOGIN_SESSION"
 
