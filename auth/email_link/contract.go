@@ -61,9 +61,9 @@ var (
 	ErrConfirmationCodeWrong            = errors.New("wrong confirmation code provided")
 	ErrConfirmationCodeAttemptsExceeded = errors.New("confirmation code attempts exceeded")
 	ErrStatusNotVerified                = errors.New("not verified")
-	ErrAlreadyConfirmed                 = errors.New("already confirmed")
 	ErrNoPendingLoginSession            = errors.New("no pending login session")
 	ErrUserBlocked                      = errors.New("user is blocked")
+	ErrConfirmationInProgress           = errors.New("confirmation in progress")
 )
 
 // Private API.

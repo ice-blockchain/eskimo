@@ -60,6 +60,10 @@ func (s *service) SendSignInLinkToEmail( //nolint:gocritic // .
 			if tErr := terror.As(err); tErr != nil {
 				return nil, server.Conflict(err, duplicateUserErrorCode, tErr.Data)
 			}
+		case errors.Is(err, emaillink.ErrConfirmationInProgress):
+			if tErr := terror.As(err); tErr != nil {
+				return nil, server.Conflict(err, confirmationAlreadyInProgress, tErr.Data)
+			}
 		default:
 			return nil, server.Unexpected(errors.Wrapf(err, "failed to start email link auth %#v", req.Data))
 		}
