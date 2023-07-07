@@ -142,6 +142,12 @@ const docTemplate = `{
                         "description": "number of days in the past to look for. Defaults to 3. Max is 90.",
                         "name": "days",
                         "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Timezone in format +04:30 or -03:45",
+                        "name": "tz",
+                        "in": "query"
                     }
                 ],
                 "responses": {

@@ -362,6 +362,10 @@ paths:
         in: query
         name: days
         type: integer
+      - description: Timezone in format +04:30 or -03:45
+        in: query
+        name: tz
+        type: string
       produces:
       - application/json
       responses:

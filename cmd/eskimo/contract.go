@@ -29,6 +29,7 @@ type (
 		Offset  uint64 `form:"offset" example:"5"`
 	}
 	GetUserGrowthArg struct {
+		TZ   string `form:"tz" example:"+4:30"`
 		Days uint64 `form:"days" example:"7"`
 	}
 	GetReferralAcquisitionHistoryArg struct {
