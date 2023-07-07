@@ -70,6 +70,7 @@ users: &users
     fromEmailName: ICE
     expirationTime: 30s
   globalAggregationInterval:
+    minMiningSessionDuration: 30s
     parent: 60m
     child: 1m
 users_test:
