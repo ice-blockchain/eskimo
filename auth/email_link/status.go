@@ -17,8 +17,12 @@ func (c *client) Status(ctx context.Context, loginSession string) (tokens *Token
 	}
 	id := loginID{Email: token.Subject, DeviceUniqueID: token.DeviceUniqueID}
 	els, err := c.getConfirmedEmailLinkSignIn(ctx, &id, token.ConfirmationCode)
-	if err != nil && storage.IsErr(err, storage.ErrNotFound) {
-		return nil, false, errors.Wrapf(ErrNoPendingLoginSession, "no pending login session:%v,id:%#v", loginSession, id)
+	if err != nil {
+		if storage.IsErr(err, storage.ErrNotFound) {
+			return nil, false, errors.Wrapf(ErrNoPendingLoginSession, "no pending login session:%v,id:%#v", loginSession, id)
+		}
+
+		return nil, false, errors.Wrapf(err, "failed to get confirmed email link sign in for loginSession:%v,id:%#v", loginSession, id)
 	}
 	if els.UserID == nil || els.OTP != *els.UserID {
 		return nil, false, errors.Wrapf(ErrStatusNotVerified, "not verified for id:%#v", id)
