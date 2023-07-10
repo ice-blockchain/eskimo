@@ -52,15 +52,15 @@ func (s *service) CreateUser( //nolint:funlen,gocritic // .
 	ctx context.Context,
 	req *server.Request[CreateUserRequestBody, User],
 ) (*server.Response[User], *server.Response[server.ErrorResponse]) {
-	if err := verifyPhoneNumberAndUsername(req.Data.PhoneNumber, req.Data.PhoneNumberHash, ""); err != nil {
+	if err := validateCreateUser(req); err != nil {
 		return nil, err
 	}
 	usr := buildUserForCreation(req)
 	if err := s.usersProcessor.CreateUser(ctx, usr, req.ClientIP); err != nil {
 		err = errors.Wrapf(err, "failed to create user %#v", req.Data)
 		switch {
-		case errors.Is(err, users.ErrNotFound):
-			return nil, server.NotFound(errors.Wrapf(err, "such referredBy `%v` was not found", usr.ReferredBy), referredByNotFoundErrorCode)
+		case errors.Is(err, users.ErrRelationNotFound):
+			return nil, server.NotFound(err, referralNotFoundErrorCode)
 		case errors.Is(err, users.ErrDuplicate):
 			if tErr := terror.As(err); tErr != nil {
 				return nil, server.Conflict(err, duplicateUserErrorCode, tErr.Data)
@@ -101,6 +101,17 @@ func buildUserForCreation(req *server.Request[CreateUserRequestBody, User]) *use
 	usr.ReferredBy = req.Data.ReferredBy
 
 	return usr
+}
+
+func validateCreateUser(req *server.Request[CreateUserRequestBody, User]) *server.Response[server.ErrorResponse] {
+	if err := verifyPhoneNumberAndUsername(req.Data.PhoneNumber, req.Data.PhoneNumberHash, ""); err != nil {
+		return err
+	}
+	if strings.EqualFold(req.AuthenticatedUser.UserID, req.Data.ReferredBy) {
+		return server.UnprocessableEntity(errors.New("you cannot use yourself as your own referral"), invalidPropertiesErrorCode)
+	}
+
+	return nil
 }
 
 // ModifyUser godoc

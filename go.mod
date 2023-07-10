@@ -22,7 +22,7 @@ require (
 )
 
 require (
-	cloud.google.com/go v0.110.4 // indirect
+	cloud.google.com/go v0.110.5 // indirect
 	cloud.google.com/go/compute v1.20.1 // indirect
 	cloud.google.com/go/compute/metadata v0.2.3 // indirect
 	cloud.google.com/go/firestore v1.11.0 // indirect
@@ -139,9 +139,9 @@ require (
 	google.golang.org/api v0.130.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/appengine/v2 v2.0.3 // indirect
-	google.golang.org/genproto v0.0.0-20230706204954-ccb25ca9f130 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20230706204954-ccb25ca9f130 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20230706204954-ccb25ca9f130 // indirect
+	google.golang.org/genproto v0.0.0-20230710151506-e685fd7b542b // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20230710151506-e685fd7b542b // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20230710151506-e685fd7b542b // indirect
 	google.golang.org/grpc v1.56.2 // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
