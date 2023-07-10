@@ -290,6 +290,16 @@ func (*service) handleFirebaseEmailMismatch(ctx context.Context, loggedInUser *s
 	emailErr := terror.As(err)
 	actualEmail := emailErr.Data["email"].(string) //nolint:forcetypeassert,errcheck // .
 	if loggedInUser.IsFirebase() {
+		fbClaimInterface, hasFBClaim := loggedInUser.Claims["firebase"]
+		if hasFBClaim {
+			signInWithInterface, hasSignInProvider := fbClaimInterface.(map[string]any)["sign_in_provider"]
+			if hasSignInProvider {
+				signInProvider := signInWithInterface.(string) //nolint:forcetypeassert // .
+				if signInProvider != "password" {              // We're interested in email match only in case of Login with email.
+					return nil
+				}
+			}
+		}
 		if fbErr := server.Auth(ctx).UpdateEmail(ctx, loggedInUser.UserID, actualEmail); fbErr != nil {
 			return errors.Wrapf(
 				emaillink.ErrUserDataMismatch,
