@@ -95,6 +95,7 @@ func buildUserForCreation(req *server.Request[CreateUserRequestBody, User]) *use
 	usr.LastName = &req.Data.LastName
 	usr.ClientData = req.Data.ClientData
 	usr.Language = req.Data.Language
+	usr.ReferredBy = req.Data.ReferredBy
 
 	return usr
 }

@@ -119,9 +119,9 @@ require (
 	github.com/swaggo/files v1.0.1 // indirect
 	github.com/swaggo/gin-swagger v1.6.0 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
-	github.com/twmb/franz-go v1.13.6 // indirect
+	github.com/twmb/franz-go v1.14.0 // indirect
 	github.com/twmb/franz-go/pkg/kadm v1.8.1 // indirect
-	github.com/twmb/franz-go/pkg/kmsg v1.6.0 // indirect
+	github.com/twmb/franz-go/pkg/kmsg v1.6.1 // indirect
 	github.com/ugorji/go/codec v1.2.11 // indirect
 	github.com/vmihailenco/msgpack/v5 v5.3.5 // indirect
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect

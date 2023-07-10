@@ -61,7 +61,9 @@ func (r *repository) setCreateUserDefaults(ctx context.Context, usr *User, clien
 	usr.DeviceLocation = *r.GetDeviceMetadataLocation(ctx, &device.ID{UserID: usr.ID}, clientIP)
 	usr.ProfilePictureURL = RandomDefaultProfilePictureName()
 	usr.Username = usr.ID
-	usr.ReferredBy = usr.ID
+	if usr.ReferredBy == "" {
+		usr.ReferredBy = usr.ID
+	}
 	if usr.MiningBlockchainAccountAddress == "" {
 		usr.MiningBlockchainAccountAddress = usr.ID
 	}

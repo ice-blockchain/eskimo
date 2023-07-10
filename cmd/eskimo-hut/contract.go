@@ -33,6 +33,8 @@ type (
 		LastName string `json:"lastName" example:"Doe"`
 		// Optional. Defaults to `en`.
 		Language string `json:"language" example:"en"`
+		// Optional.
+		ReferredBy string `json:"referredBy" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
 	}
 	ModifyUserRequestBody struct {
 		UserID string `uri:"userId" swaggerignore:"true" required:"true" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
