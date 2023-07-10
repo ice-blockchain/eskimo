@@ -52,7 +52,7 @@ func (s *service) CreateUser( //nolint:funlen,gocritic // .
 	ctx context.Context,
 	req *server.Request[CreateUserRequestBody, User],
 ) (*server.Response[User], *server.Response[server.ErrorResponse]) {
-	if err := verifyPhoneNumberAndUsername(req.Data.PhoneNumber, req.Data.PhoneNumberHash, ""); err != nil {
+	if err := validateCreateUser(req); err != nil {
 		return nil, err
 	}
 	usr := buildUserForCreation(req)
@@ -99,8 +99,23 @@ func buildUserForCreation(req *server.Request[CreateUserRequestBody, User]) *use
 	usr.ClientData = req.Data.ClientData
 	usr.Language = req.Data.Language
 	usr.ReferredBy = req.Data.ReferredBy
+	if strings.TrimSpace(req.Data.ReferredBy) != "" {
+		log.Info(fmt.Sprintf("user(id:`%v`,email:`%v`) attempted to set referredBy to `%v`",
+			req.AuthenticatedUser.UserID, req.AuthenticatedUser.Email, req.Data.ReferredBy))
+	}
 
 	return usr
+}
+
+func validateCreateUser(req *server.Request[CreateUserRequestBody, User]) *server.Response[server.ErrorResponse] {
+	if err := verifyPhoneNumberAndUsername(req.Data.PhoneNumber, req.Data.PhoneNumberHash, ""); err != nil {
+		return err
+	}
+	if strings.EqualFold(req.AuthenticatedUser.UserID, req.Data.ReferredBy) {
+		return server.UnprocessableEntity(errors.New("you cannot use yourself as your own referral"), invalidPropertiesErrorCode)
+	}
+
+	return nil
 }
 
 // ModifyUser godoc
