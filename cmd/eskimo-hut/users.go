@@ -99,10 +99,6 @@ func buildUserForCreation(req *server.Request[CreateUserRequestBody, User]) *use
 	usr.ClientData = req.Data.ClientData
 	usr.Language = req.Data.Language
 	usr.ReferredBy = req.Data.ReferredBy
-	if strings.TrimSpace(req.Data.ReferredBy) != "" {
-		log.Info(fmt.Sprintf("user(id:`%v`,email:`%v`) attempted to set referredBy to `%v`",
-			req.AuthenticatedUser.UserID, req.AuthenticatedUser.Email, req.Data.ReferredBy))
-	}
 
 	return usr
 }
