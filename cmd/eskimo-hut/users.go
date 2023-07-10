@@ -42,6 +42,7 @@ func (s *service) setupUserRoutes(router *server.Router) {
 //	@Success		201					{object}	User
 //	@Failure		400					{object}	server.ErrorResponse	"if validations fail"
 //	@Failure		401					{object}	server.ErrorResponse	"if not authorized"
+//	@Failure		404					{object}	server.ErrorResponse	"if no such referred by"
 //	@Failure		409					{object}	server.ErrorResponse	"user already exists with that ID, email or phone number"
 //	@Failure		422					{object}	server.ErrorResponse	"if syntax fails"
 //	@Failure		500					{object}	server.ErrorResponse
@@ -58,6 +59,8 @@ func (s *service) CreateUser( //nolint:funlen,gocritic // .
 	if err := s.usersProcessor.CreateUser(ctx, usr, req.ClientIP); err != nil {
 		err = errors.Wrapf(err, "failed to create user %#v", req.Data)
 		switch {
+		case errors.Is(err, users.ErrNotFound):
+			return nil, server.NotFound(errors.Wrapf(err, "such referredBy `%v` was not found", usr.ReferredBy), referredByNotFoundErrorCode)
 		case errors.Is(err, users.ErrDuplicate):
 			if tErr := terror.As(err); tErr != nil {
 				return nil, server.Conflict(err, duplicateUserErrorCode, tErr.Data)

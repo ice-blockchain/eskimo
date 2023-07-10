@@ -137,6 +137,7 @@ const (
 	deviceMetadataAppUpdateRequireErrorCode = "UPDATE_REQUIRED"
 	invalidUsernameErrorCode                = "INVALID_USERNAME"
 	userNotFoundErrorCode                   = "USER_NOT_FOUND"
+	referredByNotFoundErrorCode             = "REFERRED_BY_NOT_FOUND"
 	metadataNotFoundErrorCode               = "METADATA_NOT_FOUND"
 	userBlockedErrorCode                    = "USER_BLOCKED"
 	duplicateUserErrorCode                  = "CONFLICT_WITH_ANOTHER_USER"
