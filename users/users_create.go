@@ -37,9 +37,6 @@ func (r *repository) CreateUser(ctx context.Context, usr *User, clientIP net.IP)
 		if field == usernameDBColumnName {
 			return r.CreateUser(ctx, usr, clientIP)
 		}
-		if storage.IsErr(err, storage.ErrRelationNotFound) {
-			return errors.Wrapf(ErrNotFound, "no such userID:%v for referred_by for user:%v", usr.ReferredBy, usr.ID)
-		}
 
 		return errors.Wrapf(tErr, "failed to insert user %#v", usr)
 	}

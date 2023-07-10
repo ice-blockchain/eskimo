@@ -59,8 +59,8 @@ func (s *service) CreateUser( //nolint:funlen,gocritic // .
 	if err := s.usersProcessor.CreateUser(ctx, usr, req.ClientIP); err != nil {
 		err = errors.Wrapf(err, "failed to create user %#v", req.Data)
 		switch {
-		case errors.Is(err, users.ErrNotFound):
-			return nil, server.NotFound(errors.Wrapf(err, "such referredBy `%v` was not found", usr.ReferredBy), referredByNotFoundErrorCode)
+		case errors.Is(err, users.ErrRelationNotFound):
+			return nil, server.NotFound(err, referralNotFoundErrorCode)
 		case errors.Is(err, users.ErrDuplicate):
 			if tErr := terror.As(err); tErr != nil {
 				return nil, server.Conflict(err, duplicateUserErrorCode, tErr.Data)
