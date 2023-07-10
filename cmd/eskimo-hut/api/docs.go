@@ -387,6 +387,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/server.ErrorResponse"
                         }
                     },
+                    "404": {
+                        "description": "if no such referred by",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    },
                     "409": {
                         "description": "user already exists with that ID, email or phone number",
                         "schema": {
@@ -960,6 +966,11 @@ const docTemplate = `{
                     "description": "Optional. Required only if ` + "`" + `phoneNumber` + "`" + ` is set.",
                     "type": "string",
                     "example": "Ef86A6021afCDe5673511376B2"
+                },
+                "referredBy": {
+                    "description": "Optional.",
+                    "type": "string",
+                    "example": "did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"
                 }
             }
         },

@@ -34,8 +34,11 @@ func (r *repository) CreateUser(ctx context.Context, usr *User, clientIP net.IP)
 	}
 	if _, err := storage.Exec(ctx, r.db, sql, args...); err != nil {
 		field, tErr := detectAndParseDuplicateDatabaseError(err)
-		if field == usernameDBColumnName || storage.IsErr(err, storage.ErrRelationNotFound) {
+		if field == usernameDBColumnName {
 			return r.CreateUser(ctx, usr, clientIP)
+		}
+		if storage.IsErr(err, storage.ErrRelationNotFound) {
+			return errors.Wrapf(ErrNotFound, "no such userID:%v for referred_by for user:%v", usr.ReferredBy, usr.ID)
 		}
 
 		return errors.Wrapf(tErr, "failed to insert user %#v", usr)
@@ -61,7 +64,9 @@ func (r *repository) setCreateUserDefaults(ctx context.Context, usr *User, clien
 	usr.DeviceLocation = *r.GetDeviceMetadataLocation(ctx, &device.ID{UserID: usr.ID}, clientIP)
 	usr.ProfilePictureURL = RandomDefaultProfilePictureName()
 	usr.Username = usr.ID
-	usr.ReferredBy = usr.ID
+	if usr.ReferredBy == "" {
+		usr.ReferredBy = usr.ID
+	}
 	if usr.MiningBlockchainAccountAddress == "" {
 		usr.MiningBlockchainAccountAddress = usr.ID
 	}
