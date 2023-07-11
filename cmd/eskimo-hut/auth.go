@@ -13,6 +13,7 @@ import (
 	emaillink "github.com/ice-blockchain/eskimo/auth/email_link"
 	"github.com/ice-blockchain/eskimo/users"
 	"github.com/ice-blockchain/wintr/auth"
+	"github.com/ice-blockchain/wintr/log"
 	"github.com/ice-blockchain/wintr/server"
 	"github.com/ice-blockchain/wintr/terror"
 	"github.com/ice-blockchain/wintr/time"
@@ -293,29 +294,34 @@ func (s *service) findMetadataUsingIceID(ctx context.Context, loggedInUser *serv
 func (*service) handleFirebaseEmailMismatch(ctx context.Context, loggedInUser *server.AuthenticatedUser, err error) error {
 	emailErr := terror.As(err)
 	actualEmail := emailErr.Data["email"].(string) //nolint:forcetypeassert,errcheck // .
-	if loggedInUser.IsFirebase() {
-		fbClaimInterface, hasFBClaim := loggedInUser.Claims["firebase"]
-		if hasFBClaim {
-			signInWithInterface, hasSignInProvider := fbClaimInterface.(map[string]any)["sign_in_provider"]
-			if hasSignInProvider {
-				signInProvider := signInWithInterface.(string) //nolint:forcetypeassert // .
-				if signInProvider != "password" {              // We're interested in email match only in case of Login with email.
-					return nil
-				}
-			}
-		}
-		if fbErr := server.Auth(ctx).UpdateEmail(ctx, loggedInUser.UserID, actualEmail); fbErr != nil {
-			return errors.Wrapf(
-				emaillink.ErrUserDataMismatch,
-				"actual email is %v, requested for %v and failed to update in firebase %v",
-				actualEmail, loggedInUser.Email, fbErr.Error(),
-			)
-		}
-
-		return nil
+	if !loggedInUser.IsFirebase() {
+		return errors.Wrapf(emaillink.ErrUserDataMismatch, "actual email is %v, requested for %v", actualEmail, loggedInUser.Email)
 	}
 
-	return errors.Wrapf(emaillink.ErrUserDataMismatch, "actual email is %v, requested for %v", actualEmail, loggedInUser.Email)
+	fbClaimInterface, hasFBClaim := loggedInUser.Claims["firebase"]
+	if hasFBClaim {
+		signInWithInterface, hasSignInProvider := fbClaimInterface.(map[string]any)["sign_in_provider"]
+		if hasSignInProvider {
+			if signInProvider := signInWithInterface.(string); signInProvider != "password" { //nolint:forcetypeassert,errcheck // .
+				return nil
+			}
+		}
+	}
+	if fbErr := server.Auth(ctx).UpdateEmail(ctx, loggedInUser.UserID, actualEmail); fbErr != nil {
+		if strings.Contains(fbErr.Error(), "conflicts with another user") {
+			log.Warn("actual email is %v, requested for %v and failed to update in firebase %v", actualEmail, loggedInUser.Email, fbErr.Error())
+
+			return nil
+		}
+
+		return errors.Wrapf(
+			emaillink.ErrUserDataMismatch,
+			"actual email is %v, requested for %v and failed to update in firebase %v",
+			actualEmail, loggedInUser.Email, fbErr.Error(),
+		)
+	}
+
+	return nil
 }
 
 func (s *service) updateMetadataWithFirebaseID(

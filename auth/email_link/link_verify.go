@@ -127,7 +127,7 @@ func (c *client) finishAuthProcess(ctx context.Context, id *loginID, userID, otp
 	}
 	if _, hasRegisteredWith := (*md)[auth.RegisteredWithProviderClaim]; !hasRegisteredWith {
 		if firebaseID, hasFirebaseID := (*md)[auth.FirebaseIDClaim]; hasFirebaseID {
-			if !strings.HasPrefix(firebaseID.(string), iceIDPrefix) && !strings.HasPrefix(userID, iceIDPrefix) { //nolint:forcetypeassert
+			if !strings.HasPrefix(firebaseID.(string), iceIDPrefix) && !strings.HasPrefix(userID, iceIDPrefix) { //nolint:forcetypeassert // .
 				mdToUpdate[auth.RegisteredWithProviderClaim] = auth.ProviderFirebase
 			}
 		}
