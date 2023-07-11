@@ -136,7 +136,7 @@ func validateCreateUser(req *server.Request[CreateUserRequestBody, User]) *serve
 //	@Failure		500					{object}	server.ErrorResponse
 //	@Failure		504					{object}	server.ErrorResponse	"if request times out"
 //	@Router			/users/{userId} [PATCH].
-func (s *service) ModifyUser( //nolint:gocritic,funlen,revive,cyclop,gocognit,gocyclo // .
+func (s *service) ModifyUser( //nolint:gocritic,funlen,revive,cyclop // .
 	ctx context.Context,
 	req *server.Request[ModifyUserRequestBody, ModifyUserResponse],
 ) (*server.Response[ModifyUserResponse], *server.Response[server.ErrorResponse]) {
