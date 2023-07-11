@@ -57,21 +57,10 @@ func (c *client) validateEmailSignIn(ctx context.Context, id *loginID) error {
 	if err != nil && !storage.IsErr(err, storage.ErrNotFound) {
 		return errors.Wrapf(err, "can't get email link sign in information by:%#v", id)
 	}
-	now := time.Now()
-	if gUsr != nil {
-		if gUsr.BlockedUntil != nil {
-			if gUsr.BlockedUntil.After(*now.Time) {
-				return errors.Wrapf(ErrUserBlocked, "user:%#v is blocked", id)
-			}
-		}
-		expirationTime := gUsr.CreatedAt.Add(c.cfg.EmailValidation.ExpirationTime)
-		notExpired := expirationTime.After(*now.Time)
-		notConfirmed := gUsr.UserID == nil || gUsr.OTP != *gUsr.UserID
-		if notExpired && notConfirmed {
-			err = errors.Wrapf(ErrConfirmationInProgress,
-				"email %v form device %v has in progress email confirmation valid until %v", id.Email, id.DeviceUniqueID, expirationTime)
-
-			return terror.New(err, map[string]any{"until": time.New(expirationTime)})
+	if gUsr != nil && gUsr.BlockedUntil != nil {
+		now := time.Now()
+		if gUsr.BlockedUntil.After(*now.Time) {
+			return errors.Wrapf(ErrUserBlocked, "user:%#v is blocked", id)
 		}
 	}
 
