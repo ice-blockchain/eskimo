@@ -228,18 +228,31 @@ func (r *repository) GetReferralAcquisitionHistory(ctx context.Context, userID s
 }
 
 func (r *repository) updateReferralCount(ctx context.Context, msgTimestamp stdlibtime.Time, us *UserSnapshot) error {
-	if us.User == nil || us.ReferredBy == us.ID || us.ReferredBy == "" || us.Before == nil || us.Before.ReferredBy == us.ReferredBy {
-		return nil
+	var userID, referredBy string
+	dayBetweenCreationAndDeletion := int16(-1)
+	if us.Before != nil {
+		userID = us.Before.ID
+		referredBy = us.Before.ReferredBy
+		dayBetweenCreationAndDeletion = int16(msgTimestamp.Sub(*us.Before.CreatedAt.Time) / (hoursInOneDay * stdlibtime.Hour))
 	}
-	_, err := storage.Exec(ctx, r.db, `INSERT INTO processed_referrals(user_id, referred_by, processed_at) VALUES ($1, $2, $3)`,
-		us.User.ID, us.User.ReferredBy, msgTimestamp)
+
+	if us.User != nil {
+		if us.ReferredBy == us.ID || us.ReferredBy == "" || (us.Before != nil && us.Before.ReferredBy == us.ReferredBy) {
+			return nil
+		}
+		userID = us.ID
+		referredBy = us.ReferredBy
+		dayBetweenCreationAndDeletion = -1
+	}
+	_, err := storage.Exec(ctx, r.db, `INSERT INTO processed_referrals(user_id, referred_by, processed_at, deleted) VALUES ($1, $2, $3, $4)`,
+		userID, referredBy, msgTimestamp, us.User == nil)
 	if storage.IsErr(err, storage.ErrDuplicate) {
 		return nil
 	} else if err != nil {
 		return errors.Wrapf(err, "failed to verify uniqueness of user referral message")
 	}
 
-	return errors.Wrapf(r.incrementReferralCount(ctx, us.ReferredBy), "failed to increment referrals count for userID:%v", us.ID)
+	return errors.Wrapf(r.incrementOrDecrementReferralCount(ctx, referredBy, dayBetweenCreationAndDeletion), "failed to update referrals count for userID:%v", userID)
 }
 
 //nolint:gocritic,revive // Struct is private, so we return values from it.
@@ -277,9 +290,18 @@ func (r *repository) getCurrentReferralCount(ctx context.Context, userID UserID)
 }
 
 //nolint:funlen // Long SQL.
-func (r *repository) incrementReferralCount(ctx context.Context, userID UserID) error {
+func (r *repository) incrementOrDecrementReferralCount(ctx context.Context, userID UserID, daysBetweenCreationAndDeletion int16) error {
 	if ctx.Err() != nil {
 		return errors.Wrapf(ctx.Err(), "ctx failed: ")
+	}
+	op := "+"
+	opToday := "+"
+	if daysBetweenCreationAndDeletion >= 0 {
+		op = "-"
+		opToday = "*" // Multiply by 1 = noop.
+		if daysBetweenCreationAndDeletion == 0 {
+			opToday = "-"
+		}
 	}
 	nowMidnight := time.New(time.Now().In(stdlibtime.UTC).Truncate(hoursInOneDay * stdlibtime.Hour))
 	t1, t2, storedDate, t0Date, t0UserID, err := r.getCurrentReferralCount(ctx, userID)
@@ -292,11 +314,11 @@ func (r *repository) incrementReferralCount(ctx context.Context, userID UserID) 
 	if t0Date == nil {
 		t0Date = nowMidnight
 	}
-	shiftDays := nowMidnight.Sub(*storedDate.Time).Nanoseconds() / int64(hoursInOneDay*stdlibtime.Hour)
+	shiftDays := int16(nowMidnight.Sub(*storedDate.Time).Nanoseconds() / int64(hoursInOneDay*stdlibtime.Hour))
 	if shiftDays > maxDaysReferralsHistory {
 		shiftDays = maxDaysReferralsHistory
 	}
-	shiftDatesFields := r.genShiftDaysSQLFields(shiftDays)
+	shiftDatesFields := r.genShiftDaysSQLFields(shiftDays, daysBetweenCreationAndDeletion)
 	t0UpdateTrigger := ""
 	if t0UserID != "" {
 		t0UpdateTrigger = ",\n\t\t\t       ($6, $5, 1, 1, 1, 1)"
@@ -307,18 +329,18 @@ func (r *repository) incrementReferralCount(ctx context.Context, userID UserID) 
 		ON CONFLICT (user_id) DO UPDATE 
 		SET
 			t1_today = (CASE
-				WHEN referral_acquisition_history.user_id = $1 and referral_acquisition_history.date = $5 THEN referral_acquisition_history.t1_today + 1
-				WHEN referral_acquisition_history.user_id = $1 and referral_acquisition_history.date != $5 THEN 1
+				WHEN referral_acquisition_history.user_id = $1 and referral_acquisition_history.date = $5 THEN GREATEST(referral_acquisition_history.t1_today %[4]v 1,0)
+				WHEN referral_acquisition_history.user_id = $1 and referral_acquisition_history.date != $5 THEN GREATEST(0 %[4]v 1, 0)
 				ELSE referral_acquisition_history.t1_today END),
 			t1 = (CASE
-				WHEN referral_acquisition_history.user_id = $1 THEN referral_acquisition_history.t1 + 1
+				WHEN referral_acquisition_history.user_id = $1 THEN GREATEST(referral_acquisition_history.t1 %[3]v 1,0)
 				ELSE referral_acquisition_history.t1 END),
 			t2_today = (CASE
-			WHEN referral_acquisition_history.user_id = $6 AND referral_acquisition_history.date = $5 THEN referral_acquisition_history.t2_today + 1
-			WHEN referral_acquisition_history.user_id = $6 AND referral_acquisition_history.date != $5 THEN 1
+			WHEN referral_acquisition_history.user_id = $6 AND referral_acquisition_history.date = $5 THEN GREATEST(referral_acquisition_history.t2_today %[4]v 1, 0)
+			WHEN referral_acquisition_history.user_id = $6 AND referral_acquisition_history.date != $5 THEN GREATEST(0 %[4]v 1, 0)
 			ELSE referral_acquisition_history.t2_today END),
 			t2 = (CASE
-			WHEN referral_acquisition_history.user_id = $6 THEN referral_acquisition_history.t2 +1
+			WHEN referral_acquisition_history.user_id = $6 THEN GREATEST(referral_acquisition_history.t2 %[3]v 1,0)
 			ELSE referral_acquisition_history.t2 END),
 			date = $5
 		    %[1]v
@@ -326,37 +348,48 @@ func (r *repository) incrementReferralCount(ctx context.Context, userID UserID) 
   		   OR (referral_acquisition_history.date = $7 AND referral_acquisition_history.user_id = $6 AND referral_acquisition_history.t2_today = $4)`,
 		shiftDatesFields,
 		t0UpdateTrigger,
+		op,
+		opToday,
 	)
 	rowsUpdated, err := storage.Exec(ctx, r.db, sql, userID, storedDate.Time, t1, t2, nowMidnight.Time, t0UserID, t0Date.Time)
 	if rowsUpdated == 0 || storage.IsErr(err, storage.ErrNotFound) {
-		return r.incrementReferralCount(ctx, userID)
+		return r.incrementOrDecrementReferralCount(ctx, userID, daysBetweenCreationAndDeletion)
 	}
 
 	return errors.Wrapf(err, "failed to increment referral counts for userID %v", userID)
 }
 
-func (r *repository) genShiftDaysSQLFields(shiftDays int64) string {
-	if shiftDays == 0 {
+func (r *repository) genShiftDaysSQLFields(shiftDays int16, daysBetweenUserCreationAndDeletion int16) string {
+	if shiftDays == 0 && (daysBetweenUserCreationAndDeletion <= 0 || daysBetweenUserCreationAndDeletion >= maxDaysReferralsHistory) {
 		return ""
 	}
 
 	return fmt.Sprintf(", %v,\n %v",
-		r.generateReferralsShiftDaysSQL(Tier1Referrals, shiftDays),
-		r.generateReferralsShiftDaysSQL(Tier2Referrals, shiftDays),
+		r.generateReferralsShiftDaysSQL(Tier1Referrals, shiftDays, daysBetweenUserCreationAndDeletion),
+		r.generateReferralsShiftDaysSQL(Tier2Referrals, shiftDays, daysBetweenUserCreationAndDeletion),
 	)
 }
 
-func (*repository) generateReferralsShiftDaysSQL(refType ReferralType, daysLag int64) string {
+func (*repository) generateReferralsShiftDaysSQL(refType ReferralType, daysLag int16, daysBetweenUserCreationAndDeletion int16) string {
 	updateStatements := []string{}
-	for currDay := 1; currDay <= maxDaysReferralsHistory-1; currDay++ {
-		diff := int64(currDay) - daysLag
+	for currDay := int16(1); currDay <= maxDaysReferralsHistory-1; currDay++ {
+		diff := currDay - daysLag
+		decrementDueToUserDeletion := ""
+		if currDay == daysBetweenUserCreationAndDeletion {
+			decrementDueToUserDeletion = " - 1"
+		}
 		targetField := fmt.Sprintf("referral_acquisition_history.%v_today_minus_%v", refType, diff)
 		if diff == 0 {
 			targetField = fmt.Sprintf("referral_acquisition_history.%v_today", refType)
 		} else if diff < 0 {
 			targetField = "0"
 		}
-		updateStatements = append(updateStatements, fmt.Sprintf("%v_today_minus_%v = %v", refType, currDay, targetField))
+		if daysLag == 0 && decrementDueToUserDeletion != "" { // If we dont need to shift, but to sub 1, due to user deletion, substract it from the same field.
+			targetField = fmt.Sprintf("referral_acquisition_history.%v_today_minus_%v", refType, currDay)
+		} else if daysLag == 0 {
+			continue
+		}
+		updateStatements = append(updateStatements, fmt.Sprintf("%v_today_minus_%v = GREATEST(%v %v,0)", refType, currDay, targetField, decrementDueToUserDeletion))
 	}
 
 	return strings.Join(updateStatements, ",\n")
