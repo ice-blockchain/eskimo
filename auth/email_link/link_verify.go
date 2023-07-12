@@ -5,6 +5,7 @@ package emaillinkiceauth
 import (
 	"context"
 	"fmt"
+	"net"
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
@@ -18,7 +19,7 @@ import (
 )
 
 //nolint:funlen // .
-func (c *client) SignIn(ctx context.Context, emailLinkPayload, confirmationCode string) error {
+func (c *client) SignIn(ctx context.Context, emailLinkPayload, confirmationCode string, clientIP net.IP) error {
 	var token magicLinkToken
 	if err := parseJwtToken(emailLinkPayload, c.cfg.EmailValidation.JwtSecret, &token); err != nil {
 		return errors.Wrapf(err, "invalid email token:%v", emailLinkPayload)
@@ -38,7 +39,7 @@ func (c *client) SignIn(ctx context.Context, emailLinkPayload, confirmationCode 
 	}
 	var emailConfirmed bool
 	if token.OldEmail != "" {
-		if err = c.handleEmailModification(ctx, els, email, token.OldEmail, token.NotifyEmail); err != nil {
+		if err = c.handleEmailModification(ctx, els, email, token.OldEmail, token.NotifyEmail, clientIP); err != nil {
 			return errors.Wrapf(err, "failed to handle email modification:%v", email)
 		}
 		emailConfirmed = true

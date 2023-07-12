@@ -468,6 +468,11 @@ paths:
         required: true
         schema:
           $ref: '#/definitions/main.SendSignInLinkToEmailRequestArg'
+      - default: 1.1.1.1
+        description: Client IP
+        in: header
+        name: X-Forwarded-For
+        type: string
       produces:
       - application/json
       responses:
@@ -497,6 +502,11 @@ paths:
     post:
       description: Finishes login flow using magic link
       parameters:
+      - default: 1.1.1.1
+        description: Client IP
+        in: header
+        name: X-Forwarded-For
+        type: string
       - description: Request params
         in: body
         name: request
@@ -657,6 +667,10 @@ paths:
       - multipart/form-data
       description: Modifies an user account
       parameters:
+      - description: Client IP
+        in: header
+        name: X-Forwarded-For
+        type: string
       - default: Bearer <Add access token here>
         description: Insert your access token
         in: header

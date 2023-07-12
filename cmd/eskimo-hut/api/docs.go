@@ -227,6 +227,13 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/main.SendSignInLinkToEmailRequestArg"
                         }
+                    },
+                    {
+                        "type": "string",
+                        "default": "1.1.1.1",
+                        "description": "Client IP",
+                        "name": "X-Forwarded-For",
+                        "in": "header"
                     }
                 ],
                 "responses": {
@@ -273,6 +280,13 @@ const docTemplate = `{
                     "Auth"
                 ],
                 "parameters": [
+                    {
+                        "type": "string",
+                        "default": "1.1.1.1",
+                        "description": "Client IP",
+                        "name": "X-Forwarded-For",
+                        "in": "header"
+                    },
                     {
                         "description": "Request params",
                         "name": "request",
@@ -513,6 +527,12 @@ const docTemplate = `{
                     "Accounts"
                 ],
                 "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Client IP",
+                        "name": "X-Forwarded-For",
+                        "in": "header"
+                    },
                     {
                         "type": "string",
                         "default": "Bearer \u003cAdd access token here\u003e",

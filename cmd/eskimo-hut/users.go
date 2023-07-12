@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"mime/multipart"
+	"net"
 	"net/textproto"
 	"strings"
 
@@ -121,6 +122,7 @@ func validateCreateUser(req *server.Request[CreateUserRequestBody, User]) *serve
 //	@Tags			Accounts
 //	@Accept			multipart/form-data
 //	@Produce		json
+//	@Param			X-Forwarded-For		header		string					false	"Client IP"
 //	@Param			Authorization		header		string					true	"Insert your access token"		default(Bearer <Add access token here>)
 //	@Param			X-Account-Metadata	header		string					false	"Insert your metadata token"	default(<Add metadata token here>)
 //	@Param			userId				path		string					true	"ID of the user"
@@ -146,7 +148,7 @@ func (s *service) ModifyUser( //nolint:gocritic,funlen,revive,cyclop // .
 	usr := buildUserForModification(req)
 	var err error
 	var loginSession string
-	if usr.Email, loginSession, err = s.emailUpdateRequested(ctx, &req.AuthenticatedUser, usr.Email); err != nil {
+	if usr.Email, loginSession, err = s.emailUpdateRequested(ctx, &req.AuthenticatedUser, usr.Email, req.ClientIP); err != nil {
 		switch {
 		case errors.Is(err, users.ErrNotFound):
 			return nil, server.NotFound(errors.Wrapf(err, "user with id `%v` was not found", req.AuthenticatedUser.UserID), userNotFoundErrorCode)
@@ -215,6 +217,7 @@ func (s *service) emailUpdateRequested(
 	ctx context.Context,
 	loggedInUser *server.AuthenticatedUser,
 	newEmail string,
+	clientIP net.IP,
 ) (emailForUpdate, loginSession string, err error) {
 	if newEmail == "" || newEmail == loggedInUser.Email {
 		return "", "", nil
@@ -236,7 +239,7 @@ func (s *service) emailUpdateRequested(
 
 	if loginSession, err = s.authEmailLinkClient.SendSignInLinkToEmail(
 		users.ConfirmedEmailContext(ctx, loggedInUser.Email),
-		newEmail, deviceID, language,
+		newEmail, deviceID, language, clientIP,
 	); err != nil {
 		return "", "", errors.Wrapf(err, "can't send sign in link to email:%v", newEmail)
 	}

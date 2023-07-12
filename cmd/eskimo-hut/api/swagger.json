@@ -222,6 +222,13 @@
                         "schema": {
                             "$ref": "#/definitions/main.SendSignInLinkToEmailRequestArg"
                         }
+                    },
+                    {
+                        "type": "string",
+                        "default": "1.1.1.1",
+                        "description": "Client IP",
+                        "name": "X-Forwarded-For",
+                        "in": "header"
                     }
                 ],
                 "responses": {
@@ -268,6 +275,13 @@
                     "Auth"
                 ],
                 "parameters": [
+                    {
+                        "type": "string",
+                        "default": "1.1.1.1",
+                        "description": "Client IP",
+                        "name": "X-Forwarded-For",
+                        "in": "header"
+                    },
                     {
                         "description": "Request params",
                         "name": "request",
@@ -508,6 +522,12 @@
                     "Accounts"
                 ],
                 "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Client IP",
+                        "name": "X-Forwarded-For",
+                        "in": "header"
+                    },
                     {
                         "type": "string",
                         "default": "Bearer \u003cAdd access token here\u003e",

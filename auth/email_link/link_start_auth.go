@@ -7,6 +7,8 @@ import (
 	"crypto/rand"
 	"fmt"
 	"math/big"
+	"net"
+	stdlibtime "time"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
@@ -20,7 +22,7 @@ import (
 	"github.com/ice-blockchain/wintr/time"
 )
 
-func (c *client) SendSignInLinkToEmail(ctx context.Context, emailValue, deviceUniqueID, language string) (loginSession string, err error) {
+func (c *client) SendSignInLinkToEmail(ctx context.Context, emailValue, deviceUniqueID, language string, clientIP net.IP) (loginSession string, err error) {
 	if ctx.Err() != nil {
 		return "", errors.Wrap(ctx.Err(), "send sign in link to email failed because context failed")
 	}
@@ -42,7 +44,7 @@ func (c *client) SendSignInLinkToEmail(ctx context.Context, emailValue, deviceUn
 		return "", errors.Wrap(err, "can't call generateLoginSession")
 	}
 	now := time.Now()
-	if uErr := c.upsertEmailLinkSignIn(ctx, id.Email, id.DeviceUniqueID, otp, confirmationCode, now); uErr != nil {
+	if uErr := c.upsertEmailLinkSignIn(ctx, id.Email, id.DeviceUniqueID, otp, confirmationCode, now, clientIP); uErr != nil {
 		return "", errors.Wrapf(uErr, "failed to store/update email link sign ins for id:%#v", id)
 	}
 	if sErr := c.sendMagicLink(ctx, &id, oldEmail, otp, language, now); sErr != nil {
@@ -61,17 +63,9 @@ func (c *client) validateEmailSignIn(ctx context.Context, id *loginID) error {
 	if gUsr != nil {
 		if gUsr.BlockedUntil != nil {
 			if gUsr.BlockedUntil.After(*now.Time) {
-				return errors.Wrapf(ErrUserBlocked, "user:%#v is blocked", id)
+				err = errors.Wrapf(ErrUserBlocked, "user:%#v is blocked due to a lot of incorrect codes", id)
+				return terror.New(err, map[string]any{"source": "email"})
 			}
-		}
-		expirationTime := gUsr.CreatedAt.Add(c.cfg.EmailValidation.ExpirationTime)
-		notExpired := expirationTime.After(*now.Time)
-		notConfirmed := gUsr.UserID == nil || gUsr.OTP != *gUsr.UserID
-		if notExpired && notConfirmed {
-			err = errors.Wrapf(ErrConfirmationInProgress,
-				"email %v form device %v has in progress email confirmation valid until %v", id.Email, id.DeviceUniqueID, expirationTime)
-
-			return terror.New(err, map[string]any{"until": time.New(expirationTime)})
 		}
 	}
 
@@ -93,7 +87,8 @@ func (c *client) validateEmailModification(ctx context.Context, newEmail string,
 	if gOldUsr != nil && gOldUsr.BlockedUntil != nil {
 		now := time.Now()
 		if gOldUsr.BlockedUntil.After(*now.Time) {
-			return errors.Wrapf(ErrUserBlocked, "user:%#v is blocked", oldID)
+			err := errors.Wrapf(ErrUserBlocked, "user:%#v is blocked", oldID)
+			return terror.New(err, map[string]any{"source": "email"})
 		}
 	}
 
@@ -147,32 +142,70 @@ func (c *client) sendEmailWithType(ctx context.Context, emailType, toEmail, lang
 	}), "failed to send email with type:%v for user with email:%v", emailType, toEmail)
 }
 
-//nolint:revive // .
-func (c *client) upsertEmailLinkSignIn(ctx context.Context, toEmail, deviceUniqueID, otp, code string, now *time.Time) error {
-	confirmationCodeWrongAttempts := 0
-	params := []any{now.Time, toEmail, deviceUniqueID, otp, code, confirmationCodeWrongAttempts}
-	sql := `INSERT INTO email_link_sign_ins (
+//nolint:revive, funlen // .
+func (c *client) upsertEmailLinkSignIn(ctx context.Context, toEmail, deviceUniqueID, otp, code string, now *time.Time, clientIP net.IP) error {
+	loginSessionNumber := int64(0)
+	params := []any{now.Time, toEmail, deviceUniqueID, otp, code, clientIP.String(), loginSessionNumber}
+	maxRequestsExceededCondition := ""
+	if c.cfg.EmailValidation.SameIPRateCheckPeriod.Seconds() > 0 && c.cfg.EmailValidation.MaxRequestsFromIP > 0 {
+		loginSessionNumber = now.Time.Unix() / int64(c.cfg.EmailValidation.SameIPRateCheckPeriod.Seconds())
+		params[len(params)-1] = loginSessionNumber
+		ipBlockEndTime := stdlibtime.Unix(loginSessionNumber*int64(c.cfg.EmailValidation.SameIPRateCheckPeriod.Seconds()), 0).
+			Add(c.cfg.EmailValidation.SameIPRateCheckPeriod)
+		params = append(params, ipBlockEndTime)
+		maxRequestsExceededCondition = fmt.Sprintf("sign_ins_per_ip.login_attempts + 1 > %[1]v", c.cfg.EmailValidation.MaxRequestsFromIP)
+	}
+	type loginAttempt struct {
+		LoginAttempts int64
+	}
+	sql := fmt.Sprintf(`
+WITH ip_update AS (
+	INSERT INTO sign_ins_per_ip (ip, login_session_number, login_attempts)
+					VALUES ($6, $7, 0)
+	ON CONFLICT (login_session_number, ip) DO UPDATE
+		SET login_attempts = sign_ins_per_ip.login_attempts + 1,
+			blocked_until = (CASE WHEN %[1]v THEN $8::timestamp ELSE null END)
+	RETURNING $1::timestamp, $2, $3, $4, $5, 0, $6, $7, sign_ins_per_ip.login_attempts
+)
+INSERT INTO email_link_sign_ins (
 							created_at,
 							email,
 							device_unique_id,
 							otp,
 							confirmation_code,
-							confirmation_code_wrong_attempts_count)
-						VALUES ($1, $2, $3, $4, $5, $6)
+							confirmation_code_wrong_attempts_count,
+                            ip,
+                            login_session_number,
+							login_attempts
+                            )
+						(SELECT * FROM ip_update)
 						ON CONFLICT (email, device_unique_id) DO UPDATE 
 							SET otp           				     	   = EXCLUDED.otp, 
 								created_at    				     	   = EXCLUDED.created_at,
 								confirmation_code 		          	   = EXCLUDED.confirmation_code,
 								confirmation_code_wrong_attempts_count = EXCLUDED.confirmation_code_wrong_attempts_count,
 						        email_confirmed_at                     = null,
-						        user_id                                = null
+						        user_id                                = null,
+						        ip                                     = EXCLUDED.ip,
+						        login_session_number                   = EXCLUDED.login_session_number,
+								login_attempts                         = EXCLUDED.login_attempts
 						WHERE   email_link_sign_ins.otp                                    != EXCLUDED.otp
 						   OR   email_link_sign_ins.created_at    				     	   != EXCLUDED.created_at
 						   OR   email_link_sign_ins.confirmation_code 		          	   != EXCLUDED.confirmation_code
-						   OR   email_link_sign_ins.confirmation_code_wrong_attempts_count != EXCLUDED.confirmation_code_wrong_attempts_count`
-	_, err := storage.Exec(ctx, c.db, sql, params...)
-
-	return errors.Wrapf(err, "failed to insert/update email link sign ins record for email:%v", toEmail)
+						   OR   email_link_sign_ins.confirmation_code_wrong_attempts_count != EXCLUDED.confirmation_code_wrong_attempts_count
+						   OR   email_link_sign_ins.ip 									   != EXCLUDED.ip
+						   OR   email_link_sign_ins.login_session_number 				   != EXCLUDED.login_session_number
+						RETURNING email_link_sign_ins.login_attempts
+				`, maxRequestsExceededCondition)
+	attempts, err := storage.ExecOne[loginAttempt](ctx, c.db, sql, params...)
+	if err != nil {
+		return errors.Wrapf(err, "failed to insert/update email link sign ins record for email:%v", toEmail)
+	}
+	if c.cfg.EmailValidation.MaxRequestsFromIP > 0 && attempts.LoginAttempts > c.cfg.EmailValidation.MaxRequestsFromIP {
+		err = errors.Wrapf(ErrUserBlocked, "email %v (device %v) is blocked due to a lot of requests from IP %v", toEmail, deviceUniqueID, clientIP.String())
+		return terror.New(err, map[string]any{"source": "ip"})
+	}
+	return nil
 }
 
 func (c *client) generateMagicLinkPayload(id *loginID, oldEmail, notifyEmail, otp string, now *time.Time) (string, error) {
