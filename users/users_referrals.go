@@ -252,7 +252,8 @@ func (r *repository) updateReferralCount(ctx context.Context, msgTimestamp stdli
 		return errors.Wrapf(err, "failed to verify uniqueness of user referral message")
 	}
 
-	return errors.Wrapf(r.incrementOrDecrementReferralCount(ctx, referredBy, dayBetweenCreationAndDeletion), "failed to update referrals count for userID:%v", userID)
+	return errors.Wrapf(r.incrementOrDecrementReferralCount(ctx, referredBy, dayBetweenCreationAndDeletion),
+		"failed to update referrals count for userID:%v", userID)
 }
 
 //nolint:gocritic,revive // Struct is private, so we return values from it.
@@ -359,7 +360,7 @@ func (r *repository) incrementOrDecrementReferralCount(ctx context.Context, user
 	return errors.Wrapf(err, "failed to increment referral counts for userID %v", userID)
 }
 
-func (r *repository) genShiftDaysSQLFields(shiftDays int16, daysBetweenUserCreationAndDeletion int16) string {
+func (r *repository) genShiftDaysSQLFields(shiftDays, daysBetweenUserCreationAndDeletion int16) string {
 	if shiftDays == 0 && (daysBetweenUserCreationAndDeletion <= 0 || daysBetweenUserCreationAndDeletion >= maxDaysReferralsHistory) {
 		return ""
 	}
@@ -370,7 +371,7 @@ func (r *repository) genShiftDaysSQLFields(shiftDays int16, daysBetweenUserCreat
 	)
 }
 
-func (*repository) generateReferralsShiftDaysSQL(refType ReferralType, daysLag int16, daysBetweenUserCreationAndDeletion int16) string {
+func (*repository) generateReferralsShiftDaysSQL(refType ReferralType, daysLag, daysBetweenUserCreationAndDeletion int16) string {
 	updateStatements := []string{}
 	for currDay := int16(1); currDay <= maxDaysReferralsHistory-1; currDay++ {
 		diff := currDay - daysLag
@@ -384,7 +385,7 @@ func (*repository) generateReferralsShiftDaysSQL(refType ReferralType, daysLag i
 		} else if diff < 0 {
 			targetField = "0"
 		}
-		if daysLag == 0 && decrementDueToUserDeletion != "" { // If we dont need to shift, but to sub 1, due to user deletion, substract it from the same field.
+		if daysLag == 0 && decrementDueToUserDeletion != "" { // If we dont need to shift, but to sub 1, due to user deletion, subtract it from the same field.
 			targetField = fmt.Sprintf("referral_acquisition_history.%v_today_minus_%v", refType, currDay)
 		} else if daysLag == 0 {
 			continue

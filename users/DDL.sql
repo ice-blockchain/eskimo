@@ -128,9 +128,12 @@ CREATE TABLE IF NOT EXISTS processed_referrals (
 );
 CREATE INDEX IF NOT EXISTS processed_referrals_processed_at_ix ON processed_referrals (processed_at);
 
-ALTER TABLE processed_referrals
-    ADD COLUMN IF NOT EXISTS deleted BOOLEAN DEFAULT false NOT NULL,
-    DROP CONSTRAINT IF EXISTS processed_referrals_pkey,
-    ADD PRIMARY KEY(user_id, referred_by, deleted);
-ALTER TABLE processed_referrals
-    RENAME CONSTRAINT processed_referrals_pkey TO processed_referrals_id_refby_deleted_pkey;
+DO $$ BEGIN
+    ALTER TABLE processed_referrals
+        ADD COLUMN IF NOT EXISTS deleted BOOLEAN DEFAULT false NOT NULL,
+        DROP CONSTRAINT IF EXISTS processed_referrals_pkey;
+    if NOT exists (select constraint_name from information_schema.table_constraints where table_name = 'processed_referrals' and constraint_type = 'PRIMARY KEY') then
+        ALTER TABLE processed_referrals
+            ADD CONSTRAINT processed_referrals_id_refby_deleted_pkey PRIMARY KEY(user_id, referred_by, deleted);
+    end if;
+END $$;
