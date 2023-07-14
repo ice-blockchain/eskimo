@@ -118,10 +118,12 @@ type (
 	}
 	magicLinkToken struct {
 		*jwt.RegisteredClaims
-		OTP            string `json:"otp" example:"c8f64979-9cea-4649-a89a-35607e734e68"`
-		OldEmail       string `json:"oldEmail,omitempty"`
-		NotifyEmail    string `json:"notifyEmail,omitempty"`
-		DeviceUniqueID string `json:"deviceUniqueId,omitempty"`
+		OTP                string `json:"otp" example:"c8f64979-9cea-4649-a89a-35607e734e68"`
+		OldEmail           string `json:"oldEmail,omitempty"`
+		NotifyEmail        string `json:"notifyEmail,omitempty"`
+		DeviceUniqueID     string `json:"deviceUniqueId,omitempty"`
+		LoginSessionNumber int64  `json:"loginSessionNumber,omitempty"`
+		ClientIP           string `json:"clientIP,omitempty"`
 	}
 	loginFlowToken struct {
 		*jwt.RegisteredClaims

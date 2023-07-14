@@ -18,7 +18,7 @@ import (
 )
 
 //nolint:funlen // Big rollback logic.
-func (c *client) handleEmailModification(ctx context.Context, els *emailLinkSignIn, newEmail, oldEmail, notifyEmail string, clientIP net.IP) error {
+func (c *client) handleEmailModification(ctx context.Context, els *emailLinkSignIn, newEmail, oldEmail, notifyEmail string, clientIP net.IP, loginSessionNumber int64) error {
 	usr := new(users.User)
 	usr.ID = *els.UserID
 	usr.Email = newEmail
@@ -38,20 +38,23 @@ func (c *client) handleEmailModification(ctx context.Context, els *emailLinkSign
 	}
 	if notifyEmail != "" {
 		resetEmailOTP, now := generateOTP(), time.Now()
-		resetEmailPayload, rErr := c.generateMagicLinkPayload(&loginID{Email: oldEmail, DeviceUniqueID: els.DeviceUniqueID}, newEmail, "", resetEmailOTP, now)
+		resetConfirmationCode := generateConfirmationCode()
+		uErr := c.upsertEmailLinkSignIn(ctx, oldEmail, els.DeviceUniqueID, resetEmailOTP, resetConfirmationCode, now, clientIP, loginSessionNumber)
+		if uErr != nil {
+			return multierror.Append( //nolint:wrapcheck // .
+				errors.Wrapf(c.resetEmailModification(ctx, usr.ID, oldEmail), "[reset] resetEmailModification failed for email:%v", oldEmail),
+				errors.Wrapf(c.resetFirebaseEmailModification(ctx, els.Metadata, oldEmail), "[reset] updateEmail in firebase failed for email:%v", oldEmail),
+				errors.Wrapf(uErr, "failed to store/update email confirmation for email:%v", oldEmail),
+			).ErrorOrNil()
+		}
+		resetEmailPayload, rErr := c.generateMagicLinkPayload(
+			&loginID{Email: oldEmail, DeviceUniqueID: els.DeviceUniqueID},
+			newEmail, "", resetEmailOTP, now, loginSessionNumber, clientIP)
 		if rErr != nil {
 			return multierror.Append( //nolint:wrapcheck // .
 				errors.Wrapf(c.resetEmailModification(ctx, usr.ID, oldEmail), "[reset] resetEmailModification failed for email:%v", oldEmail),
 				errors.Wrapf(c.resetFirebaseEmailModification(ctx, els.Metadata, oldEmail), "[reset] updateEmail in firebase failed for email:%v", oldEmail),
 				errors.Wrapf(rErr, "can't generate link payload for email: %v", oldEmail),
-			).ErrorOrNil()
-		}
-		resetConfirmationCode := generateConfirmationCode()
-		if uErr := c.upsertEmailLinkSignIn(ctx, oldEmail, els.DeviceUniqueID, resetEmailOTP, resetConfirmationCode, now, clientIP); uErr != nil {
-			return multierror.Append( //nolint:wrapcheck // .
-				errors.Wrapf(c.resetEmailModification(ctx, usr.ID, oldEmail), "[reset] resetEmailModification failed for email:%v", oldEmail),
-				errors.Wrapf(c.resetFirebaseEmailModification(ctx, els.Metadata, oldEmail), "[reset] updateEmail in firebase failed for email:%v", oldEmail),
-				errors.Wrapf(uErr, "failed to store/update email confirmation for email:%v", oldEmail),
 			).ErrorOrNil()
 		}
 		authLink := c.getResetAuthLink(resetEmailPayload, els.Language, resetConfirmationCode)

@@ -222,7 +222,6 @@ func (s *service) emailUpdateRequested(
 	if newEmail == "" || newEmail == loggedInUser.Email {
 		return "", "", nil
 	}
-	// User uses firebase.
 	if loggedInUser.Token.IsFirebase() {
 		return newEmail, "", nil
 	}

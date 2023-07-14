@@ -98,7 +98,9 @@ func (c *client) getUserByIDOrPk(ctx context.Context, userID string, id *loginID
 					device_unique_id,
 					language,
 		    		hash_code,
-		    		metadata
+		    		metadata,
+		    		ip,
+		    		login_session_number
 		FROM (
 			WITH emails AS (
 				SELECT
@@ -116,6 +118,8 @@ func (c *client) getUserByIDOrPk(ctx context.Context, userID string, id *loginID
 					'en' 											   AS language,
 					COALESCE((account_metadata.metadata -> 'hash_code')::BIGINT,0) AS hash_code,
 					account_metadata.metadata,
+		    		ip,
+		    		login_session_number,
 					2                                                  AS idx
 				FROM email_link_sign_ins
 				LEFT JOIN account_metadata ON account_metadata.user_id = $1
@@ -136,6 +140,8 @@ func (c *client) getUserByIDOrPk(ctx context.Context, userID string, id *loginID
 					u.language			    				 	  	   AS language,
 					u.hash_code,
 					account_metadata.metadata    				 	   AS metadata,
+		    		emails.ip                                          AS ip,
+		    		emails.login_session_number                        AS login_session_number,
 					1 												   AS idx
 				FROM users u
 				LEFT JOIN emails ON emails.email = $2 and u.id = emails.user_id

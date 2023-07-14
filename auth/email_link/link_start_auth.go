@@ -27,7 +27,12 @@ func (c *client) SendSignInLinkToEmail(ctx context.Context, emailValue, deviceUn
 		return "", errors.Wrap(ctx.Err(), "send sign in link to email failed because context failed")
 	}
 	id := loginID{emailValue, deviceUniqueID}
-	if vErr := c.validateEmailSignIn(ctx, &id); vErr != nil {
+	now := time.Now()
+	loginSessionNumber := int64(0)
+	if c.cfg.EmailValidation.SameIPRateCheckPeriod.Seconds() > 0 && c.cfg.EmailValidation.MaxRequestsFromIP > 0 {
+		loginSessionNumber = now.Time.Unix() / int64(c.cfg.EmailValidation.SameIPRateCheckPeriod.Seconds())
+	}
+	if vErr := c.validateEmailSignIn(ctx, &id, clientIP, loginSessionNumber); vErr != nil {
 		return "", errors.Wrapf(vErr, "can't validate email sign in for:%#v", id)
 	}
 	oldEmail := users.ConfirmedEmail(ctx)
@@ -43,18 +48,21 @@ func (c *client) SendSignInLinkToEmail(ctx context.Context, emailValue, deviceUn
 	if err != nil {
 		return "", errors.Wrap(err, "can't call generateLoginSession")
 	}
-	now := time.Now()
-	if uErr := c.upsertEmailLinkSignIn(ctx, id.Email, id.DeviceUniqueID, otp, confirmationCode, now, clientIP); uErr != nil {
+	if uErr := c.upsertEmailLinkSignIn(ctx, id.Email, id.DeviceUniqueID, otp, confirmationCode, now, clientIP, loginSessionNumber); uErr != nil {
 		return "", errors.Wrapf(uErr, "failed to store/update email link sign ins for id:%#v", id)
 	}
-	if sErr := c.sendMagicLink(ctx, &id, oldEmail, otp, language, now); sErr != nil {
+	payload, pErr := c.generateMagicLinkPayload(&id, oldEmail, oldEmail, otp, now, loginSessionNumber, clientIP)
+	if pErr != nil {
+		return "", errors.Wrapf(pErr, "can't generate magic link payload for id: %#v", id)
+	}
+	if sErr := c.sendMagicLink(ctx, &id, oldEmail, payload, language); sErr != nil {
 		return "", errors.Wrapf(sErr, "can't send magic link for id:%#v", id)
 	}
 
 	return loginSession, nil
 }
 
-func (c *client) validateEmailSignIn(ctx context.Context, id *loginID) error {
+func (c *client) validateEmailSignIn(ctx context.Context, id *loginID, clientIP net.IP, loginSessionNumber int64) error {
 	gUsr, err := c.getEmailLinkSignIn(ctx, id)
 	if err != nil && !storage.IsErr(err, storage.ErrNotFound) {
 		return errors.Wrapf(err, "can't get email link sign in information by:%#v", id)
@@ -66,6 +74,13 @@ func (c *client) validateEmailSignIn(ctx context.Context, id *loginID) error {
 				err = errors.Wrapf(ErrUserBlocked, "user:%#v is blocked due to a lot of incorrect codes", id)
 				return terror.New(err, map[string]any{"source": "email"})
 			}
+		}
+		if c.cfg.EmailValidation.MaxRequestsFromIP > 0 &&
+			gUsr.LoginAttempts >= c.cfg.EmailValidation.MaxRequestsFromIP &&
+			loginSessionNumber == gUsr.LoginSessionNumber &&
+			clientIP.String() == gUsr.IP {
+			err = errors.Wrapf(ErrUserBlocked, "user %#v is blocked due to a lot of requests from IP %v", id, clientIP.String())
+			return terror.New(err, map[string]any{"source": "ip"})
 		}
 	}
 
@@ -96,11 +111,7 @@ func (c *client) validateEmailModification(ctx context.Context, newEmail string,
 }
 
 //nolint:revive // .
-func (c *client) sendMagicLink(ctx context.Context, id *loginID, oldEmail, otp, language string, now *time.Time) error {
-	payload, err := c.generateMagicLinkPayload(id, oldEmail, oldEmail, otp, now)
-	if err != nil {
-		return errors.Wrapf(err, "can't generate magic link payload for id: %#v", id)
-	}
+func (c *client) sendMagicLink(ctx context.Context, id *loginID, oldEmail, payload, language string) error {
 	authLink := c.getAuthLink(payload, language)
 	var emailType string
 	if oldEmail != "" {
@@ -143,29 +154,25 @@ func (c *client) sendEmailWithType(ctx context.Context, emailType, toEmail, lang
 }
 
 //nolint:revive, funlen // .
-func (c *client) upsertEmailLinkSignIn(ctx context.Context, toEmail, deviceUniqueID, otp, code string, now *time.Time, clientIP net.IP) error {
-	loginSessionNumber := int64(0)
+func (c *client) upsertEmailLinkSignIn(ctx context.Context, toEmail, deviceUniqueID, otp, code string, now *time.Time, clientIP net.IP, loginSessionNumber int64) error {
 	params := []any{now.Time, toEmail, deviceUniqueID, otp, code, clientIP.String(), loginSessionNumber}
-	maxRequestsExceededCondition := ""
-	if c.cfg.EmailValidation.SameIPRateCheckPeriod.Seconds() > 0 && c.cfg.EmailValidation.MaxRequestsFromIP > 0 {
-		loginSessionNumber = now.Time.Unix() / int64(c.cfg.EmailValidation.SameIPRateCheckPeriod.Seconds())
-		params[len(params)-1] = loginSessionNumber
-		ipBlockEndTime := stdlibtime.Unix(loginSessionNumber*int64(c.cfg.EmailValidation.SameIPRateCheckPeriod.Seconds()), 0).
-			Add(c.cfg.EmailValidation.SameIPRateCheckPeriod)
-		params = append(params, ipBlockEndTime)
-		maxRequestsExceededCondition = fmt.Sprintf("sign_ins_per_ip.login_attempts + 1 > %[1]v", c.cfg.EmailValidation.MaxRequestsFromIP)
-	}
+	ipBlockEndTime := stdlibtime.Unix(loginSessionNumber*int64(c.cfg.EmailValidation.SameIPRateCheckPeriod.Seconds()), 0).
+		Add(c.cfg.EmailValidation.SameIPRateCheckPeriod)
+	params = append(params, ipBlockEndTime)
+	maxRequestsExceededCondition := fmt.Sprintf("sign_ins_per_ip.login_attempts > %[1]v", c.cfg.EmailValidation.MaxRequestsFromIP)
+
 	type loginAttempt struct {
 		LoginAttempts int64
 	}
 	sql := fmt.Sprintf(`
 WITH ip_update AS (
 	INSERT INTO sign_ins_per_ip (ip, login_session_number, login_attempts)
-					VALUES ($6, $7, 0)
+					VALUES ($6, $7, 1)
 	ON CONFLICT (login_session_number, ip) DO UPDATE
 		SET login_attempts = sign_ins_per_ip.login_attempts + 1,
 			blocked_until = (CASE WHEN %[1]v THEN $8::timestamp ELSE null END)
-	RETURNING $1::timestamp, $2, $3, $4, $5, 0, $6, $7, sign_ins_per_ip.login_attempts
+	RETURNING (CASE WHEN %[1]v THEN (select -1 as login_attempts from generate_series(0, -1) x)
+		ELSE (sign_ins_per_ip.login_attempts) END)
 )
 INSERT INTO email_link_sign_ins (
 							created_at,
@@ -178,7 +185,7 @@ INSERT INTO email_link_sign_ins (
                             login_session_number,
 							login_attempts
                             )
-						(SELECT * FROM ip_update)
+						VALUES ($1::timestamp, $2, $3, $4, $5, 0, $6, $7, COALESCE((SELECT login_attempts FROM ip_update), %[2]v))
 						ON CONFLICT (email, device_unique_id) DO UPDATE 
 							SET otp           				     	   = EXCLUDED.otp, 
 								created_at    				     	   = EXCLUDED.created_at,
@@ -196,19 +203,24 @@ INSERT INTO email_link_sign_ins (
 						   OR   email_link_sign_ins.ip 									   != EXCLUDED.ip
 						   OR   email_link_sign_ins.login_session_number 				   != EXCLUDED.login_session_number
 						RETURNING email_link_sign_ins.login_attempts
-				`, maxRequestsExceededCondition)
+				`, maxRequestsExceededCondition, c.cfg.EmailValidation.MaxRequestsFromIP+1)
 	attempts, err := storage.ExecOne[loginAttempt](ctx, c.db, sql, params...)
 	if err != nil {
-		return errors.Wrapf(err, "failed to insert/update email link sign ins record for email:%v", toEmail)
+		if !storage.IsErr(err, storage.ErrNotFound) {
+			return errors.Wrapf(err, "failed to insert/update email link sign ins record for email:%v", toEmail)
+		}
+		attempts.LoginAttempts = c.cfg.EmailValidation.MaxRequestsFromIP + 1
 	}
 	if c.cfg.EmailValidation.MaxRequestsFromIP > 0 && attempts.LoginAttempts > c.cfg.EmailValidation.MaxRequestsFromIP {
 		err = errors.Wrapf(ErrUserBlocked, "email %v (device %v) is blocked due to a lot of requests from IP %v", toEmail, deviceUniqueID, clientIP.String())
+
 		return terror.New(err, map[string]any{"source": "ip"})
 	}
+
 	return nil
 }
 
-func (c *client) generateMagicLinkPayload(id *loginID, oldEmail, notifyEmail, otp string, now *time.Time) (string, error) {
+func (c *client) generateMagicLinkPayload(id *loginID, oldEmail, notifyEmail, otp string, now *time.Time, loginSessionNumber int64, clientIP net.IP) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, magicLinkToken{
 		RegisteredClaims: &jwt.RegisteredClaims{
 			Issuer:    jwtIssuer,
@@ -218,10 +230,12 @@ func (c *client) generateMagicLinkPayload(id *loginID, oldEmail, notifyEmail, ot
 			NotBefore: jwt.NewNumericDate(*now.Time),
 			IssuedAt:  jwt.NewNumericDate(*now.Time),
 		},
-		OTP:            otp,
-		OldEmail:       oldEmail,
-		NotifyEmail:    notifyEmail,
-		DeviceUniqueID: id.DeviceUniqueID,
+		OTP:                otp,
+		OldEmail:           oldEmail,
+		NotifyEmail:        notifyEmail,
+		DeviceUniqueID:     id.DeviceUniqueID,
+		ClientIP:           clientIP.String(),
+		LoginSessionNumber: loginSessionNumber,
 	})
 	payload, err := token.SignedString([]byte(c.cfg.EmailValidation.JwtSecret))
 	if err != nil {

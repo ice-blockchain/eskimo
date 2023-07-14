@@ -34,18 +34,18 @@ func (c *client) SignIn(ctx context.Context, emailLinkPayload, confirmationCode 
 
 		return errors.Wrapf(err, "failed to get user info by email:%v(old email:%v)", email, token.OldEmail)
 	}
-	if vErr := c.verifySignIn(ctx, els, &id, emailLinkPayload, confirmationCode); vErr != nil {
+	if vErr := c.verifySignIn(ctx, els, &id, emailLinkPayload, confirmationCode, token.OTP); vErr != nil {
 		return errors.Wrapf(vErr, "can't verify sign in for id:%#v", id)
 	}
 	var emailConfirmed bool
 	if token.OldEmail != "" {
-		if err = c.handleEmailModification(ctx, els, email, token.OldEmail, token.NotifyEmail, clientIP); err != nil {
+		if err = c.handleEmailModification(ctx, els, email, token.OldEmail, token.NotifyEmail, clientIP, els.LoginSessionNumber); err != nil {
 			return errors.Wrapf(err, "failed to handle email modification:%v", email)
 		}
 		emailConfirmed = true
 		els.Email = email
 	}
-	if fErr := c.finishAuthProcess(ctx, &id, *els.UserID, token.OTP, els.IssuedTokenSeq, emailConfirmed, els.Metadata); fErr != nil {
+	if fErr := c.finishAuthProcess(ctx, &id, *els.UserID, token.OTP, els.IssuedTokenSeq, emailConfirmed, els.Metadata, els.LoginSessionNumber, els.IP); fErr != nil {
 		var mErr *multierror.Error
 		if token.OldEmail != "" {
 			mErr = multierror.Append(mErr,
@@ -64,8 +64,8 @@ func (c *client) SignIn(ctx context.Context, emailLinkPayload, confirmationCode 
 }
 
 //nolint:gocognit // .
-func (c *client) verifySignIn(ctx context.Context, els *emailLinkSignIn, id *loginID, emailLinkPayload, confirmationCode string) error {
-	if els.OTP == *els.UserID {
+func (c *client) verifySignIn(ctx context.Context, els *emailLinkSignIn, id *loginID, emailLinkPayload, confirmationCode, tokenOTP string) error {
+	if els.OTP == *els.UserID || els.OTP != tokenOTP {
 		return errors.Wrapf(ErrNoConfirmationRequired, "no pending confirmation for email:%v", id.Email)
 	}
 	var shouldBeBlocked bool
@@ -116,7 +116,7 @@ func (c *client) increaseWrongConfirmationCodeAttemptsCount(ctx context.Context,
 }
 
 //nolint:revive,funlen // .
-func (c *client) finishAuthProcess(ctx context.Context, id *loginID, userID, otp string, issuedTokenSeq int64, emailConfirmed bool, md *users.JSON) error {
+func (c *client) finishAuthProcess(ctx context.Context, id *loginID, userID, otp string, issuedTokenSeq int64, emailConfirmed bool, md *users.JSON, loginSessionNumber int64, clientIP string) error {
 	emailConfirmedAt := "null"
 	if emailConfirmed {
 		emailConfirmedAt = "$2"
@@ -136,9 +136,14 @@ func (c *client) finishAuthProcess(ctx context.Context, id *loginID, userID, otp
 	if err := mergo.Merge(&mdToUpdate, md, mergo.WithOverride, mergo.WithTypeCheck); err != nil {
 		return errors.Wrapf(err, "failed to merge %#v and %v:%v", md, auth.IceIDClaim, userID)
 	}
-	params := []any{id.Email, time.Now().Time, userID, otp, id.DeviceUniqueID, issuedTokenSeq, mdToUpdate}
+	params := []any{id.Email, time.Now().Time, userID, otp, id.DeviceUniqueID, issuedTokenSeq, mdToUpdate, clientIP, loginSessionNumber}
 	sql := fmt.Sprintf(`
-			with metadata_update as (
+			with decrement_ip_login_attempts as (
+				UPDATE sign_ins_per_ip SET
+					login_attempts = GREATEST(sign_ins_per_ip.login_attempts - 1, 0)
+				WHERE ip = $8 AND login_session_number = $9
+				RETURNING GREATEST(sign_ins_per_ip.login_attempts - 1, 0) as login_attempts
+			), metadata_update as (
 				INSERT INTO account_metadata(user_id, metadata)
 				VALUES ($3, $7::jsonb) ON CONFLICT(user_id) DO UPDATE
 					SET metadata = EXCLUDED.metadata
@@ -151,14 +156,23 @@ func (c *client) finishAuthProcess(ctx context.Context, id *loginID, userID, otp
 					email_confirmed_at = %[1]v,
 					issued_token_seq = COALESCE(issued_token_seq, 0) + 1,
 					previously_issued_token_seq = COALESCE(issued_token_seq, 0) + 1
+					issued_token_seq = COALESCE(issued_token_seq, 0) + 1,
+					login_attempts = decrement_ip_login_attempts.login_attempts
+			FROM decrement_ip_login_attempts
 			WHERE email_link_sign_ins.email = $1
 				  AND otp = $4
 				  AND device_unique_id = $5
-				  AND issued_token_seq = $6`, emailConfirmedAt)
+				  AND issued_token_seq = $6
+                  AND ip = $8
+                  AND login_session_number = $9
+			`, emailConfirmedAt)
 
-	_, err := storage.Exec(ctx, c.db, sql, params...)
+	rowsUpdated, err := storage.Exec(ctx, c.db, sql, params...)
 	if err != nil {
 		return errors.Wrapf(err, "failed to insert generated token data for:%#v", params...)
+	}
+	if rowsUpdated == 0 && err == nil {
+		return errors.Wrapf(ErrNoConfirmationRequired, "[finishAuthProcess] No records were updated to finish: race condition")
 	}
 
 	return nil
