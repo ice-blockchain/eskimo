@@ -20,3 +20,6 @@ CREATE TABLE IF NOT EXISTS account_metadata (
            user_id                                TEXT PRIMARY KEY,
            metadata                               JSONB NOT NULL)
            WITH (FILLFACTOR = 70);
+
+ALTER TABLE email_link_sign_ins
+    ADD COLUMN IF NOT EXISTS token_seq_not_before BIGINT DEFAULT 0;
