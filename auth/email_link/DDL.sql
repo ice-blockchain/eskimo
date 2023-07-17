@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS email_link_sign_ins (
            blocked_until                          timestamp,
            email_confirmed_at                     timestamp,
            issued_token_seq                       BIGINT DEFAULT 0 NOT NULL,
+           previously_issued_token_seq            BIGINT DEFAULT 0 NOT NULL,
            confirmation_code_wrong_attempts_count BIGINT DEFAULT 0 NOT NULL,
            email                                  TEXT NOT NULL,
            otp                                    TEXT NOT NULL,
@@ -20,3 +21,6 @@ CREATE TABLE IF NOT EXISTS account_metadata (
            user_id                                TEXT PRIMARY KEY,
            metadata                               JSONB NOT NULL)
            WITH (FILLFACTOR = 70);
+
+ALTER TABLE email_link_sign_ins
+    ADD COLUMN IF NOT EXISTS previously_issued_token_seq BIGINT DEFAULT 0 NOT NULL;

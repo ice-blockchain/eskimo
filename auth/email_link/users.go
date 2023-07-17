@@ -87,6 +87,7 @@ func (c *client) getUserByIDOrPk(ctx context.Context, userID string, id *loginID
 	usr, err := storage.Get[emailLinkSignIn](ctx, c.db, `
 		SELECT 		created_at,
 					token_issued_at,
+					previously_issued_token_seq, 
 					issued_token_seq,
 					blocked_until,
 					confirmation_code_wrong_attempts_count,
@@ -103,6 +104,7 @@ func (c *client) getUserByIDOrPk(ctx context.Context, userID string, id *loginID
 				SELECT
 					created_at,
 					token_issued_at,
+		    		previously_issued_token_seq,
 					issued_token_seq,
 					blocked_until,
 					confirmation_code_wrong_attempts_count,
@@ -122,6 +124,7 @@ func (c *client) getUserByIDOrPk(ctx context.Context, userID string, id *loginID
 			SELECT
 					emails.created_at                                  AS created_at,
 					emails.token_issued_at       			 	  	   AS token_issued_at,
+		    		emails.previously_issued_token_seq                         AS previously_issued_token_seq,
 					emails.issued_token_seq       			 	  	   AS issued_token_seq,
 					emails.blocked_until       			 	  	   	   AS blocked_until,
 					emails.confirmation_code_wrong_attempts_count 	   AS confirmation_code_wrong_attempts_count,

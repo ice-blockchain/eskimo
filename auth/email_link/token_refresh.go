@@ -36,13 +36,13 @@ func (c *client) RegenerateTokens(ctx context.Context, previousRefreshToken stri
 	}
 	if usr.Email != token.Email || usr.DeviceUniqueID != token.DeviceUniqueID {
 		return nil, errors.Wrapf(ErrUserDataMismatch,
-			"user's email:%v does not match token's email:%v or deviceID:%v", usr.Email, token.Email, token.DeviceUniqueID)
+			"user's email:%v does not match token's email:%v or deviceID:%v (userID %v)", usr.Email, token.Email, token.DeviceUniqueID, token.Subject)
 	}
 	now := time.Now()
 	refreshTokenSeq, err := c.incrementRefreshTokenSeq(ctx, &id, token.Subject, token.Seq, now)
 	if err != nil {
 		if storage.IsErr(err, storage.ErrNotFound) {
-			return nil, errors.Wrapf(ErrInvalidToken, "refreshToken with wrong sequence:%v provided", token.Seq)
+			return nil, errors.Wrapf(ErrInvalidToken, "refreshToken with wrong sequence:%v provided (userID:%v)", token.Seq, token.Subject)
 		}
 
 		return nil, errors.Wrapf(err, "failed to update email link sign ins for email:%v", token.Email)
@@ -66,9 +66,14 @@ func (c *client) incrementRefreshTokenSeq(
 	sql := `UPDATE email_link_sign_ins
 			SET token_issued_at = $3,
 				user_id = $4,
-				issued_token_seq = COALESCE(email_link_sign_ins.issued_token_seq, 0) + 1
+				issued_token_seq = COALESCE(email_link_sign_ins.issued_token_seq, 0) + 1,
+				previously_issued_token_seq = (CASE WHEN COALESCE(email_link_sign_ins.issued_token_seq, 0) = $5 THEN email_link_sign_ins.issued_token_seq ELSE $5 END)
 			WHERE  email_link_sign_ins.email = $1 AND email_link_sign_ins.device_unique_id = $2
-				   AND email_link_sign_ins.user_id = $4 AND email_link_sign_ins.issued_token_seq = $5
+				   AND email_link_sign_ins.user_id = $4 
+			  	   AND (email_link_sign_ins.issued_token_seq = $5 
+			         OR (email_link_sign_ins.previously_issued_token_seq <= $5 AND
+			             email_link_sign_ins.previously_issued_token_seq<=COALESCE(email_link_sign_ins.issued_token_seq,0)+1)
+			       )
 			RETURNING issued_token_seq`
 	updatedValue, err := storage.ExecOne[resp](ctx, c.db, sql, params...)
 	if err != nil {
