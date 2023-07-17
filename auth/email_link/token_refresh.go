@@ -67,11 +67,12 @@ func (c *client) incrementRefreshTokenSeq(
 			SET token_issued_at = $3,
 				user_id = $4,
 				issued_token_seq = COALESCE(email_link_sign_ins.issued_token_seq, 0) + 1,
-				token_seq_not_before = (CASE WHEN COALESCE(email_link_sign_ins.issued_token_seq, 0) = $5 THEN email_link_sign_ins.issued_token_seq ELSE $5 END)
+				previously_issued_token_seq = (CASE WHEN COALESCE(email_link_sign_ins.issued_token_seq, 0) = $5 THEN email_link_sign_ins.issued_token_seq ELSE $5 END)
 			WHERE  email_link_sign_ins.email = $1 AND email_link_sign_ins.device_unique_id = $2
 				   AND email_link_sign_ins.user_id = $4 
 			  	   AND (email_link_sign_ins.issued_token_seq = $5 
-			         OR (email_link_sign_ins.token_seq_not_before <= $5 AND email_link_sign_ins.token_seq_not_before<=COALESCE(email_link_sign_ins.issued_token_seq,0)+1)
+			         OR (email_link_sign_ins.previously_issued_token_seq <= $5 AND
+			             email_link_sign_ins.previously_issued_token_seq<=COALESCE(email_link_sign_ins.issued_token_seq,0)+1)
 			       )
 			RETURNING issued_token_seq`
 	updatedValue, err := storage.ExecOne[resp](ctx, c.db, sql, params...)

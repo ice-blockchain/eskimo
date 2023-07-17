@@ -138,7 +138,7 @@ type (
 		DeviceUniqueID                     string      `json:"deviceUniqueId,omitempty" example:"6FB988F3-36F4-433D-9C7C-555887E57EB2" db:"device_unique_id"`
 		ConfirmationCode                   string      `json:"confirmationCode,omitempty" example:"123"`
 		IssuedTokenSeq                     int64       `json:"issuedTokenSeq,omitempty" example:"1"`
-		TokenSeqNotBefore                  int64       `json:"tokenSeqNotBefore,omitempty" example:"1"`
+		PreviouslyIssuedTokenSeq           int64       `json:"previouslyIssuedTokenSeq,omitempty" example:"1"`
 		ConfirmationCodeWrongAttemptsCount int64       `json:"confirmationCodeWrongAttemptsCount,omitempty" example:"3" db:"confirmation_code_wrong_attempts_count"`
 		HashCode                           int64       `json:"hashCode,omitempty" example:"43453546464576547"`
 	}

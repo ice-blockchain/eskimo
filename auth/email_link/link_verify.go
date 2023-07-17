@@ -149,7 +149,7 @@ func (c *client) finishAuthProcess(ctx context.Context, id *loginID, userID, otp
 					otp = $3,
 					email_confirmed_at = %[1]v,
 					issued_token_seq = COALESCE(issued_token_seq, 0) + 1,
-					token_seq_not_before = COALESCE(issued_token_seq, 0) + 1
+					previously_issued_token_seq = COALESCE(issued_token_seq, 0) + 1
 			WHERE email_link_sign_ins.email = $1
 				  AND otp = $4
 				  AND device_unique_id = $5
