@@ -17,8 +17,13 @@ import (
 	"github.com/ice-blockchain/wintr/time"
 )
 
-//nolint:funlen // Big rollback logic.
-func (c *client) handleEmailModification(ctx context.Context, els *emailLinkSignIn, newEmail, oldEmail, notifyEmail string, clientIP net.IP, loginSessionNumber int64) error {
+//nolint:funlen,revive // Big rollback logic.
+func (c *client) handleEmailModification(
+	ctx context.Context,
+	els *emailLinkSignIn,
+	newEmail, oldEmail, notifyEmail string,
+	clientIP net.IP,
+) error {
 	usr := new(users.User)
 	usr.ID = *els.UserID
 	usr.Email = newEmail
@@ -39,7 +44,7 @@ func (c *client) handleEmailModification(ctx context.Context, els *emailLinkSign
 	if notifyEmail != "" {
 		resetEmailOTP, now := generateOTP(), time.Now()
 		resetConfirmationCode := generateConfirmationCode()
-		uErr := c.upsertEmailLinkSignIn(ctx, oldEmail, els.DeviceUniqueID, resetEmailOTP, resetConfirmationCode, now, clientIP, loginSessionNumber)
+		uErr := c.upsertEmailLinkSignIn(ctx, oldEmail, els.DeviceUniqueID, resetEmailOTP, resetConfirmationCode, now, clientIP, els.LoginSessionNumber)
 		if uErr != nil {
 			return multierror.Append( //nolint:wrapcheck // .
 				errors.Wrapf(c.resetEmailModification(ctx, usr.ID, oldEmail), "[reset] resetEmailModification failed for email:%v", oldEmail),
@@ -49,7 +54,7 @@ func (c *client) handleEmailModification(ctx context.Context, els *emailLinkSign
 		}
 		resetEmailPayload, rErr := c.generateMagicLinkPayload(
 			&loginID{Email: oldEmail, DeviceUniqueID: els.DeviceUniqueID},
-			newEmail, "", resetEmailOTP, now, loginSessionNumber, clientIP)
+			newEmail, "", resetEmailOTP, now, els.LoginSessionNumber, clientIP)
 		if rErr != nil {
 			return multierror.Append( //nolint:wrapcheck // .
 				errors.Wrapf(c.resetEmailModification(ctx, usr.ID, oldEmail), "[reset] resetEmailModification failed for email:%v", oldEmail),

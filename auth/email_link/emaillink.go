@@ -7,7 +7,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/ice-blockchain/wintr/time"
 	"math/rand"
 	"os"
 	"strings"
@@ -22,6 +21,7 @@ import (
 	"github.com/ice-blockchain/wintr/connectors/storage/v2"
 	"github.com/ice-blockchain/wintr/email"
 	"github.com/ice-blockchain/wintr/log"
+	"github.com/ice-blockchain/wintr/time"
 )
 
 //nolint:gochecknoinits // We load embedded stuff at runtime.

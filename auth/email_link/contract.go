@@ -106,7 +106,7 @@ type (
 			ExpirationTime        stdlibtime.Duration `yaml:"expirationTime" mapstructure:"expirationTime"`
 			BlockDuration         stdlibtime.Duration `yaml:"blockDuration"`
 			SameIPRateCheckPeriod stdlibtime.Duration `yaml:"sameIpRateCheckPeriod"`
-			MaxRequestsFromIP     int64               `yaml:"maxRequestsFromIP"`
+			MaxRequestsFromIP     int64               `yaml:"maxRequestsFromIP"` //nolint:tagliatelle // .
 		} `yaml:"emailValidation"`
 		ConfirmationCode struct {
 			MaxWrongAttemptsCount int64 `yaml:"maxWrongAttemptsCount"`
@@ -122,8 +122,8 @@ type (
 		OldEmail           string `json:"oldEmail,omitempty"`
 		NotifyEmail        string `json:"notifyEmail,omitempty"`
 		DeviceUniqueID     string `json:"deviceUniqueId,omitempty"`
+		ClientIP           string `json:"clientIP,omitempty"` //nolint:tagliatelle //.
 		LoginSessionNumber int64  `json:"loginSessionNumber,omitempty"`
-		ClientIP           string `json:"clientIP,omitempty"`
 	}
 	loginFlowToken struct {
 		*jwt.RegisteredClaims

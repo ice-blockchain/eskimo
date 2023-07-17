@@ -39,12 +39,13 @@ func (c *client) SignIn(ctx context.Context, emailLinkPayload, confirmationCode 
 	}
 	var emailConfirmed bool
 	if token.OldEmail != "" {
-		if err = c.handleEmailModification(ctx, els, email, token.OldEmail, token.NotifyEmail, clientIP, els.LoginSessionNumber); err != nil {
+		if err = c.handleEmailModification(ctx, els, email, token.OldEmail, token.NotifyEmail, clientIP); err != nil {
 			return errors.Wrapf(err, "failed to handle email modification:%v", email)
 		}
 		emailConfirmed = true
 		els.Email = email
 	}
+	//nolint:lll // .
 	if fErr := c.finishAuthProcess(ctx, &id, *els.UserID, token.OTP, els.IssuedTokenSeq, emailConfirmed, els.Metadata, els.LoginSessionNumber, els.IP); fErr != nil {
 		var mErr *multierror.Error
 		if token.OldEmail != "" {
@@ -63,7 +64,7 @@ func (c *client) SignIn(ctx context.Context, emailLinkPayload, confirmationCode 
 	return nil
 }
 
-//nolint:gocognit // .
+//nolint:gocognit,revive // .
 func (c *client) verifySignIn(ctx context.Context, els *emailLinkSignIn, id *loginID, emailLinkPayload, confirmationCode, tokenOTP string) error {
 	if els.OTP == *els.UserID || els.OTP != tokenOTP {
 		return errors.Wrapf(ErrNoConfirmationRequired, "no pending confirmation for email:%v", id.Email)
@@ -116,7 +117,12 @@ func (c *client) increaseWrongConfirmationCodeAttemptsCount(ctx context.Context,
 }
 
 //nolint:revive,funlen // .
-func (c *client) finishAuthProcess(ctx context.Context, id *loginID, userID, otp string, issuedTokenSeq int64, emailConfirmed bool, md *users.JSON, loginSessionNumber int64, clientIP string) error {
+func (c *client) finishAuthProcess(
+	ctx context.Context,
+	id *loginID, userID, otp string, issuedTokenSeq int64,
+	emailConfirmed bool, md *users.JSON,
+	loginSessionNumber int64, clientIP string,
+) error {
 	emailConfirmedAt := "null"
 	if emailConfirmed {
 		emailConfirmedAt = "$2"
@@ -171,7 +177,7 @@ func (c *client) finishAuthProcess(ctx context.Context, id *loginID, userID, otp
 	if err != nil {
 		return errors.Wrapf(err, "failed to insert generated token data for:%#v", params...)
 	}
-	if rowsUpdated == 0 && err == nil {
+	if rowsUpdated == 0 {
 		return errors.Wrapf(ErrNoConfirmationRequired, "[finishAuthProcess] No records were updated to finish: race condition")
 	}
 

@@ -22,6 +22,7 @@ import (
 	"github.com/ice-blockchain/wintr/time"
 )
 
+//nolint:funlen //.
 func (c *client) SendSignInLinkToEmail(ctx context.Context, emailValue, deviceUniqueID, language string, clientIP net.IP) (loginSession string, err error) {
 	if ctx.Err() != nil {
 		return "", errors.Wrap(ctx.Err(), "send sign in link to email failed because context failed")
@@ -29,7 +30,7 @@ func (c *client) SendSignInLinkToEmail(ctx context.Context, emailValue, deviceUn
 	id := loginID{emailValue, deviceUniqueID}
 	now := time.Now()
 	loginSessionNumber := int64(0)
-	if c.cfg.EmailValidation.SameIPRateCheckPeriod.Seconds() > 0 && c.cfg.EmailValidation.MaxRequestsFromIP > 0 {
+	if c.cfg.EmailValidation.MaxRequestsFromIP > 0 && c.cfg.EmailValidation.SameIPRateCheckPeriod.Seconds() > 0 {
 		loginSessionNumber = now.Time.Unix() / int64(c.cfg.EmailValidation.SameIPRateCheckPeriod.Seconds())
 	}
 	if vErr := c.validateEmailSignIn(ctx, &id, clientIP, loginSessionNumber); vErr != nil {
@@ -62,6 +63,7 @@ func (c *client) SendSignInLinkToEmail(ctx context.Context, emailValue, deviceUn
 	return loginSession, nil
 }
 
+//nolint:gocognit //.
 func (c *client) validateEmailSignIn(ctx context.Context, id *loginID, clientIP net.IP, loginSessionNumber int64) error {
 	gUsr, err := c.getEmailLinkSignIn(ctx, id)
 	if err != nil && !storage.IsErr(err, storage.ErrNotFound) {
@@ -72,6 +74,7 @@ func (c *client) validateEmailSignIn(ctx context.Context, id *loginID, clientIP 
 		if gUsr.BlockedUntil != nil {
 			if gUsr.BlockedUntil.After(*now.Time) {
 				err = errors.Wrapf(ErrUserBlocked, "user:%#v is blocked due to a lot of incorrect codes", id)
+
 				return terror.New(err, map[string]any{"source": "email"})
 			}
 		}
@@ -80,6 +83,7 @@ func (c *client) validateEmailSignIn(ctx context.Context, id *loginID, clientIP 
 			loginSessionNumber == gUsr.LoginSessionNumber &&
 			clientIP.String() == gUsr.IP {
 			err = errors.Wrapf(ErrUserBlocked, "user %#v is blocked due to a lot of requests from IP %v", id, clientIP.String())
+
 			return terror.New(err, map[string]any{"source": "ip"})
 		}
 	}
@@ -103,6 +107,7 @@ func (c *client) validateEmailModification(ctx context.Context, newEmail string,
 		now := time.Now()
 		if gOldUsr.BlockedUntil.After(*now.Time) {
 			err := errors.Wrapf(ErrUserBlocked, "user:%#v is blocked", oldID)
+
 			return terror.New(err, map[string]any{"source": "email"})
 		}
 	}
@@ -110,7 +115,6 @@ func (c *client) validateEmailModification(ctx context.Context, newEmail string,
 	return nil
 }
 
-//nolint:revive // .
 func (c *client) sendMagicLink(ctx context.Context, id *loginID, oldEmail, payload, language string) error {
 	authLink := c.getAuthLink(payload, language)
 	var emailType string
@@ -153,8 +157,13 @@ func (c *client) sendEmailWithType(ctx context.Context, emailType, toEmail, lang
 	}), "failed to send email with type:%v for user with email:%v", emailType, toEmail)
 }
 
-//nolint:revive, funlen // .
-func (c *client) upsertEmailLinkSignIn(ctx context.Context, toEmail, deviceUniqueID, otp, code string, now *time.Time, clientIP net.IP, loginSessionNumber int64) error {
+//nolint:revive,funlen // .
+func (c *client) upsertEmailLinkSignIn(
+	ctx context.Context,
+	toEmail, deviceUniqueID, otp, code string,
+	now *time.Time,
+	clientIP net.IP, loginSessionNumber int64,
+) error {
 	params := []any{now.Time, toEmail, deviceUniqueID, otp, code, clientIP.String(), loginSessionNumber}
 	ipBlockEndTime := stdlibtime.Unix(loginSessionNumber*int64(c.cfg.EmailValidation.SameIPRateCheckPeriod.Seconds()), 0).
 		Add(c.cfg.EmailValidation.SameIPRateCheckPeriod)
@@ -220,7 +229,12 @@ INSERT INTO email_link_sign_ins (
 	return nil
 }
 
-func (c *client) generateMagicLinkPayload(id *loginID, oldEmail, notifyEmail, otp string, now *time.Time, loginSessionNumber int64, clientIP net.IP) (string, error) {
+//nolint:revive //.
+func (c *client) generateMagicLinkPayload(
+	id *loginID, oldEmail, notifyEmail, otp string,
+	now *time.Time,
+	loginSessionNumber int64, clientIP net.IP,
+) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, magicLinkToken{
 		RegisteredClaims: &jwt.RegisteredClaims{
 			Issuer:    jwtIssuer,
