@@ -332,14 +332,16 @@ func (r *repository) incrementOrDecrementReferralCount(ctx context.Context, user
 			t1_today = (CASE
 				WHEN referral_acquisition_history.user_id = $1 and referral_acquisition_history.date = $5 THEN GREATEST(referral_acquisition_history.t1_today %[4]v 1,0)
 				WHEN referral_acquisition_history.user_id = $1 and referral_acquisition_history.date != $5 THEN GREATEST(0 %[4]v 1, 0)
-				ELSE referral_acquisition_history.t1_today END),
+				WHEN referral_acquisition_history.date = $5 THEN referral_acquisition_history.t1_today 
+			    ELSE 0 END),
 			t1 = (CASE
 				WHEN referral_acquisition_history.user_id = $1 THEN GREATEST(referral_acquisition_history.t1 %[3]v 1,0)
 				ELSE referral_acquisition_history.t1 END),
 			t2_today = (CASE
 			WHEN referral_acquisition_history.user_id = $6 AND referral_acquisition_history.date = $5 THEN GREATEST(referral_acquisition_history.t2_today %[4]v 1, 0)
 			WHEN referral_acquisition_history.user_id = $6 AND referral_acquisition_history.date != $5 THEN GREATEST(0 %[4]v 1, 0)
-			ELSE referral_acquisition_history.t2_today END),
+			WHEN referral_acquisition_history.date = $5 THEN referral_acquisition_history.t2_today
+		    ELSE 0 END),
 			t2 = (CASE
 			WHEN referral_acquisition_history.user_id = $6 THEN GREATEST(referral_acquisition_history.t2 %[3]v 1,0)
 			ELSE referral_acquisition_history.t2 END),
