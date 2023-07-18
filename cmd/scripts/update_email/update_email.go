@@ -61,7 +61,7 @@ func main() {
 	defer authEmailLinkClient.Close()
 
 	totalCount := getUsersForUpdateCount(db)
-	offset := uint64(argOffset)
+	offset := argOffset
 	concurrencyGuard := make(chan struct{}, concurrencyCount)
 
 	wg := new(sync.WaitGroup)
@@ -125,7 +125,8 @@ func updateMetadata(authEmailLinkClient emaillink.Client, usr *record, idx uint6
 }
 
 func updateFirebaseEmail(authClient auth.Client, usr *record, idx uint64) {
-	log.Panic(authClient.UpdateEmail(context.Background(), usr.ID, usr.ToUpdateEmail), "can't update firebase email for userID:%v, email:%v, idx:%v", usr.ID, usr.ToUpdateEmail, idx) //nolint:revive // Wrong.
+	err := authClient.UpdateEmail(context.Background(), usr.ID, usr.ToUpdateEmail)
+	log.Panic(err, "can't update firebase email for userID:%v, email:%v, idx:%v", usr.ID, usr.ToUpdateEmail, idx) //nolint:revive // Wrong.
 	firebaseUsr, err := fixture.GetUser(context.Background(), usr.ID)
 	log.Panic(errors.Wrapf(err, "can't get user by id:%v from firebase, idx:%v", usr.ID, idx))
 	if firebaseUsr.Email != usr.ToUpdateEmail {
