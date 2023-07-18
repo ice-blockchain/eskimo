@@ -263,6 +263,7 @@ type (
 	}
 	// | config holds the configuration of this package mounted from `application.yaml`.
 	config struct {
+		DisableConsumer       bool `yaml:"disableConsumer"`
 		PhoneNumberValidation struct {
 			SmsTemplate    string              `yaml:"smsTemplate"`
 			ExpirationTime stdlibtime.Duration `yaml:"expirationTime"`

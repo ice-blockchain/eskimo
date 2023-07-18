@@ -58,11 +58,13 @@ func StartProcessor(ctx context.Context, cancel context.CancelFunc) Processor {
 		pictureClient:            picture.New(applicationYamlKey, defaultProfilePictureNameRegex),
 		trackingClient:           tracking.New(applicationYamlKey),
 	}}
-	mbConsumer = messagebroker.MustConnectAndStartConsuming(context.Background(), cancel, applicationYamlKey, //nolint:contextcheck // It's intended.
-		&userSnapshotSource{processor: prc},
-		&miningSessionSource{processor: prc},
-		&userPingSource{processor: prc},
-	)
+	if !cfg.DisableConsumer {
+		mbConsumer = messagebroker.MustConnectAndStartConsuming(context.Background(), cancel, applicationYamlKey, //nolint:contextcheck // It's intended.
+			&userSnapshotSource{processor: prc},
+			&miningSessionSource{processor: prc},
+			&userPingSource{processor: prc},
+		)
+	}
 	prc.shutdown = closeAll(mbConsumer, prc.mb, prc.db, prc.DeviceMetadataRepository.Close)
 	go prc.startOldProcessedReferralsCleaner(ctx)
 
@@ -75,7 +77,10 @@ func (r *repository) Close() error {
 
 func closeAll(mbConsumer, mbProducer messagebroker.Client, db *storage.DB, otherClosers ...func() error) func() error {
 	return func() error {
-		err1 := errors.Wrap(mbConsumer.Close(), "closing message broker consumer connection failed")
+		var err1 error
+		if mbConsumer != nil {
+			err1 = errors.Wrap(mbConsumer.Close(), "closing message broker consumer connection failed")
+		}
 		err2 := errors.Wrap(db.Close(), "closing db connection failed")
 		err3 := errors.Wrap(mbProducer.Close(), "closing message broker producer connection failed")
 		errs := make([]error, 0, 1+1+1+len(otherClosers))
