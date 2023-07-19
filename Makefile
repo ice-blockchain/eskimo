@@ -56,7 +56,7 @@ generate-swagger:
 generate-swaggers:
 	go install github.com/swaggo/swag/cmd/swag@latest
 	set -xe; \
-	[ -d cmd ] && find ./cmd -mindepth 1 -maxdepth 1 -type d -print | grep -v 'fixture' | sed 's/\.\///g' | while read service; do \
+	[ -d cmd ] && find ./cmd -mindepth 1 -maxdepth 1 -type d -print | grep -v 'fixture' | grep -v 'scripts' | sed 's/\.\///g' | while read service; do \
 		env SERVICE=$${service} $(MAKE) generate-swagger; \
 	done;
 
@@ -65,7 +65,7 @@ format-swagger:
 
 format-swaggers:
 	set -xe; \
-	[ -d cmd ] && find ./cmd -mindepth 1 -maxdepth 1 -type d -print | grep -v 'fixture' | sed 's/\.\///g' | while read service; do \
+	[ -d cmd ] && find ./cmd -mindepth 1 -maxdepth 1 -type d -print | grep -v 'fixture' | grep -v 'scripts' | sed 's/\.\///g' | while read service; do \
 		env SERVICE=$${service} $(MAKE) format-swagger; \
 	done;
 
@@ -202,7 +202,7 @@ endif
 # note: it requires make-4.3+ to run that
 buildMultiPlatformDockerImage:
 	set -xe; \
-	find ./cmd -mindepth 1 -maxdepth 1 -type d -print | grep -v 'fixture' | while read service; do \
+	find ./cmd -mindepth 1 -maxdepth 1 -type d -print | grep -v 'fixture' | grep -v 'scripts' | while read service; do \
 		for arch in amd64 arm64 s390x ppc64le; do \
 			docker buildx build \
 				--platform linux/$${arch} \
