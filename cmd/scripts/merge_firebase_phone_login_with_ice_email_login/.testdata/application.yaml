@@ -31,6 +31,7 @@ auth/email-link:
     credentials:
       apiKey: # TODO: Add credentials.
 users:
+skipIp2LocationBinary: true
   disableConsumer: true
   wintr/connectors/storage/v2:
     runDDL: true
@@ -50,8 +51,6 @@ users:
         partitions: 1
         replicationFactor: 1
         retention: 1000h
-  # TODO: Pay attention to set the right path.
-  ip2LocationBinaryPath: ./users/internal/device/metadata/.testdata/IP-COUNTRY-REGION-CITY-LATITUDE-LONGITUDE-ZIPCODE-TIMEZONE-ISP-DOMAIN-NETSPEED-AREACODE-WEATHER-MOBILE-ELEVATION-USAGETYPE-SAMPLE.BIN
   wintr/auth/firebase:
     credentials:
       fileContent: # TODO: Add credentials.

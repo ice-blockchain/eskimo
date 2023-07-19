@@ -132,6 +132,7 @@ type (
 		RequiredAppVersion    string                   `yaml:"requiredAppVersion"`
 		IP2LocationBinaryPath string                   `yaml:"ip2LocationBinaryPath"`
 		messagebroker.Config  `mapstructure:",squash"` //nolint:tagliatelle // Nope.
+		SkipIP2LocationBinary bool                     `yaml:"skipIp2LocationBinary"`
 	}
 	repository struct {
 		cfg           *config

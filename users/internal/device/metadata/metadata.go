@@ -46,7 +46,7 @@ func New(db *storage.DB, mb messagebroker.Client) DeviceMetadataRepository {
 	var cfg config
 	appCfg.MustLoadFromKey(applicationYamlKey, &cfg)
 	repo := &repository{db: db, mb: mb, cfg: &cfg}
-	if mb != nil {
+	if mb != nil && !cfg.SkipIP2LocationBinary {
 		var err error
 		repo.ip2LocationDB, err = ip2location.OpenDB(cfg.IP2LocationBinaryPath)
 		log.Panic(errors.Wrap(err, "unable to open ip2location database"))
