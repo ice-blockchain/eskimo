@@ -5,6 +5,7 @@ package users
 import (
 	"context"
 	"fmt"
+	"math"
 	"math/rand"
 	"strconv"
 	"strings"
@@ -315,11 +316,10 @@ func (r *repository) incrementOrDecrementReferralCount(ctx context.Context, user
 	if t0Date == nil {
 		t0Date = nowMidnight
 	}
-	shiftDays := int16(nowMidnight.Sub(*storedDate.Time).Nanoseconds() / int64(hoursInOneDay*stdlibtime.Hour))
-	if shiftDays > maxDaysReferralsHistory {
-		shiftDays = maxDaysReferralsHistory
-	}
-	shiftDatesFields := r.genShiftDaysSQLFields(shiftDays, daysBetweenCreationAndDeletion)
+	shiftDays := int16(math.Min(float64(nowMidnight.Sub(*storedDate.Time).Nanoseconds()/int64(hoursInOneDay*stdlibtime.Hour)), maxDaysReferralsHistory))
+	shiftDaysT0 := int16(math.Min(float64(nowMidnight.Sub(*t0Date.Time).Nanoseconds()/int64(hoursInOneDay*stdlibtime.Hour)), maxDaysReferralsHistory))
+
+	shiftDatesFields := r.genShiftDaysSQLFields(shiftDays, shiftDaysT0, daysBetweenCreationAndDeletion)
 	t0UpdateTrigger := ""
 	if t0UserID != "" {
 		t0UpdateTrigger = ",\n\t\t\t       ($6, $5, 1, 1, 1, 1)"
@@ -362,40 +362,63 @@ func (r *repository) incrementOrDecrementReferralCount(ctx context.Context, user
 	return errors.Wrapf(err, "failed to increment referral counts for userID %v", userID)
 }
 
-func (r *repository) genShiftDaysSQLFields(shiftDays, daysBetweenUserCreationAndDeletion int16) string {
-	if shiftDays == 0 && (daysBetweenUserCreationAndDeletion <= 0 || daysBetweenUserCreationAndDeletion >= maxDaysReferralsHistory) {
+func (r *repository) genShiftDaysSQLFields(shiftDays, t0ShiftDays, daysBetweenUserCreationAndDeletion int16) string {
+	if shiftDays == 0 && t0ShiftDays == 0 && (daysBetweenUserCreationAndDeletion <= 0 || daysBetweenUserCreationAndDeletion >= maxDaysReferralsHistory) {
 		return ""
 	}
 
 	return fmt.Sprintf(", %v,\n %v",
-		r.generateReferralsShiftDaysSQL(Tier1Referrals, shiftDays, daysBetweenUserCreationAndDeletion),
-		r.generateReferralsShiftDaysSQL(Tier2Referrals, shiftDays, daysBetweenUserCreationAndDeletion),
+		r.generateReferralsShiftDaysSQL(Tier1Referrals, shiftDays, t0ShiftDays, daysBetweenUserCreationAndDeletion),
+		r.generateReferralsShiftDaysSQL(Tier2Referrals, shiftDays, t0ShiftDays, daysBetweenUserCreationAndDeletion),
 	)
 }
 
-func (*repository) generateReferralsShiftDaysSQL(refType ReferralType, daysLag, daysBetweenUserCreationAndDeletion int16) string {
+func (r *repository) generateReferralsShiftDaysSQL(refType ReferralType, daysLag, t0daysLag, daysBetweenUserCreationAndDeletion int16) string {
 	updateStatements := []string{}
 	for currDay := int16(1); currDay <= maxDaysReferralsHistory-1; currDay++ {
 		diff := currDay - daysLag
+		diffT0 := currDay - t0daysLag
 		decrementDueToUserDeletion := ""
 		if currDay == daysBetweenUserCreationAndDeletion {
 			decrementDueToUserDeletion = " - 1"
 		}
-		targetField := fmt.Sprintf("referral_acquisition_history.%v_today_minus_%v", refType, diff)
-		if diff == 0 {
-			targetField = fmt.Sprintf("referral_acquisition_history.%v_today", refType)
-		} else if diff < 0 {
-			targetField = "0"
+		targetFieldT0 := r.findTargetField(refType, diffT0, t0daysLag, currDay, decrementDueToUserDeletion)
+		targetField := r.findTargetField(refType, diff, daysLag, currDay, decrementDueToUserDeletion)
+		field := ""
+		switch {
+		case targetFieldT0 != "" && targetField != "":
+			field = fmt.Sprintf(
+				"%[1]v_today_minus_%[2]v = (CASE WHEN referral_acquisition_history.user_id = $1 THEN GREATEST(%[3]v %[4]v,0) ELSE GREATEST(%[5]v %[4]v,0) END)",
+				refType, currDay, targetField, decrementDueToUserDeletion, targetFieldT0,
+			)
+		case targetFieldT0 != "":
+			field = fmt.Sprintf("%v_today_minus_%v = GREATEST(%v %v,0)", refType, currDay, targetFieldT0, decrementDueToUserDeletion)
+		case targetField != "":
+			field = fmt.Sprintf("%v_today_minus_%v = GREATEST(%v %v,0)", refType, currDay, targetField, decrementDueToUserDeletion)
 		}
-		if daysLag == 0 && decrementDueToUserDeletion != "" { // If we dont need to shift, but to sub 1, due to user deletion, subtract it from the same field.
-			targetField = fmt.Sprintf("referral_acquisition_history.%v_today_minus_%v", refType, currDay)
-		} else if daysLag == 0 {
+		if field == "" {
 			continue
 		}
-		updateStatements = append(updateStatements, fmt.Sprintf("%v_today_minus_%v = GREATEST(%v %v,0)", refType, currDay, targetField, decrementDueToUserDeletion))
+		updateStatements = append(updateStatements, field)
 	}
 
 	return strings.Join(updateStatements, ",\n")
+}
+
+func (*repository) findTargetField(refType ReferralType, diff, daysLag, currDay int16, decrementDueToUserDeletion string) string {
+	targetField := fmt.Sprintf("referral_acquisition_history.%v_today_minus_%v", refType, diff)
+	if diff == 0 {
+		targetField = fmt.Sprintf("referral_acquisition_history.%v_today", refType)
+	} else if diff < 0 {
+		targetField = "0"
+	}
+	if daysLag == 0 && decrementDueToUserDeletion != "" { // If we dont need to shift, but to sub 1, due to user deletion, subtract it from the same field.
+		targetField = fmt.Sprintf("referral_acquisition_history.%v_today_minus_%v", refType, currDay)
+	} else if daysLag == 0 {
+		return ""
+	}
+
+	return targetField
 }
 
 func (p *processor) startOldProcessedReferralsCleaner(ctx context.Context) {
