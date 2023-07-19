@@ -5,7 +5,6 @@ package main
 import (
 	"context"
 	_ "embed"
-	"flag"
 	"fmt"
 	"sync"
 
@@ -37,17 +36,13 @@ var (
 
 type (
 	record struct {
-		Email *string `json:"email" example:"example@gmail.com"`
-		ID    string  `json:"id" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
+		Email string `json:"email" example:"example@gmail.com"`
+		ID    string `json:"id" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
 	}
 )
 
 //nolint:funlen // Concurrency logic.
 func main() {
-	var argOffset uint64
-	flag.Uint64Var(&argOffset, "offset", 0, "starting offset")
-	flag.Parse()
-
 	usersProcessor := users.StartProcessor(context.Background(), func() {})
 	authClient := auth.New(context.Background(), applicationYamlAuthKey)
 	authEmailLinkClient := emaillink.NewClient(context.Background(), usersProcessor, authClient)
@@ -56,7 +51,7 @@ func main() {
 	defer usersProcessor.Close()
 	defer authEmailLinkClient.Close()
 
-	offset := argOffset
+	offset := uint64(0)
 	concurrencyGuard := make(chan struct{}, concurrencyCount)
 	wg := new(sync.WaitGroup)
 	for {
@@ -68,11 +63,7 @@ func main() {
 		}
 		wg.Add(len(records))
 		for idx, record := range records {
-			if record.Email == nil {
-				continue
-			}
 			index := uint64(idx) + offset
-
 			concurrencyGuard <- struct{}{}
 			usr := record
 			go func() {
@@ -81,7 +72,7 @@ func main() {
 				updateMetadata(authEmailLinkClient, usr, index)
 				updateFirebaseEmail(authClient, usr, index)
 				<-concurrencyGuard
-				log.Info(fmt.Sprintf("rows processed %v/%v", index, len(records)))
+				log.Info(fmt.Sprintf("rows processed %v/%v", index+1, len(records)))
 			}()
 		}
 		offset += defaultLimit
@@ -96,7 +87,7 @@ func updateDBEmail(usersProcessor users.Processor, usr *record, idx uint64) {
 		},
 		PrivateUserInformation: users.PrivateUserInformation{
 			SensitiveUserInformation: users.SensitiveUserInformation{
-				Email: *usr.Email,
+				Email: usr.Email,
 			},
 		},
 	}
@@ -110,7 +101,7 @@ func updateMetadata(authEmailLinkClient emaillink.Client, usr *record, idx uint6
 	})
 	_, err := authEmailLinkClient.UpdateMetadata(context.Background(), usr.ID, &md)
 	log.Panic(errors.Wrapf(err, "can't update metadata for userID:%v, idx:%v", usr.ID, idx)) //nolint:revive // Wrong.
-	_, mdJSON, err := authEmailLinkClient.Metadata(context.Background(), usr.ID, *usr.Email)
+	_, mdJSON, err := authEmailLinkClient.Metadata(context.Background(), usr.ID, usr.Email)
 	log.Panic(errors.Wrapf(err, "can't get user's:%v metadata, idx:%v", usr.ID, idx))
 	if mdJSON == nil || (*mdJSON)[auth.RegisteredWithProviderClaim] != auth.ProviderFirebase ||
 		(*mdJSON)[auth.FirebaseIDClaim] != usr.ID {
@@ -119,11 +110,11 @@ func updateMetadata(authEmailLinkClient emaillink.Client, usr *record, idx uint6
 }
 
 func updateFirebaseEmail(authClient auth.Client, usr *record, idx uint64) {
-	err := authClient.UpdateEmail(context.Background(), usr.ID, *usr.Email)
+	err := authClient.UpdateEmail(context.Background(), usr.ID, usr.Email)
 	log.Panic(errors.Wrapf(err, "can't update firebase email for userID:%v, email:%v, idx:%v", usr.ID, usr.Email, idx)) //nolint:revive // Wrong.
 	firebaseUsr, err := fixture.GetUser(context.Background(), usr.ID)
 	log.Panic(errors.Wrapf(err, "can't get user by id:%v from firebase, idx:%v", usr.ID, idx))
-	if firebaseUsr.Email != *usr.Email {
+	if firebaseUsr.Email != usr.Email {
 		log.Panic(errors.Wrapf(errFirebaseEmailMismatch, "firebase emails mismatch, db:%v, firebase:%v, idx:%v", usr.Email, firebaseUsr.Email, idx))
 	}
 }
@@ -134,9 +125,9 @@ func getUsersToMerge(db *storage.DB, limit, offset uint64) []*record {
 				u.id,
 				m.email
 			FROM merge_firebase_phone_login_with_ice_email_login m
-				RIGHT JOIN users u
+				JOIN users u
 					ON u.email != m.email
-					AND m.phone_number = u.phone_number
+					   AND m.phone_number = u.phone_number
 			ORDER BY m.created_at ASC
 			LIMIT $1 OFFSET $2`
 	result, err := storage.Select[record](context.Background(), db, sql, params...)
