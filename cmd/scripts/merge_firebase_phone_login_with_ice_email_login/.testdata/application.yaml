@@ -31,7 +31,7 @@ auth/email-link:
     credentials:
       apiKey: # TODO: Add credentials.
 users:
-skipIp2LocationBinary: true
+  skipIp2LocationBinary: true
   disableConsumer: true
   wintr/connectors/storage/v2:
     runDDL: true
