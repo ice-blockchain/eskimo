@@ -1,0 +1,64 @@
+# SPDX-License-Identifier: ice License 1.0
+
+development: true
+logger:
+  encoder: console
+  level: info
+auth/email-link:
+  wintr/connectors/storage/v2:
+    runDDL: true
+    primaryURL: postgresql://root:pass@localhost:5433/eskimo # TODO: Change.
+    credentials: # TODO: Change.
+      user: root
+      password: pass
+    replicaURLs:
+      - postgresql://root:pass@localhost:5433/eskimo # TODO: Change.
+  fromEmailAddress: bogus
+  fromEmailName: bogus
+  emailValidation:
+    authLink: bogus
+    jwtSecret: bogus
+    expirationTime: 1s
+    blockDuration: 1s
+  loginSession:
+    jwtSecret: bogus
+  confirmationCode:
+    maxWrongAttemptsCount: 1
+  wintr/auth/firebase:
+    credentials:
+      fileContent: # TODO: Add credentials.
+  wintr/email:
+    credentials:
+      apiKey: # TODO: Add credentials.
+users:
+  skipIp2LocationBinary: true
+  disableConsumer: true
+  wintr/connectors/storage/v2:
+    runDDL: true
+    primaryURL: postgresql://root:pass@localhost:5433/eskimo # TODO: Change.
+    credentials: # TODO: Change credentials.
+      user: root     
+      password: pass
+    replicaURLs:
+      - postgresql://root:pass@localhost:5433/eskimo # TODO: Change.
+  messageBroker:
+    consumerGroup: bogus
+    createTopics: false
+    urls:
+      - localhost:9092 # TODO: Change.
+    topics:
+      - name: eskimo-health-check
+        partitions: 1
+        replicationFactor: 1
+        retention: 1000h
+  wintr/auth/firebase:
+    credentials:
+      fileContent: # TODO: Add credentials.
+  wintr/email:
+    credentials:
+      apiKey: # TODO: Change credentials.
+  wintr/analytics/tracking:
+    baseUrl: https://api-02.moengage.com
+    credentials:
+      appId: # TODO: Add credentials.
+      apiKey: # TODO: Add credentials.

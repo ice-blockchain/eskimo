@@ -280,5 +280,6 @@ type (
 			Parent                   stdlibtime.Duration `yaml:"parent"`
 			Child                    stdlibtime.Duration `yaml:"child"`
 		} `yaml:"globalAggregationInterval"`
+		DisableConsumer bool `yaml:"disableConsumer"`
 	}
 )

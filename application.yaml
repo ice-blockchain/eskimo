@@ -49,6 +49,7 @@ auth/email-link:
   confirmationCode:
     maxWrongAttemptsCount: 3
 users: &users
+  disableConsumer: false
   wintr/connectors/storage/v2:
     runDDL: true
     primaryURL: postgresql://root:pass@localhost:5433/eskimo
