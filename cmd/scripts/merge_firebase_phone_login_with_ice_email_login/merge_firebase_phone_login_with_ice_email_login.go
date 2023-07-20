@@ -63,11 +63,6 @@ func main() {
 		for idx, record := range records {
 			index := uint64(idx) + offset
 			usr := record
-			if usr.CurrentEmail != usr.ID {
-				log.Info(fmt.Sprintf("user:%v has already had the email:%v, rows processed %v/%v", record.ID, usr.CurrentEmail, index+1, len(records)))
-
-				continue
-			}
 			wg.Add(1)
 			concurrencyGuard <- struct{}{}
 			go func() {
@@ -95,7 +90,12 @@ func updateDBEmail(usersProcessor users.Processor, usr *record, idx uint64) {
 			},
 		},
 	}
-	log.Panic(errors.Wrapf(usersProcessor.ModifyUser(context.Background(), &updUsr, nil), "can't modify eskimo user: %#v, idx:%v", updUsr, idx))
+	err := usersProcessor.ModifyUser(context.Background(), &updUsr, nil)
+	if errors.Is(err, users.ErrDuplicate) {
+		log.Error(errors.Errorf("duplicate email: id:%v, email:%v", usr.ID, usr.Email))
+	} else {
+		log.Panic(errors.Wrapf(err, "can't modify eskimo user: %#v, idx:%v", updUsr, idx))
+	}
 }
 
 func updateMetadata(authEmailLinkClient emaillink.Client, usr *record, idx uint64) {
@@ -113,9 +113,13 @@ func updateMetadata(authEmailLinkClient emaillink.Client, usr *record, idx uint6
 
 func updateFirebaseEmail(authClient auth.Client, usr *record, idx uint64) {
 	err := authClient.UpdateEmail(context.Background(), usr.ID, usr.Email)
-	log.Panic(errors.Wrapf(err, "can't update firebase email for userID:%v, email:%v, idx:%v", usr.ID, usr.Email, idx)) //nolint:revive // Wrong.
+	if errors.Is(err, auth.ErrConflict) {
+		log.Error(errors.Errorf("duplicate email[firebase]: id:%v, email:%v", usr.ID, usr.Email))
+	} else {
+		log.Panic(errors.Wrapf(err, "can't update firebase email for userID:%v, email:%v, idx:%v", usr.ID, usr.Email, idx))
+	}
 	firebaseUsr, err := fixture.GetUser(context.Background(), usr.ID)
-	log.Panic(errors.Wrapf(err, "can't get user by id:%v from firebase, idx:%v", usr.ID, idx))
+	log.Panic(errors.Wrapf(err, "can't get user by id:%v from firebase, idx:%v", usr.ID, idx)) //nolint:revive // Intended.
 	if firebaseUsr.Email != usr.Email {
 		log.Panic(errors.Wrapf(errFirebaseEmailMismatch, "firebase emails mismatch, db:%v, firebase:%v, idx:%v", usr.Email, firebaseUsr.Email, idx))
 	}
@@ -129,7 +133,7 @@ func getUsersToMerge(db *storage.DB, limit, offset uint64) []*record {
 				u.email AS current_email
 			FROM merge_firebase_phone_login_with_ice_email_login m
 				JOIN users u
-					ON u.email != m.email
+					ON (u.email = u.id OR u.email = m.email)
 					   AND m.phone_number = u.phone_number
 			ORDER BY m.created_at ASC
 			LIMIT $1 OFFSET $2`
