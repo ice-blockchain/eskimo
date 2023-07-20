@@ -212,8 +212,8 @@ func (r *repository) GetReferralAcquisitionHistory(ctx context.Context, userID s
 		}
 		result[ind] = &ReferralAcquisition{
 			Date: date,
-			T1:   uint64(orderOfDaysT1[0]),
-			T2:   uint64(orderOfDaysT2[0]),
+			T1:   uint64(0),
+			T2:   uint64(0),
 		}
 	}
 	for day := elapsedDaysSinceLastRefCountsUpdate; day < maxDaysReferralsHistory; day++ {
