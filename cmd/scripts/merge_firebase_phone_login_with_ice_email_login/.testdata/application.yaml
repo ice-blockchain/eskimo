@@ -43,12 +43,16 @@ users:
       - postgresql://root:pass@localhost:5433/eskimo # TODO: Change.
   messageBroker:
     consumerGroup: bogus
-    createTopics: false
+    createTopics: true
     urls:
       - localhost:9092 # TODO: Change.
     topics:
       - name: eskimo-health-check
         partitions: 1
+        replicationFactor: 1
+        retention: 1000h
+      - name: users-table
+        partitions: 10
         replicationFactor: 1
         retention: 1000h
   wintr/auth/firebase:

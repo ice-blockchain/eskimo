@@ -36,8 +36,9 @@ var (
 
 type (
 	record struct {
-		Email string `json:"email" example:"example@gmail.com"`
-		ID    string `json:"id" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
+		Email        string `json:"email" example:"example@gmail.com"`
+		CurrentEmail string `json:"currentEmail" example:"example@gmail.com"`
+		ID           string `json:"id" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
 	}
 )
 
@@ -57,23 +58,26 @@ func main() {
 	for {
 		records := getUsersToMerge(db, defaultLimit, offset)
 		if len(records) == 0 {
-			log.Info("nothing to handle")
-
 			break
 		}
-		wg.Add(len(records))
 		for idx, record := range records {
 			index := uint64(idx) + offset
-			concurrencyGuard <- struct{}{}
 			usr := record
+			if usr.CurrentEmail != usr.ID {
+				log.Info(fmt.Sprintf("user:%v has already had the email:%v, rows processed %v/%v", record.ID, usr.CurrentEmail, index+1, len(records)))
+
+				continue
+			}
+			wg.Add(1)
+			concurrencyGuard <- struct{}{}
 			go func() {
 				defer wg.Done()
 				updateDBEmail(usersProcessor, usr, index)
 				updateMetadata(authEmailLinkClient, usr, index)
 				updateFirebaseEmail(authClient, usr, index)
 				<-concurrencyGuard
-				log.Info(fmt.Sprintf("rows processed %v/%v", index+1, len(records)))
 			}()
+			log.Info(fmt.Sprintf("rows processed %v/%v", index+1, len(records)))
 		}
 		offset += defaultLimit
 	}
@@ -99,10 +103,8 @@ func updateMetadata(authEmailLinkClient emaillink.Client, usr *record, idx uint6
 		auth.RegisteredWithProviderClaim: auth.ProviderFirebase,
 		auth.FirebaseIDClaim:             usr.ID,
 	})
-	_, err := authEmailLinkClient.UpdateMetadata(context.Background(), usr.ID, &md)
+	mdJSON, err := authEmailLinkClient.UpdateMetadata(context.Background(), usr.ID, &md)
 	log.Panic(errors.Wrapf(err, "can't update metadata for userID:%v, idx:%v", usr.ID, idx)) //nolint:revive // Wrong.
-	_, mdJSON, err := authEmailLinkClient.Metadata(context.Background(), usr.ID, usr.Email)
-	log.Panic(errors.Wrapf(err, "can't get user's:%v metadata, idx:%v", usr.ID, idx))
 	if mdJSON == nil || (*mdJSON)[auth.RegisteredWithProviderClaim] != auth.ProviderFirebase ||
 		(*mdJSON)[auth.FirebaseIDClaim] != usr.ID {
 		log.Panic(errors.Wrapf(errMetadataMismatch, "metadata mismatch, metadata:%#v, added:%#v, idx:%v", mdJSON, md, idx))
@@ -123,7 +125,8 @@ func getUsersToMerge(db *storage.DB, limit, offset uint64) []*record {
 	params := []any{limit, offset}
 	sql := `SELECT 
 				u.id,
-				m.email
+				m.email,
+				u.email AS current_email
 			FROM merge_firebase_phone_login_with_ice_email_login m
 				JOIN users u
 					ON u.email != m.email
