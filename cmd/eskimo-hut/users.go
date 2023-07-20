@@ -6,7 +6,6 @@ import (
 	"context"
 	"fmt"
 	"mime/multipart"
-	"net"
 	"net/textproto"
 	"strings"
 
@@ -122,22 +121,22 @@ func validateCreateUser(req *server.Request[CreateUserRequestBody, User]) *serve
 //	@Tags			Accounts
 //	@Accept			multipart/form-data
 //	@Produce		json
-//	@Param			X-Forwarded-For		header		string					false	"Client IP"
-//	@Param			Authorization		header		string					true	"Insert your access token"		default(Bearer <Add access token here>)
-//	@Param			X-Account-Metadata	header		string					false	"Insert your metadata token"	default(<Add metadata token here>)
-//	@Param			userId				path		string					true	"ID of the user"
-//	@Param			multiPartFormData	formData	ModifyUserRequestBody	true	"Request params"
-//	@Param			profilePicture		formData	file					false	"The new profile picture for the user"
-//	@Success		200					{object}	ModifyUserResponse
-//	@Failure		400					{object}	server.ErrorResponse	"if validations fail or user for modification email is blocked"
-//	@Failure		401					{object}	server.ErrorResponse	"if not authorized"
-//	@Failure		403					{object}	server.ErrorResponse	"not allowed"
-//	@Failure		404					{object}	server.ErrorResponse	"user is not found; or the referred by is not found"
-//	@Failure		409					{object}	server.ErrorResponse	"if username, email or phoneNumber conflict with another user's"
-//	@Failure		422					{object}	server.ErrorResponse	"if syntax fails"
-//	@Failure		500					{object}	server.ErrorResponse
-//	@Failure		504					{object}	server.ErrorResponse	"if request times out"
-//	@Router			/users/{userId} [PATCH].
+
+// @Param		Authorization		header		string					true	"Insert your access token"		default(Bearer <Add access token here>)
+// @Param		X-Account-Metadata	header		string					false	"Insert your metadata token"	default(<Add metadata token here>)
+// @Param		userId				path		string					true	"ID of the user"
+// @Param		multiPartFormData	formData	ModifyUserRequestBody	true	"Request params"
+// @Param		profilePicture		formData	file					false	"The new profile picture for the user"
+// @Success	200					{object}	ModifyUserResponse
+// @Failure	400					{object}	server.ErrorResponse	"if validations fail or user for modification email is blocked"
+// @Failure	401					{object}	server.ErrorResponse	"if not authorized"
+// @Failure	403					{object}	server.ErrorResponse	"not allowed"
+// @Failure	404					{object}	server.ErrorResponse	"user is not found; or the referred by is not found"
+// @Failure	409					{object}	server.ErrorResponse	"if username, email or phoneNumber conflict with another user's"
+// @Failure	422					{object}	server.ErrorResponse	"if syntax fails"
+// @Failure	500					{object}	server.ErrorResponse
+// @Failure	504					{object}	server.ErrorResponse	"if request times out"
+// @Router		/users/{userId} [PATCH].
 func (s *service) ModifyUser( //nolint:gocritic,funlen,revive,cyclop,gocognit,gocyclo // .
 	ctx context.Context,
 	req *server.Request[ModifyUserRequestBody, ModifyUserResponse],
@@ -148,7 +147,7 @@ func (s *service) ModifyUser( //nolint:gocritic,funlen,revive,cyclop,gocognit,go
 	usr := buildUserForModification(req)
 	var err error
 	var loginSession string
-	if usr.Email, loginSession, err = s.emailUpdateRequested(ctx, &req.AuthenticatedUser, usr.Email, req.ClientIP); err != nil {
+	if usr.Email, loginSession, err = s.emailUpdateRequested(ctx, &req.AuthenticatedUser, usr.Email); err != nil {
 		switch {
 		case errors.Is(err, users.ErrNotFound):
 			return nil, server.NotFound(errors.Wrapf(err, "user with id `%v` was not found", req.AuthenticatedUser.UserID), userNotFoundErrorCode)
@@ -157,10 +156,6 @@ func (s *service) ModifyUser( //nolint:gocritic,funlen,revive,cyclop,gocognit,go
 		case errors.Is(err, emaillink.ErrUserDuplicate):
 			if tErr := terror.As(err); tErr != nil {
 				return nil, server.Conflict(err, duplicateUserErrorCode, tErr.Data)
-			}
-		case errors.Is(err, emaillink.ErrConfirmationInProgress):
-			if tErr := terror.As(err); tErr != nil {
-				return nil, server.Conflict(err, confirmationAlreadyInProgress, tErr.Data)
 			}
 		default:
 			return nil, server.Unexpected(errors.Wrapf(err, "failed to trigger email modification for request:%#v", req.Data))
@@ -217,7 +212,6 @@ func (s *service) emailUpdateRequested(
 	ctx context.Context,
 	loggedInUser *server.AuthenticatedUser,
 	newEmail string,
-	clientIP net.IP,
 ) (emailForUpdate, loginSession string, err error) {
 	if newEmail == "" || newEmail == loggedInUser.Email {
 		return "", "", nil
@@ -238,7 +232,7 @@ func (s *service) emailUpdateRequested(
 
 	if loginSession, err = s.authEmailLinkClient.SendSignInLinkToEmail(
 		users.ConfirmedEmailContext(ctx, loggedInUser.Email),
-		newEmail, deviceID, language, clientIP,
+		newEmail, deviceID, language, "",
 	); err != nil {
 		return "", "", errors.Wrapf(err, "can't send sign in link to email:%v", newEmail)
 	}

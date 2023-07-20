@@ -39,6 +39,7 @@ func (s *service) setupAuthRoutes(router *server.Router) {
 //	@Param			request			body		SendSignInLinkToEmailRequestArg	true	"Request params"
 //	@Param			X-Forwarded-For	header		string							false	"Client IP"	default(1.1.1.1)
 //	@Success		200				{object}	Auth
+//	@Success		403				{object}	server.ErrorResponse	"if too many pending auth requests from one IP"
 //	@Failure		409				{object}	server.ErrorResponse	"if email conflicts with another user's"
 //	@Failure		422				{object}	server.ErrorResponse	"if syntax fails"
 //	@Failure		500				{object}	server.ErrorResponse
@@ -52,7 +53,7 @@ func (s *service) SendSignInLinkToEmail( //nolint:gocritic // .
 	if _, err := mail.ParseAddress(email); err != nil {
 		return nil, server.BadRequest(err, invalidEmail)
 	}
-	loginSession, err := s.authEmailLinkClient.SendSignInLinkToEmail(ctx, email, req.Data.DeviceUniqueID, req.Data.Language, req.ClientIP)
+	loginSession, err := s.authEmailLinkClient.SendSignInLinkToEmail(ctx, email, req.Data.DeviceUniqueID, req.Data.Language, req.ClientIP.String())
 	if err != nil {
 		switch {
 		case errors.Is(err, emaillink.ErrUserBlocked):
@@ -63,9 +64,9 @@ func (s *service) SendSignInLinkToEmail( //nolint:gocritic // .
 			if tErr := terror.As(err); tErr != nil {
 				return nil, server.Conflict(err, duplicateUserErrorCode, tErr.Data)
 			}
-		case errors.Is(err, emaillink.ErrConfirmationInProgress):
+		case errors.Is(err, emaillink.ErrTooManyAttempts):
 			if tErr := terror.As(err); tErr != nil {
-				return nil, server.Conflict(err, confirmationAlreadyInProgress, tErr.Data)
+				return nil, server.ForbiddenWithCode(err, tooManyRequests, tErr.Data)
 			}
 		default:
 			return nil, server.Unexpected(errors.Wrapf(err, "failed to start email link auth %#v", req.Data))
@@ -81,20 +82,19 @@ func (s *service) SendSignInLinkToEmail( //nolint:gocritic // .
 //	@Description	Finishes login flow using magic link
 //	@Tags			Auth
 //	@Produce		json
-//	@Param			X-Forwarded-For	header		string				false	"Client IP"	default(1.1.1.1)
-//	@Param			request			body		MagicLinkPayload	true	"Request params"
-//	@Success		200				{object}	any
-//	@Failure		400				{object}	server.ErrorResponse	"if invalid or expired payload provided"
-//	@Failure		404				{object}	server.ErrorResponse	"if email does not need to be confirmed by magic link"
-//	@Failure		422				{object}	server.ErrorResponse	"if syntax fails"
-//	@Failure		500				{object}	server.ErrorResponse
-//	@Failure		504				{object}	server.ErrorResponse	"if request times out"
+//	@Param			request	body		MagicLinkPayload	true	"Request params"
+//	@Success		200		{object}	any
+//	@Failure		400		{object}	server.ErrorResponse	"if invalid or expired payload provided"
+//	@Failure		404		{object}	server.ErrorResponse	"if email does not need to be confirmed by magic link"
+//	@Failure		422		{object}	server.ErrorResponse	"if syntax fails"
+//	@Failure		500		{object}	server.ErrorResponse
+//	@Failure		504		{object}	server.ErrorResponse	"if request times out"
 //	@Router			/auth/signInWithEmailLink [POST].
 func (s *service) SignIn( //nolint:gocritic //.
 	ctx context.Context,
 	req *server.Request[MagicLinkPayload, any],
 ) (*server.Response[any], *server.Response[server.ErrorResponse]) {
-	if err := s.authEmailLinkClient.SignIn(ctx, req.Data.EmailToken, req.Data.ConfirmationCode, req.ClientIP); err != nil {
+	if err := s.authEmailLinkClient.SignIn(ctx, req.Data.EmailToken, req.Data.ConfirmationCode); err != nil {
 		err = errors.Wrapf(err, "finish login using magic link failed for %#v", req.Data)
 		switch {
 		case errors.Is(err, users.ErrRaceCondition):

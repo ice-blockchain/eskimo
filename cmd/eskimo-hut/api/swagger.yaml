@@ -480,6 +480,10 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/main.Auth'
+        "403":
+          description: if too many pending auth requests from one IP
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
         "409":
           description: if email conflicts with another user's
           schema:
@@ -502,11 +506,6 @@ paths:
     post:
       description: Finishes login flow using magic link
       parameters:
-      - default: 1.1.1.1
-        description: Client IP
-        in: header
-        name: X-Forwarded-For
-        type: string
       - description: Request params
         in: body
         name: request
@@ -663,14 +662,7 @@ paths:
       tags:
       - Accounts
     patch:
-      consumes:
-      - multipart/form-data
-      description: Modifies an user account
       parameters:
-      - description: Client IP
-        in: header
-        name: X-Forwarded-For
-        type: string
       - default: Bearer <Add access token here>
         description: Insert your access token
         in: header
@@ -767,8 +759,6 @@ paths:
         in: formData
         name: profilePicture
         type: file
-      produces:
-      - application/json
       responses:
         "200":
           description: OK
@@ -806,8 +796,6 @@ paths:
           description: if request times out
           schema:
             $ref: '#/definitions/server.ErrorResponse'
-      tags:
-      - Accounts
   /users/{userId}/devices/{deviceUniqueId}/metadata:
     put:
       consumes:

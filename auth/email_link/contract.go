@@ -7,7 +7,6 @@ import (
 	"embed"
 	"io"
 	"mime/multipart"
-	"net"
 	"text/template"
 	stdlibtime "time"
 
@@ -29,8 +28,8 @@ type (
 	}
 	Client interface {
 		IceUserIDClient
-		SendSignInLinkToEmail(ctx context.Context, emailValue, deviceUniqueID, language string, clientIP net.IP) (loginSession string, err error)
-		SignIn(ctx context.Context, emailLinkPayload, confirmationCode string, clientIP net.IP) error
+		SendSignInLinkToEmail(ctx context.Context, emailValue, deviceUniqueID, language, clientIP string) (loginSession string, err error)
+		SignIn(ctx context.Context, emailLinkPayload, confirmationCode string) error
 		RegenerateTokens(ctx context.Context, prevToken string) (tokens *Tokens, err error)
 		Status(ctx context.Context, loginSession string) (tokens *Tokens, emailConfirmed bool, err error)
 		UpdateMetadata(ctx context.Context, userID string, metadata *users.JSON) (*users.JSON, error)
@@ -64,7 +63,7 @@ var (
 	ErrStatusNotVerified                = errors.New("not verified")
 	ErrNoPendingLoginSession            = errors.New("no pending login session")
 	ErrUserBlocked                      = errors.New("user is blocked")
-	ErrConfirmationInProgress           = errors.New("confirmation in progress")
+	ErrTooManyAttempts                  = errors.New("too many attempts")
 )
 
 // Private API.
@@ -82,6 +81,8 @@ const (
 
 	textExtension = "txt"
 	htmlExtension = "html"
+
+	sameIPCheckRate = stdlibtime.Hour
 )
 
 type (
@@ -101,12 +102,10 @@ type (
 			JwtSecret string `yaml:"jwtSecret"`
 		} `yaml:"loginSession"`
 		EmailValidation struct {
-			AuthLink              string              `yaml:"authLink"`
-			JwtSecret             string              `yaml:"jwtSecret"`
-			ExpirationTime        stdlibtime.Duration `yaml:"expirationTime" mapstructure:"expirationTime"`
-			BlockDuration         stdlibtime.Duration `yaml:"blockDuration"`
-			SameIPRateCheckPeriod stdlibtime.Duration `yaml:"sameIpRateCheckPeriod"`
-			MaxRequestsFromIP     int64               `yaml:"maxRequestsFromIP"` //nolint:tagliatelle // .
+			AuthLink       string              `yaml:"authLink"`
+			JwtSecret      string              `yaml:"jwtSecret"`
+			ExpirationTime stdlibtime.Duration `yaml:"expirationTime" mapstructure:"expirationTime"`
+			BlockDuration  stdlibtime.Duration `yaml:"blockDuration"`
 		} `yaml:"emailValidation"`
 		ConfirmationCode struct {
 			MaxWrongAttemptsCount int64 `yaml:"maxWrongAttemptsCount"`
@@ -118,17 +117,17 @@ type (
 	}
 	magicLinkToken struct {
 		*jwt.RegisteredClaims
-		OTP                string `json:"otp" example:"c8f64979-9cea-4649-a89a-35607e734e68"`
-		OldEmail           string `json:"oldEmail,omitempty"`
-		NotifyEmail        string `json:"notifyEmail,omitempty"`
-		DeviceUniqueID     string `json:"deviceUniqueId,omitempty"`
-		ClientIP           string `json:"clientIP,omitempty"` //nolint:tagliatelle //.
-		LoginSessionNumber int64  `json:"loginSessionNumber,omitempty"`
+		OTP            string `json:"otp" example:"c8f64979-9cea-4649-a89a-35607e734e68"`
+		OldEmail       string `json:"oldEmail,omitempty"`
+		NotifyEmail    string `json:"notifyEmail,omitempty"`
+		DeviceUniqueID string `json:"deviceUniqueId,omitempty"`
 	}
 	loginFlowToken struct {
 		*jwt.RegisteredClaims
-		DeviceUniqueID   string `json:"deviceUniqueId,omitempty"`
-		ConfirmationCode string `json:"confirmationCode,omitempty"`
+		DeviceUniqueID     string `json:"deviceUniqueId,omitempty"`
+		ConfirmationCode   string `json:"confirmationCode,omitempty"`
+		ClientIP           string `json:"clientIP,omitempty"` //nolint:tagliatelle //.
+		LoginSessionNumber int64  `json:"loginSessionNumber,omitempty"`
 	}
 	emailLinkSignIn struct {
 		CreatedAt                          *time.Time
@@ -137,7 +136,6 @@ type (
 		EmailConfirmedAt                   *time.Time
 		Metadata                           *users.JSON `json:"metadata,omitempty"`
 		UserID                             *string     `json:"userId" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
-		IP                                 string      `json:"ip" db:"ip"`
 		Email                              string      `json:"email,omitempty" example:"someone1@example.com"`
 		OTP                                string      `json:"otp,omitempty" example:"207d0262-2554-4df9-b954-08cb42718b25"`
 		Language                           string      `json:"language,omitempty" example:"en"`
@@ -147,8 +145,6 @@ type (
 		PreviouslyIssuedTokenSeq           int64       `json:"previouslyIssuedTokenSeq,omitempty" example:"1"`
 		ConfirmationCodeWrongAttemptsCount int64       `json:"confirmationCodeWrongAttemptsCount,omitempty" example:"3" db:"confirmation_code_wrong_attempts_count"`
 		HashCode                           int64       `json:"hashCode,omitempty" example:"43453546464576547"`
-		LoginSessionNumber                 int64       `json:"loginSessionNumber,omitempty" example:"43453546464576547"`
-		LoginAttempts                      int64       `json:"loginAttempts,omitempty" example:"43453546464576547"`
 	}
 	emailTemplate struct {
 		subject, body *template.Template

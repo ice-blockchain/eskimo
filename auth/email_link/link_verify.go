@@ -5,7 +5,6 @@ package emaillinkiceauth
 import (
 	"context"
 	"fmt"
-	"net"
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
@@ -19,7 +18,7 @@ import (
 )
 
 //nolint:funlen // .
-func (c *client) SignIn(ctx context.Context, emailLinkPayload, confirmationCode string, clientIP net.IP) error {
+func (c *client) SignIn(ctx context.Context, emailLinkPayload, confirmationCode string) error {
 	var token magicLinkToken
 	if err := parseJwtToken(emailLinkPayload, c.cfg.EmailValidation.JwtSecret, &token); err != nil {
 		return errors.Wrapf(err, "invalid email token:%v", emailLinkPayload)
@@ -39,14 +38,13 @@ func (c *client) SignIn(ctx context.Context, emailLinkPayload, confirmationCode 
 	}
 	var emailConfirmed bool
 	if token.OldEmail != "" {
-		if err = c.handleEmailModification(ctx, els, email, token.OldEmail, token.NotifyEmail, clientIP); err != nil {
+		if err = c.handleEmailModification(ctx, els, email, token.OldEmail, token.NotifyEmail); err != nil {
 			return errors.Wrapf(err, "failed to handle email modification:%v", email)
 		}
 		emailConfirmed = true
 		els.Email = email
 	}
-	//nolint:lll // .
-	if fErr := c.finishAuthProcess(ctx, &id, *els.UserID, token.OTP, els.IssuedTokenSeq, emailConfirmed, els.Metadata, els.LoginSessionNumber, els.IP); fErr != nil {
+	if fErr := c.finishAuthProcess(ctx, &id, *els.UserID, token.OTP, els.IssuedTokenSeq, emailConfirmed, els.Metadata); fErr != nil {
 		var mErr *multierror.Error
 		if token.OldEmail != "" {
 			mErr = multierror.Append(mErr,
@@ -121,7 +119,6 @@ func (c *client) finishAuthProcess(
 	ctx context.Context,
 	id *loginID, userID, otp string, issuedTokenSeq int64,
 	emailConfirmed bool, md *users.JSON,
-	loginSessionNumber int64, clientIP string,
 ) error {
 	emailConfirmedAt := "null"
 	if emailConfirmed {
@@ -142,14 +139,9 @@ func (c *client) finishAuthProcess(
 	if err := mergo.Merge(&mdToUpdate, md, mergo.WithOverride, mergo.WithTypeCheck); err != nil {
 		return errors.Wrapf(err, "failed to merge %#v and %v:%v", md, auth.IceIDClaim, userID)
 	}
-	params := []any{id.Email, time.Now().Time, userID, otp, id.DeviceUniqueID, issuedTokenSeq, mdToUpdate, clientIP, loginSessionNumber}
+	params := []any{id.Email, time.Now().Time, userID, otp, id.DeviceUniqueID, issuedTokenSeq, mdToUpdate}
 	sql := fmt.Sprintf(`
-			with decrement_ip_login_attempts as (
-				UPDATE sign_ins_per_ip SET
-					login_attempts = GREATEST(sign_ins_per_ip.login_attempts - 1, 0)
-				WHERE ip = $8 AND login_session_number = $9
-				RETURNING GREATEST(sign_ins_per_ip.login_attempts - 1, 0) as login_attempts
-			), metadata_update as (
+			with metadata_update as (
 				INSERT INTO account_metadata(user_id, metadata)
 				VALUES ($3, $7::jsonb) ON CONFLICT(user_id) DO UPDATE
 					SET metadata = EXCLUDED.metadata
@@ -162,15 +154,10 @@ func (c *client) finishAuthProcess(
 					email_confirmed_at = %[1]v,
 					issued_token_seq = COALESCE(issued_token_seq, 0) + 1,
 					previously_issued_token_seq = COALESCE(issued_token_seq, 0) + 1
-					issued_token_seq = COALESCE(issued_token_seq, 0) + 1,
-					login_attempts = decrement_ip_login_attempts.login_attempts
-			FROM decrement_ip_login_attempts
 			WHERE email_link_sign_ins.email = $1
 				  AND otp = $4
 				  AND device_unique_id = $5
 				  AND issued_token_seq = $6
-                  AND ip = $8
-                  AND login_session_number = $9
 			`, emailConfirmedAt)
 
 	rowsUpdated, err := storage.Exec(ctx, c.db, sql, params...)

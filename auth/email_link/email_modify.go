@@ -5,7 +5,6 @@ package emaillinkiceauth
 import (
 	"context"
 	"fmt"
-	"net"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
@@ -17,13 +16,8 @@ import (
 	"github.com/ice-blockchain/wintr/time"
 )
 
-//nolint:funlen,revive // Big rollback logic.
-func (c *client) handleEmailModification(
-	ctx context.Context,
-	els *emailLinkSignIn,
-	newEmail, oldEmail, notifyEmail string,
-	clientIP net.IP,
-) error {
+//nolint:funlen // Big rollback logic.
+func (c *client) handleEmailModification(ctx context.Context, els *emailLinkSignIn, newEmail, oldEmail, notifyEmail string) error {
 	usr := new(users.User)
 	usr.ID = *els.UserID
 	usr.Email = newEmail
@@ -44,7 +38,7 @@ func (c *client) handleEmailModification(
 	if notifyEmail != "" {
 		resetEmailOTP, now := generateOTP(), time.Now()
 		resetConfirmationCode := generateConfirmationCode()
-		uErr := c.upsertEmailLinkSignIn(ctx, oldEmail, els.DeviceUniqueID, resetEmailOTP, resetConfirmationCode, now, clientIP, els.LoginSessionNumber)
+		uErr := c.upsertEmailLinkSignIn(ctx, oldEmail, els.DeviceUniqueID, resetEmailOTP, resetConfirmationCode, now)
 		if uErr != nil {
 			return multierror.Append( //nolint:wrapcheck // .
 				errors.Wrapf(c.resetEmailModification(ctx, usr.ID, oldEmail), "[reset] resetEmailModification failed for email:%v", oldEmail),
@@ -54,7 +48,7 @@ func (c *client) handleEmailModification(
 		}
 		resetEmailPayload, rErr := c.generateMagicLinkPayload(
 			&loginID{Email: oldEmail, DeviceUniqueID: els.DeviceUniqueID},
-			newEmail, "", resetEmailOTP, now, els.LoginSessionNumber, clientIP)
+			newEmail, "", resetEmailOTP, now)
 		if rErr != nil {
 			return multierror.Append( //nolint:wrapcheck // .
 				errors.Wrapf(c.resetEmailModification(ctx, usr.ID, oldEmail), "[reset] resetEmailModification failed for email:%v", oldEmail),

@@ -243,6 +243,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/main.Auth"
                         }
                     },
+                    "403": {
+                        "description": "if too many pending auth requests from one IP",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    },
                     "409": {
                         "description": "if email conflicts with another user's",
                         "schema": {
@@ -280,13 +286,6 @@ const docTemplate = `{
                     "Auth"
                 ],
                 "parameters": [
-                    {
-                        "type": "string",
-                        "default": "1.1.1.1",
-                        "description": "Client IP",
-                        "name": "X-Forwarded-For",
-                        "in": "header"
-                    },
                     {
                         "description": "Request params",
                         "name": "request",
@@ -516,23 +515,7 @@ const docTemplate = `{
                 }
             },
             "patch": {
-                "description": "Modifies an user account",
-                "consumes": [
-                    "multipart/form-data"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Accounts"
-                ],
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Client IP",
-                        "name": "X-Forwarded-For",
-                        "in": "header"
-                    },
                     {
                         "type": "string",
                         "default": "Bearer \u003cAdd access token here\u003e",

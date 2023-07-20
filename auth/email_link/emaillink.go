@@ -223,7 +223,7 @@ func (c *client) deleteOldLoginAttempts(ctx context.Context) error {
 	if ctx.Err() != nil {
 		return errors.Wrap(ctx.Err(), "[deleteOldLoginAttempts] unexpected deadline")
 	}
-	prevDaySessionNumber := time.Now().Add(-24*stdlibtime.Hour).Unix() / int64(c.cfg.EmailValidation.SameIPRateCheckPeriod.Seconds())
+	prevDaySessionNumber := time.Now().Add(-24*stdlibtime.Hour).Unix() / int64(sameIPCheckRate.Seconds())
 	sql := `DELETE FROM sign_ins_per_ip WHERE login_session_number < $1`
 	if _, err := storage.Exec(ctx, c.db, sql, prevDaySessionNumber); err != nil {
 		return errors.Wrap(err, "failed to delete old data from sign_ins_per_ip")
