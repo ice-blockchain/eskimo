@@ -10,6 +10,7 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
+	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 
 	"github.com/ice-blockchain/eskimo/users"
@@ -52,14 +53,23 @@ func (c *client) SendSignInLinkToEmail(ctx context.Context, emailValue, deviceUn
 		}
 	}
 	if uErr := c.upsertEmailLinkSignIn(ctx, id.Email, id.DeviceUniqueID, otp, confirmationCode, now); uErr != nil {
-		return "", errors.Wrapf(uErr, "failed to store/update email link sign ins for id:%#v", id)
+		return "", multierror.Append( //nolint:wrapcheck // .
+			errors.Wrapf(c.decrementIPLoginAttempts(ctx, clientIP, loginSessionNumber), "[rollback] failed to rollback login attempts for ip"),
+			errors.Wrapf(uErr, "failed to store/update email link sign ins for id:%#v", id),
+		).ErrorOrNil()
 	}
 	payload, pErr := c.generateMagicLinkPayload(&id, oldEmail, oldEmail, otp, now)
 	if pErr != nil {
-		return "", errors.Wrapf(pErr, "can't generate magic link payload for id: %#v", id)
+		return "", multierror.Append( //nolint:wrapcheck // .
+			errors.Wrapf(c.decrementIPLoginAttempts(ctx, clientIP, loginSessionNumber), "[rollback] failed to rollback login attempts for ip"),
+			errors.Wrapf(pErr, "can't generate magic link payload for id: %#v", id),
+		).ErrorOrNil()
 	}
 	if sErr := c.sendMagicLink(ctx, &id, oldEmail, payload, language); sErr != nil {
-		return "", errors.Wrapf(sErr, "can't send magic link for id:%#v", id)
+		return "", multierror.Append( //nolint:wrapcheck // .
+			errors.Wrapf(c.decrementIPLoginAttempts(ctx, clientIP, loginSessionNumber), "[rollback] failed to rollback login attempts for ip"),
+			errors.Wrapf(sErr, "can't send magic link for id:%#v", id),
+		).ErrorOrNil()
 	}
 
 	return loginSession, nil
@@ -79,6 +89,19 @@ func (c *client) validateEmailSignIn(ctx context.Context, id *loginID) error {
 				return terror.New(err, map[string]any{"source": "email"})
 			}
 		}
+	}
+
+	return nil
+}
+
+func (c *client) decrementIPLoginAttempts(ctx context.Context, ip string, loginSessionNumber int64) error {
+	if ip != "" && loginSessionNumber > 0 {
+		sql := `UPDATE sign_ins_per_ip SET
+					login_attempts = GREATEST(sign_ins_per_ip.login_attempts - 1, 0)
+				WHERE ip = $1 AND login_session_number = $2`
+		_, err := storage.Exec(ctx, c.db, sql, ip, loginSessionNumber)
+
+		return errors.Wrapf(err, "failed to decrease login attempts for ip %v lsn %v", ip, loginSessionNumber)
 	}
 
 	return nil
