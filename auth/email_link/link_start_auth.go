@@ -10,6 +10,7 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
+	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 
 	"github.com/ice-blockchain/eskimo/users"
@@ -20,16 +21,21 @@ import (
 	"github.com/ice-blockchain/wintr/time"
 )
 
-func (c *client) SendSignInLinkToEmail(ctx context.Context, emailValue, deviceUniqueID, language string) (loginSession string, err error) {
+//nolint:funlen //.
+func (c *client) SendSignInLinkToEmail(ctx context.Context, emailValue, deviceUniqueID, language, clientIP string) (loginSession string, err error) {
 	if ctx.Err() != nil {
 		return "", errors.Wrap(ctx.Err(), "send sign in link to email failed because context failed")
 	}
 	id := loginID{emailValue, deviceUniqueID}
+	now := time.Now()
+	loginSessionNumber := now.Time.Unix() / int64(sameIPCheckRate.Seconds())
 	if vErr := c.validateEmailSignIn(ctx, &id); vErr != nil {
 		return "", errors.Wrapf(vErr, "can't validate email sign in for:%#v", id)
 	}
 	oldEmail := users.ConfirmedEmail(ctx)
 	if oldEmail != "" {
+		loginSessionNumber = 0
+		clientIP = "" //nolint:revive // .
 		oldID := loginID{oldEmail, deviceUniqueID}
 		if vErr := c.validateEmailModification(ctx, emailValue, &oldID); vErr != nil {
 			return "", errors.Wrapf(vErr, "can't validate modification email for:%#v", oldID)
@@ -37,16 +43,33 @@ func (c *client) SendSignInLinkToEmail(ctx context.Context, emailValue, deviceUn
 	}
 	otp := generateOTP()
 	confirmationCode := generateConfirmationCode()
-	loginSession, err = c.generateLoginSession(&id, confirmationCode)
+	loginSession, err = c.generateLoginSession(&id, confirmationCode, clientIP, loginSessionNumber)
 	if err != nil {
 		return "", errors.Wrap(err, "can't call generateLoginSession")
 	}
-	now := time.Now()
-	if uErr := c.upsertEmailLinkSignIn(ctx, id.Email, id.DeviceUniqueID, otp, confirmationCode, now); uErr != nil {
-		return "", errors.Wrapf(uErr, "failed to store/update email link sign ins for id:%#v", id)
+	if loginSessionNumber > 0 && clientIP != "" {
+		if ipErr := c.upsertIPLoginAttempt(ctx, &id, clientIP, loginSessionNumber); ipErr != nil {
+			return "", errors.Wrapf(ipErr, "failed increment login attempts for IP:%v (session num %v)", clientIP, loginSessionNumber)
+		}
 	}
-	if sErr := c.sendMagicLink(ctx, &id, oldEmail, otp, language, now); sErr != nil {
-		return "", errors.Wrapf(sErr, "can't send magic link for id:%#v", id)
+	if uErr := c.upsertEmailLinkSignIn(ctx, id.Email, id.DeviceUniqueID, otp, confirmationCode, now); uErr != nil {
+		return "", multierror.Append( //nolint:wrapcheck // .
+			errors.Wrapf(c.decrementIPLoginAttempts(ctx, clientIP, loginSessionNumber), "[rollback] failed to rollback login attempts for ip"),
+			errors.Wrapf(uErr, "failed to store/update email link sign ins for id:%#v", id),
+		).ErrorOrNil()
+	}
+	payload, pErr := c.generateMagicLinkPayload(&id, oldEmail, oldEmail, otp, now)
+	if pErr != nil {
+		return "", multierror.Append( //nolint:wrapcheck // .
+			errors.Wrapf(c.decrementIPLoginAttempts(ctx, clientIP, loginSessionNumber), "[rollback] failed to rollback login attempts for ip"),
+			errors.Wrapf(pErr, "can't generate magic link payload for id: %#v", id),
+		).ErrorOrNil()
+	}
+	if sErr := c.sendMagicLink(ctx, &id, oldEmail, payload, language); sErr != nil {
+		return "", multierror.Append( //nolint:wrapcheck // .
+			errors.Wrapf(c.decrementIPLoginAttempts(ctx, clientIP, loginSessionNumber), "[rollback] failed to rollback login attempts for ip"),
+			errors.Wrapf(sErr, "can't send magic link for id:%#v", id),
+		).ErrorOrNil()
 	}
 
 	return loginSession, nil
@@ -57,11 +80,28 @@ func (c *client) validateEmailSignIn(ctx context.Context, id *loginID) error {
 	if err != nil && !storage.IsErr(err, storage.ErrNotFound) {
 		return errors.Wrapf(err, "can't get email link sign in information by:%#v", id)
 	}
-	if gUsr != nil && gUsr.BlockedUntil != nil {
-		now := time.Now()
-		if gUsr.BlockedUntil.After(*now.Time) {
-			return errors.Wrapf(ErrUserBlocked, "user:%#v is blocked", id)
+	now := time.Now()
+	if gUsr != nil {
+		if gUsr.BlockedUntil != nil {
+			if gUsr.BlockedUntil.After(*now.Time) {
+				err = errors.Wrapf(ErrUserBlocked, "user:%#v is blocked due to a lot of incorrect codes", id)
+
+				return terror.New(err, map[string]any{"source": "email"})
+			}
 		}
+	}
+
+	return nil
+}
+
+func (c *client) decrementIPLoginAttempts(ctx context.Context, ip string, loginSessionNumber int64) error {
+	if ip != "" && loginSessionNumber > 0 {
+		sql := `UPDATE sign_ins_per_ip SET
+					login_attempts = GREATEST(sign_ins_per_ip.login_attempts - 1, 0)
+				WHERE ip = $1 AND login_session_number = $2`
+		_, err := storage.Exec(ctx, c.db, sql, ip, loginSessionNumber)
+
+		return errors.Wrapf(err, "failed to decrease login attempts for ip %v lsn %v", ip, loginSessionNumber)
 	}
 
 	return nil
@@ -82,19 +122,16 @@ func (c *client) validateEmailModification(ctx context.Context, newEmail string,
 	if gOldUsr != nil && gOldUsr.BlockedUntil != nil {
 		now := time.Now()
 		if gOldUsr.BlockedUntil.After(*now.Time) {
-			return errors.Wrapf(ErrUserBlocked, "user:%#v is blocked", oldID)
+			err := errors.Wrapf(ErrUserBlocked, "user:%#v is blocked", oldID)
+
+			return terror.New(err, map[string]any{"source": "email"})
 		}
 	}
 
 	return nil
 }
 
-//nolint:revive // .
-func (c *client) sendMagicLink(ctx context.Context, id *loginID, oldEmail, otp, language string, now *time.Time) error {
-	payload, err := c.generateMagicLinkPayload(id, oldEmail, oldEmail, otp, now)
-	if err != nil {
-		return errors.Wrapf(err, "can't generate magic link payload for id: %#v", id)
-	}
+func (c *client) sendMagicLink(ctx context.Context, id *loginID, oldEmail, payload, language string) error {
 	authLink := c.getAuthLink(payload, language)
 	var emailType string
 	if oldEmail != "" {
@@ -164,6 +201,25 @@ func (c *client) upsertEmailLinkSignIn(ctx context.Context, toEmail, deviceUniqu
 	return errors.Wrapf(err, "failed to insert/update email link sign ins record for email:%v", toEmail)
 }
 
+func (c *client) upsertIPLoginAttempt(ctx context.Context, id *loginID, clientIP string, loginSessionNumber int64) error {
+	sql := `INSERT INTO sign_ins_per_ip (ip, login_session_number, login_attempts)
+					VALUES ($1, $2, 1)
+	ON CONFLICT (login_session_number, ip) DO UPDATE
+		SET login_attempts = sign_ins_per_ip.login_attempts + 1`
+	_, err := storage.Exec(ctx, c.db, sql, clientIP, loginSessionNumber)
+	if err != nil {
+		if storage.IsErr(err, storage.ErrCheckFailed) {
+			err = errors.Wrapf(ErrTooManyAttempts, "user %#v is blocked due to a lot of requests from IP %v", id, clientIP)
+
+			return terror.New(err, map[string]any{"ip": clientIP})
+		}
+
+		return errors.Wrapf(err, "failed to increment login attempts from IP %v", clientIP)
+	}
+
+	return nil
+}
+
 func (c *client) generateMagicLinkPayload(id *loginID, oldEmail, notifyEmail, otp string, now *time.Time) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, magicLinkToken{
 		RegisteredClaims: &jwt.RegisteredClaims{
@@ -191,7 +247,7 @@ func (c *client) getAuthLink(token, language string) string {
 	return fmt.Sprintf("%s?token=%s&lang=%s", c.cfg.EmailValidation.AuthLink, token, language)
 }
 
-func (c *client) generateLoginSession(id *loginID, confirmationCode string) (string, error) {
+func (c *client) generateLoginSession(id *loginID, confirmationCode, clientIP string, loginSessionNumber int64) (string, error) {
 	now := time.Now()
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, loginFlowToken{
 		RegisteredClaims: &jwt.RegisteredClaims{
@@ -202,8 +258,10 @@ func (c *client) generateLoginSession(id *loginID, confirmationCode string) (str
 			NotBefore: jwt.NewNumericDate(*now.Time),
 			IssuedAt:  jwt.NewNumericDate(*now.Time),
 		},
-		DeviceUniqueID:   id.DeviceUniqueID,
-		ConfirmationCode: confirmationCode,
+		DeviceUniqueID:     id.DeviceUniqueID,
+		ConfirmationCode:   confirmationCode,
+		LoginSessionNumber: loginSessionNumber,
+		ClientIP:           clientIP,
 	})
 	payload, err := token.SignedString([]byte(c.cfg.LoginSession.JwtSecret))
 	if err != nil {

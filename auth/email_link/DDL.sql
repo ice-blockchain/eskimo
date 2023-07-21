@@ -24,3 +24,10 @@ CREATE TABLE IF NOT EXISTS account_metadata (
 
 ALTER TABLE email_link_sign_ins
     ADD COLUMN IF NOT EXISTS previously_issued_token_seq BIGINT DEFAULT 0 NOT NULL;
+
+CREATE TABLE IF NOT EXISTS sign_ins_per_ip (
+       login_session_number  BIGINT DEFAULT 0 NOT NULL,
+       login_attempts        BIGINT DEFAULT 0 NOT NULL CONSTRAINT sign_ins_per_ip_login_attempts_count CHECK (login_attempts <= 10),
+       ip                    TEXT NOT NULL,
+       PRIMARY KEY (login_session_number, ip)
+);

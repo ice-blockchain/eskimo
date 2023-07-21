@@ -36,12 +36,14 @@ func (s *service) setupAuthRoutes(router *server.Router) {
 //	@Tags			Auth
 //	@Accept			json
 //	@Produce		json
-//	@Param			request	body		SendSignInLinkToEmailRequestArg	true	"Request params"
-//	@Success		200		{object}	Auth
-//	@Failure		409		{object}	server.ErrorResponse	"if email conflicts with another user's"
-//	@Failure		422		{object}	server.ErrorResponse	"if syntax fails"
-//	@Failure		500		{object}	server.ErrorResponse
-//	@Failure		504		{object}	server.ErrorResponse	"if request times out"
+//	@Param			request			body		SendSignInLinkToEmailRequestArg	true	"Request params"
+//	@Param			X-Forwarded-For	header		string							false	"Client IP"	default(1.1.1.1)
+//	@Success		200				{object}	Auth
+//	@Success		403				{object}	server.ErrorResponse	"if too many pending auth requests from one IP"
+//	@Failure		409				{object}	server.ErrorResponse	"if email conflicts with another user's"
+//	@Failure		422				{object}	server.ErrorResponse	"if syntax fails"
+//	@Failure		500				{object}	server.ErrorResponse
+//	@Failure		504				{object}	server.ErrorResponse	"if request times out"
 //	@Router			/auth/sendSignInLinkToEmail [POST].
 func (s *service) SendSignInLinkToEmail( //nolint:gocritic // .
 	ctx context.Context,
@@ -51,14 +53,20 @@ func (s *service) SendSignInLinkToEmail( //nolint:gocritic // .
 	if _, err := mail.ParseAddress(email); err != nil {
 		return nil, server.BadRequest(err, invalidEmail)
 	}
-	loginSession, err := s.authEmailLinkClient.SendSignInLinkToEmail(ctx, email, req.Data.DeviceUniqueID, req.Data.Language)
+	loginSession, err := s.authEmailLinkClient.SendSignInLinkToEmail(ctx, email, req.Data.DeviceUniqueID, req.Data.Language, req.ClientIP.String())
 	if err != nil {
 		switch {
 		case errors.Is(err, emaillink.ErrUserBlocked):
-			return nil, server.BadRequest(err, userBlockedErrorCode)
+			if tErr := terror.As(err); tErr != nil {
+				return nil, server.BadRequest(err, userBlockedErrorCode, tErr.Data)
+			}
 		case errors.Is(err, emaillink.ErrUserDuplicate):
 			if tErr := terror.As(err); tErr != nil {
 				return nil, server.Conflict(err, duplicateUserErrorCode, tErr.Data)
+			}
+		case errors.Is(err, emaillink.ErrTooManyAttempts):
+			if tErr := terror.As(err); tErr != nil {
+				return nil, server.ForbiddenWithCode(err, tooManyRequests, tErr.Data)
 			}
 		default:
 			return nil, server.Unexpected(errors.Wrapf(err, "failed to start email link auth %#v", req.Data))

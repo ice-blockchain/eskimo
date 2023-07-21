@@ -33,7 +33,7 @@ func (c *client) SignIn(ctx context.Context, emailLinkPayload, confirmationCode 
 
 		return errors.Wrapf(err, "failed to get user info by email:%v(old email:%v)", email, token.OldEmail)
 	}
-	if vErr := c.verifySignIn(ctx, els, &id, emailLinkPayload, confirmationCode); vErr != nil {
+	if vErr := c.verifySignIn(ctx, els, &id, emailLinkPayload, confirmationCode, token.OTP); vErr != nil {
 		return errors.Wrapf(vErr, "can't verify sign in for id:%#v", id)
 	}
 	var emailConfirmed bool
@@ -62,9 +62,9 @@ func (c *client) SignIn(ctx context.Context, emailLinkPayload, confirmationCode 
 	return nil
 }
 
-//nolint:gocognit // .
-func (c *client) verifySignIn(ctx context.Context, els *emailLinkSignIn, id *loginID, emailLinkPayload, confirmationCode string) error {
-	if els.OTP == *els.UserID {
+//nolint:gocognit,revive // .
+func (c *client) verifySignIn(ctx context.Context, els *emailLinkSignIn, id *loginID, emailLinkPayload, confirmationCode, tokenOTP string) error {
+	if els.OTP == *els.UserID || els.OTP != tokenOTP {
 		return errors.Wrapf(ErrNoConfirmationRequired, "no pending confirmation for email:%v", id.Email)
 	}
 	var shouldBeBlocked bool
@@ -115,7 +115,11 @@ func (c *client) increaseWrongConfirmationCodeAttemptsCount(ctx context.Context,
 }
 
 //nolint:revive,funlen // .
-func (c *client) finishAuthProcess(ctx context.Context, id *loginID, userID, otp string, issuedTokenSeq int64, emailConfirmed bool, md *users.JSON) error {
+func (c *client) finishAuthProcess(
+	ctx context.Context,
+	id *loginID, userID, otp string, issuedTokenSeq int64,
+	emailConfirmed bool, md *users.JSON,
+) error {
 	emailConfirmedAt := "null"
 	if emailConfirmed {
 		emailConfirmedAt = "$2"
@@ -153,11 +157,15 @@ func (c *client) finishAuthProcess(ctx context.Context, id *loginID, userID, otp
 			WHERE email_link_sign_ins.email = $1
 				  AND otp = $4
 				  AND device_unique_id = $5
-				  AND issued_token_seq = $6`, emailConfirmedAt)
+				  AND issued_token_seq = $6
+			`, emailConfirmedAt)
 
-	_, err := storage.Exec(ctx, c.db, sql, params...)
+	rowsUpdated, err := storage.Exec(ctx, c.db, sql, params...)
 	if err != nil {
 		return errors.Wrapf(err, "failed to insert generated token data for:%#v", params...)
+	}
+	if rowsUpdated == 0 {
+		return errors.Wrapf(ErrNoConfirmationRequired, "[finishAuthProcess] No records were updated to finish: race condition")
 	}
 
 	return nil

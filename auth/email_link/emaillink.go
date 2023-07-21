@@ -7,9 +7,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math/rand"
 	"os"
 	"strings"
 	"text/template"
+	stdlibtime "time"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/pkg/errors"
@@ -19,6 +21,7 @@ import (
 	"github.com/ice-blockchain/wintr/connectors/storage/v2"
 	"github.com/ice-blockchain/wintr/email"
 	"github.com/ice-blockchain/wintr/log"
+	"github.com/ice-blockchain/wintr/time"
 )
 
 //nolint:gochecknoinits // We load embedded stuff at runtime.
@@ -31,7 +34,7 @@ func NewClient(ctx context.Context, userModifier UserModifier, authClient auth.C
 	cfg.validate()
 	db := storage.MustConnect(ctx, ddl, applicationYamlKey)
 
-	return &client{
+	cl := &client{
 		cfg:          cfg,
 		shutdown:     db.Close,
 		db:           db,
@@ -39,6 +42,9 @@ func NewClient(ctx context.Context, userModifier UserModifier, authClient auth.C
 		authClient:   authClient,
 		userModifier: userModifier,
 	}
+	go cl.startOldLoginAttemptsCleaner(ctx)
+
+	return cl
 }
 
 func NewROClient(ctx context.Context) IceUserIDClient {
@@ -211,4 +217,34 @@ func parseJwtToken(jwtToken, secret string, res jwt.Claims) error {
 	}
 
 	return nil
+}
+
+func (c *client) deleteOldLoginAttempts(ctx context.Context) error {
+	if ctx.Err() != nil {
+		return errors.Wrap(ctx.Err(), "[deleteOldLoginAttempts] unexpected deadline")
+	}
+	prevDaySessionNumber := time.Now().Add(-24*stdlibtime.Hour).Unix() / int64(sameIPCheckRate.Seconds())
+	sql := `DELETE FROM sign_ins_per_ip WHERE login_session_number < $1`
+	if _, err := storage.Exec(ctx, c.db, sql, prevDaySessionNumber); err != nil {
+		return errors.Wrap(err, "failed to delete old data from sign_ins_per_ip")
+	}
+
+	return nil
+}
+
+func (c *client) startOldLoginAttemptsCleaner(ctx context.Context) {
+	ticker := stdlibtime.NewTicker(stdlibtime.Duration(1+rand.Intn(24)) * stdlibtime.Minute) //nolint:gosec,gomnd // Not an  issue.
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			const deadline = 30 * stdlibtime.Second
+			reqCtx, cancel := context.WithTimeout(ctx, deadline)
+			log.Error(errors.Wrap(c.deleteOldLoginAttempts(reqCtx), "failed to deleteOldTrackedActions"))
+			cancel()
+		case <-ctx.Done():
+			return
+		}
+	}
 }

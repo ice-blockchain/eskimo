@@ -28,7 +28,7 @@ type (
 	}
 	Client interface {
 		IceUserIDClient
-		SendSignInLinkToEmail(ctx context.Context, emailValue, deviceUniqueID, language string) (loginSession string, err error)
+		SendSignInLinkToEmail(ctx context.Context, emailValue, deviceUniqueID, language, clientIP string) (loginSession string, err error)
 		SignIn(ctx context.Context, emailLinkPayload, confirmationCode string) error
 		RegenerateTokens(ctx context.Context, prevToken string) (tokens *Tokens, err error)
 		Status(ctx context.Context, loginSession string) (tokens *Tokens, emailConfirmed bool, err error)
@@ -61,9 +61,9 @@ var (
 	ErrConfirmationCodeWrong            = errors.New("wrong confirmation code provided")
 	ErrConfirmationCodeAttemptsExceeded = errors.New("confirmation code attempts exceeded")
 	ErrStatusNotVerified                = errors.New("not verified")
-	ErrAlreadyConfirmed                 = errors.New("already confirmed")
 	ErrNoPendingLoginSession            = errors.New("no pending login session")
 	ErrUserBlocked                      = errors.New("user is blocked")
+	ErrTooManyAttempts                  = errors.New("too many attempts")
 )
 
 // Private API.
@@ -81,6 +81,8 @@ const (
 
 	textExtension = "txt"
 	htmlExtension = "html"
+
+	sameIPCheckRate = stdlibtime.Hour
 )
 
 type (
@@ -122,8 +124,10 @@ type (
 	}
 	loginFlowToken struct {
 		*jwt.RegisteredClaims
-		DeviceUniqueID   string `json:"deviceUniqueId,omitempty"`
-		ConfirmationCode string `json:"confirmationCode,omitempty"`
+		DeviceUniqueID     string `json:"deviceUniqueId,omitempty"`
+		ConfirmationCode   string `json:"confirmationCode,omitempty"`
+		ClientIP           string `json:"clientIP,omitempty"` //nolint:tagliatelle //.
+		LoginSessionNumber int64  `json:"loginSessionNumber,omitempty"`
 	}
 	emailLinkSignIn struct {
 		CreatedAt                          *time.Time

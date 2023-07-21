@@ -44,6 +44,8 @@ auth/email-link:
     jwtSecret: bogus
     expirationTime: 1h
     blockDuration: 10m
+    sameIpRateCheckPeriod: 1h
+    maxRequestsFromIP: 10
   loginSession:
     jwtSecret: bogus
   confirmationCode:

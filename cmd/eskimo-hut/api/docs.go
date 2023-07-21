@@ -227,6 +227,13 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/main.SendSignInLinkToEmailRequestArg"
                         }
+                    },
+                    {
+                        "type": "string",
+                        "default": "1.1.1.1",
+                        "description": "Client IP",
+                        "name": "X-Forwarded-For",
+                        "in": "header"
                     }
                 ],
                 "responses": {
@@ -234,6 +241,12 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/main.Auth"
+                        }
+                    },
+                    "403": {
+                        "description": "if too many pending auth requests from one IP",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
                         }
                     },
                     "409": {
@@ -502,16 +515,6 @@ const docTemplate = `{
                 }
             },
             "patch": {
-                "description": "Modifies an user account",
-                "consumes": [
-                    "multipart/form-data"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Accounts"
-                ],
                 "parameters": [
                     {
                         "type": "string",
