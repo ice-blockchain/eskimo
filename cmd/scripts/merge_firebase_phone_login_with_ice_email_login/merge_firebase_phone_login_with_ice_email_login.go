@@ -36,6 +36,7 @@ var (
 
 type (
 	record struct {
+		PhoneNumber  string `json:"phoneNumber" example:"+123456789"`
 		Email        string `json:"email" example:"example@gmail.com"`
 		CurrentEmail string `json:"currentEmail" example:"example@gmail.com"`
 		ID           string `json:"id" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
@@ -63,6 +64,14 @@ func main() {
 		for idx, record := range records {
 			index := uint64(idx) + offset
 			usr := record
+			if usr.ID == "" {
+				log.Error(errors.Errorf("no user with phone number `%v` found", usr.PhoneNumber))
+				continue
+			}
+			if usr.CurrentEmail != usr.ID && usr.CurrentEmail != usr.Email {
+				log.Error(errors.Errorf("user with phone number: `%v`, id: `%v` has a different email: `%v`", usr.PhoneNumber, usr.ID, usr.CurrentEmail))
+				continue
+			}
 			wg.Add(1)
 			concurrencyGuard <- struct{}{}
 			go func() {
@@ -72,7 +81,7 @@ func main() {
 				updateFirebaseEmail(authClient, usr, index)
 				<-concurrencyGuard
 			}()
-			log.Info(fmt.Sprintf("rows processed %v/%v", index+1, len(records)))
+			log.Error(fmt.Errorf("rows processed %v/%v", index+1, len(records)))
 		}
 		offset += defaultLimit
 	}
@@ -92,7 +101,7 @@ func updateDBEmail(usersProcessor users.Processor, usr *record, idx uint64) {
 	}
 	err := usersProcessor.ModifyUser(context.Background(), &updUsr, nil)
 	if errors.Is(err, users.ErrDuplicate) {
-		log.Error(errors.Errorf("duplicate email: id:%v, email:%v", usr.ID, usr.Email))
+		log.Error(errors.Errorf("duplicate email(belongs to another user): id:%v, email:%v", usr.ID, usr.Email))
 	} else {
 		log.Panic(errors.Wrapf(err, "can't modify eskimo user: %#v, idx:%v", updUsr, idx))
 	}
@@ -114,9 +123,12 @@ func updateMetadata(authEmailLinkClient emaillink.Client, usr *record, idx uint6
 func updateFirebaseEmail(authClient auth.Client, usr *record, idx uint64) {
 	err := authClient.UpdateEmail(context.Background(), usr.ID, usr.Email)
 	if errors.Is(err, auth.ErrConflict) {
-		log.Error(errors.Errorf("duplicate email[firebase]: id:%v, email:%v", usr.ID, usr.Email))
+		log.Error(errors.Errorf("duplicate email[firebase](belongs to another user): id:%v, email:%v", usr.ID, usr.Email))
 	} else {
 		log.Panic(errors.Wrapf(err, "can't update firebase email for userID:%v, email:%v, idx:%v", usr.ID, usr.Email, idx))
+	}
+	if true {
+		return
 	}
 	firebaseUsr, err := fixture.GetUser(context.Background(), usr.ID)
 	log.Panic(errors.Wrapf(err, "can't get user by id:%v from firebase, idx:%v", usr.ID, idx)) //nolint:revive // Intended.
@@ -128,13 +140,13 @@ func updateFirebaseEmail(authClient auth.Client, usr *record, idx uint64) {
 func getUsersToMerge(db *storage.DB, limit, offset uint64) []*record {
 	params := []any{limit, offset}
 	sql := `SELECT 
-				u.id,
+				coalesce(u.id,'') AS id,
 				m.email,
-				u.email AS current_email
+				m.phone_number,
+				coalesce(u.email,'') AS current_email
 			FROM merge_firebase_phone_login_with_ice_email_login m
-				JOIN users u
-					ON (u.email = u.id OR u.email = m.email)
-					   AND m.phone_number = u.phone_number
+				LEFT JOIN users u
+					ON m.phone_number = u.phone_number
 			ORDER BY m.created_at ASC
 			LIMIT $1 OFFSET $2`
 	result, err := storage.Select[record](context.Background(), db, sql, params...)
