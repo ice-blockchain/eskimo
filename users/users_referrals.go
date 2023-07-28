@@ -449,3 +449,15 @@ func (p *processor) deleteOldProcessedReferrals(ctx context.Context) error {
 
 	return nil
 }
+
+func (r *repository) deleteReferralAcquisitionHistory(ctx context.Context, userID UserID) error {
+	if ctx.Err() != nil {
+		return errors.Wrap(ctx.Err(), "unexpected deadline")
+	}
+	sql := `DELETE FROM referral_acquisition_history WHERE user_id = $1`
+	if _, err := storage.Exec(ctx, r.db, sql, userID); err != nil {
+		return errors.Wrapf(err, "failed to delete referral acquisition history for userID:%v", userID)
+	}
+
+	return nil
+}
