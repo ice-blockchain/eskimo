@@ -66,10 +66,12 @@ func main() {
 			usr := record
 			if usr.ID == "" {
 				log.Error(errors.Errorf("no user with phone number `%v` found", usr.PhoneNumber))
+
 				continue
 			}
 			if usr.CurrentEmail != usr.ID && usr.CurrentEmail != usr.Email {
 				log.Error(errors.Errorf("user with phone number: `%v`, id: `%v` has a different email: `%v`", usr.PhoneNumber, usr.ID, usr.CurrentEmail))
+
 				continue
 			}
 			wg.Add(1)
@@ -81,7 +83,7 @@ func main() {
 				updateFirebaseEmail(authClient, usr, index)
 				<-concurrencyGuard
 			}()
-			log.Error(fmt.Errorf("rows processed %v/%v", index+1, len(records)))
+			log.Error(fmt.Errorf("rows processed %v/%v", index+1, len(records))) //nolint:goerr113 // .
 		}
 		offset += defaultLimit
 	}

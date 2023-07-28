@@ -72,14 +72,15 @@ func (r *repository) deleteUserReferences(ctx context.Context, userID UserID) er
 	}
 	wg := new(sync.WaitGroup)
 	wg.Add(1)
-	errChan := make(chan error, 1)
+	errChan := make(chan error, 2) //nolint:gomnd // .
 	go func() {
 		defer wg.Done()
 		errChan <- errors.Wrapf(r.DeleteAllDeviceMetadata(ctx, userID), "failed to DeleteAllDeviceMetadata for userID:%v", userID)
+		errChan <- errors.Wrapf(r.deleteReferralAcquisitionHistory(ctx, userID), "failed to deleteReferralAcquisitionHistory for userID:%v", userID)
 	}()
 	wg.Wait()
 	close(errChan)
-	errs := make([]error, 0, 1)
+	errs := make([]error, 0, len(errChan))
 	for err := range errChan {
 		errs = append(errs, err)
 	}
