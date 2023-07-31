@@ -7,6 +7,7 @@ import (
 	"crypto/rand"
 	"fmt"
 	"math/big"
+	stdlibtime "time"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
@@ -21,7 +22,7 @@ import (
 	"github.com/ice-blockchain/wintr/time"
 )
 
-//nolint:funlen //.
+//nolint:funlen,gocognit,revive //.
 func (c *client) SendSignInLinkToEmail(ctx context.Context, emailValue, deviceUniqueID, language, clientIP string) (loginSession string, err error) {
 	if ctx.Err() != nil {
 		return "", errors.Wrap(ctx.Err(), "send sign in link to email failed because context failed")
@@ -53,6 +54,18 @@ func (c *client) SendSignInLinkToEmail(ctx context.Context, emailValue, deviceUn
 		}
 	}
 	if uErr := c.upsertEmailLinkSignIn(ctx, id.Email, id.DeviceUniqueID, otp, confirmationCode, now); uErr != nil {
+		if errors.Is(uErr, ErrUserDuplicate) {
+			oldLoginSession, oErr := c.restoreOldLoginSession(ctx, &id, clientIP, loginSessionNumber)
+			if oErr != nil {
+				return "", multierror.Append( //nolint:wrapcheck // .
+					errors.Wrapf(oErr, "failed to calculate oldLoginSession"),
+					errors.Wrapf(uErr, "failed to store/update email link sign ins for id:%#v", id),
+				).ErrorOrNil()
+			}
+
+			return oldLoginSession, nil
+		}
+
 		return "", multierror.Append( //nolint:wrapcheck // .
 			errors.Wrapf(c.decrementIPLoginAttempts(ctx, clientIP, loginSessionNumber), "[rollback] failed to rollback login attempts for ip"),
 			errors.Wrapf(uErr, "failed to store/update email link sign ins for id:%#v", id),
@@ -75,8 +88,28 @@ func (c *client) SendSignInLinkToEmail(ctx context.Context, emailValue, deviceUn
 	return loginSession, nil
 }
 
+func (c *client) restoreOldLoginSession(ctx context.Context, id *loginID, clientIP string, loginSessionNumber int64) (string, error) {
+	existingSignIn, dErr := c.getEmailLinkSignIn(ctx, id, true)
+	if dErr != nil {
+		return "", multierror.Append( //nolint:wrapcheck // .
+			errors.Wrapf(c.decrementIPLoginAttempts(ctx, clientIP, loginSessionNumber), "[rollback] failed to rollback login attempts for ip"),
+			errors.Wrapf(dErr, "can't get email link sign in information by:%#v", id),
+		).ErrorOrNil()
+	}
+	oldLoginSession, dErr := c.generateLoginSession(id, existingSignIn.ConfirmationCode, clientIP, loginSessionNumber)
+	if dErr != nil {
+		return "", multierror.Append( //nolint:wrapcheck // .
+			errors.Wrapf(c.decrementIPLoginAttempts(ctx, clientIP, loginSessionNumber), "[rollback] failed to rollback login attempts for ip"),
+			errors.Wrap(dErr, "can't generate loginSession"),
+		).ErrorOrNil()
+	}
+
+	return oldLoginSession, errors.Wrapf(c.decrementIPLoginAttempts(ctx, clientIP, loginSessionNumber),
+		"failed to rollback login attempts for ip due to reuse of loginSession")
+}
+
 func (c *client) validateEmailSignIn(ctx context.Context, id *loginID) error {
-	gUsr, err := c.getEmailLinkSignIn(ctx, id)
+	gUsr, err := c.getEmailLinkSignIn(ctx, id, false)
 	if err != nil && !storage.IsErr(err, storage.ErrNotFound) {
 		return errors.Wrapf(err, "can't get email link sign in information by:%#v", id)
 	}
@@ -115,7 +148,7 @@ func (c *client) validateEmailModification(ctx context.Context, newEmail string,
 
 		return errors.Wrapf(terror.New(ErrUserDuplicate, map[string]any{"field": "email"}), "user with such email already exists:%v", newEmail)
 	}
-	gOldUsr, gErr := c.getEmailLinkSignIn(ctx, oldID)
+	gOldUsr, gErr := c.getEmailLinkSignIn(ctx, oldID, false)
 	if gErr != nil && !storage.IsErr(gErr, storage.ErrNotFound) {
 		return errors.Wrapf(gErr, "can't get email link sign in information by:%#v", oldID)
 	}
@@ -177,7 +210,7 @@ func (c *client) sendEmailWithType(ctx context.Context, emailType, toEmail, lang
 func (c *client) upsertEmailLinkSignIn(ctx context.Context, toEmail, deviceUniqueID, otp, code string, now *time.Time) error {
 	confirmationCodeWrongAttempts := 0
 	params := []any{now.Time, toEmail, deviceUniqueID, otp, code, confirmationCodeWrongAttempts}
-	sql := `INSERT INTO email_link_sign_ins (
+	sql := fmt.Sprintf(`INSERT INTO email_link_sign_ins (
 							created_at,
 							email,
 							device_unique_id,
@@ -192,11 +225,15 @@ func (c *client) upsertEmailLinkSignIn(ctx context.Context, toEmail, deviceUniqu
 								confirmation_code_wrong_attempts_count = EXCLUDED.confirmation_code_wrong_attempts_count,
 						        email_confirmed_at                     = null,
 						        user_id                                = null
-						WHERE   email_link_sign_ins.otp                                    != EXCLUDED.otp
-						   OR   email_link_sign_ins.created_at    				     	   != EXCLUDED.created_at
-						   OR   email_link_sign_ins.confirmation_code 		          	   != EXCLUDED.confirmation_code
-						   OR   email_link_sign_ins.confirmation_code_wrong_attempts_count != EXCLUDED.confirmation_code_wrong_attempts_count`
-	_, err := storage.Exec(ctx, c.db, sql, params...)
+						WHERE   (extract(epoch from email_link_sign_ins.created_at)::bigint/%[1]v)  != (extract(epoch from EXCLUDED.created_at::timestamp)::bigint/%[1]v)
+						   AND (email_link_sign_ins.otp                                             != EXCLUDED.otp
+						   OR   email_link_sign_ins.confirmation_code 		          	            != EXCLUDED.confirmation_code
+						   OR   email_link_sign_ins.confirmation_code_wrong_attempts_count          != EXCLUDED.confirmation_code_wrong_attempts_count)`,
+		uint64(duplicatedSignInRequestsInLessThan/stdlibtime.Second))
+	rowsInserted, err := storage.Exec(ctx, c.db, sql, params...)
+	if rowsInserted == 0 && err == nil {
+		err = errors.Wrapf(ErrUserDuplicate, "duplicated signIn request for email %v,device %v", toEmail, deviceUniqueID)
+	}
 
 	return errors.Wrapf(err, "failed to insert/update email link sign ins record for email:%v", toEmail)
 }
