@@ -168,7 +168,8 @@ func (c *client) getConfirmedEmailLinkSignIn(ctx context.Context, id *loginID, c
 	return usr, nil
 }
 
-func (c *client) getEmailLinkSignIn(ctx context.Context, id *loginID) (*emailLinkSignIn, error) {
+//nolint:revive // .
+func (c *client) getEmailLinkSignIn(ctx context.Context, id *loginID, fromMaster bool) (*emailLinkSignIn, error) {
 	if ctx.Err() != nil {
 		return nil, errors.Wrap(ctx.Err(), "get user by id or email failed because context failed")
 	}
@@ -176,12 +177,20 @@ func (c *client) getEmailLinkSignIn(ctx context.Context, id *loginID) (*emailLin
 			FROM email_link_sign_ins
 			WHERE email = $1
 				  AND device_unique_id = $2`
-	usr, err := storage.Get[emailLinkSignIn](ctx, c.db, sql, id.Email, id.DeviceUniqueID)
+	var (
+		signIn *emailLinkSignIn
+		err    error
+	)
+	if fromMaster {
+		signIn, err = storage.ExecOne[emailLinkSignIn](ctx, c.db, sql, id.Email, id.DeviceUniqueID)
+	} else {
+		signIn, err = storage.Get[emailLinkSignIn](ctx, c.db, sql, id.Email, id.DeviceUniqueID)
+	}
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to get email sign in by id:%#v", id)
 	}
 
-	return usr, nil
+	return signIn, nil
 }
 
 func (c *client) IceUserID(ctx context.Context, email string) (string, error) {

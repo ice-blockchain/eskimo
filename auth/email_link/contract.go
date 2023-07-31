@@ -83,6 +83,8 @@ const (
 	htmlExtension = "html"
 
 	sameIPCheckRate = stdlibtime.Hour
+
+	duplicatedSignInRequestsInLessThan = 2 * stdlibtime.Second
 )
 
 type (
