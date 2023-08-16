@@ -6,8 +6,8 @@ import (
 	"context"
 	"strings"
 
+	"dario.cat/mergo"
 	"github.com/google/uuid"
-	"github.com/imdario/mergo"
 	"github.com/pkg/errors"
 
 	"github.com/ice-blockchain/eskimo/users"

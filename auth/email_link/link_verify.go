@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"strings"
 
+	"dario.cat/mergo"
 	"github.com/hashicorp/go-multierror"
-	"github.com/imdario/mergo"
 	"github.com/pkg/errors"
 
 	"github.com/ice-blockchain/eskimo/users"
@@ -62,7 +62,7 @@ func (c *client) SignIn(ctx context.Context, emailLinkPayload, confirmationCode 
 	return nil
 }
 
-//nolint:gocognit,revive // .
+//nolint:revive // .
 func (c *client) verifySignIn(ctx context.Context, els *emailLinkSignIn, id *loginID, emailLinkPayload, confirmationCode, tokenOTP string) error {
 	if els.OTP == *els.UserID || els.OTP != tokenOTP {
 		return errors.Wrapf(ErrNoConfirmationRequired, "no pending confirmation for email:%v", id.Email)
