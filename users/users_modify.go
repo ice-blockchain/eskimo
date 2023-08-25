@@ -78,18 +78,18 @@ func (r *repository) ModifyUser(ctx context.Context, usr *User, profilePicture *
 		bkpUsr.ProfilePictureURL = RandomDefaultProfilePictureName()
 	}
 	if sErr := runConcurrently(ctx, r.sendContactMessage, uniqueAgendaContactIDsForSend); sErr != nil {
-		_, rollBackParams := bkpUsr.genSQLUpdate(ctx, agendaBefore)
+		rollbackSQL, rollBackParams := bkpUsr.genSQLUpdate(ctx, agendaBefore)
 		rollBackParams[1] = bkpUsr.UpdatedAt.Time
-		_, rErr := storage.Exec(ctx, r.db, sql, rollBackParams...)
+		_, rErr := storage.Exec(ctx, r.db, rollbackSQL, rollBackParams...)
 
 		return errors.Wrapf(multierror.Append(rErr, sErr).ErrorOrNil(), "can't send contacts message for userID:%v", usr.ID)
 	}
 
 	us := &UserSnapshot{User: r.sanitizeUser(oldUsr.override(usr)), Before: r.sanitizeUser(oldUsr)}
 	if err = r.sendUserSnapshotMessage(ctx, us); err != nil {
-		_, rollBackParams := bkpUsr.genSQLUpdate(ctx, agendaBefore)
+		rollbackSQL, rollBackParams := bkpUsr.genSQLUpdate(ctx, agendaBefore)
 		rollBackParams[1] = bkpUsr.UpdatedAt.Time
-		_, rollbackErr := storage.Exec(ctx, r.db, sql, rollBackParams...)
+		_, rollbackErr := storage.Exec(ctx, r.db, rollbackSQL, rollBackParams...)
 
 		return multierror.Append( //nolint:wrapcheck // Not needed.
 			errors.Wrapf(err, "failed to send updated user snapshot message %#v", us),
