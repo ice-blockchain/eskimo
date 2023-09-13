@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: ice License 1.0
+
 basePath: /v1w
 definitions:
   main.Auth:

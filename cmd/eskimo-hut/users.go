@@ -122,21 +122,21 @@ func validateCreateUser(req *server.Request[CreateUserRequestBody, User]) *serve
 //	@Accept			multipart/form-data
 //	@Produce		json
 //
-// @Param		Authorization		header		string					true	"Insert your access token"		default(Bearer <Add access token here>)
-// @Param		X-Account-Metadata	header		string					false	"Insert your metadata token"	default(<Add metadata token here>)
-// @Param		userId				path		string					true	"ID of the user"
-// @Param		multiPartFormData	formData	ModifyUserRequestBody	true	"Request params"
-// @Param		profilePicture		formData	file					false	"The new profile picture for the user"
-// @Success	200					{object}	ModifyUserResponse
-// @Failure	400					{object}	server.ErrorResponse	"if validations fail or user for modification email is blocked"
-// @Failure	401					{object}	server.ErrorResponse	"if not authorized"
-// @Failure	403					{object}	server.ErrorResponse	"not allowed"
-// @Failure	404					{object}	server.ErrorResponse	"user is not found; or the referred by is not found"
-// @Failure	409					{object}	server.ErrorResponse	"if username, email or phoneNumber conflict with another user's"
-// @Failure	422					{object}	server.ErrorResponse	"if syntax fails"
-// @Failure	500					{object}	server.ErrorResponse
-// @Failure	504					{object}	server.ErrorResponse	"if request times out"
-// @Router		/users/{userId} [PATCH].
+//	@Param			Authorization		header		string					true	"Insert your access token"		default(Bearer <Add access token here>)
+//	@Param			X-Account-Metadata	header		string					false	"Insert your metadata token"	default(<Add metadata token here>)
+//	@Param			userId				path		string					true	"ID of the user"
+//	@Param			multiPartFormData	formData	ModifyUserRequestBody	true	"Request params"
+//	@Param			profilePicture		formData	file					false	"The new profile picture for the user"
+//	@Success		200					{object}	ModifyUserResponse
+//	@Failure		400					{object}	server.ErrorResponse	"if validations fail or user for modification email is blocked"
+//	@Failure		401					{object}	server.ErrorResponse	"if not authorized"
+//	@Failure		403					{object}	server.ErrorResponse	"not allowed"
+//	@Failure		404					{object}	server.ErrorResponse	"user is not found; or the referred by is not found"
+//	@Failure		409					{object}	server.ErrorResponse	"if username, email or phoneNumber conflict with another user's"
+//	@Failure		422					{object}	server.ErrorResponse	"if syntax fails"
+//	@Failure		500					{object}	server.ErrorResponse
+//	@Failure		504					{object}	server.ErrorResponse	"if request times out"
+//	@Router			/users/{userId} [PATCH].
 func (s *service) ModifyUser( //nolint:gocritic,funlen,revive,cyclop // .
 	ctx context.Context,
 	req *server.Request[ModifyUserRequestBody, ModifyUserResponse],

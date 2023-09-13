@@ -366,14 +366,14 @@ func (s *service) updateMetadataWithFirebaseID(
 //	@Tags			Auth
 //	@Accept			json
 //	@Produce		json
-//	@Param			Authorization	header		string	true	"Insert your access token"	default(Bearer <Add access token here>)
-//	@Param			X-API-Key	header		string	true	"Insert your api key"	default(<Add api key here>)
-//	@Param			request	body		ProcessFaceRecognitionResultArg	true	"Request params"
+//	@Param			Authorization	header	string							true	"Insert your access token"	default(Bearer <Add access token here>)
+//	@Param			X-API-Key		header	string							true	"Insert your api key"		default(<Add api key here>)
+//	@Param			request			body	ProcessFaceRecognitionResultArg	true	"Request params"
 //	@Success		200				"OK"
 //	@Failure		401				{object}	server.ErrorResponse	"if not authenticated"
 //	@Failure		403				{object}	server.ErrorResponse	"if not allowed"
 //	@Failure		404				{object}	server.ErrorResponse	"if user not found"
-//	@Failure		422		{object}	server.ErrorResponse	"if syntax fails"
+//	@Failure		422				{object}	server.ErrorResponse	"if syntax fails"
 //	@Failure		500				{object}	server.ErrorResponse
 //	@Failure		504				{object}	server.ErrorResponse	"if request times out"
 //	@Router			/auth/processFaceRecognitionResult [POST].
