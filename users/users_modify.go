@@ -25,6 +25,9 @@ func (r *repository) ModifyUser(ctx context.Context, usr *User, profilePicture *
 	if err != nil {
 		return errors.Wrapf(err, "get user %v failed", usr.ID)
 	}
+	if oldUsr.ReferredBy != "" && oldUsr.ReferredBy != oldUsr.ID && usr.ReferredBy != "" && usr.ReferredBy != oldUsr.ReferredBy {
+		return errors.Errorf("changing the referredBy a second time is not allowed")
+	}
 	lu := lastUpdatedAt(ctx)
 	if lu != nil && oldUsr.UpdatedAt.UnixNano() != lu.UnixNano() {
 		return ErrRaceCondition
@@ -162,7 +165,7 @@ func (u *User) genSQLUpdate(ctx context.Context, agendaUserIDs []UserID) (sql st
 	}
 	if u.ReferredBy != "" {
 		params = append(params, u.ReferredBy)
-		sql += fmt.Sprintf(", REFERRED_BY = $%v", nextIndex)
+		sql += fmt.Sprintf(", REFERRED_BY = COALESCE(NULLIF(REFERRED_BY,ID),$%v)", nextIndex)
 		falseVal := false
 		u.RandomReferredBy = &falseVal
 		nextIndex++
