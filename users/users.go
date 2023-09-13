@@ -243,16 +243,33 @@ func (u *User) Checksum() string {
 	return fmt.Sprint(u.UpdatedAt.UnixNano())
 }
 
-func (u *User) sanitizeForUI() {
-	u.RandomReferredBy = nil
-	u.PhoneNumberHash = ""
-	u.HashCode = 0
-	if u.Username == u.ID {
-		u.Username = ""
+func (r *repository) sanitizeUserForUI(usr *User) {
+	usr.RandomReferredBy = nil
+	usr.PhoneNumberHash = ""
+	usr.HashCode = 0
+	if usr.Username == usr.ID {
+		usr.Username = ""
 	}
-	if u.ReferredBy == u.ID {
-		u.ReferredBy = ""
+	if usr.ReferredBy == usr.ID {
+		usr.ReferredBy = ""
 	}
+	r.buildRepeatableKYCSteps(usr)
+}
+
+func (r *repository) buildRepeatableKYCSteps(usr *User) {
+	if usr.KYCStepPassed == nil ||
+		*usr.KYCStepPassed < LivenessDetectionKYCStep ||
+		usr.KYCStepsLastUpdatedAt == nil ||
+		len(*usr.KYCStepsLastUpdatedAt) < int(LivenessDetectionKYCStep) {
+		return
+	}
+	if r.cfg.IntervalBetweenRepeatableKYCSteps == 0 {
+		log.Panic(errors.New("`intervalBetweenRepeatableKYCSteps` config is missing"))
+	}
+	nextDate := (*usr.KYCStepsLastUpdatedAt)[LivenessDetectionKYCStep-1].Add(r.cfg.IntervalBetweenRepeatableKYCSteps)
+	repeatableKYCSteps := make(map[KYCStep]*time.Time, 1)
+	repeatableKYCSteps[LivenessDetectionKYCStep] = time.New(nextDate)
+	usr.RepeatableKYCSteps = &repeatableKYCSteps
 }
 
 func (r *repository) sanitizeUser(usr *User) *User {

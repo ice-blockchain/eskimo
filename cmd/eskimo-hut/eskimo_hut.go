@@ -31,6 +31,9 @@ func main() {
 	appCfg.MustLoadFromKey(applicationYamlKey, &cfg)
 	api.SwaggerInfo.Host = cfg.Host
 	api.SwaggerInfo.Version = cfg.Version
+	if cfg.APIKey == "" {
+		log.Panic("'api-key' is missing")
+	}
 	server.New(new(service), applicationYamlKey, swaggerRoot).ListenAndServe(ctx, cancel)
 }
 

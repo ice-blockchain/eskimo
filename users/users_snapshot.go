@@ -25,8 +25,8 @@ func (s *userSnapshotSource) Process(ctx context.Context, msg *messagebroker.Mes
 	}
 
 	return multierror.Append( //nolint:wrapcheck // Not needed.
-		errors.Wrap(s.incrementTotalUsers(ctx, usr), "failed to incrementTotalUsers"),
-		errors.Wrap(s.incrementOrDecrementCountryUserCount(ctx, usr), "failed to incrementOrDecrementCountryUserCount"),
+		errors.Wrap(s.updateTotalUsersCount(ctx, usr), "failed to updateTotalUsersCount"),
+		errors.Wrap(s.updateTotalUsersPerCountryCount(ctx, usr), "failed to updateTotalUsersPerCountryCount"),
 		errors.Wrap(s.updateReferralCount(ctx, msg.Timestamp, usr), "failed to updateReferralCount"),
 		errors.Wrap(s.deleteUserTracking(ctx, usr), "failed to deleteUserTracking"),
 	).ErrorOrNil()

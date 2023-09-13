@@ -17,6 +17,7 @@ cmd/eskimo:
     accessExpirationTime: 1h
     jwtSecret: bogus
 cmd/eskimo-hut:
+  api-key: bogus-secret
   host: localhost:1443
   version: local
   defaultEndpointTimeout: 30s
@@ -28,15 +29,16 @@ cmd/eskimo-hut:
     refreshExpirationTime: 24h
     accessExpirationTime: 1h
     jwtSecret: bogus
+wintr/connectors/storage/v2: &db
+  runDDL: true
+  primaryURL: postgresql://root:pass@localhost:5433/eskimo
+  credentials:
+    user: root
+    password: pass
+  replicaURLs:
+    - postgresql://root:pass@localhost:5433/eskimo
 auth/email-link:
-  wintr/connectors/storage/v2:
-    runDDL: true
-    primaryURL: postgresql://root:pass@localhost:5433/eskimo
-    credentials:
-      user: root
-      password: pass
-    replicaURLs:
-      - postgresql://root:pass@localhost:5433/eskimo
+  wintr/connectors/storage/v2: *db
   fromEmailAddress: no-reply@ice.io
   fromEmailName: ice
   emailValidation:
@@ -52,14 +54,8 @@ auth/email-link:
     maxWrongAttemptsCount: 3
 users: &users
   disableConsumer: false
-  wintr/connectors/storage/v2:
-    runDDL: true
-    primaryURL: postgresql://root:pass@localhost:5433/eskimo
-    credentials:
-      user: root
-      password: pass
-    replicaURLs:
-      - postgresql://root:pass@localhost:5433/eskimo
+  intervalBetweenRepeatableKYCSteps: 1m
+  wintr/connectors/storage/v2: *db
   messageBroker: &usersMessageBroker
     consumerGroup: eskimo-local
     createTopics: true

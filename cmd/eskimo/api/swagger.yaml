@@ -1,5 +1,3 @@
-# SPDX-License-Identifier: ice License 1.0
-
 basePath: /v1r
 definitions:
   main.User:
@@ -45,6 +43,26 @@ definitions:
       id:
         example: did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2
         type: string
+      kycStepBlocked:
+        allOf:
+        - $ref: '#/definitions/users.KYCStep'
+        example: 0
+      kycStepPassed:
+        allOf:
+        - $ref: '#/definitions/users.KYCStep'
+        example: 0
+      kycStepsCreatedAt:
+        example:
+        - "2022-01-03T16:20:52.156534Z"
+        items:
+          type: string
+        type: array
+      kycStepsLastUpdatedAt:
+        example:
+        - "2022-01-03T16:20:52.156534Z"
+        items:
+          type: string
+        type: array
       language:
         example: en
         type: string
@@ -63,6 +81,10 @@ definitions:
       referredBy:
         example: did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2
         type: string
+      repeatableKYCSteps:
+        additionalProperties:
+          type: string
+        type: object
       t1ReferralCount:
         example: 100
         type: integer
@@ -101,6 +123,16 @@ definitions:
   users.JSON:
     additionalProperties: {}
     type: object
+  users.KYCStep:
+    enum:
+    - 0
+    - 1
+    - 2
+    type: integer
+    x-enum-varnames:
+    - NoneKYCStep
+    - FacialRecognitionKYCStep
+    - LivenessDetectionKYCStep
   users.MinimalUserProfile:
     properties:
       active:
@@ -240,6 +272,26 @@ definitions:
       id:
         example: did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2
         type: string
+      kycStepBlocked:
+        allOf:
+        - $ref: '#/definitions/users.KYCStep'
+        example: 0
+      kycStepPassed:
+        allOf:
+        - $ref: '#/definitions/users.KYCStep'
+        example: 0
+      kycStepsCreatedAt:
+        example:
+        - "2022-01-03T16:20:52.156534Z"
+        items:
+          type: string
+        type: array
+      kycStepsLastUpdatedAt:
+        example:
+        - "2022-01-03T16:20:52.156534Z"
+        items:
+          type: string
+        type: array
       language:
         example: en
         type: string
@@ -258,6 +310,10 @@ definitions:
       referredBy:
         example: did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2
         type: string
+      repeatableKYCSteps:
+        additionalProperties:
+          type: string
+        type: object
       t1ReferralCount:
         example: 100
         type: integer

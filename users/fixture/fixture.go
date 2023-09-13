@@ -40,7 +40,7 @@ func RunTests(
 }
 
 func WTestConnectors() []connectorsfixture.TestConnector {
-	return []connectorsfixture.TestConnector{newDBConnector(), newMBConnector()}
+	return []connectorsfixture.TestConnector{newMBConnector()}
 }
 
 func RTestConnectors() []connectorsfixture.TestConnector {

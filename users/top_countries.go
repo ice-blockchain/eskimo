@@ -53,8 +53,11 @@ func (r *repository) getTopCountriesParams(countryKeyword string) (countriesSQLE
 	return
 }
 
-func (r *repository) incrementOrDecrementCountryUserCount(ctx context.Context, usr *UserSnapshot) error {
-	if (usr.User != nil && usr.Before != nil && usr.User.Country == usr.Before.Country) || ctx.Err() != nil {
+func (r *repository) updateTotalUsersPerCountryCount(ctx context.Context, usr *UserSnapshot) error {
+	if (usr.User != nil && usr.Before != nil && usr.User.Country == usr.Before.Country) ||
+		(!usr.User.IsHuman() && !usr.Before.IsHuman()) ||
+		(usr.User != nil && usr.Before == nil && !usr.User.isFirstMiningAfterHumanVerification(r)) ||
+		ctx.Err() != nil {
 		return errors.Wrap(ctx.Err(), "context failed")
 	}
 	nextIndex := 1

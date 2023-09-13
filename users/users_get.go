@@ -48,7 +48,8 @@ func (r *repository) GetUserByID(ctx context.Context, userID string) (*UserProfi
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to select user by id %v", userID)
 	}
-	r.sanitizeUser(res.User).sanitizeForUI()
+	r.sanitizeUser(res.User)
+	r.sanitizeUserForUI(res.User)
 
 	return res, nil
 }
@@ -117,7 +118,8 @@ func (r *repository) GetUserByUsername(ctx context.Context, username string) (*U
 	resp := new(UserProfile)
 	resp.User = new(User)
 	resp.PublicUserInformation = result.PublicUserInformation
-	r.sanitizeUser(resp.User).sanitizeForUI()
+	r.sanitizeUser(resp.User)
+	r.sanitizeUserForUI(resp.User)
 
 	return resp, nil
 }

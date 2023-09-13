@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"mime/multipart"
 	"strings"
+	stdlibtime "time"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
@@ -61,7 +62,7 @@ func (r *repository) ModifyUser(ctx context.Context, usr *User, profilePicture *
 	}
 	if len(params) == noOpNoOfParams {
 		*usr = *r.sanitizeUser(oldUsr)
-		usr.sanitizeForUI()
+		r.sanitizeUserForUI(usr)
 
 		return nil
 	}
@@ -97,7 +98,7 @@ func (r *repository) ModifyUser(ctx context.Context, usr *User, profilePicture *
 		).ErrorOrNil()
 	}
 	*usr = *us.User
-	usr.sanitizeForUI()
+	r.sanitizeUserForUI(usr)
 
 	return nil
 }
@@ -111,7 +112,10 @@ func (u *User) override(user *User) *User {
 	usr.LastPingCooldownEndedAt = mergeTimeField(u.LastPingCooldownEndedAt, user.LastPingCooldownEndedAt)
 	usr.HiddenProfileElements = mergePointerToArrayField(u.HiddenProfileElements, user.HiddenProfileElements)
 	usr.RandomReferredBy = mergePointerField(u.RandomReferredBy, user.RandomReferredBy)
-	usr.KYCPassed = mergePointerField(u.KYCPassed, user.KYCPassed)
+	usr.KYCStepPassed = mergePointerField(u.KYCStepPassed, user.KYCStepPassed)
+	usr.KYCStepBlocked = mergePointerField(u.KYCStepBlocked, user.KYCStepBlocked)
+	usr.KYCStepsLastUpdatedAt = mergePointerToArrayField(u.KYCStepsLastUpdatedAt, user.KYCStepsLastUpdatedAt)
+	usr.KYCStepsCreatedAt = mergePointerToArrayField(u.KYCStepsCreatedAt, user.KYCStepsCreatedAt)
 	usr.ClientData = mergePointerToMapField(u.ClientData, user.ClientData)
 	usr.ReferredBy = mergeStringField(u.ReferredBy, user.ReferredBy)
 	usr.Email = mergeStringField(u.Email, user.Email)
@@ -225,6 +229,25 @@ func (u *User) genSQLUpdate(ctx context.Context, agendaUserIDs []UserID) (sql st
 	if u.BlockchainAccountAddress != "" {
 		params = append(params, u.BlockchainAccountAddress)
 		sql += fmt.Sprintf(", BLOCKCHAIN_ACCOUNT_ADDRESS = $%v", nextIndex)
+		nextIndex++
+	}
+	if u.KYCStepsLastUpdatedAt != nil {
+		kycStepsLastUpdatedAt := make([]stdlibtime.Time, 0, len(*u.KYCStepsLastUpdatedAt))
+		for _, updatedAt := range *u.KYCStepsLastUpdatedAt {
+			kycStepsLastUpdatedAt = append(kycStepsLastUpdatedAt, *updatedAt.Time)
+		}
+		params = append(params, kycStepsLastUpdatedAt)
+		sql += fmt.Sprintf(", KYC_STEPS_LAST_UPDATED_AT = $%[1]v::timestamp[], KYC_STEPS_CREATED_AT = NULLIF(array_remove(array_cat(array[coalesce((KYC_STEPS_CREATED_AT)[1],($%[1]v::timestamp[])[1])],array[coalesce((KYC_STEPS_CREATED_AT)[2],($%[1]v::timestamp[])[2])]),null),array[]::timestamp[])", nextIndex) //nolint:lll // .
+		nextIndex++
+	}
+	if u.KYCStepPassed != nil {
+		params = append(params, u.KYCStepPassed)
+		sql += fmt.Sprintf(", KYC_STEP_PASSED = $%v", nextIndex)
+		nextIndex++
+	}
+	if u.KYCStepBlocked != nil {
+		params = append(params, u.KYCStepBlocked)
+		sql += fmt.Sprintf(", KYC_STEP_BLOCKED = $%v", nextIndex)
 		nextIndex++
 	}
 	if agendaUserIDs != nil {

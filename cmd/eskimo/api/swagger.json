@@ -692,6 +692,40 @@
                     "type": "string",
                     "example": "did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"
                 },
+                "kycStepBlocked": {
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/users.KYCStep"
+                        }
+                    ],
+                    "example": 0
+                },
+                "kycStepPassed": {
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/users.KYCStep"
+                        }
+                    ],
+                    "example": 0
+                },
+                "kycStepsCreatedAt": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "2022-01-03T16:20:52.156534Z"
+                    ]
+                },
+                "kycStepsLastUpdatedAt": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "2022-01-03T16:20:52.156534Z"
+                    ]
+                },
                 "language": {
                     "type": "string",
                     "example": "en"
@@ -715,6 +749,12 @@
                 "referredBy": {
                     "type": "string",
                     "example": "did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"
+                },
+                "repeatableKYCSteps": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
                 },
                 "t1ReferralCount": {
                     "type": "integer",
@@ -768,6 +808,19 @@
         "users.JSON": {
             "type": "object",
             "additionalProperties": {}
+        },
+        "users.KYCStep": {
+            "type": "integer",
+            "enum": [
+                0,
+                1,
+                2
+            ],
+            "x-enum-varnames": [
+                "NoneKYCStep",
+                "FacialRecognitionKYCStep",
+                "LivenessDetectionKYCStep"
+            ]
         },
         "users.MinimalUserProfile": {
             "type": "object",
@@ -963,6 +1016,40 @@
                     "type": "string",
                     "example": "did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"
                 },
+                "kycStepBlocked": {
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/users.KYCStep"
+                        }
+                    ],
+                    "example": 0
+                },
+                "kycStepPassed": {
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/users.KYCStep"
+                        }
+                    ],
+                    "example": 0
+                },
+                "kycStepsCreatedAt": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "2022-01-03T16:20:52.156534Z"
+                    ]
+                },
+                "kycStepsLastUpdatedAt": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "2022-01-03T16:20:52.156534Z"
+                    ]
+                },
                 "language": {
                     "type": "string",
                     "example": "en"
@@ -986,6 +1073,12 @@
                 "referredBy": {
                     "type": "string",
                     "example": "did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"
+                },
+                "repeatableKYCSteps": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
                 },
                 "t1ReferralCount": {
                     "type": "integer",

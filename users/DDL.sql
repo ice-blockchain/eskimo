@@ -6,8 +6,9 @@ CREATE TABLE IF NOT EXISTS users  (
                     last_mining_ended_at timestamp,
                     last_ping_cooldown_ended_at timestamp,
                     hash_code bigint not null generated always as identity,
+                    kyc_step_passed smallint NOT NULL DEFAULT 0,
+                    kyc_step_blocked smallint NOT NULL DEFAULT 0,
                     random_referred_by BOOLEAN NOT NULL DEFAULT FALSE,
-                    kyc_passed BOOLEAN NOT NULL DEFAULT FALSE,
                     client_data text,
                     hidden_profile_elements text[],
                     phone_number text NOT NULL UNIQUE,
@@ -22,11 +23,30 @@ CREATE TABLE IF NOT EXISTS users  (
                     referred_by text NOT NULL REFERENCES users(id),
                     phone_number_hash text NOT NULL UNIQUE,
                     agenda_contact_user_ids text[],
+                    kyc_steps_last_updated_at timestamp[],
+                    kyc_steps_created_at timestamp[],
                     mining_blockchain_account_address text NOT NULL UNIQUE,
                     blockchain_account_address text NOT NULL UNIQUE,
                     language text NOT NULL DEFAULT 'en',
                     lookup tsvector NOT NULL)
                     WITH (FILLFACTOR = 70);
+DO $$ BEGIN
+    if exists (select 1 from information_schema.columns where table_name = 'users' and column_name = 'kyc_passed') then
+            ALTER TABLE users
+                RENAME COLUMN kyc_passed TO kyc_step_passed;
+            ALTER TABLE users
+                ALTER COLUMN kyc_step_passed DROP DEFAULT;
+            ALTER TABLE users
+                ALTER COLUMN kyc_step_passed SET DATA TYPE smallint USING kyc_step_passed::int;
+            ALTER TABLE users
+                ALTER COLUMN kyc_step_passed SET NOT NULL;
+            ALTER TABLE users
+                ALTER COLUMN kyc_step_passed SET DEFAULT 0;
+    end if;
+END $$;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS kyc_step_blocked smallint NOT NULL DEFAULT 0;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS kyc_steps_last_updated_at timestamp[];
+ALTER TABLE users ADD COLUMN IF NOT EXISTS kyc_steps_created_at timestamp[];
 INSERT INTO users (created_at,updated_at,phone_number,phone_number_hash,email,id,username,profile_picture_name,referred_by,city,country,mining_blockchain_account_address,blockchain_account_address, lookup)
                          VALUES (current_timestamp,current_timestamp,'bogus','bogus','bogus','bogus','bogus','bogus.jpg','bogus','bogus','RO','bogus','bogus',to_tsvector('bogus')),
                                 (current_timestamp,current_timestamp,'icenetwork','icenetwork','icenetwork','icenetwork','icenetwork','icenetwork.jpg','icenetwork','icenetwork','RO','icenetwork','icenetwork',to_tsvector('icenetwork'))

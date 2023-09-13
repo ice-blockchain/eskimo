@@ -6,6 +6,7 @@ import (
 	"context"
 	"net/mail"
 	"strings"
+	stdlibtime "time"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
@@ -26,7 +27,8 @@ func (s *service) setupAuthRoutes(router *server.Router) {
 		POST("auth/refreshTokens", server.RootHandler(s.RegenerateTokens)).
 		POST("auth/signInWithEmailLink", server.RootHandler(s.SignIn)).
 		POST("auth/getConfirmationStatus", server.RootHandler(s.Status)).
-		POST("auth/getMetadata", server.RootHandler(s.Metadata))
+		POST("auth/getMetadata", server.RootHandler(s.Metadata)).
+		POST("auth/processFaceRecognitionResult", server.RootHandler(s.ProcessFaceRecognitionResult))
 }
 
 // SendSignInLinkToEmail godoc
@@ -39,7 +41,7 @@ func (s *service) setupAuthRoutes(router *server.Router) {
 //	@Param			request			body		SendSignInLinkToEmailRequestArg	true	"Request params"
 //	@Param			X-Forwarded-For	header		string							false	"Client IP"	default(1.1.1.1)
 //	@Success		200				{object}	Auth
-//	@Success		403				{object}	server.ErrorResponse	"if too many pending auth requests from one IP"
+//	@Failure		403				{object}	server.ErrorResponse	"if too many pending auth requests from one IP"
 //	@Failure		409				{object}	server.ErrorResponse	"if email conflicts with another user's"
 //	@Failure		422				{object}	server.ErrorResponse	"if syntax fails"
 //	@Failure		500				{object}	server.ErrorResponse
@@ -355,4 +357,77 @@ func (s *service) updateMetadataWithFirebaseID(
 	}
 
 	return md, nil
+}
+
+// ProcessFaceRecognitionResult godoc
+//
+//	@Schemes
+//	@Description	Webhook to notify the service about the result of an user's face authentication process.
+//	@Tags			Auth
+//	@Accept			json
+//	@Produce		json
+//	@Param			Authorization	header		string	true	"Insert your access token"	default(Bearer <Add access token here>)
+//	@Param			X-API-Key	header		string	true	"Insert your api key"	default(<Add api key here>)
+//	@Param			request	body		ProcessFaceRecognitionResultArg	true	"Request params"
+//	@Success		200				"OK"
+//	@Failure		401				{object}	server.ErrorResponse	"if not authenticated"
+//	@Failure		403				{object}	server.ErrorResponse	"if not allowed"
+//	@Failure		404				{object}	server.ErrorResponse	"if user not found"
+//	@Failure		422		{object}	server.ErrorResponse	"if syntax fails"
+//	@Failure		500				{object}	server.ErrorResponse
+//	@Failure		504				{object}	server.ErrorResponse	"if request times out"
+//	@Router			/auth/processFaceRecognitionResult [POST].
+func (s *service) ProcessFaceRecognitionResult(
+	ctx context.Context,
+	req *server.Request[ProcessFaceRecognitionResultArg, any],
+) (successResp *server.Response[any], errorResp *server.Response[server.ErrorResponse]) {
+	if cfg.APIKey != req.Data.APIKey {
+		return nil, server.Forbidden(errors.New("not allowed"))
+	}
+	usr, err := parseProcessFaceRecognitionResultRequest(req)
+	if err != nil {
+		return nil, server.UnprocessableEntity(err, invalidPropertiesErrorCode)
+	}
+	if err = s.usersProcessor.ModifyUser(ctx, usr, nil); err != nil {
+		err = errors.Wrapf(err, "failed to UpdateFaceRecognitionResult for %#v", usr)
+		switch {
+		case errors.Is(err, users.ErrNotFound):
+			return nil, server.NotFound(err, userNotFoundErrorCode)
+		default:
+			return nil, server.Unexpected(err)
+		}
+	}
+
+	return server.OK[any](), nil
+}
+
+func parseProcessFaceRecognitionResultRequest(req *server.Request[ProcessFaceRecognitionResultArg, any]) (*users.User, error) {
+	lastUpdatedAtDates := make([]*time.Time, 0, len(req.Data.LastUpdatedAt))
+	for ix, lastUpdatedAt := range req.Data.LastUpdatedAt {
+		parsedLastUpdatedAt, err := stdlibtime.Parse(stdlibtime.RFC3339Nano, lastUpdatedAt)
+		if err != nil {
+			err = errors.Wrapf(err, "invalid `RFC3339` format for lastUpdatedAt[%v]=`%v`", ix, lastUpdatedAt)
+
+			return nil, err
+		}
+		lastUpdatedAtDates = append(lastUpdatedAtDates, time.New(parsedLastUpdatedAt))
+	}
+	usr := new(users.User)
+	usr.ID = req.AuthenticatedUser.UserID
+	if len(lastUpdatedAtDates) > 0 {
+		usr.KYCStepsLastUpdatedAt = &lastUpdatedAtDates
+	}
+
+	kycStepPassed := users.KYCStep(len(lastUpdatedAtDates))
+	usr.KYCStepPassed = &kycStepPassed
+
+	if *req.Data.Disabled {
+		kycStepBlocked := users.FacialRecognitionKYCStep
+		usr.KYCStepBlocked = &kycStepBlocked
+	} else {
+		kycStepBlocked := users.NoneKYCStep
+		usr.KYCStepBlocked = &kycStepBlocked
+	}
+
+	return usr, nil
 }

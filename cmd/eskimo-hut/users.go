@@ -121,7 +121,7 @@ func validateCreateUser(req *server.Request[CreateUserRequestBody, User]) *serve
 //	@Tags			Accounts
 //	@Accept			multipart/form-data
 //	@Produce		json
-
+//
 // @Param		Authorization		header		string					true	"Insert your access token"		default(Bearer <Add access token here>)
 // @Param		X-Account-Metadata	header		string					false	"Insert your metadata token"	default(<Add metadata token here>)
 // @Param		userId				path		string					true	"ID of the user"

@@ -1,5 +1,3 @@
-# SPDX-License-Identifier: ice License 1.0
-
 basePath: /v1w
 definitions:
   main.Auth:
@@ -103,6 +101,26 @@ definitions:
       id:
         example: did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2
         type: string
+      kycStepBlocked:
+        allOf:
+        - $ref: '#/definitions/users.KYCStep'
+        example: 0
+      kycStepPassed:
+        allOf:
+        - $ref: '#/definitions/users.KYCStep'
+        example: 0
+      kycStepsCreatedAt:
+        example:
+        - "2022-01-03T16:20:52.156534Z"
+        items:
+          type: string
+        type: array
+      kycStepsLastUpdatedAt:
+        example:
+        - "2022-01-03T16:20:52.156534Z"
+        items:
+          type: string
+        type: array
       language:
         example: en
         type: string
@@ -124,12 +142,27 @@ definitions:
       referredBy:
         example: did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2
         type: string
+      repeatableKYCSteps:
+        additionalProperties:
+          type: string
+        type: object
       updatedAt:
         example: "2022-01-03T16:20:52.156534Z"
         type: string
       username:
         example: jdoe
         type: string
+    type: object
+  main.ProcessFaceRecognitionResultArg:
+    properties:
+      disabled:
+        type: boolean
+      lastUpdatedAt:
+        example:
+        - "2006-01-02T15:04:05Z"
+        items:
+          type: string
+        type: array
     type: object
   main.RefreshToken:
     type: object
@@ -275,6 +308,26 @@ definitions:
       id:
         example: did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2
         type: string
+      kycStepBlocked:
+        allOf:
+        - $ref: '#/definitions/users.KYCStep'
+        example: 0
+      kycStepPassed:
+        allOf:
+        - $ref: '#/definitions/users.KYCStep'
+        example: 0
+      kycStepsCreatedAt:
+        example:
+        - "2022-01-03T16:20:52.156534Z"
+        items:
+          type: string
+        type: array
+      kycStepsLastUpdatedAt:
+        example:
+        - "2022-01-03T16:20:52.156534Z"
+        items:
+          type: string
+        type: array
       language:
         example: en
         type: string
@@ -293,6 +346,10 @@ definitions:
       referredBy:
         example: did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2
         type: string
+      repeatableKYCSteps:
+        additionalProperties:
+          type: string
+        type: object
       updatedAt:
         example: "2022-01-03T16:20:52.156534Z"
         type: string
@@ -324,6 +381,16 @@ definitions:
   users.JSON:
     additionalProperties: {}
     type: object
+  users.KYCStep:
+    enum:
+    - 0
+    - 1
+    - 2
+    type: integer
+    x-enum-varnames:
+    - NoneKYCStep
+    - FacialRecognitionKYCStep
+    - LivenessDetectionKYCStep
 info:
   contact:
     name: ice.io
@@ -393,6 +460,62 @@ paths:
             $ref: '#/definitions/main.Metadata'
         "404":
           description: if user do not have a metadata yet
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "504":
+          description: if request times out
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+      tags:
+      - Auth
+  /auth/processFaceRecognitionResult:
+    post:
+      consumes:
+      - application/json
+      description: Webhook to notify the service about the result of an user's face
+        authentication process.
+      parameters:
+      - default: Bearer <Add access token here>
+        description: Insert your access token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - default: <Add api key here>
+        description: Insert your api key
+        in: header
+        name: X-API-Key
+        required: true
+        type: string
+      - description: Request params
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/main.ProcessFaceRecognitionResultArg'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: if not authenticated
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "403":
+          description: if not allowed
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "404":
+          description: if user not found
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "422":
+          description: if syntax fails
           schema:
             $ref: '#/definitions/server.ErrorResponse'
         "500":
@@ -662,6 +785,9 @@ paths:
       tags:
       - Accounts
     patch:
+      consumes:
+      - multipart/form-data
+      description: Modifies an user account
       parameters:
       - default: Bearer <Add access token here>
         description: Insert your access token
@@ -759,6 +885,8 @@ paths:
         in: formData
         name: profilePicture
         type: file
+      produces:
+      - application/json
       responses:
         "200":
           description: OK
@@ -796,6 +924,8 @@ paths:
           description: if request times out
           schema:
             $ref: '#/definitions/server.ErrorResponse'
+      tags:
+      - Accounts
   /users/{userId}/devices/{deviceUniqueId}/metadata:
     put:
       consumes:

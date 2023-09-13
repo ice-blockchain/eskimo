@@ -45,6 +45,12 @@ const (
 	Tier2Referrals    ReferralType = "T2"
 )
 
+const (
+	NoneKYCStep KYCStep = iota
+	FacialRecognitionKYCStep
+	LivenessDetectionKYCStep
+)
+
 var (
 	ErrNotFound           = storage.ErrNotFound
 	ErrRelationNotFound   = storage.ErrRelationNotFound
@@ -67,6 +73,7 @@ var (
 )
 
 type (
+	KYCStep                  int8
 	ReferralType             string
 	HiddenProfileElement     string
 	NotExpired               bool
@@ -74,41 +81,45 @@ type (
 	JSON                     map[string]any
 	UserID                   = string
 	SensitiveUserInformation struct {
-		PhoneNumber string `json:"phoneNumber,omitempty" example:"+12099216581" swaggertype:"string"`
-		Email       string `json:"email,omitempty" example:"jdoe@gmail.com" swaggertype:"string"`
+		PhoneNumber string `json:"phoneNumber,omitempty" example:"+12099216581" swaggertype:"string" db:"phone_number"`
+		Email       string `json:"email,omitempty" example:"jdoe@gmail.com" swaggertype:"string" db:"email"`
 	}
 	PrivateUserInformation struct {
 		SensitiveUserInformation
-		FirstName *string `json:"firstName,omitempty" example:"John" `
-		LastName  *string `json:"lastName,omitempty" example:"Doe"`
+		FirstName *string `json:"firstName,omitempty" example:"John" db:"first_name"`
+		LastName  *string `json:"lastName,omitempty" example:"Doe" db:"last_name"`
 		devicemetadata.DeviceLocation
 	}
 	PublicUserInformation struct {
-		ID                UserID `json:"id,omitempty" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
-		Username          string `json:"username,omitempty" example:"jdoe"`
+		ID                UserID `json:"id,omitempty" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2" db:"id"`
+		Username          string `json:"username,omitempty" example:"jdoe" db:"username"`
 		ProfilePictureURL string `json:"profilePictureUrl,omitempty" example:"https://somecdn.com/p1.jpg" db:"profile_picture_name"`
 	}
 	User struct {
-		CreatedAt               *time.Time                  `json:"createdAt,omitempty" example:"2022-01-03T16:20:52.156534Z"`
-		UpdatedAt               *time.Time                  `json:"updatedAt,omitempty" example:"2022-01-03T16:20:52.156534Z"`
-		LastMiningStartedAt     *time.Time                  `json:"lastMiningStartedAt,omitempty" example:"2022-01-03T16:20:52.156534Z" swaggerignore:"true"`
-		LastMiningEndedAt       *time.Time                  `json:"lastMiningEndedAt,omitempty" example:"2022-01-03T16:20:52.156534Z" swaggerignore:"true"`
-		LastPingCooldownEndedAt *time.Time                  `json:"lastPingCooldownEndedAt,omitempty" example:"2022-01-03T16:20:52.156534Z" swaggerignore:"true"`
-		HiddenProfileElements   *Enum[HiddenProfileElement] `json:"hiddenProfileElements,omitempty" swaggertype:"array,string" example:"level" enums:"globalRank,referralCount,level,role,badges"` //nolint:lll // .
-		RandomReferredBy        *bool                       `json:"randomReferredBy,omitempty" example:"true" swaggerignore:"true"`
-		KYCPassed               *bool                       `json:"-" example:"true" swaggerignore:"true"`
-		ClientData              *JSON                       `json:"clientData,omitempty"`
+		CreatedAt               *time.Time                  `json:"createdAt,omitempty" example:"2022-01-03T16:20:52.156534Z" db:"created_at"`
+		UpdatedAt               *time.Time                  `json:"updatedAt,omitempty" example:"2022-01-03T16:20:52.156534Z" db:"updated_at"`
+		LastMiningStartedAt     *time.Time                  `json:"lastMiningStartedAt,omitempty" example:"2022-01-03T16:20:52.156534Z" swaggerignore:"true" db:"last_mining_started_at"`                                       //nolint:lll // .
+		LastMiningEndedAt       *time.Time                  `json:"lastMiningEndedAt,omitempty" example:"2022-01-03T16:20:52.156534Z" swaggerignore:"true" db:"last_mining_ended_at"`                                           //nolint:lll // .
+		LastPingCooldownEndedAt *time.Time                  `json:"lastPingCooldownEndedAt,omitempty" example:"2022-01-03T16:20:52.156534Z" swaggerignore:"true" db:"last_ping_cooldown_ended_at"`                              //nolint:lll // .
+		HiddenProfileElements   *Enum[HiddenProfileElement] `json:"hiddenProfileElements,omitempty" swaggertype:"array,string" example:"level" enums:"globalRank,referralCount,level,role,badges" db:"hidden_profile_elements"` //nolint:lll // .
+		RandomReferredBy        *bool                       `json:"randomReferredBy,omitempty" example:"true" swaggerignore:"true" db:"random_referred_by"`
+		KYCStepsLastUpdatedAt   *[]*time.Time               `json:"kycStepsLastUpdatedAt,omitempty" swaggertype:"array,string" example:"2022-01-03T16:20:52.156534Z" db:"kyc_steps_last_updated_at"` //nolint:lll // .
+		KYCStepsCreatedAt       *[]*time.Time               `json:"kycStepsCreatedAt,omitempty" swaggertype:"array,string" example:"2022-01-03T16:20:52.156534Z" db:"kyc_steps_created_at"`          //nolint:lll // .
+		KYCStepPassed           *KYCStep                    `json:"kycStepPassed,omitempty" example:"0" db:"kyc_step_passed"`
+		KYCStepBlocked          *KYCStep                    `json:"kycStepBlocked,omitempty" example:"0" db:"kyc_step_blocked"`
+		ClientData              *JSON                       `json:"clientData,omitempty" db:"client_data"`
+		RepeatableKYCSteps      *map[KYCStep]*time.Time     `json:"repeatableKYCSteps,omitempty" db:"-"` //nolint:tagliatelle // Nope.
 		PrivateUserInformation
 		PublicUserInformation
-		ReferredBy                     UserID   `json:"referredBy,omitempty" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2" `
-		PhoneNumberHash                string   `json:"phoneNumberHash,omitempty" example:"Ef86A6021afCDe5673511376B2" swaggerignore:"true"`
-		AgendaPhoneNumberHashes        *string  `json:"agendaPhoneNumberHashes,omitempty" example:"Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2"` //nolint:lll // .
-		MiningBlockchainAccountAddress string   `json:"miningBlockchainAccountAddress,omitempty" example:"0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
-		BlockchainAccountAddress       string   `json:"blockchainAccountAddress,omitempty" example:"0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
-		Language                       string   `json:"language,omitempty" example:"en"`
-		Lookup                         string   `json:"-" example:"username"`
+		ReferredBy                     UserID   `json:"referredBy,omitempty" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2" db:"referred_by"`
+		PhoneNumberHash                string   `json:"phoneNumberHash,omitempty" example:"Ef86A6021afCDe5673511376B2" swaggerignore:"true" db:"phone_number_hash"`
+		AgendaPhoneNumberHashes        *string  `json:"agendaPhoneNumberHashes,omitempty" example:"Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2" db:"-"` //nolint:lll // .
+		MiningBlockchainAccountAddress string   `json:"miningBlockchainAccountAddress,omitempty" example:"0x4B73C58370AEfcEf86A6021afCDe5673511376B2" db:"mining_blockchain_account_address"`                           //nolint:lll // .
+		BlockchainAccountAddress       string   `json:"blockchainAccountAddress,omitempty" example:"0x4B73C58370AEfcEf86A6021afCDe5673511376B2" db:"blockchain_account_address"`                                        //nolint:lll // .
+		Language                       string   `json:"language,omitempty" example:"en" db:"language"`
+		Lookup                         string   `json:"-" example:"username" db:"lookup"`
 		AgendaContactUserIDs           []string `json:"agendaContactUserIDs,omitempty" swaggerignore:"true" db:"agenda_contact_user_ids"`
-		HashCode                       int64    `json:"hashCode,omitempty" example:"43453546464576547" swaggerignore:"true"`
+		HashCode                       int64    `json:"hashCode,omitempty" example:"43453546464576547" swaggerignore:"true" db:"hash_code"`
 	}
 	MinimalUserProfile struct {
 		Active *NotExpired `json:"active,omitempty" example:"true"`
@@ -263,23 +274,14 @@ type (
 	}
 	// | config holds the configuration of this package mounted from `application.yaml`.
 	config struct {
-		PhoneNumberValidation struct {
-			SmsTemplate    string              `yaml:"smsTemplate"`
-			ExpirationTime stdlibtime.Duration `yaml:"expirationTime"`
-		} `yaml:"phoneNumberValidation"`
-		EmailValidation struct {
-			FromEmailName         string              `yaml:"fromEmailName"`
-			FromEmailAddress      string              `yaml:"fromEmailAddress"`
-			EmailBodyHTMLTemplate string              `mapstructure:"emailBodyHTMLTemplate" yaml:"emailBodyHTMLTemplate"` //nolint:tagliatelle // Nope.
-			EmailSubject          string              `yaml:"emailSubject"`
-			ExpirationTime        stdlibtime.Duration `yaml:"expirationTime"`
-		} `yaml:"emailValidation"`
 		messagebroker.Config      `mapstructure:",squash"` //nolint:tagliatelle // Nope.
 		GlobalAggregationInterval struct {
 			MinMiningSessionDuration stdlibtime.Duration `yaml:"minMiningSessionDuration"`
 			Parent                   stdlibtime.Duration `yaml:"parent"`
 			Child                    stdlibtime.Duration `yaml:"child"`
 		} `yaml:"globalAggregationInterval"`
-		DisableConsumer bool `yaml:"disableConsumer"`
+		//nolint:tagliatelle // .
+		IntervalBetweenRepeatableKYCSteps stdlibtime.Duration `yaml:"intervalBetweenRepeatableKYCSteps" mapstructure:"intervalBetweenRepeatableKYCSteps"`
+		DisableConsumer                   bool                `yaml:"disableConsumer"`
 	}
 )

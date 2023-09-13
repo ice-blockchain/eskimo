@@ -138,16 +138,20 @@ func (r *repository) getGlobalValues(ctx context.Context, keys ...string) ([]*Gl
 	return vals, errors.Wrapf(err, "failed to select global vals for keys:%#v", keys)
 }
 
-func (r *repository) incrementTotalUsers(ctx context.Context, usr *UserSnapshot) error {
+func (r *repository) updateTotalUsersCount(ctx context.Context, usr *UserSnapshot) error {
 	if usr.Before != nil && usr.Before.ID != "" && usr.User != nil && usr.User.ID != "" {
 		return nil
 	}
 
-	if usr.Before == nil {
+	if usr.User != nil && usr.User.ID != "" && usr.User.isFirstMiningAfterHumanVerification(r) {
 		return r.incrementOrDecrementTotalUsers(ctx, usr.CreatedAt, true)
 	}
 
-	return r.incrementOrDecrementTotalUsers(ctx, time.Now(), false)
+	if usr.Before != nil && usr.Before.ID != "" && usr.Before.IsHuman() {
+		return r.incrementOrDecrementTotalUsers(ctx, time.Now(), false)
+	}
+
+	return nil
 }
 
 //nolint:revive // .
@@ -184,7 +188,7 @@ func (r *repository) incrementOrDecrementTotalUsers(ctx context.Context, date *t
 	return errors.Wrapf(r.notifyGlobalValueUpdateMessage(ctx, keys...), "failed to notifyGlobalValueUpdateMessage, keys:%#v", keys)
 }
 
-func (r *repository) incrementTotalActiveUsers(ctx context.Context, ms *miningSession) error {
+func (r *repository) incrementTotalActiveUsersCount(ctx context.Context, ms *miningSession) error {
 	if ctx.Err() != nil {
 		return errors.Wrap(ctx.Err(), "unexpected deadline")
 	}

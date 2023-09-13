@@ -39,8 +39,8 @@ type (
 		DeleteAllDeviceMetadata(ctx context.Context, userID string) error
 	}
 	DeviceLocation struct {
-		Country Country `json:"country,omitempty" example:"US"`
-		City    City    `json:"city,omitempty" example:"New York"`
+		Country Country `json:"country,omitempty" example:"US" db:"country"`
+		City    City    `json:"city,omitempty" example:"New York" db:"city"`
 	}
 	//nolint:revive // We don't have a choice if we want to embed it, cuz it will clash with others named "snapshot".
 	DeviceMetadataSnapshot struct {

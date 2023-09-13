@@ -49,7 +49,7 @@ func (r *repository) CreateUser(ctx context.Context, usr *User, clientIP net.IP)
 			errors.Wrapf(r.deleteUser(revertCtx, usr), "failed to delete user due to rollback, for userID:%v", usr.ID)).ErrorOrNil() //nolint:contextcheck // .
 	}
 	hashCode := usr.HashCode
-	usr.sanitizeForUI()
+	r.sanitizeUserForUI(usr)
 	usr.HashCode = hashCode
 
 	return nil
