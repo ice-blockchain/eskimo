@@ -4,6 +4,7 @@ package main
 
 import (
 	"context"
+	"strings"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
@@ -31,6 +32,7 @@ func main() {
 	appCfg.MustLoadFromKey(applicationYamlKey, &cfg)
 	api.SwaggerInfo.Host = cfg.Host
 	api.SwaggerInfo.Version = cfg.Version
+	cfg.APIKey = strings.ReplaceAll(cfg.APIKey, "\n", "")
 	if cfg.APIKey == "" {
 		log.Panic("'api-key' is missing")
 	}
