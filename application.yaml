@@ -29,6 +29,11 @@ cmd/eskimo-hut:
     refreshExpirationTime: 24h
     accessExpirationTime: 1h
     jwtSecret: bogus
+face-auth:
+  faceAuthBaseUrl: http://localhost:5001/
+  caCertificates:
+
+
 wintr/connectors/storage/v2: &db
   runDDL: true
   primaryURL: postgresql://root:pass@localhost:5433/eskimo

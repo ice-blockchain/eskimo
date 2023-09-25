@@ -8,6 +8,7 @@ import (
 
 	emaillink "github.com/ice-blockchain/eskimo/auth/email_link"
 	"github.com/ice-blockchain/eskimo/users"
+	faceauth "github.com/ice-blockchain/eskimo/users/face-auth"
 )
 
 // Public API.
@@ -81,7 +82,9 @@ type (
 		Checksum string `form:"checksum" formMultipart:"checksum"`
 	}
 	DeleteUserArg struct {
-		UserID string `uri:"userId" required:"true" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
+		UserID        string `uri:"userId" required:"true" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
+		AuthToken     string `header:"Authorization" swaggerignore:"true" required:"true"`       //nolint:tagliatelle //.
+		MetadataToken string `header:"X-Account-Metadata" swaggerignore:"true" required:"false"` //nolint:tagliatelle // .
 	}
 	GetDeviceLocationArg struct {
 		// Optional. Set it to `-` if unknown.
@@ -159,7 +162,7 @@ const (
 	confirmationCodeWrongErrorCode            = "CONFIRMATION_CODE_WRONG"
 	tooManyRequests                           = "TOO_MANY_REQUESTS"
 
-	noPendingLoginSessionErrorCode = "NO_PENDING_LOGIN_SESSION" //nolint:gosec // .
+	noPendingLoginSessionErrorCode = "NO_PENDING_LOGIN_SESSION"
 
 	deviceIDTokenClaim = "deviceUniqueID" //nolint:gosec // .
 )
@@ -175,6 +178,7 @@ type (
 	service struct {
 		usersProcessor      users.Processor
 		authEmailLinkClient emaillink.Client
+		faceAuthClient      faceauth.Client
 	}
 	config struct {
 		APIKey  string `yaml:"api-key" mapstructure:"api-key"` //nolint:tagliatelle // Nope.

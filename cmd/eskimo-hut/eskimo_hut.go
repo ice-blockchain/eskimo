@@ -12,6 +12,7 @@ import (
 	emaillink "github.com/ice-blockchain/eskimo/auth/email_link"
 	"github.com/ice-blockchain/eskimo/cmd/eskimo-hut/api"
 	"github.com/ice-blockchain/eskimo/users"
+	faceauth "github.com/ice-blockchain/eskimo/users/face-auth"
 	appCfg "github.com/ice-blockchain/wintr/config"
 	"github.com/ice-blockchain/wintr/log"
 	"github.com/ice-blockchain/wintr/server"
@@ -48,6 +49,7 @@ func (s *service) RegisterRoutes(router *server.Router) {
 func (s *service) Init(ctx context.Context, cancel context.CancelFunc) {
 	s.usersProcessor = users.StartProcessor(ctx, cancel)
 	s.authEmailLinkClient = emaillink.NewClient(ctx, s.usersProcessor, server.Auth(ctx))
+	s.faceAuthClient = faceauth.NewClient(cfg.APIKey)
 }
 
 func (s *service) Close(ctx context.Context) error {

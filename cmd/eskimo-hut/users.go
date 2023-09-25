@@ -14,6 +14,7 @@ import (
 
 	emaillink "github.com/ice-blockchain/eskimo/auth/email_link"
 	"github.com/ice-blockchain/eskimo/users"
+	faceauth "github.com/ice-blockchain/eskimo/users/face-auth"
 	"github.com/ice-blockchain/wintr/auth"
 	"github.com/ice-blockchain/wintr/log"
 	"github.com/ice-blockchain/wintr/server"
@@ -381,6 +382,15 @@ func (s *service) DeleteUser( //nolint:gocritic // False negative.
 	}
 	if err := server.Auth(ctx).DeleteUser(ctx, req.Data.UserID); err != nil && !errors.Is(err, auth.ErrUserNotFound) {
 		return nil, server.Unexpected(errors.Wrapf(err, "failed to delete auth user:%#v", req.Data.UserID))
+	}
+	if err := s.faceAuthClient.DeleteUserFaces(ctx, req.Data.UserID, strings.TrimPrefix(req.Data.AuthToken, "Bearer "), req.Data.MetadataToken); err != nil {
+		if errors.Is(err, faceauth.ErrNotAuthorized) {
+			if tErr := terror.As(err); tErr != nil {
+				return nil, server.Unauthorized(errors.New(tErr.Data["body"].(string))) //nolint:forcetypeassert //.
+			}
+		}
+
+		return nil, server.Unexpected(errors.Wrapf(err, "failed to delete users faces:%#v", req.Data.UserID))
 	}
 
 	return server.OK[any](), nil
