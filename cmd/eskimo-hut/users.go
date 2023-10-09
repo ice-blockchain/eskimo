@@ -311,7 +311,7 @@ func buildUserForModification(req *server.Request[ModifyUserRequestBody, ModifyU
 	return usr
 }
 
-//nolint:gocyclo,revive,cyclop // Highly doubt it.
+//nolint:gocognit,gocyclo,revive,cyclop // Highly doubt it.
 func (a *ModifyUserRequestBody) verifyIfAtLeastOnePropertyProvided() *server.Response[server.ErrorResponse] {
 	if a.Country == "" &&
 		a.City == "" &&

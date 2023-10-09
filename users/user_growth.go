@@ -138,7 +138,7 @@ func (r *repository) getGlobalValues(ctx context.Context, keys ...string) ([]*Gl
 	return vals, errors.Wrapf(err, "failed to select global vals for keys:%#v", keys)
 }
 
-func (r *repository) updateTotalUsersCount(ctx context.Context, usr *UserSnapshot) error {
+func (r *repository) updateTotalUsersCount(ctx context.Context, usr *UserSnapshot) error { //nolint:gocognit // .
 	if usr.Before != nil && usr.Before.ID != "" && usr.User != nil && usr.User.ID != "" {
 		return nil
 	}

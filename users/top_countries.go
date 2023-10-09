@@ -53,7 +53,7 @@ func (r *repository) getTopCountriesParams(countryKeyword string) (countriesSQLE
 	return
 }
 
-func (r *repository) updateTotalUsersPerCountryCount(ctx context.Context, usr *UserSnapshot) error {
+func (r *repository) updateTotalUsersPerCountryCount(ctx context.Context, usr *UserSnapshot) error { //nolint:gocognit // .
 	if (usr.User != nil && usr.Before != nil && usr.User.Country == usr.Before.Country) ||
 		(!usr.User.IsHuman() && !usr.Before.IsHuman()) ||
 		(usr.User != nil && usr.Before == nil && !usr.User.isFirstMiningAfterHumanVerification(r)) ||
