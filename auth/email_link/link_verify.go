@@ -62,7 +62,7 @@ func (c *client) SignIn(ctx context.Context, emailLinkPayload, confirmationCode 
 	return nil
 }
 
-//nolint:revive,gocognit // .
+//nolint:revive // .
 func (c *client) verifySignIn(ctx context.Context, els *emailLinkSignIn, id *loginID, emailLinkPayload, confirmationCode, tokenOTP string) error {
 	if els.OTP == *els.UserID || els.OTP != tokenOTP {
 		return errors.Wrapf(ErrNoConfirmationRequired, "no pending confirmation for email:%v", id.Email)

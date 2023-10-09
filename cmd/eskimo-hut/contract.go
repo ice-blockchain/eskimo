@@ -159,7 +159,7 @@ const (
 	confirmationCodeWrongErrorCode            = "CONFIRMATION_CODE_WRONG"
 	tooManyRequests                           = "TOO_MANY_REQUESTS"
 
-	noPendingLoginSessionErrorCode = "NO_PENDING_LOGIN_SESSION"
+	noPendingLoginSessionErrorCode = "NO_PENDING_LOGIN_SESSION" //nolint:gosec // .
 
 	deviceIDTokenClaim = "deviceUniqueID" //nolint:gosec // .
 )

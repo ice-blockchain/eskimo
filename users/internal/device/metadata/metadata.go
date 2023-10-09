@@ -210,7 +210,7 @@ func (r *repository) verifyDeviceAppVersion(metadata *DeviceMetadata) error {
 		"mobile app version %v is older than the required one %v, please update", metadata.ReadableVersion, r.cfg.RequiredAppVersion)
 }
 
-func (r *repository) verifyDeviceAppNanosVersion(readableParts []string) error { //nolint:gocognit // .
+func (r *repository) verifyDeviceAppNanosVersion(readableParts []string) error {
 	requiredParts := strings.Split(r.cfg.RequiredAppVersion, ".")
 	if len(requiredParts) > 1+1+1 && len(readableParts) == 1+1+1 {
 		return errors.Wrapf(ErrOutdatedAppVersion,

@@ -98,7 +98,7 @@ func detectAndParseDuplicateDatabaseError(err error) (field string, newErr error
 		} else if storage.IsErr(err, storage.ErrDuplicate, "miningblockchainaccountaddress") {
 			field = "mining_blockchain_account_address"
 		} else if storage.IsErr(err, storage.ErrDuplicate, "blockchainaccountaddress") {
-			field = "blockchainAccountAddress"
+			field = "blockchainAccountAddress" //nolint:gosec // .
 		} else {
 			log.Panic("unexpected duplicate field for users space: %v", err)
 		}
