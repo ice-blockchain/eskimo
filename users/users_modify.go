@@ -25,7 +25,8 @@ func (r *repository) ModifyUser(ctx context.Context, usr *User, profilePicture *
 	if err != nil {
 		return errors.Wrapf(err, "get user %v failed", usr.ID)
 	}
-	if oldUsr.ReferredBy != "" && oldUsr.ReferredBy != oldUsr.ID && usr.ReferredBy != "" && usr.ReferredBy != oldUsr.ReferredBy {
+	notRandom := (usr.RandomReferredBy == nil || !*usr.RandomReferredBy)
+	if oldUsr.ReferredBy != "" && oldUsr.ReferredBy != oldUsr.ID && usr.ReferredBy != "" && usr.ReferredBy != oldUsr.ReferredBy && notRandom {
 		return errors.Errorf("changing the referredBy a second time is not allowed")
 	}
 	lu := lastUpdatedAt(ctx)
@@ -165,9 +166,11 @@ func (u *User) genSQLUpdate(ctx context.Context, agendaUserIDs []UserID) (sql st
 	}
 	if u.ReferredBy != "" {
 		params = append(params, u.ReferredBy)
-		sql += fmt.Sprintf(", REFERRED_BY = COALESCE(NULLIF(REFERRED_BY,ID),$%v)", nextIndex)
-		falseVal := false
-		u.RandomReferredBy = &falseVal
+		sql += fmt.Sprintf(", REFERRED_BY = CASE WHEN $%[2]v THEN $%[1]v ELSE COALESCE(NULLIF(REFERRED_BY,ID),$%[1]v) END", nextIndex, nextIndex+1)
+		if u.RandomReferredBy == nil {
+			falseVal := false
+			u.RandomReferredBy = &falseVal
+		}
 		nextIndex++
 	}
 	if u.RandomReferredBy != nil {
