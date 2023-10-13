@@ -10,6 +10,7 @@ import (
 
 	"github.com/ice-blockchain/eskimo/users"
 	"github.com/ice-blockchain/wintr/server"
+	"github.com/ice-blockchain/wintr/time"
 )
 
 func (s *service) setupUserStatisticsRoutes(router *server.Router) {
@@ -100,8 +101,19 @@ func (s *service) GetUserGrowth( //nolint:gocritic,funlen // False negative.
 		}
 	}
 	if true {
+		timeSeries := make([]*users.UserCountTimeSeriesDataPoint, 0, req.Data.Days)
+		for ix := stdlibtime.Duration(0); ix < stdlibtime.Duration(req.Data.Days); ix++ {
+			timeSeries = append(timeSeries, &users.UserCountTimeSeriesDataPoint{
+				Date: time.New(stdlibtime.Now().Add(-1 * ix * 24 * stdlibtime.Hour)),
+				UserCount: users.UserCount{
+					Active: 0,
+					Total:  0,
+				},
+			})
+		}
+
 		return server.OK(&users.UserGrowthStatistics{
-			TimeSeries: make([]*users.UserCountTimeSeriesDataPoint, 0),
+			TimeSeries: timeSeries,
 			UserCount: users.UserCount{
 				Active: 0,
 				Total:  0,
