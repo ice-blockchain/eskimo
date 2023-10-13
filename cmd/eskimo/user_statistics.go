@@ -45,6 +45,11 @@ func (s *service) GetTopCountries( //nolint:gocritic // False negative.
 	if req.Data.Limit == 0 {
 		req.Data.Limit = 10
 	}
+	if true {
+		emptyData := make([]*users.CountryStatistics, 0)
+
+		return server.OK[[]*users.CountryStatistics](&emptyData), nil
+	}
 	result, err := s.usersRepository.GetTopCountries(ctx, req.Data.Keyword, req.Data.Limit, req.Data.Offset)
 	if err != nil {
 		return nil, server.Unexpected(errors.Wrapf(err, "failed to get top countries for: %#v", req.Data))
@@ -71,7 +76,7 @@ func (s *service) GetTopCountries( //nolint:gocritic // False negative.
 //	@Failure		500					{object}	server.ErrorResponse
 //	@Failure		504					{object}	server.ErrorResponse	"if request times out"
 //	@Router			/user-statistics/user-growth [GET].
-func (s *service) GetUserGrowth( //nolint:gocritic // False negative.
+func (s *service) GetUserGrowth( //nolint:gocritic,funlen // False negative.
 	ctx context.Context,
 	req *server.Request[GetUserGrowthArg, users.UserGrowthStatistics],
 ) (*server.Response[users.UserGrowthStatistics], *server.Response[server.ErrorResponse]) {
@@ -93,6 +98,15 @@ func (s *service) GetUserGrowth( //nolint:gocritic // False negative.
 		if t, err := stdlibtime.Parse("-07:00", invertedTZ); err == nil {
 			tz = t.Location()
 		}
+	}
+	if true {
+		return server.OK(&users.UserGrowthStatistics{
+			TimeSeries: make([]*users.UserCountTimeSeriesDataPoint, 0),
+			UserCount: users.UserCount{
+				Active: 0,
+				Total:  0,
+			},
+		}), nil
 	}
 	result, err := s.usersRepository.GetUserGrowth(ctx, req.Data.Days, tz)
 	if err != nil {
