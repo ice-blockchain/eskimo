@@ -863,6 +863,9 @@ paths:
         in: formData
         name: lastName
         type: string
+      - in: formData
+        name: miningBlockchainAccountAddress
+        type: string
       - description: Optional. Example:`+12099216581`.
         in: formData
         name: phoneNumber

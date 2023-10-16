@@ -715,6 +715,11 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
+                        "name": "miningBlockchainAccountAddress",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "string",
                         "description": "Optional. Example:` + "`" + `+12099216581` + "`" + `.",
                         "name": "phoneNumber",
                         "in": "formData"

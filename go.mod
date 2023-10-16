@@ -35,7 +35,7 @@ require (
 	github.com/MicahParks/keyfunc v1.9.0 // indirect
 	github.com/Microsoft/go-winio v0.6.1 // indirect
 	github.com/Microsoft/hcsshim v0.11.1 // indirect
-	github.com/andybalholm/brotli v1.0.5 // indirect
+	github.com/andybalholm/brotli v1.0.6 // indirect
 	github.com/bytedance/sonic v1.10.2 // indirect
 	github.com/cenkalti/backoff/v4 v4.2.1 // indirect
 	github.com/chenzhuoyu/base64x v0.0.0-20230717121745-296ad89f973d // indirect
@@ -82,7 +82,7 @@ require (
 	github.com/joho/godotenv v1.5.1 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
-	github.com/klauspost/compress v1.17.0 // indirect
+	github.com/klauspost/compress v1.17.1 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.5 // indirect
 	github.com/leodido/go-urn v1.2.4 // indirect
 	github.com/magiconair/properties v1.8.7 // indirect

@@ -285,6 +285,7 @@ func buildUserForModification(req *server.Request[ModifyUserRequestBody, ModifyU
 	usr.Email = req.Data.Email
 	usr.AgendaPhoneNumberHashes = &req.Data.AgendaPhoneNumberHashes
 	usr.BlockchainAccountAddress = req.Data.BlockchainAccountAddress
+	usr.MiningBlockchainAccountAddress = req.Data.MiningBlockchainAccountAddress
 	usr.Language = req.Data.Language
 	if req.Data.ClearHiddenProfileElements != nil && *req.Data.ClearHiddenProfileElements {
 		empty := make(users.Enum[users.HiddenProfileElement], 0, 0) //nolint:gosimple // .
@@ -325,6 +326,7 @@ func (a *ModifyUserRequestBody) verifyIfAtLeastOnePropertyProvided() *server.Res
 		a.Language == "" &&
 		a.AgendaPhoneNumberHashes == "" &&
 		a.BlockchainAccountAddress == "" &&
+		a.MiningBlockchainAccountAddress == "" &&
 		a.HiddenProfileElements == nil &&
 		a.ClearHiddenProfileElements == nil &&
 		a.ClientData == nil &&
