@@ -29,6 +29,10 @@ func (r *repository) ModifyUser(ctx context.Context, usr *User, profilePicture *
 	if oldUsr.ReferredBy != "" && oldUsr.ReferredBy != oldUsr.ID && usr.ReferredBy != "" && usr.ReferredBy != oldUsr.ReferredBy && notRandom {
 		return errors.Errorf("changing the referredBy a second time is not allowed")
 	}
+	if oldUsr.MiningBlockchainAccountAddress != "" && oldUsr.MiningBlockchainAccountAddress != oldUsr.ID &&
+		usr.MiningBlockchainAccountAddress != "" && usr.MiningBlockchainAccountAddress != oldUsr.MiningBlockchainAccountAddress {
+		return errors.Errorf("changing the miningBlockchainAccountAddress a second time is not allowed")
+	}
 	lu := lastUpdatedAt(ctx)
 	if lu != nil && oldUsr.UpdatedAt.UnixNano() != lu.UnixNano() {
 		return ErrRaceCondition
@@ -133,6 +137,7 @@ func (u *User) override(user *User) *User {
 	usr.PhoneNumber = mergeStringField(u.PhoneNumber, user.PhoneNumber)
 	usr.PhoneNumberHash = mergeStringField(u.PhoneNumberHash, user.PhoneNumberHash)
 	usr.BlockchainAccountAddress = mergeStringField(u.BlockchainAccountAddress, user.BlockchainAccountAddress)
+	usr.MiningBlockchainAccountAddress = mergeStringField(u.MiningBlockchainAccountAddress, user.MiningBlockchainAccountAddress)
 
 	return usr
 }
@@ -235,6 +240,11 @@ func (u *User) genSQLUpdate(ctx context.Context, agendaUserIDs []UserID) (sql st
 	if u.BlockchainAccountAddress != "" {
 		params = append(params, u.BlockchainAccountAddress)
 		sql += fmt.Sprintf(", BLOCKCHAIN_ACCOUNT_ADDRESS = $%v", nextIndex)
+		nextIndex++
+	}
+	if u.MiningBlockchainAccountAddress != "" {
+		params = append(params, u.MiningBlockchainAccountAddress)
+		sql += fmt.Sprintf(", MINING_BLOCKCHAIN_ACCOUNT_ADDRESS = COALESCE(NULLIF(MINING_BLOCKCHAIN_ACCOUNT_ADDRESS,ID),$%v)", nextIndex)
 		nextIndex++
 	}
 	if u.KYCStepsLastUpdatedAt != nil {
