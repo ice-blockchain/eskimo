@@ -545,6 +545,8 @@ func deviceMetadataSnapshot(before, after *DeviceMetadata) *DeviceMetadataSnapsh
 		before2 = &DeviceMetadata{
 			ID:                    before.ID,
 			PushNotificationToken: before.PushNotificationToken,
+			SystemName:            before.SystemName,
+			ReadableVersion:       before.ReadableVersion,
 			TZ:                    before.ip2LocationRecord.Timezone,
 		}
 		if before.TZ != "" {
@@ -555,6 +557,8 @@ func deviceMetadataSnapshot(before, after *DeviceMetadata) *DeviceMetadataSnapsh
 		after2 = &DeviceMetadata{
 			ID:                    after.ID,
 			PushNotificationToken: after.PushNotificationToken,
+			SystemName:            after.SystemName,
+			ReadableVersion:       after.ReadableVersion,
 			TZ:                    after.ip2LocationRecord.Timezone,
 		}
 		if after.TZ != "" {
