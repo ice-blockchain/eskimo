@@ -73,67 +73,67 @@ func (r *repository) GetReferrals(ctx context.Context, userID string, referralTy
 		referralTypeJoinSumAgg = referralTypeJoin
 	}
 	sql := fmt.Sprintf(`
-			SELECT  to_timestamp(0)																		   				AS active, 
-					to_timestamp(0)																		   				AS pinged,
-					'' 																					   				AS phone_number,
-					'' 																					   				AS email,
-					%[3]v	 
-					''																					   				AS profile_picture_name, 
-					''																					   				AS country, 
-					''																					   				AS city, 
-					''																					   				AS referral_type 
-			FROM USERS u
-					%[4]v
-			WHERE u.id = $1
-	
-			UNION ALL
-	
-			SELECT X.last_mining_ended_at  		 			 											   				AS active,
-				   X.last_ping_cooldown_ended_at  			 											   				AS pinged,
-				   X.phone_number_ 							 											   				AS phone_number,
-				   '' AS email,
-				   X.id,
-				   X.username,
-				   X.profile_picture_name 					 											   				AS profile_picture_name,
-				   X.country,
-				   '' AS city,
-				   $2 AS referral_type
-			FROM (SELECT  
-					COALESCE(referrals.last_mining_ended_at, to_timestamp(0))              				   				AS last_mining_ended_at,
-					(CASE
-						WHEN u.id = referrals.referred_by OR u.referred_by = referrals.id
-							THEN (CASE 
-										WHEN COALESCE(referrals.last_mining_ended_at,to_timestamp(0)) < $4 
-											THEN COALESCE(referrals.last_ping_cooldown_ended_at,to_timestamp(0)) 
-										   ELSE referrals.last_mining_ended_at
-								  END)
-						ELSE null
-					 END)                                                                                  				AS last_ping_cooldown_ended_at,
-					referrals.ID                                                                           				AS id,
-					referrals.username                                                                     				AS username,
-					referrals.country                                                                      				AS country,
-					(CASE
-						WHEN NULLIF(referrals.phone_number_hash,'') IS NOT NULL AND referrals.id = ANY(u.agenda_contact_user_ids)
-							THEN referrals.phone_number
-						ELSE ''
-					 END)                                                                                  				AS phone_number_,
-					%[1]v                                              									   				AS profile_picture_name,
-					referrals.created_at                                                                   				AS created_at
-					FROM USERS u
-							%[2]v
-					WHERE u.id = $1
-					ORDER BY ((CASE WHEN NULLIF(referrals.phone_number_hash,'') IS NOT NULL AND referrals.id = ANY(u.agenda_contact_user_ids)
-									THEN referrals.phone_number
-									ELSE ''
-								END) != ''
-							  AND 
-							  (CASE WHEN NULLIF(referrals.phone_number_hash,'') IS NOT NULL AND referrals.id = ANY(u.agenda_contact_user_ids)
-									  THEN referrals.phone_number
-									  ELSE ''
-								END) != null) DESC,
-							 referrals.created_at DESC
-					LIMIT $5 OFFSET $3
-				 ) X`, r.pictureClient.SQLAliasDownloadURL(`referrals.profile_picture_name`), referralTypeJoin, totalAndActiveColumns, referralTypeJoinSumAgg) //nolint:lll // .
+		SELECT  to_timestamp(0)																		   				AS active, 
+				to_timestamp(0)																		   				AS pinged,
+				'' 																					   				AS phone_number,
+				'' 																					   				AS email,
+				%[3]v	 
+				''																					   				AS profile_picture_name, 
+				''																					   				AS country, 
+				''																					   				AS city, 
+				''																					   				AS referral_type 
+		FROM USERS u
+				%[4]v
+		WHERE u.id = $1
+
+		UNION ALL
+
+		SELECT X.last_mining_ended_at  		 			 											   				AS active,
+			   X.last_ping_cooldown_ended_at  			 											   				AS pinged,
+			   X.phone_number_ 							 											   				AS phone_number,
+			   '' AS email,
+			   X.id,
+			   X.username,
+			   X.profile_picture_name 					 											   				AS profile_picture_name,
+			   X.country,
+			   '' AS city,
+			   $2 AS referral_type
+		FROM (SELECT  
+				COALESCE(referrals.last_mining_ended_at, to_timestamp(0))              				   				AS last_mining_ended_at,
+				(CASE
+					WHEN u.id = referrals.referred_by OR u.referred_by = referrals.id
+						THEN (CASE 
+									WHEN COALESCE(referrals.last_mining_ended_at,to_timestamp(0)) < $4 
+									    THEN COALESCE(referrals.last_ping_cooldown_ended_at,to_timestamp(0)) 
+								   	ELSE referrals.last_mining_ended_at
+							  END)
+					ELSE null
+				 END)                                                                                  				AS last_ping_cooldown_ended_at,
+				referrals.ID                                                                           				AS id,
+				referrals.username                                                                     				AS username,
+				referrals.country                                                                      				AS country,
+				(CASE
+					WHEN NULLIF(referrals.phone_number_hash,'') IS NOT NULL AND referrals.id = ANY(u.agenda_contact_user_ids)
+						THEN referrals.phone_number
+					ELSE ''
+				 END)                                                                                  				AS phone_number_,
+				%[1]v                                              									   				AS profile_picture_name,
+				referrals.created_at                                                                   				AS created_at
+				FROM USERS u
+						%[2]v
+				WHERE u.id = $1
+				ORDER BY ((CASE WHEN NULLIF(referrals.phone_number_hash,'') IS NOT NULL AND referrals.id = ANY(u.agenda_contact_user_ids)
+								THEN referrals.phone_number
+								ELSE ''
+				 		   END) != ''
+						  AND 
+						  (CASE WHEN NULLIF(referrals.phone_number_hash,'') IS NOT NULL AND referrals.id = ANY(u.agenda_contact_user_ids)
+						  		THEN referrals.phone_number
+					  			ELSE ''
+					 	   END) != null) DESC,
+						 referrals.created_at DESC
+				LIMIT $5 OFFSET $3
+			 ) X`, r.pictureClient.SQLAliasDownloadURL(`referrals.profile_picture_name`), referralTypeJoin, totalAndActiveColumns, referralTypeJoinSumAgg) //nolint:lll // .
 	args := []any{userID, referralType, offset, time.Now().Time, limit}
 	result, err := storage.Select[MinimalUserProfile](ctx, r.db, sql, args...)
 	if err != nil {
