@@ -91,7 +91,7 @@ func (s *service) CreateUser( //nolint:funlen,gocritic // .
 func buildUserForCreation(req *server.Request[CreateUserRequestBody, User]) *users.User {
 	usr := new(users.User)
 	usr.ID = req.AuthenticatedUser.UserID
-	usr.Email = req.Data.Email
+	usr.Email = strings.ToLower(req.Data.Email)
 	usr.PhoneNumber = req.Data.PhoneNumber
 	usr.PhoneNumberHash = req.Data.PhoneNumberHash
 	usr.FirstName = &req.Data.FirstName

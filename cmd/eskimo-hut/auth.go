@@ -261,7 +261,7 @@ func (s *service) findMetadataUsingIceID(ctx context.Context, loggedInUser *serv
 ) {
 	var md string
 	var mdFields *users.JSON
-	iceID, iErr := s.authEmailLinkClient.IceUserID(ctx, loggedInUser.Email)
+	iceID, iErr := s.authEmailLinkClient.IceUserID(ctx, strings.ToLower(loggedInUser.Email))
 	if iErr != nil {
 		return nil, server.NotFound(multierror.Append(
 			errors.Wrapf(err, "metadata for user with id `%v` was not found", loggedInUser.UserID),
