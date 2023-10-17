@@ -149,6 +149,9 @@ func (r *repository) GetUsers(ctx context.Context, keyword string, limit, offset
 									    THEN COALESCE(u.last_ping_cooldown_ended_at,to_timestamp(1)) 
 								   	ELSE u.last_mining_ended_at 
 							      END)
+						WHEN t0.referred_by = user_requesting_this.id and t0.id != t0.referred_by
+							THEN
+								null
 						ELSE to_timestamp(0)
 					END) 		AS last_ping_cooldown_ended_at,
 				   (CASE
