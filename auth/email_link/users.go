@@ -264,7 +264,7 @@ func (c *client) Metadata(ctx context.Context, userID, tokenEmail string) (strin
 	}
 	if md.Email != nil {
 		emailEmpty := *md.Email == "" || *md.Email == *md.UserID
-		if tokenEmail != "" && !emailEmpty && tokenEmail != *md.Email { //nolint:gosec // .
+		if tokenEmail != "" && !emailEmpty && !strings.EqualFold(tokenEmail, *md.Email) { //nolint:gosec // .
 			return "", nil, terror.New(ErrUserDataMismatch, map[string]any{"email": *md.Email})
 		}
 	}
