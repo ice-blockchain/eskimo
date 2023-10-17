@@ -905,12 +905,14 @@ const docTemplate = `{
             "enum": [
                 "CONTACTS",
                 "T1",
-                "T2"
+                "T2",
+                "TEAM"
             ],
             "x-enum-varnames": [
                 "ContactsReferrals",
                 "Tier1Referrals",
-                "Tier2Referrals"
+                "Tier2Referrals",
+                "TeamReferrals"
             ]
         },
         "users.Referrals": {

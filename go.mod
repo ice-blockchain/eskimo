@@ -15,7 +15,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.8.4
 	github.com/swaggo/swag v1.16.2
-	github.com/testcontainers/testcontainers-go v0.23.0
+	github.com/testcontainers/testcontainers-go v0.25.0
 	github.com/zeebo/xxh3 v1.0.2
 	golang.org/x/mod v0.13.0
 	golang.org/x/net v0.17.0
@@ -40,13 +40,13 @@ require (
 	github.com/cenkalti/backoff/v4 v4.2.1 // indirect
 	github.com/chenzhuoyu/base64x v0.0.0-20230717121745-296ad89f973d // indirect
 	github.com/chenzhuoyu/iasm v0.9.0 // indirect
-	github.com/cloudflare/circl v1.3.3 // indirect
+	github.com/cloudflare/circl v1.3.5 // indirect
 	github.com/containerd/cgroups v1.1.0 // indirect
-	github.com/containerd/containerd v1.7.4 // indirect
+	github.com/containerd/containerd v1.7.7 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/distribution/reference v0.5.0 // indirect
 	github.com/docker/distribution v2.8.3+incompatible // indirect
-	github.com/docker/docker v24.0.5+incompatible // indirect
+	github.com/docker/docker v24.0.6+incompatible // indirect
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect

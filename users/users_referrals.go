@@ -49,6 +49,13 @@ func (r *repository) GetReferrals(ctx context.Context, userID string, referralTy
 							AND referrals.id != t1.id
                    			AND referrals.username != referrals.id
 						    AND referrals.referred_by != referrals.id`
+	case TeamReferrals:
+		result, err := r.getTeamReferrals(ctx, userID, limit, offset)
+		if err != nil {
+			return nil, errors.Wrapf(err, "can't get team referrals for userID:%v", userID)
+		}
+
+		return result, nil
 	case ContactsReferrals:
 		referralTypeJoin = `
 			JOIN USERS referrals
@@ -157,6 +164,188 @@ func (r *repository) GetReferrals(ctx context.Context, userID string, referralTy
 			Active: active,
 		},
 		Referrals: result[1:],
+	}, nil
+}
+
+//nolint:funlen // Long SQL with field list.
+func (r *repository) getTeamReferrals(ctx context.Context, userID string, limit, offset uint64) (*Referrals, error) {
+	sql := fmt.Sprintf(`
+		SELECT * FROM (
+			SELECT  		
+				0																									AS idx,
+				to_timestamp(0)																		   				AS active, 
+				to_timestamp(0)																		   				AS pinged,
+				CAST(COUNT(DISTINCT t1.id) AS text) 																AS phone_number,
+				CAST(COALESCE(SUM(CASE 
+						WHEN COALESCE(t1.last_mining_ended_at, to_timestamp(0)) > $3
+							THEN 1
+						ELSE 0
+				END), 0) AS text)																					AS email,
+				CAST(COUNT(DISTINCT t2.id) AS text) 												   				AS id,
+				CAST(COALESCE(SUM(CASE 
+						WHEN COALESCE(t2.last_mining_ended_at, to_timestamp(0)) > $3
+							THEN 1
+						ELSE 0
+				END), 0) AS text) 	 																				AS username,
+				''																					   				AS profile_picture_name, 
+				''																					   				AS country, 
+				''																					   				AS city,
+				'' 																									AS referral_type 
+			FROM USERS t0
+			JOIN USERS t1
+				ON (t1.referred_by = t0.id OR t0.referred_by = t1.id)
+					AND t1.username != t1.id
+					AND t1.referred_by != t1.id
+			LEFT JOIN USERS t2
+				ON t2.referred_by = t1.ID
+				AND t2.id != t1.id
+				AND t2.username != t2.id
+				AND t2.referred_by != t2.id
+				AND t2.referred_by != t0.referred_by
+			WHERE t0.id = $1
+
+			UNION ALL
+
+			SELECT * FROM(
+				SELECT * FROM(
+					SELECT
+					1																								AS idx,
+					COALESCE(referrals.last_mining_ended_at, to_timestamp(0)) 										AS active,
+					(CASE
+						WHEN t0.id = referrals.referred_by OR t0.referred_by = referrals.id
+							THEN (CASE 
+										WHEN COALESCE(referrals.last_mining_ended_at, to_timestamp(0)) < $3 
+												THEN COALESCE(referrals.last_ping_cooldown_ended_at, to_timestamp(0)) 
+												ELSE referrals.last_mining_ended_at
+								END)
+						ELSE null
+					END)                                                                                  			AS last_ping_cooldown_ended_at,
+					(CASE
+							WHEN NULLIF(referrals.phone_number_hash,'') IS NOT NULL AND referrals.id = ANY(t0.agenda_contact_user_ids)
+								THEN referrals.phone_number
+							ELSE ''
+						END)                                                                                  		AS phone_number,
+					'' 																								AS email,
+					referrals.id,
+					referrals.username,
+					%[1]v                                              									   			AS profile_picture_name,
+					referrals.country,
+					'' AS city,
+					'T1' AS tier_type
+					FROM users t0
+					JOIN USERS referrals
+							ON (referrals.referred_by = t0.id OR t0.referred_by = referrals.id)
+						AND referrals.username != referrals.id
+						AND referrals.referred_by != referrals.id
+					WHERE t0.id = $1
+					ORDER BY ((CASE WHEN NULLIF(referrals.phone_number_hash,'') IS NOT NULL AND referrals.id = ANY(t0.agenda_contact_user_ids)
+										THEN referrals.phone_number
+										ELSE ''
+									END) != ''
+								AND 
+								(CASE WHEN NULLIF(referrals.phone_number_hash,'') IS NOT NULL AND referrals.id = ANY(t0.agenda_contact_user_ids)
+										THEN referrals.phone_number
+										ELSE ''
+									END) != null) DESC,
+									referrals.created_at DESC
+				) X
+
+				UNION 
+
+				SELECT * FROM (
+					SELECT
+						2																						AS idx,
+						COALESCE(referrals.last_mining_ended_at, to_timestamp(0)) 								AS active,
+						(CASE
+							WHEN t0.id = referrals.referred_by OR t0.referred_by = referrals.id
+								THEN (CASE 
+											WHEN COALESCE(referrals.last_mining_ended_at, to_timestamp(0)) < $3 
+													THEN COALESCE(referrals.last_ping_cooldown_ended_at, to_timestamp(0)) 
+													ELSE referrals.last_mining_ended_at
+									END)
+							ELSE null
+						END)                                                                                  	AS last_ping_cooldown_ended_at,
+						(CASE
+								WHEN NULLIF(referrals.phone_number_hash,'') IS NOT NULL AND referrals.id = ANY(t0.agenda_contact_user_ids)
+									THEN referrals.phone_number
+								ELSE ''
+							END)                                                                               AS phone_number,
+						'' AS email,
+						referrals.id,
+						referrals.username,
+						%[1]v                                              									   AS profile_picture_name,
+						referrals.country,
+						'' AS city,
+						'T2' AS tier_type
+						FROM users t0
+						JOIN users t1
+							ON t1.referred_by = t0.id
+						JOIN users referrals
+							ON referrals.referred_by = t1.id
+						WHERE t0.id = $1
+						AND referrals.referred_by != referrals.id
+						AND referrals.username != referrals.id
+						ORDER BY ((CASE WHEN NULLIF(referrals.phone_number_hash,'') IS NOT NULL AND referrals.id = ANY(t0.agenda_contact_user_ids)
+											THEN referrals.phone_number
+											ELSE ''
+										END) != ''
+									AND 
+									(CASE WHEN NULLIF(referrals.phone_number_hash,'') IS NOT NULL AND referrals.id = ANY(t0.agenda_contact_user_ids)
+											THEN referrals.phone_number
+											ELSE ''
+										END) != null) DESC,
+										referrals.created_at DESC
+				) Y
+				LIMIT $4 OFFSET $2
+			) Z
+		) W
+		ORDER BY idx ASC`, r.pictureClient.SQLAliasDownloadURL(`referrals.profile_picture_name`))
+	args := []any{userID, offset, time.Now().Time, limit}
+	type orderedMinimalUserProfile struct {
+		*MinimalUserProfile
+		IDX uint64
+	}
+	result, err := storage.Select[orderedMinimalUserProfile](ctx, r.db, sql, args...)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to select for all t1+t2 referrals of userID:%v", userID)
+	}
+	if len(result) == 0 {
+		return &Referrals{
+			UserCount: UserCount{
+				Total:  0,
+				Active: 0,
+			},
+			Referrals: make([]*MinimalUserProfile, 0),
+		}, nil
+	}
+	var totalT1, totalT2, activeT1, activeT2 uint64
+	if result[0].PhoneNumber != "" {
+		totalT1, err = strconv.ParseUint(result[0].PhoneNumber, 10, 64)
+		log.Panic(err)
+	}
+	if result[0].ID != "" {
+		totalT2, err = strconv.ParseUint(result[0].ID, 10, 64)
+		log.Panic(err)
+	}
+	if result[0].Email != "" {
+		activeT1, err = strconv.ParseUint(result[0].Email, 10, 64)
+		log.Panic(err)
+	}
+	if result[0].Username != "" {
+		activeT2, err = strconv.ParseUint(result[0].Username, 10, 64)
+		log.Panic(err)
+	}
+	res := make([]*MinimalUserProfile, 0, len(result))
+	for _, row := range result {
+		res = append(res, row.MinimalUserProfile)
+	}
+
+	return &Referrals{
+		UserCount: UserCount{
+			Total:  totalT1 + totalT2,
+			Active: activeT1 + activeT2,
+		},
+		Referrals: res[1:],
 	}, nil
 }
 

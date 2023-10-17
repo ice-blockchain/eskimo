@@ -43,6 +43,7 @@ const (
 	ContactsReferrals ReferralType = "CONTACTS"
 	Tier1Referrals    ReferralType = "T1"
 	Tier2Referrals    ReferralType = "T2"
+	TeamReferrals     ReferralType = "TEAM"
 )
 
 const (
@@ -60,7 +61,7 @@ var (
 	ErrInvalidCountry     = errors.New("country invalid")
 	ErrRaceCondition      = errors.New("race condition")
 	//nolint:gochecknoglobals // It's just for more descriptive validation messages.
-	ReferralTypes = Enum[ReferralType]{ContactsReferrals, Tier1Referrals, Tier2Referrals}
+	ReferralTypes = Enum[ReferralType]{ContactsReferrals, Tier1Referrals, Tier2Referrals, TeamReferrals}
 	//nolint:gochecknoglobals // It's just for more descriptive validation messages.
 	HiddenProfileElements = Enum[HiddenProfileElement]{
 		GlobalRankHiddenProfileElement,
