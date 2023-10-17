@@ -574,7 +574,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "Type of referrals: ` + "`" + `CONTACTS` + "`" + ` or ` + "`" + `T1` + "`" + ` or ` + "`" + `T2` + "`" + `",
+                        "description": "Type of referrals: ` + "`" + `CONTACTS` + "`" + ` or ` + "`" + `T1` + "`" + ` or ` + "`" + `T2` + "`" + ` or ` + "`" + `TEAM` + "`" + `",
                         "name": "type",
                         "in": "query",
                         "required": true

@@ -60,7 +60,7 @@ func (s *service) GetReferralAcquisitionHistory( //nolint:gocritic // False nega
 //	@Param			Authorization		header		string	true	"Insert your access token"		default(Bearer <Add access token here>)
 //	@Param			X-Account-Metadata	header		string	false	"Insert your metadata token"	default(<Add metadata token here>)
 //	@Param			userId				path		string	true	"ID of the user"
-//	@Param			type				query		string	true	"Type of referrals: `CONTACTS` or `T1` or `T2`"
+//	@Param			type				query		string	true	"Type of referrals: `CONTACTS` or `T1` or `T2` or `TEAM`"
 //	@Param			limit				query		uint64	false	"Limit of elements to return. Defaults to 10"
 //	@Param			offset				query		uint64	false	"Number of elements to skip before collecting elements to return"
 //	@Success		200					{object}	users.Referrals

@@ -711,7 +711,7 @@ paths:
         name: userId
         required: true
         type: string
-      - description: 'Type of referrals: `CONTACTS` or `T1` or `T2`'
+      - description: 'Type of referrals: `CONTACTS` or `T1` or `T2` or `TEAM`'
         in: query
         name: type
         required: true
