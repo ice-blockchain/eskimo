@@ -493,6 +493,11 @@ paths:
         name: X-API-Key
         required: true
         type: string
+      - default: ""
+        description: UserID to process
+        in: header
+        name: X-User-ID
+        type: string
       - description: Request params
         in: body
         name: request
