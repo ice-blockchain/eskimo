@@ -44,11 +44,11 @@ func (r *repository) GetReferrals(ctx context.Context, userID string, referralTy
 					AND t1.id != u.id
                    	AND t1.username != t1.id
                     AND t1.referred_by != t1.id
-					JOIN USERS referrals
-					ON referrals.referred_by = t1.ID
-					AND referrals.id != t1.id
-					   AND referrals.username != referrals.id
-					AND referrals.referred_by != referrals.id`
+						JOIN USERS referrals
+							ON referrals.referred_by = t1.ID
+							AND referrals.id != t1.id
+                   			AND referrals.username != referrals.id
+						    AND referrals.referred_by != referrals.id`
 	case TeamReferrals:
 		result, err := r.getTeamReferrals(ctx, userID, limit, offset)
 		if err != nil {
