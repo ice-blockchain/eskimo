@@ -368,6 +368,7 @@ func (s *service) updateMetadataWithFirebaseID(
 //	@Produce		json
 //	@Param			Authorization	header	string							true	"Insert your access token"	default(Bearer <Add access token here>)
 //	@Param			X-API-Key		header	string							true	"Insert your api key"		default(<Add api key here>)
+//	@Param			X-User-ID		header	string							false	"UserID to process"			default()
 //	@Param			request			body	ProcessFaceRecognitionResultArg	true	"Request params"
 //	@Success		200				"OK"
 //	@Failure		401				{object}	server.ErrorResponse	"if not authenticated"
@@ -386,6 +387,10 @@ func (s *service) ProcessFaceRecognitionResult(
 	}
 	usr, err := parseProcessFaceRecognitionResultRequest(req)
 	if err != nil {
+		if errors.Is(err, errNoPermission) {
+			return nil, server.Forbidden(err)
+		}
+
 		return nil, server.UnprocessableEntity(err, invalidPropertiesErrorCode)
 	}
 	if err = s.usersProcessor.ModifyUser(ctx, usr, nil); err != nil {
@@ -401,6 +406,7 @@ func (s *service) ProcessFaceRecognitionResult(
 	return server.OK[any](), nil
 }
 
+//nolint:funlen //.
 func parseProcessFaceRecognitionResultRequest(req *server.Request[ProcessFaceRecognitionResultArg, any]) (*users.User, error) {
 	lastUpdatedAtDates := make([]*time.Time, 0, len(req.Data.LastUpdatedAt))
 	for ix, lastUpdatedAt := range req.Data.LastUpdatedAt {
@@ -414,13 +420,17 @@ func parseProcessFaceRecognitionResultRequest(req *server.Request[ProcessFaceRec
 	}
 	usr := new(users.User)
 	usr.ID = req.AuthenticatedUser.UserID
+	if req.Data.UserID != "" {
+		if req.AuthenticatedUser.Role != adminRole {
+			return nil, errors.Wrapf(errNoPermission, "insufficient role: %v, admin role required", req.AuthenticatedUser.Role)
+		}
+		usr.ID = req.Data.UserID
+	}
 	if len(lastUpdatedAtDates) > 0 {
 		usr.KYCStepsLastUpdatedAt = &lastUpdatedAtDates
 	}
-
 	kycStepPassed := users.KYCStep(len(lastUpdatedAtDates))
 	usr.KYCStepPassed = &kycStepPassed
-
 	if *req.Data.Disabled {
 		kycStepBlocked := users.FacialRecognitionKYCStep
 		usr.KYCStepBlocked = &kycStepBlocked

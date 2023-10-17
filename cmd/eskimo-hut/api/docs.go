@@ -160,6 +160,13 @@ const docTemplate = `{
                         "required": true
                     },
                     {
+                        "type": "string",
+                        "default": "",
+                        "description": "UserID to process",
+                        "name": "X-User-ID",
+                        "in": "header"
+                    },
+                    {
                         "description": "Request params",
                         "name": "request",
                         "in": "body",

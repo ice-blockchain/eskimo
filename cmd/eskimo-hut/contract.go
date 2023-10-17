@@ -6,6 +6,8 @@ import (
 	_ "embed"
 	"mime/multipart"
 
+	"github.com/pkg/errors"
+
 	emaillink "github.com/ice-blockchain/eskimo/auth/email_link"
 	"github.com/ice-blockchain/eskimo/users"
 )
@@ -16,7 +18,8 @@ type (
 	GetMetadataArg                  struct{}
 	ProcessFaceRecognitionResultArg struct {
 		Disabled      *bool    `json:"disabled" required:"true"`
-		APIKey        string   `header:"X-API-Key" swaggerignore:"true" required:"true" example:"some secret"` //nolint:tagliatelle // Nope.
+		APIKey        string   `header:"X-API-Key" swaggerignore:"true" required:"true" example:"some secret"`  //nolint:tagliatelle // Nope.
+		UserID        string   `header:"X-User-ID" swaggerignore:"true" required:"false" example:"some secret"` //nolint:tagliatelle // Nope.
 		LastUpdatedAt []string `json:"lastUpdatedAt" required:"true" example:"2006-01-02T15:04:05Z"`
 	}
 	Metadata struct {
@@ -163,12 +166,15 @@ const (
 	noPendingLoginSessionErrorCode = "NO_PENDING_LOGIN_SESSION" //nolint:gosec // .
 
 	deviceIDTokenClaim = "deviceUniqueID" //nolint:gosec // .
+
+	adminRole = "admin"
 )
 
 // .
 var (
 	//nolint:gochecknoglobals // Because its loaded once, at runtime.
-	cfg config
+	cfg             config
+	errNoPermission = errors.New("insufficient role")
 )
 
 type (
