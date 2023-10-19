@@ -820,12 +820,18 @@ const docTemplate = `{
             "enum": [
                 0,
                 1,
-                2
+                2,
+                3,
+                4,
+                5
             ],
             "x-enum-varnames": [
                 "NoneKYCStep",
                 "FacialRecognitionKYCStep",
-                "LivenessDetectionKYCStep"
+                "LivenessDetectionKYCStep",
+                "Social1KYCStep",
+                "QuizKYCStep",
+                "Social2KYCStep"
             ]
         },
         "users.MinimalUserProfile": {

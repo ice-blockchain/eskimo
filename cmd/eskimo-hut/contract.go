@@ -132,6 +132,11 @@ type (
 	RefreshToken struct {
 		Authorization string `header:"Authorization" swaggerignore:"true" required:"true" allowForbiddenWriteOperation:"true" allowUnauthorized:"true"`
 	}
+	StartOrContinueKYCStep4SessionRequestBody struct {
+		Language       string `form:"language" required:"true" example:"en"`
+		SelectedOption uint8  `form:"selectedOption" required:"true" example:"0"`
+		QuestionNumber uint8  `form:"questionNumber" required:"true" example:"11"`
+	}
 )
 
 // Private API.
@@ -164,6 +169,10 @@ const (
 	tooManyRequests                           = "TOO_MANY_REQUESTS"
 
 	noPendingLoginSessionErrorCode = "NO_PENDING_LOGIN_SESSION" //nolint:gosec // .
+
+	quizAlreadyCompletedSuccessfullyErrorCode = "QUIZ_ALREADY_COMPLETED_SUCCESSFULLY"
+	questionAlreadyAnsweredErrorCode          = "QUESTION_ALREADY_ANSWERED"
+	quizNotAvailableErrorCode                 = "QUIZ_NOT_AVAILABLE"
 
 	deviceIDTokenClaim = "deviceUniqueID" //nolint:gosec // .
 

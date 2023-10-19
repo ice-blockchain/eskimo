@@ -2,6 +2,56 @@
 
 basePath: /v1w
 definitions:
+  kyc4.Question:
+    properties:
+      number:
+        example: 1
+        type: integer
+      options:
+        example:
+        - "+21"
+        - "-2"
+        - "+33"
+        - "0"
+        items:
+          type: string
+        type: array
+      text:
+        example: Какая температура на улице?
+        type: string
+    type: object
+  kyc4.Quiz:
+    properties:
+      progress:
+        $ref: '#/definitions/kyc4.QuizProgress'
+      result:
+        $ref: '#/definitions/kyc4.QuizResult'
+    type: object
+  kyc4.QuizProgress:
+    properties:
+      correctAnswers:
+        example: 16
+        type: integer
+      expiresAt:
+        example: "2022-01-03T16:20:52.156534Z"
+        type: string
+      incorrectAnswers:
+        example: 2
+        type: integer
+      maxQuestions:
+        example: 21
+        type: integer
+      nextQuestion:
+        $ref: '#/definitions/kyc4.Question'
+    type: object
+  kyc4.QuizResult:
+    enum:
+    - SUCCESS
+    - FAILURE
+    type: string
+    x-enum-varnames:
+    - SuccessQuizResult
+    - FailureQuizResult
   main.Auth:
     properties:
       loginSession:
@@ -388,11 +438,17 @@ definitions:
     - 0
     - 1
     - 2
+    - 3
+    - 4
+    - 5
     type: integer
     x-enum-varnames:
     - NoneKYCStep
     - FacialRecognitionKYCStep
     - LivenessDetectionKYCStep
+    - Social1KYCStep
+    - QuizKYCStep
+    - Social2KYCStep
 info:
   contact:
     name: ice.io
@@ -671,6 +727,80 @@ paths:
             $ref: '#/definitions/server.ErrorResponse'
       tags:
       - Auth
+  /kyc/startOrContinueKYCStep4Session:
+    post:
+      consumes:
+      - application/json
+      description: Starts or continues the kyc 4 session (Quiz), if available and
+        if not already finished successfully.
+      parameters:
+      - default: Bearer <Add access token here>
+        description: Insert your access token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - default: <Add metadata token here>
+        description: Insert your metadata token
+        in: header
+        name: X-Account-Metadata
+        type: string
+      - description: language of the user
+        in: query
+        name: language
+        required: true
+        type: string
+      - description: index of the options array. Set it to 222 for the first call.
+        in: query
+        name: selectedOption
+        required: true
+        type: integer
+      - description: previous question number. Set it to 222 for the first call.
+        in: query
+        name: questionNumber
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/kyc4.Quiz'
+        "400":
+          description: if validations fail
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "401":
+          description: if not authorized
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "403":
+          description: not allowed due to various reasons
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "404":
+          description: user is not found
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "409":
+          description: if any conflicts occur or any prerequisites are not met
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "422":
+          description: if syntax fails
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "504":
+          description: if request times out
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+      tags:
+      - KYC
   /users:
     post:
       consumes:

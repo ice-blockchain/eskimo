@@ -50,6 +50,9 @@ const (
 	NoneKYCStep KYCStep = iota
 	FacialRecognitionKYCStep
 	LivenessDetectionKYCStep
+	Social1KYCStep
+	QuizKYCStep
+	Social2KYCStep
 )
 
 var (

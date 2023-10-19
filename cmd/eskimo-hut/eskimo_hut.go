@@ -40,6 +40,7 @@ func main() {
 }
 
 func (s *service) RegisterRoutes(router *server.Router) {
+	s.setupKYCRoutes(router)
 	s.setupUserRoutes(router)
 	s.setupDevicesRoutes(router)
 	s.setupAuthRoutes(router)

@@ -130,11 +130,17 @@ definitions:
     - 0
     - 1
     - 2
+    - 3
+    - 4
+    - 5
     type: integer
     x-enum-varnames:
     - NoneKYCStep
     - FacialRecognitionKYCStep
     - LivenessDetectionKYCStep
+    - Social1KYCStep
+    - QuizKYCStep
+    - Social2KYCStep
   users.MinimalUserProfile:
     properties:
       active:
