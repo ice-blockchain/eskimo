@@ -49,6 +49,11 @@ func (s *service) StartOrContinueKYCStep4Session( //nolint:gocritic,funlen,reviv
 	_ context.Context,
 	req *server.Request[StartOrContinueKYCStep4SessionRequestBody, kyc4.Quiz],
 ) (*server.Response[kyc4.Quiz], *server.Response[server.ErrorResponse]) {
+	//nolint:godox // .
+	// TODO add validations for "selectedOption" && "questionNumber".
+	// TODO if we don`t support a specific language, default to 'en'.
+	// TODO return 404 USER_NOT_FOUND if user is not found.
+	// TODO implement the proper logic for the use cases bellow.
 	if req.Data.QuestionNumber != 222 { //nolint:gomnd // .
 		switch rand.Intn(10) { //nolint:gosec,gomnd // .
 		case 0:
