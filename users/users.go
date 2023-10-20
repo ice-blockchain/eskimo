@@ -56,17 +56,17 @@ func StartProcessor(ctx context.Context, cancel context.CancelFunc) Processor {
 		mb:                       mbProducer,
 		DeviceMetadataRepository: devicemetadata.New(db, mbProducer),
 		pictureClient:            picture.New(applicationYamlKey, defaultProfilePictureNameRegex),
-		trackingClient:           tracking.New(applicationYamlKey),
 	}}
 	if !cfg.DisableConsumer {
+		prc.trackingClient = tracking.New(applicationYamlKey)
 		mbConsumer = messagebroker.MustConnectAndStartConsuming(context.Background(), cancel, applicationYamlKey, //nolint:contextcheck // It's intended.
 			&userSnapshotSource{processor: prc},
 			&miningSessionSource{processor: prc},
 			&userPingSource{processor: prc},
 		)
+		go prc.startOldProcessedReferralsCleaner(ctx)
 	}
 	prc.shutdown = closeAll(mbConsumer, prc.mb, prc.db, prc.DeviceMetadataRepository.Close)
-	go prc.startOldProcessedReferralsCleaner(ctx)
 
 	return prc
 }

@@ -38,9 +38,11 @@ func NewClient(ctx context.Context, userModifier UserModifier, authClient auth.C
 		cfg:          cfg,
 		shutdown:     db.Close,
 		db:           db,
-		emailClient:  email.New(applicationYamlKey),
 		authClient:   authClient,
 		userModifier: userModifier,
+	}
+	if !cfg.DisableEmailSending {
+		cl.emailClient = email.New(applicationYamlKey)
 	}
 	go cl.startOldLoginAttemptsCleaner(ctx)
 
