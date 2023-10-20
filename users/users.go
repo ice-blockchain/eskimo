@@ -20,7 +20,7 @@ import (
 
 	devicemetadata "github.com/ice-blockchain/eskimo/users/internal/device/metadata"
 	"github.com/ice-blockchain/wintr/analytics/tracking"
-	appCfg "github.com/ice-blockchain/wintr/config"
+	appcfg "github.com/ice-blockchain/wintr/config"
 	messagebroker "github.com/ice-blockchain/wintr/connectors/message_broker"
 	storage "github.com/ice-blockchain/wintr/connectors/storage/v2"
 	"github.com/ice-blockchain/wintr/log"
@@ -30,7 +30,7 @@ import (
 
 func New(ctx context.Context, _ context.CancelFunc) Repository {
 	var cfg config
-	appCfg.MustLoadFromKey(applicationYamlKey, &cfg)
+	appcfg.MustLoadFromKey(applicationYamlKey, &cfg)
 
 	db := storage.MustConnect(ctx, ddl, applicationYamlKey)
 
@@ -45,7 +45,7 @@ func New(ctx context.Context, _ context.CancelFunc) Repository {
 
 func StartProcessor(ctx context.Context, cancel context.CancelFunc) Processor {
 	var cfg config
-	appCfg.MustLoadFromKey(applicationYamlKey, &cfg)
+	appcfg.MustLoadFromKey(applicationYamlKey, &cfg)
 
 	var mbConsumer messagebroker.Client
 	db := storage.MustConnect(ctx, ddl, applicationYamlKey)
@@ -152,7 +152,7 @@ func randomBetween(left, right uint64) uint64 {
 }
 
 func requestingUserID(ctx context.Context) (requestingUserID string) {
-	requestingUserID, _ = ctx.Value(RequestingUserIDCtxValueKey).(string) //nolint:errcheck // Not needed.
+	requestingUserID, _ = ctx.Value(RequestingUserIDCtxValueKey).(string) //nolint:errcheck,revive // Not needed.
 
 	return
 }
@@ -239,8 +239,9 @@ func (u *User) Checksum() string {
 	if u.UpdatedAt == nil {
 		return ""
 	}
+	const base10 = 10
 
-	return fmt.Sprint(u.UpdatedAt.UnixNano())
+	return strconv.FormatInt(u.UpdatedAt.UnixNano(), base10)
 }
 
 func (r *repository) sanitizeUserForUI(usr *User) {

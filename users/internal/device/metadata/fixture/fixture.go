@@ -8,13 +8,12 @@ import (
 	stdlibtime "time"
 
 	"github.com/google/uuid"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/ice-blockchain/eskimo/users/internal/device"
 	devicemetadata "github.com/ice-blockchain/eskimo/users/internal/device/metadata"
 	"github.com/ice-blockchain/go-tarantool-client"
-	appCfg "github.com/ice-blockchain/wintr/config"
+	appcfg "github.com/ice-blockchain/wintr/config"
 	messagebroker "github.com/ice-blockchain/wintr/connectors/message_broker"
 	messagebrokerfixture "github.com/ice-blockchain/wintr/connectors/message_broker/fixture"
 	"github.com/ice-blockchain/wintr/time"
@@ -38,7 +37,7 @@ func VerifyNoDeviceMetadataSnapshotMessages(
 	var cfg struct {
 		messagebroker.Config `mapstructure:",squash"` //nolint:tagliatelle // Nope.
 	}
-	appCfg.MustLoadFromKey("users", &cfg)
+	appcfg.MustLoadFromKey("users", &cfg)
 	messages := make([]messagebrokerfixture.RawMessage, 0, len(deviceIDs))
 	for ix := range deviceIDs {
 		var valueRegex string
@@ -60,7 +59,7 @@ func VerifyNoDeviceMetadataSnapshotMessages(
 	}
 	windowedCtx, cancelWindowed := context.WithTimeout(ctx, 2*stdlibtime.Second) //nolint:gomnd // .
 	defer cancelWindowed()
-	assert.NoError(tb, mbConnector.VerifyNoMessages(windowedCtx, messages...))
+	require.NoError(tb, mbConnector.VerifyNoMessages(windowedCtx, messages...))
 }
 
 func CompletelyRandomizeDeviceMetadata(userID string) *devicemetadata.DeviceMetadata { //nolint:funlen // Alot of fields.

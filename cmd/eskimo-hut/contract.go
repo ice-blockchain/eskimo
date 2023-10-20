@@ -168,7 +168,7 @@ const (
 	confirmationCodeWrongErrorCode            = "CONFIRMATION_CODE_WRONG"
 	tooManyRequests                           = "TOO_MANY_REQUESTS"
 
-	noPendingLoginSessionErrorCode = "NO_PENDING_LOGIN_SESSION" //nolint:gosec // .
+	noPendingLoginSessionErrorCode = "NO_PENDING_LOGIN_SESSION"
 
 	quizAlreadyCompletedSuccessfullyErrorCode = "QUIZ_ALREADY_COMPLETED_SUCCESSFULLY"
 	questionAlreadyAnsweredErrorCode          = "QUESTION_ALREADY_ANSWERED"

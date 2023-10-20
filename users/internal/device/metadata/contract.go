@@ -31,10 +31,10 @@ type (
 	//nolint:revive // We don't have a choice if we want to embed it, cuz it will clash with others named "Repository".
 	DeviceMetadataRepository interface {
 		io.Closer
-		IsValid(Country) bool
-		LookupCountries(Keyword) []Country
+		IsValid(co Country) bool
+		LookupCountries(key Keyword) []Country
 		GetDeviceMetadataLocation(ctx context.Context, deviceID *device.ID, clientIP net.IP) *DeviceLocation
-		GetDeviceMetadata(context.Context, *device.ID) (*DeviceMetadata, error)
+		GetDeviceMetadata(ctx context.Context, id *device.ID) (*DeviceMetadata, error)
 		ReplaceDeviceMetadata(ctx context.Context, deviceMetadata *DeviceMetadata, clientIP net.IP) error
 		DeleteAllDeviceMetadata(ctx context.Context, userID string) error
 	}

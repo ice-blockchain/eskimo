@@ -102,7 +102,7 @@ func updateDBEmail(usersProcessor users.Processor, usr *record, idx uint64) {
 		},
 	}
 	err := usersProcessor.ModifyUser(context.Background(), &updUsr, nil)
-	if errors.Is(err, users.ErrDuplicate) {
+	if errors.Is(err, users.ErrDuplicate) { //nolint:revive // Nope.
 		log.Error(errors.Errorf("duplicate email(belongs to another user): id:%v, email:%v", usr.ID, usr.Email))
 	} else {
 		log.Panic(errors.Wrapf(err, "can't modify eskimo user: %#v, idx:%v", updUsr, idx))
@@ -124,7 +124,7 @@ func updateMetadata(authEmailLinkClient emaillink.Client, usr *record, idx uint6
 
 func updateFirebaseEmail(authClient auth.Client, usr *record, idx uint64) {
 	err := authClient.UpdateEmail(context.Background(), usr.ID, usr.Email)
-	if errors.Is(err, auth.ErrConflict) {
+	if errors.Is(err, auth.ErrConflict) { //nolint:revive // Nope.
 		log.Error(errors.Errorf("duplicate email[firebase](belongs to another user): id:%v, email:%v", usr.ID, usr.Email))
 	} else {
 		log.Panic(errors.Wrapf(err, "can't update firebase email for userID:%v, email:%v, idx:%v", usr.ID, usr.Email, idx))

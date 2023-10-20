@@ -17,7 +17,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/ice-blockchain/wintr/auth"
-	appCfg "github.com/ice-blockchain/wintr/config"
+	appcfg "github.com/ice-blockchain/wintr/config"
 	"github.com/ice-blockchain/wintr/connectors/storage/v2"
 	"github.com/ice-blockchain/wintr/email"
 	"github.com/ice-blockchain/wintr/log"
@@ -64,7 +64,7 @@ func (c *client) Close() error {
 
 func loadConfiguration() *config {
 	var cfg config
-	appCfg.MustLoadFromKey(applicationYamlKey, &cfg)
+	appcfg.MustLoadFromKey(applicationYamlKey, &cfg)
 	loadEmailValidationConfiguration(&cfg)
 	loadLoginSessionConfiguration(&cfg)
 

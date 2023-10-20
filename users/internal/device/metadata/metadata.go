@@ -20,7 +20,7 @@ import (
 	"golang.org/x/mod/semver"
 
 	"github.com/ice-blockchain/eskimo/users/internal/device"
-	appCfg "github.com/ice-blockchain/wintr/config"
+	appcfg "github.com/ice-blockchain/wintr/config"
 	messagebroker "github.com/ice-blockchain/wintr/connectors/message_broker"
 	storage "github.com/ice-blockchain/wintr/connectors/storage/v2"
 	"github.com/ice-blockchain/wintr/log"
@@ -44,7 +44,7 @@ func init() {
 
 func New(db *storage.DB, mb messagebroker.Client) DeviceMetadataRepository {
 	var cfg config
-	appCfg.MustLoadFromKey(applicationYamlKey, &cfg)
+	appcfg.MustLoadFromKey(applicationYamlKey, &cfg)
 	repo := &repository{db: db, mb: mb, cfg: &cfg}
 	if mb != nil && !cfg.SkipIP2LocationBinary {
 		var err error
@@ -569,10 +569,14 @@ func deviceMetadataSnapshot(before, after *DeviceMetadata) *DeviceMetadataSnapsh
 	return &DeviceMetadataSnapshot{DeviceMetadata: after2, Before: before2}
 }
 
+const (
+	deviceIDSeparator = "~~~"
+)
+
 func (r *repository) sendTombstonedDeviceMetadataMessage(ctx context.Context, did *device.ID) error {
 	msg := &messagebroker.Message{
 		Headers: map[string]string{"producer": "eskimo"},
-		Key:     did.UserID + "~~~" + did.DeviceUniqueID,
+		Key:     did.UserID + deviceIDSeparator + did.DeviceUniqueID,
 		Topic:   r.cfg.MessageBroker.Topics[2].Name,
 	}
 	responder := make(chan error, 1)
@@ -595,7 +599,7 @@ func (r *repository) sendDeviceMetadataSnapshotMessage(ctx context.Context, dm *
 	}
 	msg := &messagebroker.Message{
 		Headers: map[string]string{"producer": "eskimo"},
-		Key:     did.UserID + "~~~" + did.DeviceUniqueID,
+		Key:     did.UserID + deviceIDSeparator + did.DeviceUniqueID,
 		Topic:   r.cfg.MessageBroker.Topics[2].Name,
 		Value:   valueBytes,
 	}

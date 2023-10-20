@@ -219,7 +219,7 @@ func (s *service) emailUpdateRequested(
 	if loggedInUser.Token.IsFirebase() {
 		return newEmail, "", nil
 	}
-	deviceID := loggedInUser.Claims[deviceIDTokenClaim].(string) //nolint:errcheck,forcetypeassert // .
+	deviceID := loggedInUser.Claims[deviceIDTokenClaim].(string) //nolint:errcheck,revive,forcetypeassert // .
 	language := loggedInUser.Language
 	if language == "" {
 		var oldUser *users.UserProfile

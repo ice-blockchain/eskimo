@@ -12,7 +12,7 @@ import (
 	emaillink "github.com/ice-blockchain/eskimo/auth/email_link"
 	"github.com/ice-blockchain/eskimo/cmd/eskimo-hut/api"
 	"github.com/ice-blockchain/eskimo/users"
-	appCfg "github.com/ice-blockchain/wintr/config"
+	appcfg "github.com/ice-blockchain/wintr/config"
 	"github.com/ice-blockchain/wintr/log"
 	"github.com/ice-blockchain/wintr/server"
 )
@@ -29,7 +29,7 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	appCfg.MustLoadFromKey(applicationYamlKey, &cfg)
+	appcfg.MustLoadFromKey(applicationYamlKey, &cfg)
 	api.SwaggerInfo.Host = cfg.Host
 	api.SwaggerInfo.Version = cfg.Version
 	cfg.APIKey = strings.ReplaceAll(cfg.APIKey, "\n", "")

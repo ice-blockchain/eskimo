@@ -9,7 +9,7 @@ import (
 
 	"github.com/ice-blockchain/wintr/auth"
 	"github.com/ice-blockchain/wintr/connectors/storage/v2"
-	time "github.com/ice-blockchain/wintr/time"
+	"github.com/ice-blockchain/wintr/time"
 )
 
 //nolint:funlen // .
@@ -87,7 +87,7 @@ func (c *client) generateTokens(now *time.Time, els *emailLinkSignIn, seq int64)
 	role := ""
 	if els.Metadata != nil {
 		if roleInterface, found := (*els.Metadata)["role"]; found {
-			role = roleInterface.(string) //nolint:errcheck,forcetypeassert // .
+			role = roleInterface.(string) //nolint:errcheck,revive,forcetypeassert // .
 		}
 	}
 	refreshToken, accessToken, err := c.authClient.GenerateTokens(now, *els.UserID, els.DeviceUniqueID, els.Email, els.HashCode, seq, role)
