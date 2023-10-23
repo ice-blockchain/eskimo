@@ -37,8 +37,8 @@ func init() {
 		countries[c.IsoCode] = c
 	}
 
-	if len(countries) != 249 { //nolint:gomnd // We have 249 countries in ip2location
-		log.Panic(errors.Errorf("invalid number of countries %v. Expected 249", len(countries)))
+	if len(countries) != 250 { //nolint:gomnd // We have 250 countries in ip2location
+		log.Panic(errors.Errorf("invalid number of countries %v. Expected 250", len(countries)))
 	}
 }
 
