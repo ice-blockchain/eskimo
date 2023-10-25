@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: ice License 1.0
 
-package kyc4
+package quiz
 
 import (
 	"github.com/ice-blockchain/wintr/time"
@@ -9,17 +9,17 @@ import (
 // Public API.
 
 const (
-	SuccessQuizResult QuizResult = "SUCCESS"
-	FailureQuizResult QuizResult = "FAILURE"
+	SuccessResult Result = "SUCCESS"
+	FailureResult Result = "FAILURE"
 )
 
 type (
-	QuizResult string
-	Quiz       struct {
-		Progress *QuizProgress `json:"progress,omitempty"`
-		Result   QuizResult    `json:"result,omitempty"`
+	Result string
+	Quiz   struct {
+		Progress *Progress `json:"progress,omitempty"`
+		Result   Result    `json:"result,omitempty"`
 	}
-	QuizProgress struct {
+	Progress struct {
 		ExpiresAt        *time.Time `json:"expiresAt" example:"2022-01-03T16:20:52.156534Z"`
 		NextQuestion     *Question  `json:"nextQuestion"`
 		MaxQuestions     uint8      `json:"maxQuestions" example:"21"`

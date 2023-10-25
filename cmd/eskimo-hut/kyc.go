@@ -11,7 +11,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/ice-blockchain/eskimo/kyc4"
+	"github.com/ice-blockchain/eskimo/kyc/quiz"
 	"github.com/ice-blockchain/wintr/server"
 	"github.com/ice-blockchain/wintr/time"
 )
@@ -35,7 +35,7 @@ func (s *service) setupKYCRoutes(router *server.Router) {
 //	@Param			language			query		string	true	"language of the user"
 //	@Param			selectedOption		query		int		true	"index of the options array. Set it to 222 for the first call."
 //	@Param			questionNumber		query		int		true	"previous question number. Set it to 222 for the first call."
-//	@Success		200					{object}	kyc4.Quiz
+//	@Success		200					{object}	quiz.Quiz
 //	@Failure		400					{object}	server.ErrorResponse	"if validations fail"
 //	@Failure		401					{object}	server.ErrorResponse	"if not authorized"
 //	@Failure		403					{object}	server.ErrorResponse	"not allowed due to various reasons"
@@ -47,8 +47,8 @@ func (s *service) setupKYCRoutes(router *server.Router) {
 //	@Router			/kyc/startOrContinueKYCStep4Session [POST].
 func (s *service) StartOrContinueKYCStep4Session( //nolint:gocritic,funlen,revive // .
 	_ context.Context,
-	req *server.Request[StartOrContinueKYCStep4SessionRequestBody, kyc4.Quiz],
-) (*server.Response[kyc4.Quiz], *server.Response[server.ErrorResponse]) {
+	req *server.Request[StartOrContinueKYCStep4SessionRequestBody, quiz.Quiz],
+) (*server.Response[quiz.Quiz], *server.Response[server.ErrorResponse]) {
 	//nolint:godox // .
 	// TODO add validations for "selectedOption" && "questionNumber".
 	// TODO if we don`t support a specific language, default to 'en'.
@@ -57,9 +57,9 @@ func (s *service) StartOrContinueKYCStep4Session( //nolint:gocritic,funlen,reviv
 	if req.Data.QuestionNumber != 222 { //nolint:gomnd // .
 		switch rand.Intn(10) { //nolint:gosec,gomnd // .
 		case 0:
-			return server.OK(&kyc4.Quiz{Result: kyc4.FailureQuizResult}), nil
+			return server.OK(&quiz.Quiz{Result: quiz.FailureResult}), nil
 		case 1:
-			return server.OK(&kyc4.Quiz{Result: kyc4.SuccessQuizResult}), nil
+			return server.OK(&quiz.Quiz{Result: quiz.SuccessResult}), nil
 		case 2: //nolint:gomnd // .
 			return nil, server.Conflict(errors.Errorf("question already answered, retry with fresh a call (222)"), questionAlreadyAnsweredErrorCode)
 		}
@@ -72,10 +72,10 @@ func (s *service) StartOrContinueKYCStep4Session( //nolint:gocritic,funlen,reviv
 	}
 
 	//nolint:lll // .
-	return server.OK(&kyc4.Quiz{
-		Progress: &kyc4.QuizProgress{
+	return server.OK(&quiz.Quiz{
+		Progress: &quiz.Progress{
 			ExpiresAt: time.New(stdlibtime.Now().Add(stdlibtime.Hour)),
-			NextQuestion: &kyc4.Question{
+			NextQuestion: &quiz.Question{
 				Options: []string{
 					fmt.Sprintf("[%v]You don't need to do anything and the ice is mined automatically", strings.Repeat("bogus", rand.Intn(20))),                                 //nolint:gosec,gomnd,lll // .
 					fmt.Sprintf("[%v]You need to check in every 24 hours by tapping the Ice button to begin your daily mining session", strings.Repeat("bogus", rand.Intn(20))), //nolint:gosec,gomnd,lll // .

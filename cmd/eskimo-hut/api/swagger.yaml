@@ -2,56 +2,6 @@
 
 basePath: /v1w
 definitions:
-  kyc4.Question:
-    properties:
-      number:
-        example: 1
-        type: integer
-      options:
-        example:
-        - "+21"
-        - "-2"
-        - "+33"
-        - "0"
-        items:
-          type: string
-        type: array
-      text:
-        example: Какая температура на улице?
-        type: string
-    type: object
-  kyc4.Quiz:
-    properties:
-      progress:
-        $ref: '#/definitions/kyc4.QuizProgress'
-      result:
-        $ref: '#/definitions/kyc4.QuizResult'
-    type: object
-  kyc4.QuizProgress:
-    properties:
-      correctAnswers:
-        example: 16
-        type: integer
-      expiresAt:
-        example: "2022-01-03T16:20:52.156534Z"
-        type: string
-      incorrectAnswers:
-        example: 2
-        type: integer
-      maxQuestions:
-        example: 21
-        type: integer
-      nextQuestion:
-        $ref: '#/definitions/kyc4.Question'
-    type: object
-  kyc4.QuizResult:
-    enum:
-    - SUCCESS
-    - FAILURE
-    type: string
-    x-enum-varnames:
-    - SuccessQuizResult
-    - FailureQuizResult
   main.Auth:
     properties:
       loginSession:
@@ -409,6 +359,56 @@ definitions:
         example: jdoe
         type: string
     type: object
+  quiz.Progress:
+    properties:
+      correctAnswers:
+        example: 16
+        type: integer
+      expiresAt:
+        example: "2022-01-03T16:20:52.156534Z"
+        type: string
+      incorrectAnswers:
+        example: 2
+        type: integer
+      maxQuestions:
+        example: 21
+        type: integer
+      nextQuestion:
+        $ref: '#/definitions/quiz.Question'
+    type: object
+  quiz.Question:
+    properties:
+      number:
+        example: 1
+        type: integer
+      options:
+        example:
+        - "+21"
+        - "-2"
+        - "+33"
+        - "0"
+        items:
+          type: string
+        type: array
+      text:
+        example: Какая температура на улице?
+        type: string
+    type: object
+  quiz.Quiz:
+    properties:
+      progress:
+        $ref: '#/definitions/quiz.Progress'
+      result:
+        $ref: '#/definitions/quiz.Result'
+    type: object
+  quiz.Result:
+    enum:
+    - SUCCESS
+    - FAILURE
+    type: string
+    x-enum-varnames:
+    - SuccessResult
+    - FailureResult
   server.ErrorResponse:
     properties:
       code:
@@ -766,7 +766,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/kyc4.Quiz'
+            $ref: '#/definitions/quiz.Quiz'
         "400":
           description: if validations fail
           schema:

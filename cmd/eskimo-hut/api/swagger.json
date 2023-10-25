@@ -474,7 +474,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/kyc4.Quiz"
+                            "$ref": "#/definitions/quiz.Quiz"
                         }
                     },
                     "400": {
@@ -1127,77 +1127,6 @@
         }
     },
     "definitions": {
-        "kyc4.Question": {
-            "type": "object",
-            "properties": {
-                "number": {
-                    "type": "integer",
-                    "example": 1
-                },
-                "options": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    },
-                    "example": [
-                        "+21",
-                        "-2",
-                        "+33",
-                        "0"
-                    ]
-                },
-                "text": {
-                    "type": "string",
-                    "example": "Какая температура на улице?"
-                }
-            }
-        },
-        "kyc4.Quiz": {
-            "type": "object",
-            "properties": {
-                "progress": {
-                    "$ref": "#/definitions/kyc4.QuizProgress"
-                },
-                "result": {
-                    "$ref": "#/definitions/kyc4.QuizResult"
-                }
-            }
-        },
-        "kyc4.QuizProgress": {
-            "type": "object",
-            "properties": {
-                "correctAnswers": {
-                    "type": "integer",
-                    "example": 16
-                },
-                "expiresAt": {
-                    "type": "string",
-                    "example": "2022-01-03T16:20:52.156534Z"
-                },
-                "incorrectAnswers": {
-                    "type": "integer",
-                    "example": 2
-                },
-                "maxQuestions": {
-                    "type": "integer",
-                    "example": 21
-                },
-                "nextQuestion": {
-                    "$ref": "#/definitions/kyc4.Question"
-                }
-            }
-        },
-        "kyc4.QuizResult": {
-            "type": "string",
-            "enum": [
-                "SUCCESS",
-                "FAILURE"
-            ],
-            "x-enum-varnames": [
-                "SuccessQuizResult",
-                "FailureQuizResult"
-            ]
-        },
         "main.Auth": {
             "type": "object",
             "properties": {
@@ -1713,6 +1642,77 @@
                     "example": "jdoe"
                 }
             }
+        },
+        "quiz.Progress": {
+            "type": "object",
+            "properties": {
+                "correctAnswers": {
+                    "type": "integer",
+                    "example": 16
+                },
+                "expiresAt": {
+                    "type": "string",
+                    "example": "2022-01-03T16:20:52.156534Z"
+                },
+                "incorrectAnswers": {
+                    "type": "integer",
+                    "example": 2
+                },
+                "maxQuestions": {
+                    "type": "integer",
+                    "example": 21
+                },
+                "nextQuestion": {
+                    "$ref": "#/definitions/quiz.Question"
+                }
+            }
+        },
+        "quiz.Question": {
+            "type": "object",
+            "properties": {
+                "number": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "options": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "+21",
+                        "-2",
+                        "+33",
+                        "0"
+                    ]
+                },
+                "text": {
+                    "type": "string",
+                    "example": "Какая температура на улице?"
+                }
+            }
+        },
+        "quiz.Quiz": {
+            "type": "object",
+            "properties": {
+                "progress": {
+                    "$ref": "#/definitions/quiz.Progress"
+                },
+                "result": {
+                    "$ref": "#/definitions/quiz.Result"
+                }
+            }
+        },
+        "quiz.Result": {
+            "type": "string",
+            "enum": [
+                "SUCCESS",
+                "FAILURE"
+            ],
+            "x-enum-varnames": [
+                "SuccessResult",
+                "FailureResult"
+            ]
         },
         "server.ErrorResponse": {
             "type": "object",
