@@ -226,10 +226,10 @@ getAddLicense:
 	GO111MODULE=off go get -v -u github.com/google/addlicense
 
 addLicense: getAddLicense
-	`go env GOPATH`/bin/addlicense -f LICENSE.header -ignore '**/.testdata/*' * .github/*
+	`go env GOPATH`/bin/addlicense -f LICENSE.header -ignore '**/.testdata/*.html' * .github/*
 
 checkLicense: getAddLicense
-	`go env GOPATH`/bin/addlicense -f LICENSE.header -check -ignore '**/.testdata/*' * .github/*
+	`go env GOPATH`/bin/addlicense -f LICENSE.header -check -ignore '**/.testdata/*.html' * .github/*
 
 fix-field-alignment:
 	go install golang.org/x/tools/go/analysis/passes/fieldalignment/cmd/fieldalignment@latest
