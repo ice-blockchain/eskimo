@@ -6,3 +6,17 @@ logger:
   level: debug
 kyc/social:
   web-scraping-api:
+  social-links:
+    twitter:
+      post-url: /ice_blockchain/status/1712692723336032437
+      domains:
+        - twitter.com
+        - www.twitter.com
+        - x.com
+        - www.x.com
+    facebook:
+      domains:
+        - www.facebook.com
+        - www.m.facebook.com
+        - fb.com
+        - www.fb.com

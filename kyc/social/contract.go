@@ -2,11 +2,15 @@
 
 package social
 
+import (
+	social "github.com/ice-blockchain/eskimo/kyc/social/internal"
+)
+
 // Public API.
 
 const (
-	FacebookType Type = "facebook"
-	TwitterType  Type = "twitter"
+	FacebookType = social.StrategyFacebook
+	TwitterType  = social.StrategyTwitter
 )
 
 const (
@@ -15,8 +19,11 @@ const (
 )
 
 type (
+	Verifier interface {
+		social.Verifier
+	}
+	Type               = social.StrategyType
 	VerificationResult string
-	Type               string
 	Verification       struct {
 		RemainingAttempts *uint8             `json:"remainingAttempts,omitempty" example:"3"`
 		Result            VerificationResult `json:"result,omitempty" example:"false"`
