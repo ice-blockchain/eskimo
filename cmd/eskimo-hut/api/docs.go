@@ -534,6 +534,130 @@ const docTemplate = `{
                 }
             }
         },
+        "/kyc/verifySocialKYCStep": {
+            "post": {
+                "description": "Verifies if the user has posted the expected verification post on their social media account.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "KYC"
+                ],
+                "parameters": [
+                    {
+                        "type": "string",
+                        "default": "Bearer \u003cAdd access token here\u003e",
+                        "description": "Insert your access token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "default": "\u003cAdd metadata token here\u003e",
+                        "description": "Insert your metadata token",
+                        "name": "X-Account-Metadata",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "language of the user",
+                        "name": "language",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "enum": [
+                            3,
+                            5
+                        ],
+                        "type": "integer",
+                        "description": "the value of the social kyc step to verify",
+                        "name": "kycStep",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "enum": [
+                            "facebook",
+                            "twitter"
+                        ],
+                        "type": "string",
+                        "description": "the desired social you wish to verify it with",
+                        "name": "social",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "description": "Request params",
+                        "name": "request",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/main.VerifySocialKYCStepRequestBody"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/social.Verification"
+                        }
+                    },
+                    "400": {
+                        "description": "if validations fail",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "if not authorized",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "not allowed due to various reasons",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "user is not found",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "if any conflicts occur or any prerequisites are not met",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    },
+                    "422": {
+                        "description": "if syntax fails",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    },
+                    "504": {
+                        "description": "if request times out",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/users": {
             "post": {
                 "description": "Creates an user account",
@@ -1649,6 +1773,15 @@ const docTemplate = `{
                 }
             }
         },
+        "main.VerifySocialKYCStepRequestBody": {
+            "type": "object",
+            "properties": {
+                "link": {
+                    "type": "string",
+                    "example": "https://twitter.com/elonmusk/status/1716230049408434540"
+                }
+            }
+        },
         "quiz.Progress": {
             "type": "object",
             "properties": {
@@ -1736,6 +1869,38 @@ const docTemplate = `{
                     "example": "something is missing"
                 }
             }
+        },
+        "social.Verification": {
+            "type": "object",
+            "properties": {
+                "expectedPostText": {
+                    "type": "string",
+                    "example": "This is a verification post!"
+                },
+                "remainingAttempts": {
+                    "type": "integer",
+                    "example": 3
+                },
+                "result": {
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/social.VerificationResult"
+                        }
+                    ],
+                    "example": "false"
+                }
+            }
+        },
+        "social.VerificationResult": {
+            "type": "string",
+            "enum": [
+                "SUCCESS",
+                "FAILURE"
+            ],
+            "x-enum-varnames": [
+                "SuccessVerificationResult",
+                "FailureVerificationResult"
+            ]
         },
         "users.DeviceLocation": {
             "type": "object",

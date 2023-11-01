@@ -359,6 +359,12 @@ definitions:
         example: jdoe
         type: string
     type: object
+  main.VerifySocialKYCStepRequestBody:
+    properties:
+      link:
+        example: https://twitter.com/elonmusk/status/1716230049408434540
+        type: string
+    type: object
   quiz.Progress:
     properties:
       correctAnswers:
@@ -421,6 +427,27 @@ definitions:
         example: something is missing
         type: string
     type: object
+  social.Verification:
+    properties:
+      expectedPostText:
+        example: This is a verification post!
+        type: string
+      remainingAttempts:
+        example: 3
+        type: integer
+      result:
+        allOf:
+        - $ref: '#/definitions/social.VerificationResult'
+        example: "false"
+    type: object
+  social.VerificationResult:
+    enum:
+    - SUCCESS
+    - FAILURE
+    type: string
+    x-enum-varnames:
+    - SuccessVerificationResult
+    - FailureVerificationResult
   users.DeviceLocation:
     properties:
       city:
@@ -767,6 +794,91 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/quiz.Quiz'
+        "400":
+          description: if validations fail
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "401":
+          description: if not authorized
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "403":
+          description: not allowed due to various reasons
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "404":
+          description: user is not found
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "409":
+          description: if any conflicts occur or any prerequisites are not met
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "422":
+          description: if syntax fails
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "504":
+          description: if request times out
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+      tags:
+      - KYC
+  /kyc/verifySocialKYCStep:
+    post:
+      consumes:
+      - application/json
+      description: Verifies if the user has posted the expected verification post
+        on their social media account.
+      parameters:
+      - default: Bearer <Add access token here>
+        description: Insert your access token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - default: <Add metadata token here>
+        description: Insert your metadata token
+        in: header
+        name: X-Account-Metadata
+        type: string
+      - description: language of the user
+        in: query
+        name: language
+        required: true
+        type: string
+      - description: the value of the social kyc step to verify
+        enum:
+        - 3
+        - 5
+        in: query
+        name: kycStep
+        required: true
+        type: integer
+      - description: the desired social you wish to verify it with
+        enum:
+        - facebook
+        - twitter
+        in: query
+        name: social
+        required: true
+        type: string
+      - description: Request params
+        in: body
+        name: request
+        schema:
+          $ref: '#/definitions/main.VerifySocialKYCStepRequestBody'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/social.Verification'
         "400":
           description: if validations fail
           schema:

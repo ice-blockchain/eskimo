@@ -9,6 +9,7 @@ import (
 	"github.com/pkg/errors"
 
 	emaillink "github.com/ice-blockchain/eskimo/auth/email_link"
+	kycsocial "github.com/ice-blockchain/eskimo/kyc/social"
 	"github.com/ice-blockchain/eskimo/users"
 )
 
@@ -133,9 +134,15 @@ type (
 		Authorization string `header:"Authorization" swaggerignore:"true" required:"true" allowForbiddenWriteOperation:"true" allowUnauthorized:"true"`
 	}
 	StartOrContinueKYCStep4SessionRequestBody struct {
-		Language       string `form:"language" required:"true" example:"en"`
-		SelectedOption uint8  `form:"selectedOption" required:"true" example:"0"`
-		QuestionNumber uint8  `form:"questionNumber" required:"true" example:"11"`
+		SelectedOption *uint8 `form:"selectedOption" required:"true" swaggerignore:"true" example:"0"`
+		Language       string `form:"language" required:"true" swaggerignore:"true" example:"en"`
+		QuestionNumber uint8  `form:"questionNumber" required:"true" swaggerignore:"true" example:"11"`
+	}
+	VerifySocialKYCStepRequestBody struct {
+		Social   kycsocial.Type `form:"social" required:"true" swaggerignore:"true" example:"twitter"`
+		Language string         `form:"language" required:"true" swaggerignore:"true" example:"en"`
+		Link     string         `json:"link" example:"https://twitter.com/elonmusk/status/1716230049408434540"`
+		KYCStep  users.KYCStep  `form:"kycStep" required:"true" swaggerignore:"true" example:"1"`
 	}
 )
 
@@ -173,6 +180,9 @@ const (
 	quizAlreadyCompletedSuccessfullyErrorCode = "QUIZ_ALREADY_COMPLETED_SUCCESSFULLY"
 	questionAlreadyAnsweredErrorCode          = "QUESTION_ALREADY_ANSWERED"
 	quizNotAvailableErrorCode                 = "QUIZ_NOT_AVAILABLE"
+
+	socialKYCStepAlreadyCompletedSuccessfullyErrorCode = "SOCIAL_KYC_STEP_ALREADY_COMPLETED_SUCCESSFULLY"
+	socialKYCStepNotAvailableErrorCode                 = "SOCIAL_KYC_STEP_NOT_AVAILABLE"
 
 	deviceIDTokenClaim = "deviceUniqueID" //nolint:gosec // .
 
