@@ -52,10 +52,7 @@ func TestFacebookKYC(t *testing.T) {
 	conf := loadConfig()
 	require.NotNil(t, conf)
 
-	sc := newMustWebScraper(conf.WebScrapingAPI.URL, conf.WebScrapingAPI.APIKey)
-	require.NotNil(t, sc)
-
-	verifier := newFacebookVerifier(sc)
+	verifier := newFacebookVerifier(new(nativeScraperImpl), conf.SocialLinks.Facebook.AppID, conf.SocialLinks.Facebook.AppSecret)
 	require.NotNil(t, verifier)
 
 	username, err := verifier.VerifyPost(context.TODO(), &Metadata{AccessToken: token}, "", `Hello @ice_blockchain`)
