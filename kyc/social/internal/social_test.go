@@ -4,6 +4,7 @@ package social
 
 import (
 	"context"
+	"os"
 	"testing"
 	"time"
 
@@ -43,6 +44,11 @@ func TestTwitterKYC(t *testing.T) {
 func TestFacebookKYC(t *testing.T) {
 	t.Parallel()
 
+	token := os.Getenv("FACEBOOK_TEST_TOKEN")
+	if token == "" {
+		t.Skip("SKIP: FACEBOOK_TEST_TOKEN is not set")
+	}
+
 	conf := loadConfig()
 	require.NotNil(t, conf)
 
@@ -52,7 +58,9 @@ func TestFacebookKYC(t *testing.T) {
 	verifier := newFacebookVerifier(sc)
 	require.NotNil(t, verifier)
 
-	t.Skip("SKIP: Facebook KYC is not implemented yet")
+	username, err := verifier.VerifyPost(context.TODO(), &Metadata{AccessToken: token}, "", `Hello @ice_blockchain`)
+	require.NoError(t, err)
+	require.Equal(t, "126358118771158", username)
 }
 
 func TestStrategyNew(t *testing.T) {
