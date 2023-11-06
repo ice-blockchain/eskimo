@@ -18,7 +18,7 @@ const (
 	scrapeHTTPMaxRetries = 3
 )
 
-func (*webScraperImpl) Fetch(ctx context.Context, target string) ([]byte, error) {
+func Fetch(ctx context.Context, target string) ([]byte, error) {
 	resp, err := req.DefaultClient().
 		R().
 		SetContext(ctx).
@@ -47,8 +47,12 @@ func (*webScraperImpl) Fetch(ctx context.Context, target string) ([]byte, error)
 	return data, nil
 }
 
+func (*nativeScraperImpl) Scrape(ctx context.Context, target string, _ webScraperOptionsFunc) ([]byte, error) {
+	return Fetch(ctx, target)
+}
+
 func (s *webScraperImpl) Scrape(ctx context.Context, target string, options webScraperOptionsFunc) ([]byte, error) {
-	return s.Fetch(ctx, s.BuildQuery(target, options))
+	return Fetch(ctx, s.BuildQuery(target, options))
 }
 
 func (s *webScraperImpl) BuildQuery(target string, options webScraperOptionsFunc) string {

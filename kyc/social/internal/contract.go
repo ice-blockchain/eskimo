@@ -38,6 +38,8 @@ type (
 		APIKey       string
 	}
 
+	nativeScraperImpl struct{}
+
 	twitterVerifierImpl struct {
 		Scraper webScraper
 		Post    string
@@ -45,12 +47,19 @@ type (
 	}
 
 	facebookVerifierImpl struct {
-		Scraper webScraper
+		Scraper   webScraper
+		AppID     string
+		AppSecret string
 	}
 
 	configTwitter struct {
 		PostURL string   `yaml:"post-url" mapstructure:"post-url"` //nolint:tagliatelle // Nope.
 		Domains []string `yaml:"domains"  mapstructure:"domains"`
+	}
+
+	configFacebook struct {
+		AppID     string
+		AppSecret string
 	}
 
 	config struct {
@@ -60,8 +69,19 @@ type (
 		} `yaml:"web-scraping-api" mapstructure:"web-scraping-api"` //nolint:tagliatelle // Nope.
 
 		SocialLinks struct {
-			Twitter configTwitter `yaml:"twitter"  mapstructure:"twitter"`
+			Facebook configFacebook `yaml:"facebook" mapstructure:"facebook"`
+			Twitter  configTwitter  `yaml:"twitter"  mapstructure:"twitter"`
 		} `yaml:"social-links" mapstructure:"social-links"` //nolint:tagliatelle // Nope.
+	}
+
+	facebookTokenResponse struct {
+		Data struct {
+			AppID    string   `json:"app_id"`  //nolint:tagliatelle // Nope.
+			UserID   string   `json:"user_id"` //nolint:tagliatelle // Nope.
+			Scopes   []string `json:"scopes"`
+			IssuedAt int64    `json:"issued_at"` //nolint:tagliatelle // Nope.
+			Valid    bool     `json:"is_valid"`  //nolint:tagliatelle // Nope.
+		} `json:"data"`
 	}
 )
 
@@ -80,4 +100,5 @@ var (
 	ErrFetchReadFailed    = errors.New("cannot read fetched post")
 	ErrScrapeFailed       = errors.New("cannot scrape target")
 	ErrUnavailable        = errors.New("service unavailable")
+	ErrInvalidToken       = errors.New("invalid token")
 )

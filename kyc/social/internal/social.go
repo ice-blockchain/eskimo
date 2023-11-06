@@ -22,19 +22,30 @@ func loadConfig() *config {
 		cfg.WebScrapingAPI.URL = os.Getenv("WEB_SCRAPING_API_URL")
 	}
 
+	if cfg.SocialLinks.Facebook.AppID == "" {
+		cfg.SocialLinks.Facebook.AppID = os.Getenv("FACEBOOK_APP_ID")
+	}
+
+	if cfg.SocialLinks.Facebook.AppSecret == "" {
+		cfg.SocialLinks.Facebook.AppSecret = os.Getenv("FACEBOOK_APP_SECRET")
+	}
+
 	return &cfg
 }
 
 func New(st StrategyType) Verifier {
 	conf := loadConfig()
-	sc := newMustWebScraper(conf.WebScrapingAPI.URL, conf.WebScrapingAPI.APIKey)
 
 	switch st {
 	case StrategyTwitter:
+		sc := newMustWebScraper(conf.WebScrapingAPI.URL, conf.WebScrapingAPI.APIKey)
+
 		return newTwitterVerifier(sc, conf.SocialLinks.Twitter.PostURL, conf.SocialLinks.Twitter.Domains)
 
 	case StrategyFacebook:
-		return newFacebookVerifier(sc)
+		sc := new(nativeScraperImpl)
+
+		return newFacebookVerifier(sc, conf.SocialLinks.Facebook.AppID, conf.SocialLinks.Facebook.AppSecret)
 
 	default:
 		log.Panic("invalid social verifier: " + st)
