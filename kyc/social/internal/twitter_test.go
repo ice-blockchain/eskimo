@@ -68,6 +68,10 @@ func (*mockScraper) Scrape(context.Context, string, webScraperOptionsFunc) ([]by
 	return []byte{}, multierror.Append(ErrScrapeFailed, ErrFetchFailed)
 }
 
+func (*mockScraper) Fetch(context.Context, string) ([]byte, error) {
+	return []byte{}, multierror.Append(ErrScrapeFailed, ErrFetchFailed)
+}
+
 func TestTwitterVerifyFetch(t *testing.T) {
 	t.Parallel()
 
@@ -75,12 +79,12 @@ func TestTwitterVerifyFetch(t *testing.T) {
 	require.NotNil(t, impl)
 
 	t.Run("BadURL", func(t *testing.T) {
-		_, err := impl.VerifyPost(context.Background(), nil, "foo", "")
+		_, err := impl.VerifyPost(context.Background(), &Metadata{PostURL: "foo"})
 		require.ErrorIs(t, err, ErrInvalidURL)
 	})
 
 	t.Run("FetchFailed", func(t *testing.T) {
-		_, err := impl.VerifyPost(context.Background(), nil, "https://twitter.com/foo/status/123", "")
+		_, err := impl.VerifyPost(context.Background(), &Metadata{PostURL: "https://twitter.com/foo/status/123"})
 		require.ErrorIs(t, err, ErrScrapeFailed)
 	})
 }

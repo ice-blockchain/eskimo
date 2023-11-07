@@ -14,20 +14,15 @@ func loadConfig() *config {
 
 	appcfg.MustLoadFromKey(applicationYAMLKey, &cfg)
 
-	if cfg.WebScrapingAPI.APIKey == "" {
-		cfg.WebScrapingAPI.APIKey = os.Getenv("WEB_SCRAPING_API_KEY")
-	}
-
-	if cfg.WebScrapingAPI.URL == "" {
-		cfg.WebScrapingAPI.URL = os.Getenv("WEB_SCRAPING_API_URL")
-	}
-
-	if cfg.SocialLinks.Facebook.AppID == "" {
-		cfg.SocialLinks.Facebook.AppID = os.Getenv("FACEBOOK_APP_ID")
-	}
-
-	if cfg.SocialLinks.Facebook.AppSecret == "" {
-		cfg.SocialLinks.Facebook.AppSecret = os.Getenv("FACEBOOK_APP_SECRET")
+	for ptr, env := range map[*string]string{
+		&cfg.WebScrapingAPI.APIKey:          os.Getenv("WEB_SCRAPING_API_KEY"),
+		&cfg.WebScrapingAPI.URL:             os.Getenv("WEB_SCRAPING_API_URL"),
+		&cfg.SocialLinks.Facebook.AppID:     os.Getenv("FACEBOOK_APP_ID"),
+		&cfg.SocialLinks.Facebook.AppSecret: os.Getenv("FACEBOOK_APP_SECRET"),
+	} {
+		if *ptr == "" {
+			*ptr = env
+		}
 	}
 
 	return &cfg
@@ -43,9 +38,9 @@ func New(st StrategyType) Verifier {
 		return newTwitterVerifier(sc, conf.SocialLinks.Twitter.PostURL, conf.SocialLinks.Twitter.Domains)
 
 	case StrategyFacebook:
-		sc := new(nativeScraperImpl)
+		sc := new(dataFetcherImpl)
 
-		return newFacebookVerifier(sc, conf.SocialLinks.Facebook.AppID, conf.SocialLinks.Facebook.AppSecret)
+		return newFacebookVerifier(sc, conf.SocialLinks.Facebook.PostURL, conf.SocialLinks.Facebook.AppID, conf.SocialLinks.Facebook.AppSecret)
 
 	default:
 		log.Panic("invalid social verifier: " + st)

@@ -18,7 +18,7 @@ const (
 	scrapeHTTPMaxRetries = 3
 )
 
-func Fetch(ctx context.Context, target string) ([]byte, error) {
+func (*dataFetcherImpl) Fetch(ctx context.Context, target string) ([]byte, error) {
 	resp, err := req.DefaultClient().
 		R().
 		SetContext(ctx).
@@ -47,12 +47,14 @@ func Fetch(ctx context.Context, target string) ([]byte, error) {
 	return data, nil
 }
 
-func (*nativeScraperImpl) Scrape(ctx context.Context, target string, _ webScraperOptionsFunc) ([]byte, error) {
-	return Fetch(ctx, target)
+func (s *webScraperImpl) Scrape(ctx context.Context, target string, options webScraperOptionsFunc) ([]byte, error) {
+	return s.Fetcher.Fetch(ctx, s.BuildQuery(target, options)) //nolint:wrapcheck // False-Positive.
 }
 
-func (s *webScraperImpl) Scrape(ctx context.Context, target string, options webScraperOptionsFunc) ([]byte, error) {
-	return Fetch(ctx, s.BuildQuery(target, options))
+func (*webScraperImpl) randomCountry() string {
+	countries := []string{"US", "CA", "MX"}
+
+	return countries[time.Now().UnixNano()%int64(len(countries))]
 }
 
 func (s *webScraperImpl) BuildQuery(target string, options webScraperOptionsFunc) string {
@@ -61,7 +63,7 @@ func (s *webScraperImpl) BuildQuery(target string, options webScraperOptionsFunc
 		"device":     "mobile",
 		"proxy_type": "residential",
 		"timeout":    "30000",
-		"country":    "US",
+		"country":    s.randomCountry(),
 		"wait_until": "networkidle2",
 	}
 
@@ -94,5 +96,6 @@ func newMustWebScraper(apiURL, apiKey string) webScraper {
 	return &webScraperImpl{
 		ScrapeAPIURL: apiURL,
 		APIKey:       apiKey,
+		Fetcher:      new(dataFetcherImpl),
 	}
 }
