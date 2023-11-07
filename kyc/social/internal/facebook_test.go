@@ -20,26 +20,38 @@ func TestFacebookVerifyUserFeed(t *testing.T) {
 
 	conf := loadConfig()
 	require.NotNil(t, conf)
+	require.NotEmpty(t, conf.SocialLinks.Facebook.PostURL)
 
-	impl := newFacebookVerifier(new(nativeScraperImpl), conf.SocialLinks.Facebook.AppID, conf.SocialLinks.Facebook.AppSecret)
+	impl := newFacebookVerifier(new(dataFetcherImpl), conf.SocialLinks.Facebook.PostURL, conf.SocialLinks.Facebook.AppID, conf.SocialLinks.Facebook.AppSecret)
 	require.NotNil(t, impl)
 
-	meta := &Metadata{AccessToken: token}
+	const userID = `126358118771158`
+
 	t.Run("Success", func(t *testing.T) {
+		meta := &Metadata{AccessToken: token, ExpectedPostText: `Verifying nickname for #ice.`}
 		require.NoError(t,
-			impl.VerifyUserFeed(context.TODO(), meta, `Hello @ice_blockchain`),
+			impl.VerifyUserFeed(context.TODO(), meta, userID),
 		)
 	})
 
 	t.Run("NoText", func(t *testing.T) {
+		meta := &Metadata{AccessToken: token, ExpectedPostText: `Foo`}
 		require.ErrorIs(t,
 			ErrTextNotFound,
-			impl.VerifyUserFeed(context.TODO(), meta, `Foo`),
+			impl.VerifyUserFeed(context.TODO(), meta, userID),
+		)
+	})
+
+	t.Run("Norepost", func(t *testing.T) {
+		meta := &Metadata{AccessToken: token, ExpectedPostText: `Hello @ice_blockchain`}
+		require.ErrorIs(t,
+			impl.VerifyUserFeed(context.TODO(), meta, userID),
+			ErrPostNotFound,
 		)
 	})
 
 	t.Run("BadScrape", func(t *testing.T) {
-		err := newFacebookVerifier(&mockScraper{}, "1", "2").VerifyUserFeed(context.TODO(), meta, `Foo`)
+		err := newFacebookVerifier(new(mockScraper), "1", "2", "3").VerifyUserFeed(context.TODO(), &Metadata{}, `1`)
 		require.ErrorIs(t, err, ErrScrapeFailed)
 	})
 }
@@ -48,6 +60,6 @@ func TestFacebookVerifyCtor(t *testing.T) {
 	t.Parallel()
 
 	require.Panics(t, func() {
-		newFacebookVerifier(nil, "", "")
+		newFacebookVerifier(nil, "", "", "")
 	})
 }

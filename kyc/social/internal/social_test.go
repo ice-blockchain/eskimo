@@ -31,12 +31,12 @@ func TestTwitterKYC(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.TODO(), time.Minute)
 	defer cancel()
 
-	username, err := verifier.VerifyPost(ctx, nil, targetURL, expectedText)
+	username, err := verifier.VerifyPost(ctx, &Metadata{PostURL: targetURL, ExpectedPostText: expectedText})
 	require.NoError(t, err)
 	require.Equal(t, "decanterra", username)
 
 	t.Run("EmptyUsername", func(t *testing.T) {
-		_, err := verifier.VerifyPost(ctx, nil, "https://twitter.com/foo", expectedText)
+		_, err := verifier.VerifyPost(ctx, &Metadata{PostURL: "https://twitter.com/foo", ExpectedPostText: expectedText})
 		require.ErrorIs(t, err, ErrUsernameNotFound)
 	})
 }
@@ -52,10 +52,14 @@ func TestFacebookKYC(t *testing.T) {
 	conf := loadConfig()
 	require.NotNil(t, conf)
 
-	verifier := newFacebookVerifier(new(nativeScraperImpl), conf.SocialLinks.Facebook.AppID, conf.SocialLinks.Facebook.AppSecret)
+	verifier := newFacebookVerifier(new(dataFetcherImpl), conf.SocialLinks.Facebook.PostURL, conf.SocialLinks.Facebook.AppID, conf.SocialLinks.Facebook.AppSecret)
 	require.NotNil(t, verifier)
 
-	username, err := verifier.VerifyPost(context.TODO(), &Metadata{AccessToken: token}, "", `Hello @ice_blockchain`)
+	username, err := verifier.VerifyPost(context.TODO(),
+		&Metadata{
+			AccessToken:      token,
+			ExpectedPostText: `Verifying nickname for #ice.`,
+		})
 	require.NoError(t, err)
 	require.Equal(t, "126358118771158", username)
 }

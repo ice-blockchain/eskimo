@@ -15,8 +15,4 @@ kyc/social:
         - x.com
         - www.x.com
     facebook:
-      domains:
-        - www.facebook.com
-        - www.m.facebook.com
-        - fb.com
-        - www.fb.com
+      post-url: https://www.facebook.com/reel/1463272597773681

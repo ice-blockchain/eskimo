@@ -87,26 +87,26 @@ func (*twitterVerifierImpl) ExtractUsernameFromURL(postURL string) (username str
 	return
 }
 
-func (t *twitterVerifierImpl) VerifyPost(ctx context.Context, _ *Metadata, postURL, expectedPostText string) (username string, err error) {
+func (t *twitterVerifierImpl) VerifyPost(ctx context.Context, meta *Metadata) (username string, err error) {
 	validDomain := false
 	for i := range t.Domains {
-		validDomain = validDomain || hasRootDomainAndHTTPS(postURL, t.Domains[i])
+		validDomain = validDomain || hasRootDomainAndHTTPS(meta.PostURL, t.Domains[i])
 	}
 	if !validDomain {
-		return "", errors.Wrap(ErrInvalidURL, postURL)
+		return "", errors.Wrap(ErrInvalidURL, meta.PostURL)
 	}
 
-	username, err = t.ExtractUsernameFromURL(postURL)
+	username, err = t.ExtractUsernameFromURL(meta.PostURL)
 	if username == "" {
 		return "", err
 	}
 
-	data, err := t.Scraper.Scrape(ctx, postURL, nil)
+	data, err := t.Scraper.Scrape(ctx, meta.PostURL, nil)
 	if err != nil {
 		return "", multierror.Append(ErrFetchFailed, err)
 	}
 
-	return username, t.VerifyContent(data, expectedPostText)
+	return username, t.VerifyContent(data, meta.ExpectedPostText)
 }
 
 func newTwitterVerifier(sc webScraper, post string, allowedDomains []string) *twitterVerifierImpl {

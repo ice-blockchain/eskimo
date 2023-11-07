@@ -18,11 +18,13 @@ type (
 	StrategyType string
 
 	Metadata struct {
-		AccessToken string
+		AccessToken      string
+		PostURL          string
+		ExpectedPostText string
 	}
 
 	Verifier interface {
-		VerifyPost(ctx context.Context, metadata *Metadata, postURL, expectedPostText string) (username string, err error)
+		VerifyPost(ctx context.Context, metadata *Metadata) (username string, err error)
 	}
 )
 
@@ -33,12 +35,17 @@ type (
 		Scrape(ctx context.Context, url string, opts webScraperOptionsFunc) (content []byte, err error)
 	}
 
+	dataFetcher interface {
+		Fetch(ctx context.Context, url string) (content []byte, err error)
+	}
+
 	webScraperImpl struct {
+		Fetcher      dataFetcher
 		ScrapeAPIURL string
 		APIKey       string
 	}
 
-	nativeScraperImpl struct{}
+	dataFetcherImpl struct{}
 
 	twitterVerifierImpl struct {
 		Scraper webScraper
@@ -47,9 +54,10 @@ type (
 	}
 
 	facebookVerifierImpl struct {
-		Scraper   webScraper
+		Fetcher   dataFetcher
 		AppID     string
 		AppSecret string
+		Post      string
 	}
 
 	configTwitter struct {
@@ -58,8 +66,9 @@ type (
 	}
 
 	configFacebook struct {
-		AppID     string
-		AppSecret string
+		AppID     string `yaml:"app-id"     mapstructure:"app-id"`     //nolint:tagliatelle // Nope.
+		AppSecret string `yaml:"app-secret" mapstructure:"app-secret"` //nolint:tagliatelle // Nope.
+		PostURL   string `yaml:"post-url"   mapstructure:"post-url"`   //nolint:tagliatelle // Nope.
 	}
 
 	config struct {
@@ -81,6 +90,23 @@ type (
 			Scopes   []string `json:"scopes"`
 			IssuedAt int64    `json:"issued_at"` //nolint:tagliatelle // Nope.
 			Valid    bool     `json:"is_valid"`  //nolint:tagliatelle // Nope.
+		} `json:"data"`
+	}
+
+	facebookFeedResponse struct {
+		Paging struct {
+			Next     string `json:"next"`
+			Previous string `json:"previous"`
+		} `json:"paging"`
+		Data []struct {
+			Message     string `json:"message"`
+			ID          string `json:"id"`
+			Attachments struct {
+				Data []struct {
+					Type string `json:"type"`
+					URL  string `json:"unshimmed_url"` //nolint:tagliatelle // Nope.
+				} `json:"data"`
+			} `json:"attachments"`
 		} `json:"data"`
 	}
 )
