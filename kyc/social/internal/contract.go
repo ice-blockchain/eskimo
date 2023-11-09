@@ -54,10 +54,11 @@ type (
 	}
 
 	facebookVerifierImpl struct {
-		Fetcher   dataFetcher
-		AppID     string
-		AppSecret string
-		Post      string
+		Fetcher             dataFetcher
+		AppID               string
+		AppSecret           string
+		Post                string
+		AllowLongLiveTokens bool
 	}
 
 	configTwitter struct {
@@ -66,9 +67,10 @@ type (
 	}
 
 	configFacebook struct {
-		AppID     string `yaml:"app-id"     mapstructure:"app-id"`     //nolint:tagliatelle // Nope.
-		AppSecret string `yaml:"app-secret" mapstructure:"app-secret"` //nolint:tagliatelle // Nope.
-		PostURL   string `yaml:"post-url"   mapstructure:"post-url"`   //nolint:tagliatelle // Nope.
+		AppID               string `yaml:"app-id"     mapstructure:"app-id"`                             //nolint:tagliatelle // Nope.
+		AppSecret           string `yaml:"app-secret" mapstructure:"app-secret"`                         //nolint:tagliatelle // Nope.
+		PostURL             string `yaml:"post-url"   mapstructure:"post-url"`                           //nolint:tagliatelle // Nope.
+		AllowLongLiveTokens bool   `yaml:"allow-long-live-tokens" mapstructure:"allow-long-live-tokens"` //nolint:tagliatelle // Nope.
 	}
 
 	config struct {

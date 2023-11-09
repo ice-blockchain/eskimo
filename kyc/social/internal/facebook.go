@@ -100,12 +100,12 @@ func (f *facebookVerifierImpl) VerifyUserFeed(ctx context.Context, meta *Metadat
 		var response facebookFeedResponse
 		response, err = f.FetchFeed(ctx, targetURL)
 		if err != nil {
-			break
+			return
 		}
 
 		err = f.ProcessFeedResponse(meta, &response)
 		if err == nil {
-			break
+			return nil
 		}
 
 		hasPostWithoutRepost = hasPostWithoutRepost || errors.Is(err, ErrPostNotFound)
@@ -155,7 +155,7 @@ func (f *facebookVerifierImpl) VerifyToken(ctx context.Context, meta *Metadata) 
 		return "", errors.Wrap(err, "failed to unmarshal response")
 	}
 
-	if !(response.Data.AppID == f.AppID && response.Data.Valid && response.Data.IssuedAt > 0) {
+	if !(response.Data.AppID == f.AppID && response.Data.Valid && (f.AllowLongLiveTokens || response.Data.IssuedAt == 0)) {
 		return "", ErrInvalidToken
 	} else if hasScopes, wantScopes := f.parseScopes(response.Data.Scopes), scopeUserPosts|scopePublicProfile; hasScopes&wantScopes != wantScopes {
 		return "", errors.Wrap(ErrInvalidToken, "missing scopes")
@@ -177,15 +177,16 @@ func (f *facebookVerifierImpl) VerifyPost(ctx context.Context, meta *Metadata) (
 	return userID, err
 }
 
-func newFacebookVerifier(fetcher dataFetcher, post, appID, appSecret string) *facebookVerifierImpl {
+func newFacebookVerifier(fetcher dataFetcher, post, appID, appSecret string, allowLongLiveTokens bool) *facebookVerifierImpl {
 	if appID == "" || appSecret == "" || fetcher == nil { //nolint:gosec // False-Positive.
 		log.Panic("invalid Facebook config")
 	}
 
 	return &facebookVerifierImpl{
-		AppID:     appID,
-		AppSecret: appSecret,
-		Post:      post,
-		Fetcher:   fetcher,
+		AppID:               appID,
+		AppSecret:           appSecret,
+		Post:                post,
+		Fetcher:             fetcher,
+		AllowLongLiveTokens: allowLongLiveTokens,
 	}
 }

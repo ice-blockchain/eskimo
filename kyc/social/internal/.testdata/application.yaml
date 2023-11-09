@@ -16,3 +16,4 @@ kyc/social:
         - www.x.com
     facebook:
       post-url: https://www.facebook.com/reel/1463272597773681
+      allow-long-live-tokens: true
