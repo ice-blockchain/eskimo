@@ -4,7 +4,6 @@ package users
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"sync"
 	stdlibtime "time"
@@ -130,7 +129,10 @@ func (r *repository) resetFacialRecognitionKYCStep(ctx context.Context, userID s
 		}).
 		AddQueryParam("caller", "eskimo-hut").
 		SetHeader("Authorization", authorization(ctx)).
-		Delete(fmt.Sprintf("%v/users/%v", r.cfg.KYC.KYCStep1ResetURL, userID)); err != nil {
+		SetBodyJsonMarshal(&struct {
+			UserID string `json:"userId"`
+		}{UserID: userID}).
+		Delete(r.cfg.KYC.KYCStep1ResetURL); err != nil {
 		return errors.Wrapf(err, "failed to delete face auth state for userID:%v", userID)
 	} else if _, err2 := resp.ToBytes(); err2 != nil {
 		return errors.Wrapf(err2, "failed to read body of delete face auth state request for userID:%v", userID)
