@@ -31,6 +31,9 @@ func (r *repository) TryResetKYCSteps(ctx context.Context, userID string) (*User
 	}](ctx, r.db, sql, userID); err != nil {
 		return nil, errors.Wrapf(err, "failed to get kyc_steps_reset_requests for userID:%v", userID)
 	} else if len(resp.KYCStepsToReset) == 0 {
+		r.sanitizeUser(&resp.User)
+		r.sanitizeUserForUI(&resp.User)
+
 		return &resp.User, nil
 	} else if err = r.resetKYCSteps(ctx, userID, resp.KYCStepsToReset); err != nil {
 		return nil, errors.Wrapf(err, "failed to resetKYCSteps for userID:%v", userID)
