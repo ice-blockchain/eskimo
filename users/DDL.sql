@@ -60,7 +60,7 @@ CREATE TABLE IF NOT EXISTS users_per_country  (
                      );
 
 CREATE TABLE IF NOT EXISTS kyc_steps_reset_requests  (
-                    user_id text primary key REFERENCES users(id) ON DELETE CASCADE,
+                    user_id text primary key,
                     kyc_steps_to_reset smallint[] NOT NULL,
                     CONSTRAINT
                             all_valid_kyc_steps
