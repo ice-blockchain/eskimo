@@ -181,6 +181,20 @@ func ContextWithChecksum(ctx context.Context, checksum string) context.Context {
 	return context.WithValue(ctx, checksumCtxValueKey, checksum) //nolint:revive,staticcheck // Not an issue.
 }
 
+func ContextWithAuthorization(ctx context.Context, authorization string) context.Context {
+	if authorization == "" {
+		return ctx
+	}
+
+	return context.WithValue(ctx, authorizationCtxValueKey, authorization) //nolint:revive,staticcheck // Not an issue.
+}
+
+func authorization(ctx context.Context) (authorization string) {
+	authorization, _ = ctx.Value(authorizationCtxValueKey).(string) //nolint:errcheck,revive // Not needed.
+
+	return
+}
+
 func (n *NotExpired) Scan(src any) error {
 	date, ok := src.(stdlibtime.Time)
 	if ok {

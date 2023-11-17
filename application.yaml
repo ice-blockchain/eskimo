@@ -53,6 +53,8 @@ auth/email-link:
   confirmationCode:
     maxWrongAttemptsCount: 3
 users: &users
+  kyc:
+    kyc-step1-reset-url: https://bogus.example.com
   disableConsumer: false
   intervalBetweenRepeatableKYCSteps: 1m
   wintr/connectors/storage/v2: *db

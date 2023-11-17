@@ -428,6 +428,10 @@ func parseProcessFaceRecognitionResultRequest(req *server.Request[ProcessFaceRec
 	}
 	if len(lastUpdatedAtDates) > 0 {
 		usr.KYCStepsLastUpdatedAt = &lastUpdatedAtDates
+	} else {
+		var nilDates []*time.Time
+		usr.KYCStepsLastUpdatedAt = &nilDates
+		usr.KYCStepsCreatedAt = &nilDates
 	}
 	kycStepPassed := users.KYCStep(len(lastUpdatedAtDates))
 	usr.KYCStepPassed = &kycStepPassed

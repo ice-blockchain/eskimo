@@ -144,6 +144,10 @@ type (
 		Link     string         `json:"link" example:"https://twitter.com/elonmusk/status/1716230049408434540"`
 		KYCStep  users.KYCStep  `form:"kycStep" required:"true" swaggerignore:"true" example:"1"`
 	}
+	TryResetKYCStepsRequestBody struct {
+		Authorization string `header:"Authorization" swaggerignore:"true" required:"true" example:"some token"`
+		UserID        string `uri:"userId" required:"true" allowForbiddenWriteOperation:"true" swaggerignore:"true" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"` //nolint:lll // .
+	}
 )
 
 // Private API.

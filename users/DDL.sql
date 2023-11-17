@@ -59,6 +59,13 @@ CREATE TABLE IF NOT EXISTS users_per_country  (
                     country text primary key
                      );
 
+CREATE TABLE IF NOT EXISTS kyc_steps_reset_requests  (
+                    user_id text primary key REFERENCES users(id) ON DELETE CASCADE,
+                    kyc_steps_to_reset smallint[] NOT NULL,
+                    CONSTRAINT
+                            all_valid_kyc_steps
+                            CHECK(cardinality(kyc_steps_to_reset) > 0 AND kyc_steps_to_reset <@ ARRAY[1,2,3,4,5]::smallint[])
+                    );
 
 CREATE TABLE IF NOT EXISTS device_metadata  (
                     updated_at              timestamp NOT NULL,

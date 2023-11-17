@@ -248,13 +248,30 @@ func (u *User) genSQLUpdate(ctx context.Context, agendaUserIDs []UserID) (sql st
 		nextIndex++
 	}
 	if u.KYCStepsLastUpdatedAt != nil {
-		kycStepsLastUpdatedAt := make([]stdlibtime.Time, 0, len(*u.KYCStepsLastUpdatedAt))
-		for _, updatedAt := range *u.KYCStepsLastUpdatedAt {
-			kycStepsLastUpdatedAt = append(kycStepsLastUpdatedAt, *updatedAt.Time)
+		if *u.KYCStepsLastUpdatedAt == nil {
+			sql += ", KYC_STEPS_LAST_UPDATED_AT = NULL"
+		} else {
+			kycStepsLastUpdatedAt := make([]stdlibtime.Time, 0, len(*u.KYCStepsLastUpdatedAt))
+			for _, updatedAt := range *u.KYCStepsLastUpdatedAt {
+				kycStepsLastUpdatedAt = append(kycStepsLastUpdatedAt, *updatedAt.Time)
+			}
+			params = append(params, kycStepsLastUpdatedAt)
+			sql += fmt.Sprintf(", KYC_STEPS_LAST_UPDATED_AT = $%[1]v::timestamp[], KYC_STEPS_CREATED_AT = NULLIF(array_remove(array_cat(array[coalesce((KYC_STEPS_CREATED_AT)[1],($%[1]v::timestamp[])[1])],array[coalesce((KYC_STEPS_CREATED_AT)[2],($%[1]v::timestamp[])[2])]),null),array[]::timestamp[])", nextIndex) //nolint:lll // .
+			nextIndex++
 		}
-		params = append(params, kycStepsLastUpdatedAt)
-		sql += fmt.Sprintf(", KYC_STEPS_LAST_UPDATED_AT = $%[1]v::timestamp[], KYC_STEPS_CREATED_AT = NULLIF(array_remove(array_cat(array[coalesce((KYC_STEPS_CREATED_AT)[1],($%[1]v::timestamp[])[1])],array[coalesce((KYC_STEPS_CREATED_AT)[2],($%[1]v::timestamp[])[2])]),null),array[]::timestamp[])", nextIndex) //nolint:lll // .
-		nextIndex++
+	}
+	if u.KYCStepsCreatedAt != nil {
+		if *u.KYCStepsCreatedAt == nil {
+			sql += ", KYC_STEPS_CREATED_AT = NULL"
+		} else {
+			kycStepsCreatedAt := make([]stdlibtime.Time, 0, len(*u.KYCStepsCreatedAt))
+			for _, createdAt := range *u.KYCStepsCreatedAt {
+				kycStepsCreatedAt = append(kycStepsCreatedAt, *createdAt.Time)
+			}
+			params = append(params, kycStepsCreatedAt)
+			sql += fmt.Sprintf(", KYC_STEPS_CREATED_AT = $%[1]v::timestamp[]", nextIndex)
+			nextIndex++
+		}
 	}
 	if u.KYCStepPassed != nil {
 		params = append(params, u.KYCStepPassed)

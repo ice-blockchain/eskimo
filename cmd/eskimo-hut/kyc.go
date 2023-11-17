@@ -13,6 +13,7 @@ import (
 
 	kycquiz "github.com/ice-blockchain/eskimo/kyc/quiz"
 	kycsocial "github.com/ice-blockchain/eskimo/kyc/social"
+	"github.com/ice-blockchain/eskimo/users"
 	"github.com/ice-blockchain/wintr/server"
 	"github.com/ice-blockchain/wintr/time"
 )
@@ -21,7 +22,8 @@ func (s *service) setupKYCRoutes(router *server.Router) {
 	router.
 		Group("v1w").
 		POST("kyc/startOrContinueKYCStep4Session", server.RootHandler(s.StartOrContinueKYCStep4Session)).
-		POST("kyc/verifySocialKYCStep", server.RootHandler(s.VerifySocialKYCStep))
+		POST("kyc/verifySocialKYCStep", server.RootHandler(s.VerifySocialKYCStep)).
+		POST("kyc/tryResetKYCSteps/users/:userId", server.RootHandler(s.TryResetKYCSteps))
 }
 
 // StartOrContinueKYCStep4Session godoc
@@ -144,4 +146,44 @@ func (s *service) VerifySocialKYCStep( //nolint:gocritic,revive // .
 👉 Learn more about "The Decentralized Future" that #IceNetwork is building. 👇
 #IceVerified $ICE #Blockchain #Crypto #Tech`, req.Data.KYCStep, req.Data.Language, req.Data.Social),
 	}), nil
+}
+
+// TryResetKYCSteps godoc
+//
+//	@Schemes
+//	@Description	Checks if there are any kyc steps that should be reset, if so, it resets them and returns the updated latest user state.
+//	@Tags			KYC
+//	@Accept			json
+//	@Produce		json
+//
+//	@Param			Authorization		header		string	true	"Insert your access token"		default(Bearer <Add access token here>)
+//	@Param			X-Account-Metadata	header		string	false	"Insert your metadata token"	default(<Add metadata token here>)
+//	@Param			userId				path		string	true	"ID of the user"
+//	@Success		200					{object}	User
+//	@Failure		400					{object}	server.ErrorResponse	"if validations fail"
+//	@Failure		401					{object}	server.ErrorResponse	"if not authorized"
+//	@Failure		403					{object}	server.ErrorResponse	"not allowed due to various reasons"
+//	@Failure		404					{object}	server.ErrorResponse	"user is not found"
+//	@Failure		422					{object}	server.ErrorResponse	"if syntax fails"
+//	@Failure		500					{object}	server.ErrorResponse
+//	@Failure		504					{object}	server.ErrorResponse	"if request times out"
+//	@Router			/kyc/tryResetKYCSteps/users/{userId} [POST].
+func (s *service) TryResetKYCSteps( //nolint:gocritic // .
+	ctx context.Context,
+	req *server.Request[TryResetKYCStepsRequestBody, User],
+) (*server.Response[User], *server.Response[server.ErrorResponse]) {
+	if req.AuthenticatedUser.Role != "admin" && req.Data.UserID != req.AuthenticatedUser.UserID {
+		return nil, server.Forbidden(errors.New("operation not allowed"))
+	}
+	resp, err := s.usersProcessor.TryResetKYCSteps(users.ContextWithAuthorization(ctx, req.Data.Authorization), req.Data.UserID)
+	if err = errors.Wrapf(err, "failed to TryResetKYCSteps for userID:%v", req.Data.UserID); err != nil {
+		switch {
+		case errors.Is(err, users.ErrNotFound):
+			return nil, server.NotFound(err, userNotFoundErrorCode)
+		default:
+			return nil, server.Unexpected(err)
+		}
+	}
+
+	return server.OK(&User{User: resp, Checksum: resp.Checksum()}), nil
 }
