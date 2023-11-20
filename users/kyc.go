@@ -80,6 +80,8 @@ func (r *repository) resetKYCStep(ctx context.Context, userID string, step KYCSt
 			return errors.Wrapf(err, "failed to resetFacialRecognitionKYCStep for userID:%v", userID)
 		}
 	default:
+		log.Error(errors.Errorf("reset for KYCStep[%v] not implemented, userID:%v", step, userID))
+
 		return nil
 	}
 
