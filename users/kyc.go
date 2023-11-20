@@ -130,6 +130,7 @@ func (r *repository) resetFacialRecognitionKYCStep(ctx context.Context, userID s
 			return err != nil || (resp.GetStatusCode() != http.StatusOK && resp.GetStatusCode() != http.StatusNoContent && resp.GetStatusCode() != http.StatusUnauthorized) //nolint:lll // .
 		}).
 		AddQueryParam("caller", "eskimo-hut").
+		AddQueryParam("userId", userID).
 		SetHeader("Authorization", authorization(ctx)).
 		SetBodyJsonMarshal(&struct {
 			UserID string `json:"userId"`
