@@ -22,7 +22,13 @@ func TestFacebookVerifyUserFeed(t *testing.T) {
 	require.NotNil(t, conf)
 	require.NotEmpty(t, conf.SocialLinks.Facebook.PostURL)
 
-	impl := newFacebookVerifier(new(dataFetcherImpl), conf.SocialLinks.Facebook.PostURL, conf.SocialLinks.Facebook.AppID, conf.SocialLinks.Facebook.AppSecret)
+	impl := newFacebookVerifier(
+		new(dataFetcherImpl),
+		conf.SocialLinks.Facebook.PostURL,
+		conf.SocialLinks.Facebook.AppID,
+		conf.SocialLinks.Facebook.AppSecret,
+		conf.SocialLinks.Facebook.AllowLongLiveTokens,
+	)
 	require.NotNil(t, impl)
 
 	const userID = `126358118771158`
@@ -51,7 +57,7 @@ func TestFacebookVerifyUserFeed(t *testing.T) {
 	})
 
 	t.Run("BadScrape", func(t *testing.T) {
-		err := newFacebookVerifier(new(mockScraper), "1", "2", "3").VerifyUserFeed(context.TODO(), &Metadata{}, `1`)
+		err := newFacebookVerifier(new(mockScraper), "1", "2", "3", false).VerifyUserFeed(context.TODO(), &Metadata{}, `1`)
 		require.ErrorIs(t, err, ErrScrapeFailed)
 	})
 }
@@ -60,6 +66,31 @@ func TestFacebookVerifyCtor(t *testing.T) {
 	t.Parallel()
 
 	require.Panics(t, func() {
-		newFacebookVerifier(nil, "", "", "")
+		newFacebookVerifier(nil, "", "", "", false)
 	})
+}
+
+func TestFacebookVerifyToken(t *testing.T) {
+	t.Parallel()
+
+	token := os.Getenv("FACEBOOK_TEST_TOKEN")
+	if token == "" {
+		t.Skip("SKIP: FACEBOOK_TEST_TOKEN is not set")
+	}
+
+	conf := loadConfig()
+	require.NotNil(t, conf)
+	require.NotEmpty(t, conf.SocialLinks.Facebook.PostURL)
+
+	impl := newFacebookVerifier(
+		new(dataFetcherImpl),
+		conf.SocialLinks.Facebook.PostURL,
+		conf.SocialLinks.Facebook.AppID,
+		conf.SocialLinks.Facebook.AppSecret,
+		conf.SocialLinks.Facebook.AllowLongLiveTokens,
+	)
+	require.NotNil(t, impl)
+
+	_, err := impl.VerifyToken(context.Background(), &Metadata{AccessToken: token})
+	require.NoError(t, err)
 }

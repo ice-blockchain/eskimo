@@ -40,7 +40,13 @@ func New(st StrategyType) Verifier {
 	case StrategyFacebook:
 		sc := new(dataFetcherImpl)
 
-		return newFacebookVerifier(sc, conf.SocialLinks.Facebook.PostURL, conf.SocialLinks.Facebook.AppID, conf.SocialLinks.Facebook.AppSecret)
+		return newFacebookVerifier(
+			sc,
+			conf.SocialLinks.Facebook.PostURL,
+			conf.SocialLinks.Facebook.AppID,
+			conf.SocialLinks.Facebook.AppSecret,
+			conf.SocialLinks.Facebook.AllowLongLiveTokens,
+		)
 
 	default:
 		log.Panic("invalid social verifier: " + st)

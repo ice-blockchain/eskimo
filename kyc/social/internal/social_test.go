@@ -52,7 +52,7 @@ func TestFacebookKYC(t *testing.T) {
 	conf := loadConfig()
 	require.NotNil(t, conf)
 
-	verifier := newFacebookVerifier(new(dataFetcherImpl), conf.SocialLinks.Facebook.PostURL, conf.SocialLinks.Facebook.AppID, conf.SocialLinks.Facebook.AppSecret)
+	verifier := New(StrategyFacebook)
 	require.NotNil(t, verifier)
 
 	username, err := verifier.VerifyPost(context.TODO(),
