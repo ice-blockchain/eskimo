@@ -200,18 +200,25 @@ func (r *repository) verifyDeviceAppVersion(metadata *DeviceMetadata) error {
 	if len(readableParts) < 1+1+1 {
 		return errors.Wrapf(ErrInvalidAppVersion, "invalid version %v", metadata.ReadableVersion)
 	}
-	version := strings.ReplaceAll(fmt.Sprintf("v%v.%v.%v", readableParts[0], readableParts[1], readableParts[2]), "vv", "v")
-	if semver.Compare(version, r.cfg.RequiredAppVersion) < 0 {
+	var requiredAppVersion string
+	if os := strings.ReplaceAll(strings.ToLower(metadata.SystemName), " ", ""); os == "android" {
+		requiredAppVersion = r.cfg.RequiredAppVersion.Android
+	} else if os == "ios" || os == "iphoneos" || os == "ipados" {
+		requiredAppVersion = r.cfg.RequiredAppVersion.IOS
+	} else {
+		requiredAppVersion = r.cfg.RequiredAppVersion.Android
+	}
+	if semver.Compare(strings.ReplaceAll(fmt.Sprintf("v%v.%v.%v", readableParts[0], readableParts[1], readableParts[2]), "vv", "v"), requiredAppVersion) < 0 {
 		return errors.Wrapf(ErrOutdatedAppVersion,
-			"mobile app version %v is older than the required one %v, please update", metadata.ReadableVersion, r.cfg.RequiredAppVersion)
+			"mobile app version %v is older than the required one %v, please update", metadata.ReadableVersion, requiredAppVersion)
 	}
 
-	return errors.Wrapf(r.verifyDeviceAppNanosVersion(readableParts),
-		"mobile app version %v is older than the required one %v, please update", metadata.ReadableVersion, r.cfg.RequiredAppVersion)
+	return errors.Wrapf(r.verifyDeviceAppNanosVersion(requiredAppVersion, readableParts),
+		"mobile app version %v is older than the required one %v, please update", metadata.ReadableVersion, requiredAppVersion)
 }
 
-func (r *repository) verifyDeviceAppNanosVersion(readableParts []string) error {
-	requiredParts := strings.Split(r.cfg.RequiredAppVersion, ".")
+func (r *repository) verifyDeviceAppNanosVersion(requiredAppVersion string, readableParts []string) error {
+	requiredParts := strings.Split(requiredAppVersion, ".")
 	if len(requiredParts) > 1+1+1 && len(readableParts) == 1+1+1 {
 		return errors.Wrapf(ErrOutdatedAppVersion,
 			"mobile app version doesn't contain nanos that is required %v, please update", r.cfg.RequiredAppVersion)

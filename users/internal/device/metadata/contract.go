@@ -129,7 +129,10 @@ type (
 	}
 	// | config holds the configuration of this package mounted from `application.yaml`.
 	config struct {
-		RequiredAppVersion    string                   `yaml:"requiredAppVersion"`
+		RequiredAppVersion struct {
+			Android string `yaml:"android" mapstructure:"android"`
+			IOS     string `yaml:"ios" mapstructure:"ios"`
+		} `yaml:"requiredAppVersion" mapstructure:"requiredAppVersion"`
 		IP2LocationBinaryPath string                   `yaml:"ip2LocationBinaryPath"`
 		messagebroker.Config  `mapstructure:",squash"` //nolint:tagliatelle // Nope.
 		SkipIP2LocationBinary bool                     `yaml:"skipIp2LocationBinary"`

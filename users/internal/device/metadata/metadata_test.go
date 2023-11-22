@@ -213,50 +213,104 @@ func TestVerifyDeviceAppVersion(t *testing.T) { //nolint:funlen // .
 	if testing.Short() {
 		return
 	}
-	repo := repository{cfg: &config{RequiredAppVersion: "v0.0.1"}}
-	md := DeviceMetadata{}
+	repo := repository{cfg: &config{RequiredAppVersion: struct {
+		Android string `yaml:"android" mapstructure:"android"`
+		IOS     string `yaml:"ios" mapstructure:"ios"`
+	}{Android: "v0.0.1", IOS: "v0.0.2"}}}
+	md := DeviceMetadata{SystemName: "Android"}
 
-	repo.cfg.RequiredAppVersion = "v0.0.1"
+	repo.cfg.RequiredAppVersion.Android = "v0.0.1"
 	md.ReadableVersion = "v0.0.2"
 	require.NoError(t, repo.verifyDeviceAppVersion(&md))
 
-	repo.cfg.RequiredAppVersion = "v0.0.1"
+	repo.cfg.RequiredAppVersion.Android = "v0.0.1"
 	md.ReadableVersion = "v0.0.1"
 	require.NoError(t, repo.verifyDeviceAppVersion(&md))
 
-	repo.cfg.RequiredAppVersion = "v0.0.2"
+	repo.cfg.RequiredAppVersion.Android = "v0.0.2"
 	md.ReadableVersion = "v0.0.1"
 	require.Error(t, repo.verifyDeviceAppVersion(&md))
 
-	repo.cfg.RequiredAppVersion = "v0.0.2"
+	repo.cfg.RequiredAppVersion.Android = "v0.0.2"
 	md.ReadableVersion = "v0.0.1.2"
 	require.Error(t, repo.verifyDeviceAppVersion(&md))
 
-	repo.cfg.RequiredAppVersion = "v0.0.2"
+	repo.cfg.RequiredAppVersion.Android = "v0.0.2"
 	md.ReadableVersion = "v0.0.2.1"
 	require.NoError(t, repo.verifyDeviceAppVersion(&md))
 
-	repo.cfg.RequiredAppVersion = "v0.0.2.0"
+	repo.cfg.RequiredAppVersion.Android = "v0.0.2.0"
 	md.ReadableVersion = "v0.0.2"
 	require.Error(t, repo.verifyDeviceAppVersion(&md))
 
-	repo.cfg.RequiredAppVersion = "v0.0.2.1"
+	repo.cfg.RequiredAppVersion.Android = "v0.0.2.1"
 	md.ReadableVersion = "v0.0.2"
 	require.Error(t, repo.verifyDeviceAppVersion(&md))
 
-	repo.cfg.RequiredAppVersion = "v0.0.2.2"
+	repo.cfg.RequiredAppVersion.Android = "v0.0.2.2"
 	md.ReadableVersion = "v0.0.2.2"
 	require.NoError(t, repo.verifyDeviceAppVersion(&md))
 
-	repo.cfg.RequiredAppVersion = "v0.0.2.1"
+	repo.cfg.RequiredAppVersion.Android = "v0.0.2.1"
 	md.ReadableVersion = "v0.0.2.2"
 	require.NoError(t, repo.verifyDeviceAppVersion(&md))
 
-	repo.cfg.RequiredAppVersion = "v0.0.2.1288"
+	repo.cfg.RequiredAppVersion.Android = "v0.0.2.1288"
 	md.ReadableVersion = "v0.0.2.1299"
 	require.NoError(t, repo.verifyDeviceAppVersion(&md))
 
-	repo.cfg.RequiredAppVersion = "v0.0.2.1288"
+	repo.cfg.RequiredAppVersion.Android = "v0.0.2.1288"
 	md.ReadableVersion = "v0.0.2.1287"
+	require.Error(t, repo.verifyDeviceAppVersion(&md))
+
+	repo.cfg.RequiredAppVersion.IOS = "v0.0.11"
+	md.ReadableVersion = "v0.0.12"
+	md.SystemName = "iOS"
+	require.NoError(t, repo.verifyDeviceAppVersion(&md))
+
+	repo.cfg.RequiredAppVersion.IOS = "v0.0.11"
+	md.ReadableVersion = "v0.0.11"
+	require.NoError(t, repo.verifyDeviceAppVersion(&md))
+
+	repo.cfg.RequiredAppVersion.IOS = "v0.0.12"
+	md.ReadableVersion = "v0.0.11"
+	require.Error(t, repo.verifyDeviceAppVersion(&md))
+
+	repo.cfg.RequiredAppVersion.IOS = "v0.0.12"
+	md.ReadableVersion = "v0.0.11.2"
+	require.Error(t, repo.verifyDeviceAppVersion(&md))
+
+	repo.cfg.RequiredAppVersion.IOS = "v0.0.12"
+	md.ReadableVersion = "v0.0.12.1"
+	require.NoError(t, repo.verifyDeviceAppVersion(&md))
+
+	repo.cfg.RequiredAppVersion.IOS = "v0.0.12.0"
+	md.ReadableVersion = "v0.0.12"
+	require.Error(t, repo.verifyDeviceAppVersion(&md))
+
+	repo.cfg.RequiredAppVersion.IOS = "v0.0.12.1"
+	md.ReadableVersion = "v0.0.12"
+	require.Error(t, repo.verifyDeviceAppVersion(&md))
+
+	repo.cfg.RequiredAppVersion.IOS = "v0.0.12.2"
+	md.ReadableVersion = "v0.0.12.2"
+	require.NoError(t, repo.verifyDeviceAppVersion(&md))
+
+	repo.cfg.RequiredAppVersion.IOS = "v0.0.12.1"
+	md.ReadableVersion = "v0.0.12.2"
+	require.NoError(t, repo.verifyDeviceAppVersion(&md))
+
+	repo.cfg.RequiredAppVersion.IOS = "v0.0.12.1288"
+	md.ReadableVersion = "v0.0.12.1299"
+	require.NoError(t, repo.verifyDeviceAppVersion(&md))
+
+	repo.cfg.RequiredAppVersion.IOS = "v0.0.12.1288"
+	md.ReadableVersion = "v0.0.12.1287"
+	require.Error(t, repo.verifyDeviceAppVersion(&md))
+
+	repo.cfg.RequiredAppVersion.IOS = "v0.0.12.1288"
+	repo.cfg.RequiredAppVersion.Android = "v0.0.12.1282"
+	md.ReadableVersion = "v0.0.12.1287"
+	md.SystemName = "iOS"
 	require.Error(t, repo.verifyDeviceAppVersion(&md))
 }
