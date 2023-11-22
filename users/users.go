@@ -204,7 +204,7 @@ func ContextWithXAccountMetadata(ctx context.Context, xAccountMetadata string) c
 }
 
 func xAccountMetadata(ctx context.Context) (xAccountMetadata string) {
-	xAccountMetadata, _ = ctx.Value(xAccountMetadataCtxValueKey).(string) //nolint:errcheck // Not needed.
+	xAccountMetadata, _ = ctx.Value(xAccountMetadataCtxValueKey).(string) //nolint:revive,errcheck // Not needed.
 
 	return
 }
