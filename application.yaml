@@ -54,7 +54,7 @@ auth/email-link:
     maxWrongAttemptsCount: 3
 users: &users
   kyc:
-    kyc-step1-reset-url: https://bogus.example.com
+    kyc-step1-reset-url: https://localhost:443/v1w/face-auth/
   disableConsumer: false
   intervalBetweenRepeatableKYCSteps: 1m
   wintr/connectors/storage/v2: *db
@@ -98,7 +98,8 @@ users: &users
       - name: mining-sessions-table
       - name: user-pings
   ip2LocationBinaryPath: ./users/internal/device/metadata/.testdata/IP-COUNTRY-REGION-CITY-LATITUDE-LONGITUDE-ZIPCODE-TIMEZONE-ISP-DOMAIN-NETSPEED-AREACODE-WEATHER-MOBILE-ELEVATION-USAGETYPE-SAMPLE.BIN
-  requiredAppVersion: v0.0.1
+  requiredAppVersion:
+    android: v0.0.1
   wintr/multimedia/picture:
     urlUpload: https://storage.bunnycdn.com/ice-staging/profile
     urlDownload: https://ice-staging.b-cdn.net/profile

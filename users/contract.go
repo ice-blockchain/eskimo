@@ -227,6 +227,7 @@ const (
 	checksumCtxValueKey                 = "versioningChecksumCtxValueKey"
 	confirmedEmailCtxValueKey           = "confirmedEmailCtxValueKey"
 	authorizationCtxValueKey            = "authorizationCtxValueKey"
+	xAccountMetadataCtxValueKey         = "xAccountMetadataCtxValueKey"
 	totalNoOfDefaultProfilePictures     = 20
 	defaultProfilePictureName           = "default-profile-picture-%v.png"
 	defaultProfilePictureNameRegex      = "default-profile-picture-\\d+[.]png"
