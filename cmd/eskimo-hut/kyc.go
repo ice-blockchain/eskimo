@@ -175,7 +175,9 @@ func (s *service) TryResetKYCSteps( //nolint:gocritic // .
 	if req.AuthenticatedUser.Role != "admin" && req.Data.UserID != req.AuthenticatedUser.UserID {
 		return nil, server.Forbidden(errors.New("operation not allowed"))
 	}
-	resp, err := s.usersProcessor.TryResetKYCSteps(users.ContextWithAuthorization(ctx, req.Data.Authorization), req.Data.UserID)
+	ctx = users.ContextWithXAccountMetadata(ctx, req.Data.XAccountMetadata)
+	ctx = users.ContextWithAuthorization(ctx, req.Data.Authorization)
+	resp, err := s.usersProcessor.TryResetKYCSteps(ctx, req.Data.UserID)
 	if err = errors.Wrapf(err, "failed to TryResetKYCSteps for userID:%v", req.Data.UserID); err != nil {
 		switch {
 		case errors.Is(err, users.ErrNotFound):

@@ -127,11 +127,12 @@ func (r *repository) resetFacialRecognitionKYCStep(ctx context.Context, userID s
 			}
 		}).
 		SetRetryCondition(func(resp *req.Response, err error) bool {
-			return err != nil || (resp.GetStatusCode() != http.StatusOK && resp.GetStatusCode() != http.StatusNoContent && resp.GetStatusCode() != http.StatusUnauthorized) //nolint:lll // .
+			return err != nil || (resp.GetStatusCode() != http.StatusOK && resp.GetStatusCode() != http.StatusNoContent && resp.GetStatusCode() != http.StatusUnauthorized && resp.GetStatusCode() != http.StatusForbidden) //nolint:lll // .
 		}).
 		AddQueryParam("caller", "eskimo-hut").
 		AddQueryParam("userId", userID).
 		SetHeader("Authorization", authorization(ctx)).
+		SetHeader("X-Account-Metadata", xAccountMetadata(ctx)).
 		SetBodyJsonMarshal(&struct {
 			UserID string `json:"userId"`
 		}{UserID: userID}).
