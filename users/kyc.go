@@ -111,7 +111,7 @@ func init() { //nolint:gochecknoinits // It's the only way to tweak the client.
 	req.DefaultClient().GetClient().Timeout = requestDeadline
 }
 
-//nolint:gomnd // Specific config.
+//nolint:gomnd,funlen // Specific config.
 func (r *repository) resetFacialRecognitionKYCStep(ctx context.Context, userID string) error {
 	if resp, err := req.
 		SetContext(ctx).
@@ -138,6 +138,8 @@ func (r *repository) resetFacialRecognitionKYCStep(ctx context.Context, userID s
 		}{UserID: userID}).
 		Delete(r.cfg.KYC.KYCStep1ResetURL); err != nil {
 		return errors.Wrapf(err, "failed to delete face auth state for userID:%v", userID)
+	} else if statusCode := resp.GetStatusCode(); statusCode != http.StatusOK && statusCode != http.StatusNoContent {
+		return errors.Errorf("[%v]failed to delete face auth state for userID:%v", statusCode, userID)
 	} else if _, err2 := resp.ToBytes(); err2 != nil {
 		return errors.Wrapf(err2, "failed to read body of delete face auth state request for userID:%v", userID)
 	} else { //nolint:revive // .
