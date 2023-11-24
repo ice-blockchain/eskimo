@@ -4,11 +4,7 @@ package main
 
 import (
 	"context"
-	"fmt"
-	"math/rand"
 	"slices"
-	"strings"
-	stdlibtime "time"
 
 	"github.com/pkg/errors"
 
@@ -17,7 +13,6 @@ import (
 	"github.com/ice-blockchain/eskimo/users"
 	"github.com/ice-blockchain/wintr/log"
 	"github.com/ice-blockchain/wintr/server"
-	"github.com/ice-blockchain/wintr/time"
 )
 
 func (s *service) setupKYCRoutes(router *server.Router) {
@@ -52,51 +47,79 @@ func (s *service) setupKYCRoutes(router *server.Router) {
 //	@Failure		500					{object}	server.ErrorResponse
 //	@Failure		504					{object}	server.ErrorResponse	"if request times out"
 //	@Router			/kyc/startOrContinueKYCStep4Session/users/{userId} [POST].
-func (s *service) StartOrContinueKYCStep4Session( //nolint:gocritic,funlen,revive // .
-	_ context.Context,
+func (s *service) StartOrContinueKYCStep4Session( //nolint:gocritic,funlen,revive,gocognit,gocyclo,cyclop // .
+	ctx context.Context,
 	req *server.Request[StartOrContinueKYCStep4SessionRequestBody, kycquiz.Quiz],
 ) (*server.Response[kycquiz.Quiz], *server.Response[server.ErrorResponse]) {
-	//nolint:godox // .
-	// TODO add validations for "selectedOption" && "questionNumber".
-	// TODO if we don`t support a specific language, default to 'en'.
-	// TODO return 404 USER_NOT_FOUND if user is not found.
-	// TODO implement the proper logic for the use cases bellow.
-	if req.Data.QuestionNumber != 222 { //nolint:gomnd // .
-		switch rand.Intn(10) { //nolint:gosec,gomnd // .
-		case 0:
-			return server.OK(&kycquiz.Quiz{Result: kycquiz.FailureResult}), nil
-		case 1:
-			return server.OK(&kycquiz.Quiz{Result: kycquiz.SuccessResult}), nil
-		case 2: //nolint:gomnd // .
-			return nil, server.Conflict(errors.Errorf("question already answered, retry with fresh a call (222)"), questionAlreadyAnsweredErrorCode)
+	const (
+		magicNumberQuizStart = 222
+		defaultLanguage      = "en"
+	)
+
+	// Handle the session start.
+	if req.Data.QuestionNumber == magicNumberQuizStart && req.Data.SelectedOption == magicNumberQuizStart {
+		var (
+			err  error
+			quiz *kycquiz.Quiz
+		)
+	langLoop:
+		for _, lang := range []string{req.Data.Language, defaultLanguage} {
+			quiz, err = s.kycquiz.StartQuizSession(ctx, req.AuthenticatedUser.UserID, lang)
+			if err != nil {
+				switch {
+				case errors.Is(err, kycquiz.ErrUnknownLanguage):
+					continue langLoop
+
+				case errors.Is(err, kycquiz.ErrUnknownUser):
+					return nil, server.NotFound(err, userNotFoundErrorCode)
+
+				case errors.Is(err, kycquiz.ErrSessionIsAlreadyRunning):
+					return nil, server.ForbiddenWithCode(errors.Errorf("another quiz session is already running"), quizAlreadyRunningErrorCode)
+
+				case errors.Is(err, kycquiz.ErrSessionFinished):
+					return nil, server.Conflict(
+						errors.Errorf("quiz session already finished successfully, ignore it and proceed with mining"),
+						quizAlreadyCompletedSuccessfullyErrorCode)
+
+				case errors.Is(err, kycquiz.ErrSessionFinishedWithError):
+					return nil, server.Conflict(errors.Errorf("quiz session already finished with error"), quizNotAvailableErrorCode)
+
+				default:
+					return nil, server.Unexpected(err)
+				}
+			}
 		}
-	}
-	switch rand.Intn(10) { //nolint:gosec,gomnd // .
-	case 0:
-		return nil, server.Conflict(errors.Errorf("quiz already finished successfully, ignore it and proceed with mining"), quizAlreadyCompletedSuccessfullyErrorCode)
-	case 1:
-		return nil, server.ForbiddenWithCode(errors.Errorf("quiz not available, ignore it and proceed with mining"), quizNotAvailableErrorCode)
+
+		return server.OK(quiz), nil
 	}
 
-	//nolint:lll // .
-	return server.OK(&kycquiz.Quiz{
-		Progress: &kycquiz.Progress{
-			ExpiresAt: time.New(stdlibtime.Now().Add(stdlibtime.Hour)),
-			NextQuestion: &kycquiz.Question{
-				Options: []string{
-					fmt.Sprintf("[%v]You don't need to do anything and the ice is mined automatically", strings.Repeat("bogus", rand.Intn(20))),                                 //nolint:gosec,gomnd,lll // .
-					fmt.Sprintf("[%v]You need to check in every 24 hours by tapping the Ice button to begin your daily mining session", strings.Repeat("bogus", rand.Intn(20))), //nolint:gosec,gomnd,lll // .
-					fmt.Sprintf("[%v]Ice is not mined, but it turns out immediately after registration", strings.Repeat("bogus", rand.Intn(20))),                                //nolint:gosec,gomnd,lll // .
-					fmt.Sprintf("[%v]Ice is cool", strings.Repeat("bogus", rand.Intn(20))),                                                                                      //nolint:gosec,gomnd // .
-				},
-				Number: uint8(11 + rand.Intn(20)),                                                                                                                  //nolint:gosec,gomnd // .
-				Text:   fmt.Sprintf("[%v][%v] What are the major differences between Ice, Pi and Bee?", req.Data.Language, strings.Repeat("bogus", rand.Intn(20))), //nolint:gosec,gomnd,lll // .
-			},
-			MaxQuestions:     uint8(30 + rand.Intn(40)), //nolint:gosec,gomnd // .
-			CorrectAnswers:   uint8(1 + rand.Intn(6)),   //nolint:gosec,gomnd // .
-			IncorrectAnswers: uint8(1 + rand.Intn(3)),   //nolint:gosec,gomnd // .
-		},
-	}), nil
+	// Handle the session continuation.
+	session, err := s.kycquiz.ContinueQuizSession(ctx, req.AuthenticatedUser.UserID, req.Data.QuestionNumber, req.Data.SelectedOption)
+	if err != nil {
+		switch {
+		case errors.Is(err, kycquiz.ErrUnknownUser) || errors.Is(err, kycquiz.ErrUnknownSession):
+			return nil, server.NotFound(err, userNotFoundErrorCode)
+
+		case errors.Is(err, kycquiz.ErrSessionFinished):
+			return nil, server.Conflict(
+				errors.Errorf("quiz session already finished successfully, ignore it and proceed with mining"),
+				quizAlreadyCompletedSuccessfullyErrorCode)
+
+		case errors.Is(err, kycquiz.ErrSessionFinishedWithError):
+			return nil, server.Conflict(errors.Errorf("quiz session already finished with error"), quizNotAvailableErrorCode)
+
+		case errors.Is(err, kycquiz.ErrUnknownQuestionNumber):
+			return nil, server.BadRequest(err, quizUnknownQuestionNumErrorCode)
+
+		case errors.Is(err, kycquiz.ErrSessionExpired):
+			return nil, server.Conflict(errors.Errorf("this quiz session has expired, please start a new one"), quizExpiredErrorCode)
+
+		default:
+			return nil, server.Unexpected(err)
+		}
+	}
+
+	return server.OK(session), nil
 }
 
 // VerifySocialKYCStep godoc
