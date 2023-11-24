@@ -53,11 +53,19 @@ func (r *repository) getTopCountriesParams(countryKeyword string) (countriesSQLE
 	return
 }
 
+//nolint:funlen,gocyclo,revive,cyclop // .
 func (r *repository) updateTotalUsersPerCountryCount(ctx context.Context, usr *UserSnapshot) error {
-	if (usr.User != nil && usr.Before != nil && usr.User.Country == usr.Before.Country) ||
-		(!usr.User.IsHuman() && !usr.Before.IsHuman()) ||
-		(usr.User != nil && usr.Before == nil && !usr.User.isFirstMiningAfterHumanVerification(r)) ||
-		ctx.Err() != nil {
+	isFirstMiningAfterHumanVerification := (usr.Before == nil || usr.Before.ID == "") && usr.User != nil && usr.User.ID != "" &&
+		usr.User.isFirstMiningAfterHumanVerification(r)
+	isDeleteAfterHumanVerification := (usr.User == nil || usr.User.ID == "") && usr.Before != nil && usr.Before.ID != "" &&
+		usr.Before.hadAtLeastAMiningAfterHumanVerification(r)
+	isCountryChangedAfterHumanVerification := usr.User != nil && usr.User.ID != "" && usr.Before != nil && usr.Before.ID != "" &&
+		usr.User.Country != usr.Before.Country &&
+		usr.User.hadAtLeastAMiningAfterHumanVerification(r) &&
+		usr.Before.hadAtLeastAMiningAfterHumanVerification(r)
+	if !isFirstMiningAfterHumanVerification &&
+		!isDeleteAfterHumanVerification &&
+		!isCountryChangedAfterHumanVerification {
 		return errors.Wrap(ctx.Err(), "context failed")
 	}
 	nextIndex := 1

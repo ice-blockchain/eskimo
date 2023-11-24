@@ -139,15 +139,13 @@ func (r *repository) getGlobalValues(ctx context.Context, keys ...string) ([]*Gl
 }
 
 func (r *repository) updateTotalUsersCount(ctx context.Context, usr *UserSnapshot) error {
-	if usr.Before != nil && usr.Before.ID != "" && usr.User != nil && usr.User.ID != "" {
-		return nil
-	}
-
-	if usr.User != nil && usr.User.ID != "" && usr.User.isFirstMiningAfterHumanVerification(r) {
+	if isFirstMiningAfterHumanVerification := (usr.Before == nil || usr.Before.ID == "") && usr.User != nil && usr.User.ID != "" &&
+		usr.User.isFirstMiningAfterHumanVerification(r); isFirstMiningAfterHumanVerification {
 		return r.incrementOrDecrementTotalUsers(ctx, usr.CreatedAt, true)
 	}
 
-	if usr.Before != nil && usr.Before.ID != "" && usr.Before.IsHuman() {
+	if isDeleteAfterHumanVerification := (usr.User == nil || usr.User.ID == "") && usr.Before != nil && usr.Before.ID != "" &&
+		usr.Before.hadAtLeastAMiningAfterHumanVerification(r); isDeleteAfterHumanVerification {
 		return r.incrementOrDecrementTotalUsers(ctx, time.Now(), false)
 	}
 

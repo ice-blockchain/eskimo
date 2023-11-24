@@ -302,8 +302,6 @@ func (r *repository) buildRepeatableKYCSteps(usr *User) {
 }
 
 func (r *repository) sanitizeUser(usr *User) *User {
-	usr.LastMiningStartedAt = nil
-	usr.LastMiningEndedAt = nil
 	usr.LastPingCooldownEndedAt = nil
 	if usr.BlockchainAccountAddress == usr.ID {
 		usr.BlockchainAccountAddress = ""

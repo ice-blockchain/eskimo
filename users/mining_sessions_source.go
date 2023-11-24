@@ -25,7 +25,7 @@ func (s *miningSessionSource) Process(ctx context.Context, msg *messagebroker.Me
 		return errors.Wrapf(err, "process: cannot unmarshall %v into %#v", string(msg.Value), ses)
 	}
 	usr, err := s.updateMiningSession(ctx, ses)
-	if err != nil || usr.KYCStepPassed == nil || *usr.KYCStepPassed < LivenessDetectionKYCStep {
+	if err != nil {
 		return errors.Wrapf(err, "failed to updateMiningSession for %#v", ses)
 	}
 
@@ -41,10 +41,17 @@ func (u *User) IsFirstMiningAfterHumanVerification(minMiningSessionDuration stdl
 		return false
 	}
 
-	return !u.LastMiningStartedAt.IsNil() &&
-		(*u.KYCStepsCreatedAt)[LivenessDetectionKYCStep-1].Equal(*(*u.KYCStepsLastUpdatedAt)[LivenessDetectionKYCStep-1].Time) &&
+	return (*u.KYCStepsCreatedAt)[LivenessDetectionKYCStep-1].Equal(*(*u.KYCStepsLastUpdatedAt)[LivenessDetectionKYCStep-1].Time) &&
 		(*u.KYCStepsCreatedAt)[LivenessDetectionKYCStep-1].Before(*u.LastMiningStartedAt.Time) &&
 		(*u.KYCStepsCreatedAt)[LivenessDetectionKYCStep-1].Add(minMiningSessionDuration).After(*u.LastMiningStartedAt.Time)
+}
+
+func (u *User) HadAtLeastAMiningAfterHumanVerification() bool {
+	if !u.IsHuman() {
+		return false
+	}
+
+	return (*u.KYCStepsCreatedAt)[LivenessDetectionKYCStep-1].Before(*u.LastMiningStartedAt.Time)
 }
 
 //nolint:revive // Intended.
@@ -52,8 +59,14 @@ func (u *User) isFirstMiningAfterHumanVerification(repo *repository) bool {
 	return u.IsFirstMiningAfterHumanVerification(repo.cfg.GlobalAggregationInterval.MinMiningSessionDuration)
 }
 
+//nolint:revive // Intended.
+func (u *User) hadAtLeastAMiningAfterHumanVerification(_ *repository) bool {
+	return u.HadAtLeastAMiningAfterHumanVerification()
+}
+
+//nolint:revive // Nope.
 func (u *User) IsHuman() bool {
-	return u != nil && u.KYCStepPassed != nil && u.KYCStepsCreatedAt != nil && u.KYCStepsLastUpdatedAt != nil &&
+	return u != nil && u.KYCStepPassed != nil && u.KYCStepsCreatedAt != nil && u.KYCStepsLastUpdatedAt != nil && !u.LastMiningStartedAt.IsNil() &&
 		*u.KYCStepPassed >= LivenessDetectionKYCStep &&
 		len(*u.KYCStepsCreatedAt) >= int(LivenessDetectionKYCStep) &&
 		len(*u.KYCStepsLastUpdatedAt) >= int(LivenessDetectionKYCStep) &&
