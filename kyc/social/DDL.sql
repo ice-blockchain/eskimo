@@ -19,4 +19,4 @@ CREATE TABLE IF NOT EXISTS socials (
                     user_id                   text      NOT NULL PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
                     social                    text      NOT NULL CHECK (social = 'twitter' OR social = 'facebook'),
                     user_handle               text      NOT NULL,
-                    UNIQUE KEY(social, user_handle));
+                    UNIQUE (social, user_handle));
