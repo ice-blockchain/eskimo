@@ -39,6 +39,18 @@ wintr/connectors/storage/v2: &db
     - postgresql://root:pass@localhost:5433/eskimo
 kyc/social:
   wintr/connectors/storage/v2: *db
+  web-scraping-api:
+  social-links:
+    twitter:
+      post-url: /ice_blockchain/status/1712692723336032437
+      domains:
+        - twitter.com
+        - www.twitter.com
+        - x.com
+        - www.x.com
+    facebook:
+      post-url: https://www.facebook.com/reel/1463272597773681
+      allow-long-live-tokens: true
 auth/email-link:
   wintr/connectors/storage/v2: *db
   fromEmailAddress: no-reply@ice.io

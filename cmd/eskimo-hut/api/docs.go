@@ -704,7 +704,7 @@ const docTemplate = `{
                         "name": "request",
                         "in": "body",
                         "schema": {
-                            "$ref": "#/definitions/main.VerifySocialKYCStepRequestBody"
+                            "$ref": "#/definitions/social.VerificationMetadata"
                         }
                     }
                 ],
@@ -1881,17 +1881,6 @@ const docTemplate = `{
                 }
             }
         },
-        "main.VerifySocialKYCStepRequestBody": {
-            "type": "object",
-            "properties": {
-                "facebook": {
-                    "$ref": "#/definitions/social.Facebook"
-                },
-                "twitter": {
-                    "$ref": "#/definitions/social.Twitter"
-                }
-            }
-        },
         "quiz.Progress": {
             "type": "object",
             "properties": {
@@ -2016,6 +2005,17 @@ const docTemplate = `{
                         }
                     ],
                     "example": "false"
+                }
+            }
+        },
+        "social.VerificationMetadata": {
+            "type": "object",
+            "properties": {
+                "facebook": {
+                    "$ref": "#/definitions/social.Facebook"
+                },
+                "twitter": {
+                    "$ref": "#/definitions/social.Twitter"
                 }
             }
         },

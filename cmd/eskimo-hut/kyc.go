@@ -112,7 +112,7 @@ func (s *service) StartOrContinueKYCStep4Session( //nolint:gocritic,funlen,reviv
 //	@Param			language			query		string							true	"language of the user"
 //	@Param			kycStep				query		int								true	"the value of the social kyc step to verify"	Enums(3,5)
 //	@Param			social				query		string							true	"the desired social you wish to verify it with"	Enums(facebook,twitter)
-//	@Param			request				body		VerifySocialKYCStepRequestBody	false	"Request params"
+//	@Param			request				body		kycsocial.VerificationMetadata	false	"Request params"
 //	@Success		200					{object}	kycsocial.Verification
 //	@Failure		400					{object}	server.ErrorResponse	"if validations fail"
 //	@Failure		401					{object}	server.ErrorResponse	"if not authorized"
@@ -125,12 +125,12 @@ func (s *service) StartOrContinueKYCStep4Session( //nolint:gocritic,funlen,reviv
 //	@Router			/kyc/verifySocialKYCStep/users/{userId} [POST].
 func (s *service) VerifySocialKYCStep( //nolint:gocritic // .
 	ctx context.Context,
-	req *server.Request[VerifySocialKYCStepRequestBody, kycsocial.Verification],
+	req *server.Request[kycsocial.VerificationMetadata, kycsocial.Verification],
 ) (*server.Response[kycsocial.Verification], *server.Response[server.ErrorResponse]) {
 	if err := validateVerifySocialKYCStep(req); err != nil {
 		return nil, server.UnprocessableEntity(errors.Wrapf(err, "validations failed for %#v", req.Data), invalidPropertiesErrorCode)
 	}
-	result, err := s.socialRepository.VerifyPost(ctx, &req.Data.VerificationMetadata)
+	result, err := s.socialRepository.VerifyPost(ctx, req.Data)
 	if err != nil {
 		err = errors.Wrapf(err, "failed to verify post for %#v", req.Data)
 		switch {
@@ -150,7 +150,7 @@ func (s *service) VerifySocialKYCStep( //nolint:gocritic // .
 	return server.OK(result), nil
 }
 
-func validateVerifySocialKYCStep(req *server.Request[VerifySocialKYCStepRequestBody, kycsocial.Verification]) error {
+func validateVerifySocialKYCStep(req *server.Request[kycsocial.VerificationMetadata, kycsocial.Verification]) error {
 	if !slices.Contains(kycsocial.AllSupportedKYCSteps, req.Data.KYCStep) {
 		return errors.Errorf("unsupported kycStep `%v`", req.Data.KYCStep)
 	}

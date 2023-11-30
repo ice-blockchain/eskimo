@@ -359,13 +359,6 @@ definitions:
         example: jdoe
         type: string
     type: object
-  main.VerifySocialKYCStepRequestBody:
-    properties:
-      facebook:
-        $ref: '#/definitions/social.Facebook'
-      twitter:
-        $ref: '#/definitions/social.Twitter'
-    type: object
   quiz.Progress:
     properties:
       correctAnswers:
@@ -452,6 +445,13 @@ definitions:
         allOf:
         - $ref: '#/definitions/social.VerificationResult'
         example: "false"
+    type: object
+  social.VerificationMetadata:
+    properties:
+      facebook:
+        $ref: '#/definitions/social.Facebook'
+      twitter:
+        $ref: '#/definitions/social.Twitter'
     type: object
   social.VerificationResult:
     enum:
@@ -958,7 +958,7 @@ paths:
         in: body
         name: request
         schema:
-          $ref: '#/definitions/main.VerifySocialKYCStepRequestBody'
+          $ref: '#/definitions/social.VerificationMetadata'
       produces:
       - application/json
       responses:

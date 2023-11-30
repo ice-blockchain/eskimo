@@ -138,9 +138,6 @@ type (
 		Language       string `form:"language" required:"true" swaggerignore:"true" example:"en"`
 		QuestionNumber uint8  `form:"questionNumber" required:"true" swaggerignore:"true" example:"11"`
 	}
-	VerifySocialKYCStepRequestBody struct {
-		kycsocial.VerificationMetadata
-	}
 	TryResetKYCStepsRequestBody struct {
 		Authorization    string          `header:"Authorization" swaggerignore:"true" required:"true" example:"some token"`
 		XAccountMetadata string          `header:"X-Account-Metadata" swaggerignore:"true" required:"false" example:"some token"`
