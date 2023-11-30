@@ -6,6 +6,7 @@ import (
 	"context"
 	_ "embed"
 	"io"
+	"mime/multipart"
 	stdlibtime "time"
 
 	"github.com/ice-blockchain/eskimo/users"
@@ -32,8 +33,9 @@ type (
 		ContinueQuizSession(ctx context.Context, userID UserID, question uint, answer uint8) (*Quiz, error)
 	}
 
-	UserReader interface {
-		GetUserByID(ctx context.Context, userID UserID) (*UserProfile, error)
+	UserRepository interface {
+		GetUserByID(ctx context.Context, userID string) (*users.UserProfile, error)
+		ModifyUser(ctx context.Context, usr *users.User, profilePicture *multipart.FileHeader) error
 	}
 
 	Result string
@@ -94,7 +96,7 @@ type (
 	repositoryImpl struct {
 		DB       *storage.DB
 		Shutdown func() error
-		Users    UserReader
+		Users    UserRepository
 		config
 	}
 	config struct {

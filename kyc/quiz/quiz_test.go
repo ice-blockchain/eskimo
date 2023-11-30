@@ -4,6 +4,7 @@ package quiz
 
 import (
 	"context"
+	"mime/multipart"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -94,6 +95,10 @@ func (*mockUserReader) GetUserByID(ctx context.Context, userID UserID) (*UserPro
 	}
 
 	return profile, nil
+}
+
+func (*mockUserReader) ModifyUser(ctx context.Context, usr *users.User, profilePicture *multipart.FileHeader) error {
+	return nil
 }
 
 func testManagerSessionStart(ctx context.Context, t *testing.T, r *repositoryImpl) {

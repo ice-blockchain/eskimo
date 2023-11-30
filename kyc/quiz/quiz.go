@@ -45,17 +45,17 @@ func newError(msg string) error {
 	return &quizError{Msg: msg}
 }
 
-func NewRepository(ctx context.Context, userReader UserReader) Repository {
-	return newRepositoryImpl(ctx, userReader)
+func NewRepository(ctx context.Context, userRepo UserRepository) Repository {
+	return newRepositoryImpl(ctx, userRepo)
 }
 
-func newRepositoryImpl(ctx context.Context, userReader UserReader) *repositoryImpl {
+func newRepositoryImpl(ctx context.Context, userRepo UserRepository) *repositoryImpl {
 	db := storage.MustConnect(ctx, ddl, applicationYamlKey)
 
 	return &repositoryImpl{
 		DB:       db,
 		Shutdown: db.Close,
-		Users:    userReader,
+		Users:    userRepo,
 		config:   mustLoadConfig(),
 	}
 }
@@ -437,7 +437,53 @@ where
 	return nil
 }
 
-func (r *repositoryImpl) ContinueQuizSession( //nolint:funlen,revive //.
+func (r *repositoryImpl) fetchUserProfileForModify(ctx context.Context, userID UserID) (*users.User, error) {
+	profile, err := r.Users.GetUserByID(ctx, userID)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to get user by id: %v", userID)
+	}
+
+	usr := new(users.User)
+	usr.ID = userID
+	usr.KYCStepsLastUpdatedAt = profile.KYCStepsLastUpdatedAt
+	usr.KYCStepsCreatedAt = profile.KYCStepsCreatedAt
+
+	if usr.KYCStepsLastUpdatedAt == nil {
+		s := make([]*time.Time, 0, 1)
+		usr.KYCStepsLastUpdatedAt = &s
+	}
+	if usr.KYCStepsCreatedAt == nil {
+		s := make([]*time.Time, 0, 1)
+		usr.KYCStepsCreatedAt = &s
+	}
+
+	return usr, nil
+}
+
+func (r *repositoryImpl) modifyUser(ctx context.Context, now *time.Time, userID UserID) error {
+	usr, err := r.fetchUserProfileForModify(ctx, userID)
+	if err != nil {
+		return err
+	}
+
+	step := users.QuizKYCStep
+	usr.KYCStepPassed = &step
+
+	if len(*usr.KYCStepsLastUpdatedAt) < int(step) {
+		*usr.KYCStepsLastUpdatedAt = append(*usr.KYCStepsLastUpdatedAt, now)
+	} else {
+		(*usr.KYCStepsLastUpdatedAt)[int(step)-1] = now
+	}
+	if len(*usr.KYCStepsCreatedAt) < int(step) {
+		*usr.KYCStepsCreatedAt = append(*usr.KYCStepsCreatedAt, now)
+	} else {
+		(*usr.KYCStepsCreatedAt)[int(step)-1] = now
+	}
+
+	return errors.Wrapf(r.Users.ModifyUser(ctx, usr, nil), "failed to modify user %#v", usr)
+}
+
+func (r *repositoryImpl) ContinueQuizSession( //nolint:funlen,revive,gocognit //.
 	ctx context.Context,
 	userID UserID,
 	question uint,
@@ -486,6 +532,9 @@ func (r *repositoryImpl) ContinueQuizSession( //nolint:funlen,revive //.
 		} else {
 			quiz.Result = SuccessResult
 			err = r.UserMarkSessionAsFinished(ctx, userID, now, tx, true)
+			if err == nil {
+				err = r.modifyUser(ctx, time.New(now), userID)
+			}
 		}
 
 		return wrapErrorInTx(err)
