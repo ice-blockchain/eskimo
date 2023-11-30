@@ -37,6 +37,8 @@ wintr/connectors/storage/v2: &db
     password: pass
   replicaURLs:
     - postgresql://root:pass@localhost:5433/eskimo
+kyc/social:
+  wintr/connectors/storage/v2: *db
 auth/email-link:
   wintr/connectors/storage/v2: *db
   fromEmailAddress: no-reply@ice.io

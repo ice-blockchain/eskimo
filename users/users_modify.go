@@ -256,7 +256,7 @@ func (u *User) genSQLUpdate(ctx context.Context, agendaUserIDs []UserID) (sql st
 				kycStepsLastUpdatedAt = append(kycStepsLastUpdatedAt, *updatedAt.Time)
 			}
 			params = append(params, kycStepsLastUpdatedAt)
-			sql += fmt.Sprintf(", KYC_STEPS_LAST_UPDATED_AT = $%[1]v::timestamp[], KYC_STEPS_CREATED_AT = NULLIF(array_remove(array_cat(array[coalesce((KYC_STEPS_CREATED_AT)[1],($%[1]v::timestamp[])[1])],array[coalesce((KYC_STEPS_CREATED_AT)[2],($%[1]v::timestamp[])[2])]),null),array[]::timestamp[])", nextIndex) //nolint:lll // .
+			sql += fmt.Sprintf(", KYC_STEPS_LAST_UPDATED_AT = $%[1]v::timestamp[], KYC_STEPS_CREATED_AT = NULLIF(array_remove(array[coalesce((KYC_STEPS_CREATED_AT)[1],($%[1]v::timestamp[])[1]),coalesce((KYC_STEPS_CREATED_AT)[2],($%[1]v::timestamp[])[2]),coalesce((KYC_STEPS_CREATED_AT)[3],($%[1]v::timestamp[])[3]),coalesce((KYC_STEPS_CREATED_AT)[4],($%[1]v::timestamp[])[4]),coalesce((KYC_STEPS_CREATED_AT)[5],($%[1]v::timestamp[])[5])],null),array[]::timestamp[])", nextIndex) //nolint:lll // .
 			nextIndex++
 		}
 	}

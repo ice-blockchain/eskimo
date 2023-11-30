@@ -361,9 +361,10 @@ definitions:
     type: object
   main.VerifySocialKYCStepRequestBody:
     properties:
-      link:
-        example: https://twitter.com/elonmusk/status/1716230049408434540
-        type: string
+      facebook:
+        $ref: '#/definitions/social.Facebook'
+      twitter:
+        $ref: '#/definitions/social.Twitter'
     type: object
   quiz.Progress:
     properties:
@@ -425,6 +426,18 @@ definitions:
         type: object
       error:
         example: something is missing
+        type: string
+    type: object
+  social.Facebook:
+    properties:
+      accessToken:
+        example: some token to access the 3rd party social API on behalf of the user
+        type: string
+    type: object
+  social.Twitter:
+    properties:
+      tweetUrl:
+        example: https://twitter.com/elonmusk/status/1716230049408434540
         type: string
     type: object
   social.Verification:
@@ -754,7 +767,7 @@ paths:
             $ref: '#/definitions/server.ErrorResponse'
       tags:
       - Auth
-  /kyc/startOrContinueKYCStep4Session:
+  /kyc/startOrContinueKYCStep4Session/users/{userId}:
     post:
       consumes:
       - application/json
@@ -771,6 +784,11 @@ paths:
         description: Insert your metadata token
         in: header
         name: X-Account-Metadata
+        type: string
+      - description: ID of the user
+        in: path
+        name: userId
+        required: true
         type: string
       - description: language of the user
         in: query
@@ -851,6 +869,10 @@ paths:
         name: userId
         required: true
         type: string
+      - description: the kyc steps you wish to skip
+        in: query
+        name: skipKYCSteps
+        type: integer
       produces:
       - application/json
       responses:
@@ -888,7 +910,7 @@ paths:
             $ref: '#/definitions/server.ErrorResponse'
       tags:
       - KYC
-  /kyc/verifySocialKYCStep:
+  /kyc/verifySocialKYCStep/users/{userId}:
     post:
       consumes:
       - application/json
@@ -905,6 +927,11 @@ paths:
         description: Insert your metadata token
         in: header
         name: X-Account-Metadata
+        type: string
+      - description: ID of the user
+        in: path
+        name: userId
+        required: true
         type: string
       - description: language of the user
         in: query

@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"slices"
 	"strings"
 	stdlibtime "time"
 
@@ -21,8 +22,8 @@ import (
 func (s *service) setupKYCRoutes(router *server.Router) {
 	router.
 		Group("v1w").
-		POST("kyc/startOrContinueKYCStep4Session", server.RootHandler(s.StartOrContinueKYCStep4Session)).
-		POST("kyc/verifySocialKYCStep", server.RootHandler(s.VerifySocialKYCStep)).
+		POST("kyc/startOrContinueKYCStep4Session/users/:userId", server.RootHandler(s.StartOrContinueKYCStep4Session)).
+		POST("kyc/verifySocialKYCStep/users/:userId", server.RootHandler(s.VerifySocialKYCStep)).
 		POST("kyc/tryResetKYCSteps/users/:userId", server.RootHandler(s.TryResetKYCSteps))
 }
 
@@ -36,6 +37,7 @@ func (s *service) setupKYCRoutes(router *server.Router) {
 //
 //	@Param			Authorization		header		string	true	"Insert your access token"		default(Bearer <Add access token here>)
 //	@Param			X-Account-Metadata	header		string	false	"Insert your metadata token"	default(<Add metadata token here>)
+//	@Param			userId				path		string	true	"ID of the user"
 //	@Param			language			query		string	true	"language of the user"
 //	@Param			selectedOption		query		int		true	"index of the options array. Set it to 222 for the first call."
 //	@Param			questionNumber		query		int		true	"previous question number. Set it to 222 for the first call."
@@ -48,7 +50,7 @@ func (s *service) setupKYCRoutes(router *server.Router) {
 //	@Failure		422					{object}	server.ErrorResponse	"if syntax fails"
 //	@Failure		500					{object}	server.ErrorResponse
 //	@Failure		504					{object}	server.ErrorResponse	"if request times out"
-//	@Router			/kyc/startOrContinueKYCStep4Session [POST].
+//	@Router			/kyc/startOrContinueKYCStep4Session/users/{userId} [POST].
 func (s *service) StartOrContinueKYCStep4Session( //nolint:gocritic,funlen,revive // .
 	_ context.Context,
 	req *server.Request[StartOrContinueKYCStep4SessionRequestBody, kycquiz.Quiz],
@@ -106,6 +108,7 @@ func (s *service) StartOrContinueKYCStep4Session( //nolint:gocritic,funlen,reviv
 //
 //	@Param			Authorization		header		string							true	"Insert your access token"		default(Bearer <Add access token here>)
 //	@Param			X-Account-Metadata	header		string							false	"Insert your metadata token"	default(<Add metadata token here>)
+//	@Param			userId				path		string							true	"ID of the user"
 //	@Param			language			query		string							true	"language of the user"
 //	@Param			kycStep				query		int								true	"the value of the social kyc step to verify"	Enums(3,5)
 //	@Param			social				query		string							true	"the desired social you wish to verify it with"	Enums(facebook,twitter)
@@ -119,33 +122,53 @@ func (s *service) StartOrContinueKYCStep4Session( //nolint:gocritic,funlen,reviv
 //	@Failure		422					{object}	server.ErrorResponse	"if syntax fails"
 //	@Failure		500					{object}	server.ErrorResponse
 //	@Failure		504					{object}	server.ErrorResponse	"if request times out"
-//	@Router			/kyc/verifySocialKYCStep [POST].
-func (s *service) VerifySocialKYCStep( //nolint:gocritic,revive // .
-	_ context.Context,
+//	@Router			/kyc/verifySocialKYCStep/users/{userId} [POST].
+func (s *service) VerifySocialKYCStep( //nolint:gocritic // .
+	ctx context.Context,
 	req *server.Request[VerifySocialKYCStepRequestBody, kycsocial.Verification],
 ) (*server.Response[kycsocial.Verification], *server.Response[server.ErrorResponse]) {
-	switch rand.Intn(10) { //nolint:gosec,gomnd // .
-	case 0:
-		return nil, server.Conflict(errors.Errorf("social kyc step already finished successfully, ignore it, redirect home and retry start mining"), socialKYCStepAlreadyCompletedSuccessfullyErrorCode) //nolint:lll // .
-	case 1:
-		return nil, server.ForbiddenWithCode(errors.Errorf("social KYC step not available, ignore it, redirect home and retry start mining"), socialKYCStepNotAvailableErrorCode) //nolint:lll // .
+	if err := validateVerifySocialKYCStep(req); err != nil {
+		return nil, server.UnprocessableEntity(errors.Wrapf(err, "validations failed for %#v", req.Data), invalidPropertiesErrorCode)
 	}
-	if req.Data.Link != "" {
-		switch rand.Intn(10) { //nolint:gosec,gomnd // .
-		case 0, 1, 2: //nolint:gomnd // .
-			remainingAttempts := uint8(rand.Intn(3)) //nolint:gomnd,gosec // .
-
-			return server.OK(&kycsocial.Verification{Result: kycsocial.FailureVerificationResult, RemainingAttempts: &remainingAttempts}), nil
+	result, err := s.socialRepository.VerifyPost(ctx, &req.Data.VerificationMetadata)
+	if err != nil {
+		err = errors.Wrapf(err, "failed to verify post for %#v", req.Data)
+		switch {
+		case errors.Is(err, users.ErrRelationNotFound):
+			return nil, server.NotFound(err, userNotFoundErrorCode)
+		case errors.Is(err, users.ErrNotFound):
+			return nil, server.NotFound(err, userNotFoundErrorCode)
+		case errors.Is(err, kycsocial.ErrDuplicate):
+			return nil, server.Conflict(err, socialKYCStepAlreadyCompletedSuccessfullyErrorCode)
+		case errors.Is(err, kycsocial.ErrNotAvailable):
+			return nil, server.ForbiddenWithCode(err, socialKYCStepNotAvailableErrorCode)
 		default:
-			return server.OK(&kycsocial.Verification{Result: kycsocial.SuccessVerificationResult}), nil
+			return nil, server.Unexpected(err)
 		}
 	}
 
-	return server.OK(&kycsocial.Verification{
-		ExpectedPostText: fmt.Sprintf(`[%v][%v][%v]✅ Verifying my account on @ice_blockchain with the nickname: "robert"
-👉 Learn more about "The Decentralized Future" that #IceNetwork is building. 👇
-#IceVerified $ICE #Blockchain #Crypto #Tech`, req.Data.KYCStep, req.Data.Language, req.Data.Social),
-	}), nil
+	return server.OK(result), nil
+}
+
+func validateVerifySocialKYCStep(req *server.Request[VerifySocialKYCStepRequestBody, kycsocial.Verification]) error {
+	if !slices.Contains(kycsocial.AllSupportedKYCSteps, req.Data.KYCStep) {
+		return errors.Errorf("unsupported kycStep `%v`", req.Data.KYCStep)
+	}
+	if !slices.Contains(kycsocial.AllTypes, req.Data.Social) {
+		return errors.Errorf("unsupported social `%v`", req.Data.Social)
+	}
+	switch req.Data.Social {
+	case kycsocial.FacebookType:
+		if req.Data.Facebook.AccessToken == "" {
+			return errors.Errorf("unsupported facebook.accessToken `%v`", req.Data.Facebook.AccessToken)
+		}
+	case kycsocial.TwitterType:
+		if req.Data.Twitter.TweetURL == "" {
+			return errors.Errorf("unsupported twitter.tweetUrl `%v`", req.Data.Twitter.TweetURL)
+		}
+	}
+
+	return nil
 }
 
 // TryResetKYCSteps godoc
@@ -159,6 +182,7 @@ func (s *service) VerifySocialKYCStep( //nolint:gocritic,revive // .
 //	@Param			Authorization		header		string	true	"Insert your access token"		default(Bearer <Add access token here>)
 //	@Param			X-Account-Metadata	header		string	false	"Insert your metadata token"	default(<Add metadata token here>)
 //	@Param			userId				path		string	true	"ID of the user"
+//	@Param			skipKYCSteps		query		int		false	"the kyc steps you wish to skip"
 //	@Success		200					{object}	User
 //	@Failure		400					{object}	server.ErrorResponse	"if validations fail"
 //	@Failure		401					{object}	server.ErrorResponse	"if not authorized"
@@ -177,6 +201,14 @@ func (s *service) TryResetKYCSteps( //nolint:gocritic // .
 	}
 	ctx = users.ContextWithXAccountMetadata(ctx, req.Data.XAccountMetadata) //nolint:revive // .
 	ctx = users.ContextWithAuthorization(ctx, req.Data.Authorization)       //nolint:revive // .
+	for _, kycStep := range req.Data.SkipKYCSteps {
+		switch kycStep { //nolint:exhaustive // .
+		case users.Social1KYCStep, users.Social2KYCStep:
+			if err := s.socialRepository.SkipVerification(ctx, kycStep, req.Data.UserID); err != nil {
+				return nil, server.Unexpected(errors.Wrapf(err, "failed to skip kycStep %v", kycStep))
+			}
+		}
+	}
 	resp, err := s.usersProcessor.TryResetKYCSteps(ctx, req.Data.UserID)
 	if err = errors.Wrapf(err, "failed to TryResetKYCSteps for userID:%v", req.Data.UserID); err != nil {
 		switch {

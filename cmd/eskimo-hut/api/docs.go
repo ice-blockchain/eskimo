@@ -426,7 +426,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/kyc/startOrContinueKYCStep4Session": {
+        "/kyc/startOrContinueKYCStep4Session/users/{userId}": {
             "post": {
                 "description": "Starts or continues the kyc 4 session (Quiz), if available and if not already finished successfully.",
                 "consumes": [
@@ -453,6 +453,13 @@ const docTemplate = `{
                         "description": "Insert your metadata token",
                         "name": "X-Account-Metadata",
                         "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "ID of the user",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
                     },
                     {
                         "type": "string",
@@ -568,6 +575,12 @@ const docTemplate = `{
                         "name": "userId",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "the kyc steps you wish to skip",
+                        "name": "skipKYCSteps",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -622,7 +635,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/kyc/verifySocialKYCStep": {
+        "/kyc/verifySocialKYCStep/users/{userId}": {
             "post": {
                 "description": "Verifies if the user has posted the expected verification post on their social media account.",
                 "consumes": [
@@ -649,6 +662,13 @@ const docTemplate = `{
                         "description": "Insert your metadata token",
                         "name": "X-Account-Metadata",
                         "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "ID of the user",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
                     },
                     {
                         "type": "string",
@@ -1864,9 +1884,11 @@ const docTemplate = `{
         "main.VerifySocialKYCStepRequestBody": {
             "type": "object",
             "properties": {
-                "link": {
-                    "type": "string",
-                    "example": "https://twitter.com/elonmusk/status/1716230049408434540"
+                "facebook": {
+                    "$ref": "#/definitions/social.Facebook"
+                },
+                "twitter": {
+                    "$ref": "#/definitions/social.Twitter"
                 }
             }
         },
@@ -1955,6 +1977,24 @@ const docTemplate = `{
                 "error": {
                     "type": "string",
                     "example": "something is missing"
+                }
+            }
+        },
+        "social.Facebook": {
+            "type": "object",
+            "properties": {
+                "accessToken": {
+                    "type": "string",
+                    "example": "some token to access the 3rd party social API on behalf of the user"
+                }
+            }
+        },
+        "social.Twitter": {
+            "type": "object",
+            "properties": {
+                "tweetUrl": {
+                    "type": "string",
+                    "example": "https://twitter.com/elonmusk/status/1716230049408434540"
                 }
             }
         },

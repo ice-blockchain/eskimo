@@ -127,6 +127,5 @@ var (
 	ErrFetchFailed        = errors.New("cannot fetch post")
 	ErrFetchReadFailed    = errors.New("cannot read fetched post")
 	ErrScrapeFailed       = errors.New("cannot scrape target")
-	ErrUnavailable        = errors.New("service unavailable")
 	ErrInvalidToken       = errors.New("invalid token")
 )

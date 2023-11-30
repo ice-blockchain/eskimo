@@ -139,15 +139,13 @@ type (
 		QuestionNumber uint8  `form:"questionNumber" required:"true" swaggerignore:"true" example:"11"`
 	}
 	VerifySocialKYCStepRequestBody struct {
-		Social   kycsocial.Type `form:"social" required:"true" swaggerignore:"true" example:"twitter"`
-		Language string         `form:"language" required:"true" swaggerignore:"true" example:"en"`
-		Link     string         `json:"link" example:"https://twitter.com/elonmusk/status/1716230049408434540"`
-		KYCStep  users.KYCStep  `form:"kycStep" required:"true" swaggerignore:"true" example:"1"`
+		kycsocial.VerificationMetadata
 	}
 	TryResetKYCStepsRequestBody struct {
-		Authorization    string `header:"Authorization" swaggerignore:"true" required:"true" example:"some token"`
-		XAccountMetadata string `header:"X-Account-Metadata" swaggerignore:"true" required:"false" example:"some token"`
-		UserID           string `uri:"userId" required:"true" allowForbiddenWriteOperation:"true" swaggerignore:"true" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"` //nolint:lll // .
+		Authorization    string          `header:"Authorization" swaggerignore:"true" required:"true" example:"some token"`
+		XAccountMetadata string          `header:"X-Account-Metadata" swaggerignore:"true" required:"false" example:"some token"`
+		UserID           string          `uri:"userId" required:"true" allowForbiddenWriteOperation:"true" swaggerignore:"true" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"` //nolint:lll // .
+		SkipKYCSteps     []users.KYCStep `form:"skipKYCSteps" swaggerignore:"true" example:"3,4,5"`
 	}
 )
 
@@ -206,6 +204,7 @@ type (
 	service struct {
 		usersProcessor      users.Processor
 		authEmailLinkClient emaillink.Client
+		socialRepository    kycsocial.Repository
 	}
 	config struct {
 		APIKey  string `yaml:"api-key" mapstructure:"api-key"` //nolint:tagliatelle // Nope.
