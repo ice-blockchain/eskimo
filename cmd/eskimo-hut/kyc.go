@@ -159,12 +159,12 @@ func validateVerifySocialKYCStep(req *server.Request[VerifySocialKYCStepRequestB
 	}
 	switch req.Data.Social {
 	case kycsocial.FacebookType:
-		if req.Data.Facebook.AccessToken == "" {
-			return errors.Errorf("unsupported facebook.accessToken `%v`", req.Data.Facebook.AccessToken)
+		if req.Data.Twitter.TweetURL != "" {
+			return errors.Errorf("unsupported twitter.tweetUrl `%v`", req.Data.Twitter.TweetURL)
 		}
 	case kycsocial.TwitterType:
-		if req.Data.Twitter.TweetURL == "" {
-			return errors.Errorf("unsupported twitter.tweetUrl `%v`", req.Data.Twitter.TweetURL)
+		if req.Data.Facebook.AccessToken != "" {
+			return errors.Errorf("unsupported facebook.accessToken `%v`", req.Data.Facebook.AccessToken)
 		}
 	}
 
