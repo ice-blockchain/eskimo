@@ -577,7 +577,11 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "type": "integer",
+                        "type": "array",
+                        "items": {
+                            "type": "integer"
+                        },
+                        "collectionFormat": "multi",
                         "description": "the kyc steps you wish to skip",
                         "name": "skipKYCSteps",
                         "in": "query"

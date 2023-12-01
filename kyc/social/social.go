@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"strings"
 	"text/template"
+	stdlibtime "time"
 
 	"github.com/pkg/errors"
 
@@ -98,7 +99,7 @@ func (r *repository) SkipVerification(ctx context.Context, kycStep users.KYCStep
 }
 
 func (r *repository) verifySkipped(ctx context.Context, metadata *VerificationMetadata, now *time.Time) (int, error) {
-	sql := `SELECT count(1) AS skipped
+	sql := `SELECT count(1) AS skipped,
                    max(created_at) AS latest_created_at
 		    FROM social_kyc_unsuccessful_attempts 
 		    WHERE user_id = $1
@@ -131,7 +132,8 @@ func (r *repository) VerifyPost(ctx context.Context, metadata *VerificationMetad
 	if err = r.validateKycStep(user.User, metadata.KYCStep, now); err != nil {
 		return nil, errors.Wrap(err, "failed to validateKycStep")
 	}
-	if _, err = r.verifySkipped(ctx, metadata, now); err != nil {
+	skippedCount, err := r.verifySkipped(ctx, metadata, now)
+	if err != nil {
 		return nil, errors.Wrapf(err, "failed to verifySkipped for metadata:%#v", metadata)
 	}
 	sql := `SELECT ARRAY_AGG(x.created_at) AS unsuccessful_attempts 
@@ -176,11 +178,12 @@ func (r *repository) VerifyPost(ctx context.Context, metadata *VerificationMetad
 		}
 		remainingAttempts--
 		if remainingAttempts == 0 {
-			if err = r.saveUnsuccessfulAttempt(ctx, now, exhaustedRetriesReason, metadata); err != nil {
-				return nil, errors.Wrapf(err, "failed to saveUnsuccessfulAttempt reason:%v,metadata:%#v", exhaustedRetriesReason, metadata)
+			if err = r.saveUnsuccessfulAttempt(ctx, time.New(now.Add(stdlibtime.Microsecond)), exhaustedRetriesReason, metadata); err != nil {
+				return nil, errors.Wrapf(err, "[1]failed to saveUnsuccessfulAttempt reason:%v,metadata:%#v", exhaustedRetriesReason, metadata)
 			}
+			end := skippedCount+1 == r.cfg.MaxSessionsAllowed
 
-			if err = r.modifyUser(ctx, false, false, metadata.KYCStep, now, user.User); err != nil {
+			if err = r.modifyUser(ctx, end, end, metadata.KYCStep, now, user.User); err != nil {
 				return nil, errors.Wrapf(err, "[1failure][%v]failed to modifyUser", metadata.KYCStep)
 			}
 		}
@@ -198,10 +201,11 @@ func (r *repository) VerifyPost(ctx context.Context, metadata *VerificationMetad
 				}
 				remainingAttempts--
 				if remainingAttempts == 0 {
-					if err = r.saveUnsuccessfulAttempt(ctx, now, exhaustedRetriesReason, metadata); err != nil {
-						return nil, errors.Wrapf(err, "failed to saveUnsuccessfulAttempt reason:%v,metadata:%#v", exhaustedRetriesReason, metadata)
+					if err = r.saveUnsuccessfulAttempt(ctx, time.New(now.Add(stdlibtime.Microsecond)), exhaustedRetriesReason, metadata); err != nil {
+						return nil, errors.Wrapf(err, "[2]failed to saveUnsuccessfulAttempt reason:%v,metadata:%#v", exhaustedRetriesReason, metadata)
 					}
-					if err = r.modifyUser(ctx, false, false, metadata.KYCStep, now, user.User); err != nil {
+					end := skippedCount+1 == r.cfg.MaxSessionsAllowed
+					if err = r.modifyUser(ctx, end, end, metadata.KYCStep, now, user.User); err != nil {
 						return nil, errors.Wrapf(err, "[2failure][%v]failed to modifyUser", metadata.KYCStep)
 					}
 				}
@@ -241,7 +245,7 @@ func (r *repository) validateKycStep(user *users.User, kycStep users.KYCStep, no
 	return nil
 }
 
-//nolint:revive,funlen // Nope.
+//nolint:revive,funlen,gocognit // Nope.
 func (r *repository) modifyUser(ctx context.Context, success, skip bool, kycStep users.KYCStep, now *time.Time, user *users.User) error {
 	usr := new(users.User)
 	usr.ID = user.ID
@@ -256,17 +260,20 @@ func (r *repository) modifyUser(ctx context.Context, success, skip bool, kycStep
 			(*usr.KYCStepsLastUpdatedAt)[int(kycStep)-1] = now
 		}
 	case success && !skip:
-		nextStep := kycStep + 1
-		usr.KYCStepPassed = &nextStep
+		usr.KYCStepPassed = &kycStep
 		if len(*usr.KYCStepsLastUpdatedAt) < int(kycStep) {
 			*usr.KYCStepsLastUpdatedAt = append(*usr.KYCStepsLastUpdatedAt, now)
 		} else {
 			(*usr.KYCStepsLastUpdatedAt)[int(kycStep)-1] = now
 		}
-		if len(*usr.KYCStepsLastUpdatedAt) < int(kycStep+1) {
-			*usr.KYCStepsLastUpdatedAt = append(*usr.KYCStepsLastUpdatedAt, now)
-		} else {
-			(*usr.KYCStepsLastUpdatedAt)[int(kycStep)] = now
+		if kycStep == users.Social1KYCStep {
+			nextStep := kycStep + 1
+			usr.KYCStepPassed = &nextStep
+			if len(*usr.KYCStepsLastUpdatedAt) < int(nextStep) {
+				*usr.KYCStepsLastUpdatedAt = append(*usr.KYCStepsLastUpdatedAt, now)
+			} else {
+				(*usr.KYCStepsLastUpdatedAt)[int(nextStep)-1] = now
+			}
 		}
 	case !success:
 		if len(*usr.KYCStepsLastUpdatedAt) < int(kycStep) {
@@ -313,13 +320,13 @@ func detectReason(err error) string {
 	case errors.Is(err, social.ErrInvalidURL):
 		return "invalid URL"
 	case storage.IsErr(err, storage.ErrDuplicate):
-		if tErr := terror.As(err); tErr != nil && !storage.IsErr(err, storage.ErrDuplicate, "pk") {
+		if tErr := terror.As(err); tErr != nil && !storage.IsErr(tErr.Unwrap(), storage.ErrDuplicate, "pk") {
 			return fmt.Sprintf("duplicate userhandle '%v'", tErr.Data["user_handle"])
 		}
 
 		fallthrough
 	default:
-		return err.Error()
+		return "unexpected"
 	}
 }
 

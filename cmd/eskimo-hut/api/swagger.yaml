@@ -869,10 +869,13 @@ paths:
         name: userId
         required: true
         type: string
-      - description: the kyc steps you wish to skip
+      - collectionFormat: multi
+        description: the kyc steps you wish to skip
         in: query
+        items:
+          type: integer
         name: skipKYCSteps
-        type: integer
+        type: array
       produces:
       - application/json
       responses:

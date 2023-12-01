@@ -15,6 +15,7 @@ import (
 	kycquiz "github.com/ice-blockchain/eskimo/kyc/quiz"
 	kycsocial "github.com/ice-blockchain/eskimo/kyc/social"
 	"github.com/ice-blockchain/eskimo/users"
+	"github.com/ice-blockchain/wintr/log"
 	"github.com/ice-blockchain/wintr/server"
 	"github.com/ice-blockchain/wintr/time"
 )
@@ -182,7 +183,7 @@ func validateVerifySocialKYCStep(req *server.Request[kycsocial.VerificationMetad
 //	@Param			Authorization		header		string	true	"Insert your access token"		default(Bearer <Add access token here>)
 //	@Param			X-Account-Metadata	header		string	false	"Insert your metadata token"	default(<Add metadata token here>)
 //	@Param			userId				path		string	true	"ID of the user"
-//	@Param			skipKYCSteps		query		int		false	"the kyc steps you wish to skip"
+//	@Param			skipKYCSteps		query		[]int	false	"the kyc steps you wish to skip" collectionFormat(multi)
 //	@Success		200					{object}	User
 //	@Failure		400					{object}	server.ErrorResponse	"if validations fail"
 //	@Failure		401					{object}	server.ErrorResponse	"if not authorized"
@@ -192,7 +193,7 @@ func validateVerifySocialKYCStep(req *server.Request[kycsocial.VerificationMetad
 //	@Failure		500					{object}	server.ErrorResponse
 //	@Failure		504					{object}	server.ErrorResponse	"if request times out"
 //	@Router			/kyc/tryResetKYCSteps/users/{userId} [POST].
-func (s *service) TryResetKYCSteps( //nolint:gocritic // .
+func (s *service) TryResetKYCSteps( //nolint:gocritic,funlen,gocognit,revive // .
 	ctx context.Context,
 	req *server.Request[TryResetKYCStepsRequestBody, User],
 ) (*server.Response[User], *server.Response[server.ErrorResponse]) {
@@ -201,6 +202,21 @@ func (s *service) TryResetKYCSteps( //nolint:gocritic // .
 	}
 	ctx = users.ContextWithXAccountMetadata(ctx, req.Data.XAccountMetadata) //nolint:revive // .
 	ctx = users.ContextWithAuthorization(ctx, req.Data.Authorization)       //nolint:revive // .
+	for _, kycStep := range req.Data.SkipKYCSteps {
+		switch kycStep { //nolint:exhaustive // .
+		case users.Social1KYCStep, users.Social2KYCStep:
+			if err := s.socialRepository.SkipVerification(ctx, kycStep, req.Data.UserID); err != nil {
+				if errors.Is(err, kycsocial.ErrNotAvailable) || errors.Is(err, kycsocial.ErrDuplicate) {
+					log.Error(errors.Wrapf(err, "skipVerification failed unexpectedly during tryResetKYCSteps for kycStep:%v,userID:%v",
+						kycStep, req.Data.UserID))
+					err = nil
+				}
+				if err != nil {
+					return nil, server.Unexpected(errors.Wrapf(err, "failed to skip kycStep %v", kycStep))
+				}
+			}
+		}
+	}
 	resp, err := s.usersProcessor.TryResetKYCSteps(ctx, req.Data.UserID)
 	if err = errors.Wrapf(err, "failed to TryResetKYCSteps for userID:%v", req.Data.UserID); err != nil {
 		switch {
