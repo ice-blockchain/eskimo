@@ -39,13 +39,23 @@ type (
 		Fetch(ctx context.Context, url string) (content []byte, err error)
 	}
 
+	censorer interface {
+		Censor(in error) (out error)
+	}
+
 	webScraperImpl struct {
 		Fetcher      dataFetcher
 		ScrapeAPIURL string
 		APIKey       string
 	}
 
-	dataFetcherImpl struct{}
+	dataFetcherImpl struct {
+		Censorer censorer
+	}
+
+	censorerImpl struct {
+		Strings []string
+	}
 
 	twitterVerifierImpl struct {
 		Scraper webScraper

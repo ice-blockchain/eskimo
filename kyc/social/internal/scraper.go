@@ -4,8 +4,10 @@ package social
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/hashicorp/go-multierror"
@@ -18,7 +20,22 @@ const (
 	scrapeHTTPMaxRetries = 3
 )
 
-func (*dataFetcherImpl) Fetch(ctx context.Context, target string) ([]byte, error) {
+func (c *censorerImpl) Censor(err error) error {
+	const censor = "CENSORED"
+
+	if err == nil || c == nil {
+		return err
+	}
+
+	msg := err.Error()
+	for _, s := range c.Strings {
+		msg = strings.ReplaceAll(msg, s, censor)
+	}
+
+	return errors.New(msg) //nolint:goerr113 // It's expected.
+}
+
+func (d *dataFetcherImpl) Fetch(ctx context.Context, target string) ([]byte, error) {
 	resp, err := req.DefaultClient().
 		R().
 		SetContext(ctx).
@@ -26,7 +43,7 @@ func (*dataFetcherImpl) Fetch(ctx context.Context, target string) ([]byte, error
 		SetRetryCount(scrapeHTTPMaxRetries).
 		SetRetryHook(func(resp *req.Response, err error) {
 			if err != nil {
-				log.Error(err, "scaper: fetch failed")
+				log.Error(d.Censorer.Censor(err), "scaper: fetch failed")
 			} else {
 				log.Warn("scaper: fetch failed: unexpected status code: " + resp.Status)
 			}
@@ -36,12 +53,12 @@ func (*dataFetcherImpl) Fetch(ctx context.Context, target string) ([]byte, error
 		}).
 		Get(target)
 	if err != nil {
-		return nil, multierror.Append(ErrFetchFailed, err)
+		return nil, multierror.Append(ErrFetchFailed, d.Censorer.Censor(err))
 	}
 
 	data, err := resp.ToBytes()
 	if err != nil {
-		return nil, multierror.Append(ErrFetchReadFailed, err)
+		return nil, multierror.Append(ErrFetchReadFailed, d.Censorer.Censor(err))
 	}
 
 	return data, nil
@@ -93,9 +110,13 @@ func newMustWebScraper(apiURL, apiKey string) webScraper {
 		log.Panic("scaper: URL is not set")
 	}
 
+	censorer := &censorerImpl{
+		Strings: []string{apiKey, apiURL},
+	}
+
 	return &webScraperImpl{
 		ScrapeAPIURL: apiURL,
 		APIKey:       apiKey,
-		Fetcher:      new(dataFetcherImpl),
+		Fetcher:      &dataFetcherImpl{Censorer: censorer},
 	}
 }
