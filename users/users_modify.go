@@ -242,11 +242,6 @@ func (u *User) genSQLUpdate(ctx context.Context, agendaUserIDs []UserID) (sql st
 		sql += fmt.Sprintf(", BLOCKCHAIN_ACCOUNT_ADDRESS = $%v", nextIndex)
 		nextIndex++
 	}
-	if u.MiningBlockchainAccountAddress != "" {
-		params = append(params, u.MiningBlockchainAccountAddress)
-		sql += fmt.Sprintf(", MINING_BLOCKCHAIN_ACCOUNT_ADDRESS = COALESCE(NULLIF(MINING_BLOCKCHAIN_ACCOUNT_ADDRESS,ID),$%v)", nextIndex)
-		nextIndex++
-	}
 	if u.KYCStepsLastUpdatedAt != nil {
 		if *u.KYCStepsLastUpdatedAt == nil {
 			sql += ", KYC_STEPS_LAST_UPDATED_AT = NULL"
