@@ -201,14 +201,6 @@ func (s *service) TryResetKYCSteps( //nolint:gocritic // .
 	}
 	ctx = users.ContextWithXAccountMetadata(ctx, req.Data.XAccountMetadata) //nolint:revive // .
 	ctx = users.ContextWithAuthorization(ctx, req.Data.Authorization)       //nolint:revive // .
-	for _, kycStep := range req.Data.SkipKYCSteps {
-		switch kycStep { //nolint:exhaustive // .
-		case users.Social1KYCStep, users.Social2KYCStep:
-			if err := s.socialRepository.SkipVerification(ctx, kycStep, req.Data.UserID); err != nil {
-				return nil, server.Unexpected(errors.Wrapf(err, "failed to skip kycStep %v", kycStep))
-			}
-		}
-	}
 	resp, err := s.usersProcessor.TryResetKYCSteps(ctx, req.Data.UserID)
 	if err = errors.Wrapf(err, "failed to TryResetKYCSteps for userID:%v", req.Data.UserID); err != nil {
 		switch {

@@ -78,12 +78,15 @@ type (
 
 const (
 	applicationYamlKey = "kyc/social"
-	maxAttempts        = uint8(3)
-	retryWindow        = stdlibtime.Hour
 )
 
 const (
 	postContentLanguageTemplateType languageTemplateType = "post_content"
+)
+
+const (
+	skippedReason          = "skipped"
+	exhaustedRetriesReason = "exhausted_retries"
 )
 
 var (
@@ -110,5 +113,10 @@ type (
 		cfg             *config
 		db              *storage.DB
 	}
-	config struct{}
+	config struct {
+		DelayBetweenSessions stdlibtime.Duration `yaml:"delay-between-sessions" mapstructure:"delay-between-sessions"` //nolint:tagliatelle // .
+		SessionWindow        stdlibtime.Duration `yaml:"session-window" mapstructure:"session-window"`                 //nolint:tagliatelle // .
+		MaxSessionsAllowed   int                 `yaml:"max-sessions-allowed" mapstructure:"max-sessions-allowed"`     //nolint:tagliatelle // .
+		MaxAttemptsAllowed   uint8               `yaml:"max-attempts-allowed" mapstructure:"max-attempts-allowed"`     //nolint:tagliatelle // .
+	}
 )

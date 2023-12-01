@@ -38,6 +38,10 @@ wintr/connectors/storage/v2: &db
   replicaURLs:
     - postgresql://root:pass@localhost:5433/eskimo
 kyc/social:
+  delay-between-sessions: 3m
+  session-window: 2m
+  max-sessions-allowed: 4
+  max-attempts-allowed: 3
   wintr/connectors/storage/v2: *db
   web-scraping-api:
   social-links:

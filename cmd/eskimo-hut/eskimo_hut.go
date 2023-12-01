@@ -11,7 +11,6 @@ import (
 
 	emaillink "github.com/ice-blockchain/eskimo/auth/email_link"
 	"github.com/ice-blockchain/eskimo/cmd/eskimo-hut/api"
-	"github.com/ice-blockchain/eskimo/kyc/social"
 	"github.com/ice-blockchain/eskimo/users"
 	appcfg "github.com/ice-blockchain/wintr/config"
 	"github.com/ice-blockchain/wintr/log"
@@ -50,7 +49,6 @@ func (s *service) RegisterRoutes(router *server.Router) {
 func (s *service) Init(ctx context.Context, cancel context.CancelFunc) {
 	s.usersProcessor = users.StartProcessor(ctx, cancel)
 	s.authEmailLinkClient = emaillink.NewClient(ctx, s.usersProcessor, server.Auth(ctx))
-	s.socialRepository = social.New(ctx, s.usersProcessor)
 }
 
 func (s *service) Close(ctx context.Context) error {
@@ -59,7 +57,6 @@ func (s *service) Close(ctx context.Context) error {
 	}
 
 	return multierror.Append( //nolint:wrapcheck // Not needed.
-		errors.Wrap(s.socialRepository.Close(), "could not close socialRepository"),
 		errors.Wrap(s.authEmailLinkClient.Close(), "could not close authEmailLinkClient"),
 		errors.Wrap(s.usersProcessor.Close(), "could not close usersProcessor"),
 	).ErrorOrNil()
