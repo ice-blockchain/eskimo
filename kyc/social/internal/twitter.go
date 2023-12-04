@@ -18,7 +18,7 @@ import (
 
 func (*twitterVerifierImpl) VerifyText(doc *goquery.Document, expectedText string) (found bool) {
 	doc.Find("title").EachWithBreak(func(_ int, s *goquery.Selection) bool {
-		found = found || strings.Index(s.Text(), strings.TrimSpace(expectedText)) >= 0
+		found = found || strings.Contains(s.Text(), strings.TrimSpace(expectedText))
 
 		return !found
 	})
