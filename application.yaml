@@ -49,9 +49,8 @@ kyc/social:
       post-url: /ice_blockchain/status/1712692723336032437
       domains:
         - twitter.com
-        - www.twitter.com
         - x.com
-        - www.x.com
+        - t.co
       countries:
         - MX
         - CA

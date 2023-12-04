@@ -12,6 +12,7 @@ kyc/social:
       domains:
         - twitter.com
         - x.com
+        - t.co
     facebook:
       post-url: https://www.facebook.com/reel/1463272597773681
       allow-long-live-tokens: true
