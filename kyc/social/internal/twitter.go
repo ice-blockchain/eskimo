@@ -17,23 +17,8 @@ import (
 )
 
 func (*twitterVerifierImpl) VerifyText(doc *goquery.Document, expectedText string) (found bool) {
-	const (
-		prefix = `X: "`
-		suffix = `" / X`
-	)
 	doc.Find("title").EachWithBreak(func(_ int, s *goquery.Selection) bool {
-		text := s.Text()
-
-		prefixIdx := strings.Index(text, prefix)
-		suffixIdx := strings.Index(text, suffix)
-
-		if prefixIdx >= 0 && suffixIdx >= 0 {
-			text = text[len(prefix)+prefixIdx : suffixIdx]
-			if idx := strings.Index(text, expectedText); idx >= 0 {
-				text = strings.TrimSpace(text[idx : idx+len(expectedText)])
-				found = found || text == expectedText
-			}
-		}
+		found = found || strings.Index(s.Text(), strings.TrimSpace(expectedText)) >= 0
 
 		return !found
 	})
