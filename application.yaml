@@ -20,7 +20,7 @@ cmd/eskimo-hut:
   api-key: bogus-secret
   host: localhost:1443
   version: local
-  defaultEndpointTimeout: 30s
+  defaultEndpointTimeout: 120s
   httpServer:
     port: 1443
     certPath: cmd/eskimo-hut/.testdata/localhost.crt

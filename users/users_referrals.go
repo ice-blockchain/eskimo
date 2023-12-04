@@ -73,7 +73,8 @@ func (r *repository) GetReferrals(ctx context.Context, userID string, referralTy
 		referralTypeJoinSumAgg = referralTypeJoin
 	}
 	sql := fmt.Sprintf(`
-		SELECT  to_timestamp(0)																		   				AS active, 
+		SELECT  FALSE																		   						AS verified, 
+				to_timestamp(0)																		   				AS active, 
 				to_timestamp(0)																		   				AS pinged,
 				'' 																					   				AS phone_number,
 				'' 																					   				AS email,
@@ -88,7 +89,8 @@ func (r *repository) GetReferrals(ctx context.Context, userID string, referralTy
 
 		UNION ALL
 
-		SELECT X.last_mining_ended_at  		 			 											   				AS active,
+		SELECT X.verified  		 			 											   							AS verified,
+			   X.last_mining_ended_at  		 			 											   				AS active,
 			   X.last_ping_cooldown_ended_at  			 											   				AS pinged,
 			   X.phone_number_ 							 											   				AS phone_number,
 			   '' AS email,
@@ -99,6 +101,7 @@ func (r *repository) GetReferrals(ctx context.Context, userID string, referralTy
 			   '' AS city,
 			   $2 AS referral_type
 		FROM (SELECT  
+				referrals.kyc_step_passed >= %[5]v              				   									AS verified,
 				COALESCE(referrals.last_mining_ended_at, to_timestamp(0))              				   				AS last_mining_ended_at,
 				(CASE
 					WHEN u.id = referrals.referred_by OR u.referred_by = referrals.id
@@ -133,7 +136,7 @@ func (r *repository) GetReferrals(ctx context.Context, userID string, referralTy
 					 	   END) != null) DESC,
 						 referrals.created_at DESC
 				LIMIT $5 OFFSET $3
-			 ) X`, r.pictureClient.SQLAliasDownloadURL(`referrals.profile_picture_name`), referralTypeJoin, totalAndActiveColumns, referralTypeJoinSumAgg) //nolint:lll // .
+			 ) X`, r.pictureClient.SQLAliasDownloadURL(`referrals.profile_picture_name`), referralTypeJoin, totalAndActiveColumns, referralTypeJoinSumAgg, QuizKYCStep) //nolint:lll // .
 	args := []any{userID, referralType, offset, time.Now().Time, limit}
 	result, err := storage.Select[MinimalUserProfile](ctx, r.db, sql, args...)
 	if err != nil {

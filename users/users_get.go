@@ -131,6 +131,7 @@ func (r *repository) GetUsers(ctx context.Context, keyword string, limit, offset
 	}
 	sql := fmt.Sprintf(`
 			SELECT 
+			    u.kyc_step_passed >= %[2]v 									 	  AS verified,
 			    u.last_mining_ended_at 									 	 	  AS active,
 			    u.last_ping_cooldown_ended_at 							 	 	  AS pinged,
 			    u.phone_number_ 										  		  AS phone_number,
@@ -167,7 +168,7 @@ func (r *repository) GetUsers(ctx context.Context, keyword string, limit, offset
 				   ''           												  AS email,
 				   u.id         												  AS id,
 				   u.username   												  AS username,
-				   %v           												  AS profile_picture_url,
+				   %[1]v           												  AS profile_picture_url,
 				   u.country 													  AS country,
 				   '' 															  AS city,
 			       u.referred_by 												  AS referred_by,
@@ -205,7 +206,7 @@ func (r *repository) GetUsers(ctx context.Context, keyword string, limit, offset
 							u.t0_id = u.user_requesting_this_id DESC,
 							u.t0_referred_by = u.user_requesting_this_id DESC,
 							u.username DESC
-			LIMIT $3 OFFSET $4`, r.pictureClient.SQLAliasDownloadURL(`u.profile_picture_name`))
+			LIMIT $3 OFFSET $4`, r.pictureClient.SQLAliasDownloadURL(`u.profile_picture_name`), QuizKYCStep)
 	params := []any{
 		time.Now().Time,
 		strings.ReplaceAll(strings.ReplaceAll(strings.ToLower(keyword), "_", "\\_"), "%", "\\%"),

@@ -107,6 +107,7 @@ type (
 		LastPingCooldownEndedAt *time.Time                  `json:"lastPingCooldownEndedAt,omitempty" example:"2022-01-03T16:20:52.156534Z" swaggerignore:"true" db:"last_ping_cooldown_ended_at"`                              //nolint:lll // .
 		HiddenProfileElements   *Enum[HiddenProfileElement] `json:"hiddenProfileElements,omitempty" swaggertype:"array,string" example:"level" enums:"globalRank,referralCount,level,role,badges" db:"hidden_profile_elements"` //nolint:lll // .
 		RandomReferredBy        *bool                       `json:"randomReferredBy,omitempty" example:"true" swaggerignore:"true" db:"random_referred_by"`
+		Verified                *bool                       `json:"verified,omitempty" example:"true" db:"-"`
 		KYCStepsLastUpdatedAt   *[]*time.Time               `json:"kycStepsLastUpdatedAt,omitempty" swaggertype:"array,string" example:"2022-01-03T16:20:52.156534Z" db:"kyc_steps_last_updated_at"` //nolint:lll // .
 		KYCStepsCreatedAt       *[]*time.Time               `json:"kycStepsCreatedAt,omitempty" swaggertype:"array,string" example:"2022-01-03T16:20:52.156534Z" db:"kyc_steps_created_at"`          //nolint:lll // .
 		KYCStepPassed           *KYCStep                    `json:"kycStepPassed,omitempty" example:"0" db:"kyc_step_passed"`
@@ -126,8 +127,9 @@ type (
 		HashCode                       int64    `json:"hashCode,omitempty" example:"43453546464576547" swaggerignore:"true" db:"hash_code"`
 	}
 	MinimalUserProfile struct {
-		Active *NotExpired `json:"active,omitempty" example:"true"`
-		Pinged *NotExpired `json:"pinged,omitempty" example:"false"`
+		Verified *bool       `json:"verified,omitempty" example:"true"`
+		Active   *NotExpired `json:"active,omitempty" example:"true"`
+		Pinged   *NotExpired `json:"pinged,omitempty" example:"false"`
 		SensitiveUserInformation
 		PublicUserInformation
 		devicemetadata.DeviceLocation

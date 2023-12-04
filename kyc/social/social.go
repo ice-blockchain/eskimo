@@ -168,6 +168,9 @@ func (r *repository) VerifyPost(ctx context.Context, metadata *VerificationMetad
 		PostURL:          metadata.Twitter.TweetURL,
 		ExpectedPostText: metadata.expectedPostText(user.User),
 	}
+	if true { // Because we want to be less strict, for the moment.
+		pvm.ExpectedPostText = fmt.Sprintf("%q", user.Username)
+	}
 	userHandle, err := r.socialVerifiers[metadata.Social].VerifyPost(ctx, pvm)
 	if err != nil { //nolint:nestif // .
 		log.Error(errors.Wrapf(err, "social verification failed for KYCStep:%v,Social:%v,Language:%v,userID:%v",

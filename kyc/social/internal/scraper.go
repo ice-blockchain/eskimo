@@ -7,17 +7,12 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-	"time"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/imroc/req/v3"
 	"github.com/pkg/errors"
 
 	"github.com/ice-blockchain/wintr/log"
-)
-
-const (
-	scrapeHTTPMaxRetries = 3
 )
 
 func (c *censorerImpl) Censor(err error) error {
@@ -39,8 +34,8 @@ func (d *dataFetcherImpl) Fetch(ctx context.Context, target string) ([]byte, err
 	resp, err := req.DefaultClient().
 		R().
 		SetContext(ctx).
-		SetRetryBackoffInterval(10*time.Millisecond, time.Second). //nolint:gomnd // Nope.
-		SetRetryCount(scrapeHTTPMaxRetries).
+		SetRetryBackoffInterval(0, 0).
+		SetRetryCount(0).
 		SetRetryHook(func(resp *req.Response, err error) {
 			if err != nil {
 				log.Error(d.Censorer.Censor(err), "scaper: fetch failed")
@@ -55,13 +50,14 @@ func (d *dataFetcherImpl) Fetch(ctx context.Context, target string) ([]byte, err
 	if err != nil {
 		return nil, multierror.Append(ErrFetchFailed, d.Censorer.Censor(err))
 	}
-	if resp.GetStatusCode() != http.StatusOK {
-		return nil, multierror.Append(ErrFetchFailed, errors.Errorf("unexpected status code `%v`", resp.GetStatusCode()))
-	}
 
 	data, err := resp.ToBytes()
 	if err != nil {
 		return nil, multierror.Append(ErrFetchReadFailed, d.Censorer.Censor(err))
+	}
+
+	if resp.GetStatusCode() != http.StatusOK {
+		return nil, multierror.Append(ErrFetchFailed, errors.Errorf("unexpected status code: `%v`, response: `%v`", resp.GetStatusCode(), string(data)))
 	}
 
 	return data, nil

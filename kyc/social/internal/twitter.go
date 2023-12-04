@@ -146,7 +146,7 @@ func (t *twitterVerifierImpl) VerifyPost(ctx context.Context, meta *Metadata) (u
 
 	oe, err := t.FetchOE(ctx, meta.PostURL)
 	if err != nil {
-		return "", err
+		return username, err
 	}
 
 	return username, t.VerifyContent(ctx, oe, meta.ExpectedPostText)

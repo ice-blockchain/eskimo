@@ -272,7 +272,19 @@ func (u *User) Checksum() string {
 	return strconv.FormatInt(u.UpdatedAt.UnixNano(), base10)
 }
 
+func (u *User) SetVerified() {
+	if u != nil {
+		verified := u.IsVerified()
+		u.Verified = &verified
+	}
+}
+
+func (u *User) IsVerified() bool {
+	return u != nil && u.KYCStepPassed != nil && *u.KYCStepPassed >= QuizKYCStep
+}
+
 func (r *repository) sanitizeUserForUI(usr *User) {
+	usr.SetVerified()
 	usr.RandomReferredBy = nil
 	usr.PhoneNumberHash = ""
 	usr.HashCode = 0
