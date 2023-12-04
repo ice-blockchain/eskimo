@@ -17,17 +17,22 @@ import (
 )
 
 func (*twitterVerifierImpl) VerifyText(doc *goquery.Document, expectedText string) (found bool) {
+	const (
+		prefix = `X: "`
+		suffix = `" / X`
+	)
 	doc.Find("title").EachWithBreak(func(_ int, s *goquery.Selection) bool {
 		text := s.Text()
 
-		idx := strings.Index(text, expectedText)
-		if idx > 0 {
-			text = text[idx:]
-			if end := strings.IndexByte(text, '\n'); end > 0 {
-				text = text[:end]
+		prefixIdx := strings.Index(text, prefix)
+		suffixIdx := strings.Index(text, suffix)
+
+		if prefixIdx >= 0 && suffixIdx >= 0 {
+			text = text[len(prefix)+prefixIdx : suffixIdx]
+			if idx := strings.Index(text, expectedText); idx >= 0 {
+				text = strings.TrimSpace(text[idx : idx+len(expectedText)])
+				found = found || text == expectedText
 			}
-			text = strings.TrimSpace(text)
-			found = found || text == expectedText
 		}
 
 		return !found

@@ -52,6 +52,10 @@ kyc/social:
         - www.twitter.com
         - x.com
         - www.x.com
+      countries:
+        - MX
+        - CA
+        - US
     facebook:
       post-url: https://www.facebook.com/reel/1463272597773681
       allow-long-live-tokens: true
