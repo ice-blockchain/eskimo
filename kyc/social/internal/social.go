@@ -35,7 +35,7 @@ func New(st StrategyType) Verifier {
 	case StrategyTwitter:
 		sc := newMustWebScraper(conf.WebScrapingAPI.URL, conf.WebScrapingAPI.APIKey)
 
-		return newTwitterVerifier(sc, conf.SocialLinks.Twitter.PostURL, conf.SocialLinks.Twitter.Domains)
+		return newTwitterVerifier(sc, conf.SocialLinks.Twitter.PostURL, conf.SocialLinks.Twitter.Domains, conf.SocialLinks.Twitter.Countries)
 
 	case StrategyFacebook:
 		sc := new(dataFetcherImpl)

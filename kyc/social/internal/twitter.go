@@ -5,11 +5,15 @@ package social
 import (
 	"bytes"
 	"context"
+	"math/rand"
+	"slices"
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
+
+	"github.com/ice-blockchain/wintr/time"
 )
 
 func (*twitterVerifierImpl) VerifyText(doc *goquery.Document, expectedText string) (found bool) {
@@ -101,7 +105,16 @@ func (t *twitterVerifierImpl) VerifyPost(ctx context.Context, meta *Metadata) (u
 		return "", err
 	}
 
-	data, err := t.Scraper.Scrape(ctx, meta.PostURL, nil)
+	var data []byte
+	for _, country := range t.countries() {
+		if data, err = t.Scraper.Scrape(ctx, meta.PostURL, func(m map[string]string) map[string]string {
+			m["country"] = country
+
+			return m
+		}); err == nil {
+			break
+		}
+	}
 	if err != nil {
 		return "", multierror.Append(ErrFetchFailed, err)
 	}
@@ -109,10 +122,20 @@ func (t *twitterVerifierImpl) VerifyPost(ctx context.Context, meta *Metadata) (u
 	return username, t.VerifyContent(data, meta.ExpectedPostText)
 }
 
-func newTwitterVerifier(sc webScraper, post string, allowedDomains []string) *twitterVerifierImpl {
+func (t *twitterVerifierImpl) countries() []string {
+	countries := slices.Clone(t.Countries)
+	rand.New(rand.NewSource(time.Now().UnixNano())).Shuffle(len(countries), func(ii, jj int) { //nolint:gosec // .
+		countries[ii], countries[jj] = countries[jj], countries[ii]
+	})
+
+	return countries
+}
+
+func newTwitterVerifier(sc webScraper, post string, allowedDomains, countries []string) *twitterVerifierImpl {
 	return &twitterVerifierImpl{
-		Scraper: sc,
-		Post:    post,
-		Domains: allowedDomains,
+		Scraper:   sc,
+		Post:      post,
+		Domains:   allowedDomains,
+		Countries: countries,
 	}
 }

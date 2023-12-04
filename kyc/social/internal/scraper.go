@@ -4,7 +4,6 @@ package social
 
 import (
 	"context"
-	"errors"
 	"net/http"
 	"net/url"
 	"strings"
@@ -12,6 +11,7 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/imroc/req/v3"
+	"github.com/pkg/errors"
 
 	"github.com/ice-blockchain/wintr/log"
 )
@@ -32,7 +32,7 @@ func (c *censorerImpl) Censor(err error) error {
 		msg = strings.ReplaceAll(msg, s, censor)
 	}
 
-	return errors.New(msg) //nolint:goerr113 // It's expected.
+	return errors.New(msg)
 }
 
 func (d *dataFetcherImpl) Fetch(ctx context.Context, target string) ([]byte, error) {
@@ -55,6 +55,9 @@ func (d *dataFetcherImpl) Fetch(ctx context.Context, target string) ([]byte, err
 	if err != nil {
 		return nil, multierror.Append(ErrFetchFailed, d.Censorer.Censor(err))
 	}
+	if resp.GetStatusCode() != http.StatusOK {
+		return nil, multierror.Append(ErrFetchFailed, errors.Errorf("unexpected status code `%v`", resp.GetStatusCode()))
+	}
 
 	data, err := resp.ToBytes()
 	if err != nil {
@@ -68,19 +71,12 @@ func (s *webScraperImpl) Scrape(ctx context.Context, target string, options webS
 	return s.Fetcher.Fetch(ctx, s.BuildQuery(target, options)) //nolint:wrapcheck // False-Positive.
 }
 
-func (*webScraperImpl) randomCountry() string {
-	countries := []string{"US", "CA", "MX"}
-
-	return countries[time.Now().UnixNano()%int64(len(countries))]
-}
-
 func (s *webScraperImpl) BuildQuery(target string, options webScraperOptionsFunc) string {
 	conf := map[string]string{
 		"render_js":  "1",
 		"device":     "mobile",
 		"proxy_type": "residential",
 		"timeout":    "30000",
-		"country":    s.randomCountry(),
 		"wait_until": "networkidle2",
 	}
 

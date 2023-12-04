@@ -58,9 +58,10 @@ type (
 	}
 
 	twitterVerifierImpl struct {
-		Scraper webScraper
-		Post    string
-		Domains []string
+		Scraper   webScraper
+		Post      string
+		Domains   []string
+		Countries []string
 	}
 
 	facebookVerifierImpl struct {
@@ -72,8 +73,9 @@ type (
 	}
 
 	configTwitter struct {
-		PostURL string   `yaml:"post-url" mapstructure:"post-url"` //nolint:tagliatelle // Nope.
-		Domains []string `yaml:"domains"  mapstructure:"domains"`
+		PostURL   string   `yaml:"post-url" mapstructure:"post-url"` //nolint:tagliatelle // Nope.
+		Domains   []string `yaml:"domains"  mapstructure:"domains"`
+		Countries []string `yaml:"countries"  mapstructure:"countries"`
 	}
 
 	configFacebook struct {

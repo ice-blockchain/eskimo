@@ -25,7 +25,7 @@ func TestTwitterKYC(t *testing.T) {
 	sc := newMustWebScraper(conf.WebScrapingAPI.URL, conf.WebScrapingAPI.APIKey)
 	require.NotNil(t, sc)
 
-	verifier := newTwitterVerifier(sc, conf.SocialLinks.Twitter.PostURL, []string{"twitter.com"})
+	verifier := newTwitterVerifier(sc, conf.SocialLinks.Twitter.PostURL, []string{"twitter.com"}, []string{"US", "MX", "CA"})
 	require.NotNil(t, verifier)
 
 	ctx, cancel := context.WithTimeout(context.TODO(), time.Minute)
