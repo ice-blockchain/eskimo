@@ -130,6 +130,17 @@ func (t *twitterVerifierImpl) FetchOE(ctx context.Context, postURL string) (*twi
 	return &oe, nil
 }
 
+func (*twitterVerifierImpl) remapDomain(postURL string) (string, error) {
+	parsed, err := url.Parse(postURL)
+	if err != nil {
+		return "", errors.Wrap(ErrInvalidURL, postURL)
+	}
+
+	parsed.Host = "twitter.com"
+
+	return parsed.String(), nil
+}
+
 func (t *twitterVerifierImpl) VerifyPost(ctx context.Context, meta *Metadata) (username string, err error) {
 	validDomain := false
 	for i := range t.Domains {
@@ -137,6 +148,10 @@ func (t *twitterVerifierImpl) VerifyPost(ctx context.Context, meta *Metadata) (u
 	}
 	if !validDomain {
 		return "", errors.Wrap(ErrInvalidURL, meta.PostURL)
+	}
+
+	if meta.PostURL, err = t.remapDomain(meta.PostURL); err != nil {
+		return "", err
 	}
 
 	username, err = t.ExtractUsernameFromURL(meta.PostURL)
