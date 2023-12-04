@@ -5,7 +5,9 @@ package social
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"math/rand"
+	"net/url"
 	"slices"
 	"strings"
 
@@ -17,7 +19,7 @@ import (
 )
 
 func (*twitterVerifierImpl) VerifyText(doc *goquery.Document, expectedText string) (found bool) {
-	doc.Find("title").EachWithBreak(func(_ int, s *goquery.Selection) bool {
+	doc.Find("p").EachWithBreak(func(_ int, s *goquery.Selection) bool {
 		found = found || strings.Contains(s.Text(), strings.TrimSpace(expectedText))
 
 		return !found
@@ -26,12 +28,13 @@ func (*twitterVerifierImpl) VerifyText(doc *goquery.Document, expectedText strin
 	return
 }
 
-func (t *twitterVerifierImpl) VerifyPostLink(doc *goquery.Document) (foundPost bool) {
-	doc.Find("*").EachWithBreak(func(_ int, s *goquery.Selection) bool {
+func (t *twitterVerifierImpl) VerifyPostLink(ctx context.Context, doc *goquery.Document) (foundPost bool) {
+	doc.Find("a").EachWithBreak(func(_ int, s *goquery.Selection) bool {
 		for _, node := range s.Nodes {
 			for i := range node.Attr {
-				if node.Attr[i].Key == "href" && node.Attr[i].Val == t.Post {
-					foundPost = true
+				if node.Attr[i].Key == "href" && strings.HasPrefix(node.Attr[i].Val, "https://t.co") {
+					data, err := t.Scrape(ctx, node.Attr[i].Val)
+					foundPost = err == nil && strings.Contains(string(data), strings.ToLower(t.Post))
 
 					break
 				}
@@ -44,8 +47,8 @@ func (t *twitterVerifierImpl) VerifyPostLink(doc *goquery.Document) (foundPost b
 	return
 }
 
-func (t *twitterVerifierImpl) VerifyContent(content []byte, expectedText string) (err error) {
-	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(content))
+func (t *twitterVerifierImpl) VerifyContent(ctx context.Context, oe *twitterOE, expectedText string) (err error) {
+	doc, err := goquery.NewDocumentFromReader(bytes.NewReader([]byte(oe.HTML)))
 	if err != nil {
 		return multierror.Append(ErrInvalidPageContent, err)
 	}
@@ -54,7 +57,7 @@ func (t *twitterVerifierImpl) VerifyContent(content []byte, expectedText string)
 		return ErrTextNotFound
 	}
 
-	if !t.VerifyPostLink(doc) {
+	if !t.VerifyPostLink(ctx, doc) {
 		return ErrPostNotFound
 	}
 
@@ -81,6 +84,52 @@ func (*twitterVerifierImpl) ExtractUsernameFromURL(postURL string) (username str
 	return
 }
 
+func (t *twitterVerifierImpl) Scrape(ctx context.Context, target string) (content []byte, err error) {
+	for _, country := range t.countries() {
+		if content, err = t.Scraper.Scrape(ctx, target, func(m map[string]string) map[string]string {
+			m["country"] = country
+			delete(m, "render_js")
+			delete(m, "wait_until")
+
+			return m
+		}); err == nil {
+			break
+		}
+	}
+	if err != nil {
+		return nil, multierror.Append(ErrFetchFailed, err)
+	}
+
+	return content, nil
+}
+
+func (t *twitterVerifierImpl) FetchOE(ctx context.Context, postURL string) (*twitterOE, error) {
+	var (
+		data []byte
+		err  error
+	)
+
+	target := url.URL{
+		Scheme:   "https",
+		Host:     "publish.twitter.com",
+		Path:     "/oembed",
+		RawQuery: url.Values{"url": {postURL}}.Encode(),
+	}
+
+	if data, err = t.Scrape(ctx, target.String()); err != nil {
+		return nil, err
+	}
+
+	var oe twitterOE
+	if err = json.Unmarshal(data, &oe); err != nil {
+		return nil, multierror.Append(ErrInvalidPageContent, err)
+	} else if oe.HTML == "" {
+		return nil, errors.Wrap(ErrInvalidPageContent, "empty page")
+	}
+
+	return &oe, nil
+}
+
 func (t *twitterVerifierImpl) VerifyPost(ctx context.Context, meta *Metadata) (username string, err error) {
 	validDomain := false
 	for i := range t.Domains {
@@ -95,21 +144,12 @@ func (t *twitterVerifierImpl) VerifyPost(ctx context.Context, meta *Metadata) (u
 		return "", err
 	}
 
-	var data []byte
-	for _, country := range t.countries() {
-		if data, err = t.Scraper.Scrape(ctx, meta.PostURL, func(m map[string]string) map[string]string {
-			m["country"] = country
-
-			return m
-		}); err == nil {
-			break
-		}
-	}
+	oe, err := t.FetchOE(ctx, meta.PostURL)
 	if err != nil {
-		return "", multierror.Append(ErrFetchFailed, err)
+		return "", err
 	}
 
-	return username, t.VerifyContent(data, meta.ExpectedPostText)
+	return username, t.VerifyContent(ctx, oe, meta.ExpectedPostText)
 }
 
 func (t *twitterVerifierImpl) countries() []string {

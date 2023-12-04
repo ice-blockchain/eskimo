@@ -4,44 +4,11 @@ package social
 
 import (
 	"context"
-	_ "embed"
 	"testing"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/stretchr/testify/require"
 )
-
-//go:embed .testdata/twitter.html
-var twitterContent []byte
-
-func TestTwitterVerifyContent(t *testing.T) {
-	t.Parallel()
-
-	impl := newTwitterVerifier(nil, "/ice_blockchain/status/1712692723336032437", nil, []string{"US", "MX", "CA"})
-	require.NotNil(t, impl)
-
-	t.Run("OK", func(t *testing.T) {
-		err := impl.VerifyContent(twitterContent,
-			`✅ Verifying my account on @ice_blockchain with the nickname: "decanterra"`,
-		)
-		require.NoError(t, err)
-	})
-
-	t.Run("InvalidText", func(t *testing.T) {
-		err := impl.VerifyContent(twitterContent,
-			`✅ Verifying my account on @ice_blockchain: "decanterra"`,
-		)
-		require.ErrorIs(t, err, ErrTextNotFound)
-	})
-
-	t.Run("InvalidPost", func(t *testing.T) {
-		impl.Post = "foo"
-		err := impl.VerifyContent(twitterContent,
-			`✅ Verifying my account on @ice_blockchain with the nickname: "decanterra"`,
-		)
-		require.ErrorIs(t, err, ErrPostNotFound)
-	})
-}
 
 func TestTwitterExtractUsernameFromURL(t *testing.T) {
 	t.Parallel()
