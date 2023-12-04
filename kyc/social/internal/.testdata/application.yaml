@@ -11,9 +11,7 @@ kyc/social:
       post-url: /ice_blockchain/status/1712692723336032437
       domains:
         - twitter.com
-        - www.twitter.com
         - x.com
-        - www.x.com
     facebook:
       post-url: https://www.facebook.com/reel/1463272597773681
       allow-long-live-tokens: true
