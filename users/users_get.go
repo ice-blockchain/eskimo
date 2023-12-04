@@ -62,9 +62,11 @@ func (r *repository) getOtherUserByID(ctx context.Context, userID string) (*User
 	if err != nil {
 		return nil, err
 	}
+	verified := usr.IsVerified()
 	*usr = User{
 		HiddenProfileElements: usr.HiddenProfileElements,
 		PublicUserInformation: usr.PublicUserInformation,
+		Verified:              &verified,
 	}
 	referralCountNeeded := true
 	if usr.HiddenProfileElements != nil {
@@ -172,6 +174,7 @@ func (r *repository) GetUsers(ctx context.Context, keyword string, limit, offset
 				   u.country 													  AS country,
 				   '' 															  AS city,
 			       u.referred_by 												  AS referred_by,
+			       u.kyc_step_passed 											  AS kyc_step_passed,
 				   (CASE
 						WHEN NULLIF(u.phone_number_hash,'') IS NOT NULL
 				  				AND user_requesting_this.id != u.id
