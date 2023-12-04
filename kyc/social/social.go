@@ -173,6 +173,9 @@ func (r *repository) VerifyPost(ctx context.Context, metadata *VerificationMetad
 		log.Error(errors.Wrapf(err, "social verification failed for KYCStep:%v,Social:%v,Language:%v,userID:%v",
 			metadata.KYCStep, metadata.Social, metadata.Language, metadata.UserID))
 		reason := detectReason(err)
+		if userHandle != "" {
+			reason = userHandle + ": " + reason
+		}
 		if err = r.saveUnsuccessfulAttempt(ctx, now, reason, metadata); err != nil {
 			return nil, errors.Wrapf(err, "[1]failed to saveUnsuccessfulAttempt reason:%v,metadata:%#v", reason, metadata)
 		}
