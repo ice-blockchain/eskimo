@@ -64,6 +64,10 @@ type (
 		Countries []string
 	}
 
+	twitterOE struct {
+		HTML string `json:"html"`
+	}
+
 	facebookVerifierImpl struct {
 		Fetcher             dataFetcher
 		AppID               string
