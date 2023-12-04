@@ -78,8 +78,9 @@ type (
 		// Optional. Example:`Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2`.
 		AgendaPhoneNumberHashes string `form:"agendaPhoneNumberHashes" formMultipart:"agendaPhoneNumberHashes"`
 		// Optional. Example:`some hash`.
-		BlockchainAccountAddress       string `form:"blockchainAccountAddress" formMultipart:"blockchainAccountAddress"`
-		MiningBlockchainAccountAddress string `form:"miningBlockchainAccountAddress" formMultipart:"miningBlockchainAccountAddress"`
+		BlockchainAccountAddress            string `form:"blockchainAccountAddress" formMultipart:"blockchainAccountAddress"`
+		MiningBlockchainAccountAddress      string `form:"miningBlockchainAccountAddress" formMultipart:"miningBlockchainAccountAddress"`
+		ClearMiningBlockchainAccountAddress *bool  `form:"clearMiningBlockchainAccountAddress" formMultipart:"clearMiningBlockchainAccountAddress"`
 		// Optional. Example:`en`.
 		Language string `form:"language" formMultipart:"language"`
 		// Optional. Example:`1232412415326543647657`.

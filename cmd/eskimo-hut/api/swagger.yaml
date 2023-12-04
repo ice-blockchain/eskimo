@@ -1163,6 +1163,9 @@ paths:
       - in: formData
         name: clearHiddenProfileElements
         type: boolean
+      - in: formData
+        name: clearMiningBlockchainAccountAddress
+        type: boolean
       - description: 'Optional. Example: `{"key1":{"something":"somethingElse"},"key2":"value"}`.'
         in: formData
         name: clientData
