@@ -99,6 +99,9 @@ definitions:
       username:
         example: jdoe
         type: string
+      verified:
+        example: true
+        type: boolean
     type: object
   server.ErrorResponse:
     properties:
@@ -179,6 +182,9 @@ definitions:
       username:
         example: jdoe
         type: string
+      verified:
+        example: true
+        type: boolean
     type: object
   users.ReferralAcquisition:
     properties:
@@ -336,6 +342,9 @@ definitions:
       username:
         example: jdoe
         type: string
+      verified:
+        example: true
+        type: boolean
     type: object
 info:
   contact:

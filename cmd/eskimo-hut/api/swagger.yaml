@@ -154,6 +154,9 @@ definitions:
       username:
         example: jdoe
         type: string
+      verified:
+        example: true
+        type: boolean
     type: object
   main.ProcessFaceRecognitionResultArg:
     properties:
@@ -358,6 +361,9 @@ definitions:
       username:
         example: jdoe
         type: string
+      verified:
+        example: true
+        type: boolean
     type: object
   quiz.Progress:
     properties:

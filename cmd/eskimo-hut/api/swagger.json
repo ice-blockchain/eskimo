@@ -1583,6 +1583,10 @@
                 "username": {
                     "type": "string",
                     "example": "jdoe"
+                },
+                "verified": {
+                    "type": "boolean",
+                    "example": true
                 }
             }
         },
@@ -1881,6 +1885,10 @@
                 "username": {
                     "type": "string",
                     "example": "jdoe"
+                },
+                "verified": {
+                    "type": "boolean",
+                    "example": true
                 }
             }
         },

@@ -1589,6 +1589,10 @@ const docTemplate = `{
                 "username": {
                     "type": "string",
                     "example": "jdoe"
+                },
+                "verified": {
+                    "type": "boolean",
+                    "example": true
                 }
             }
         },
@@ -1887,6 +1891,10 @@ const docTemplate = `{
                 "username": {
                     "type": "string",
                     "example": "jdoe"
+                },
+                "verified": {
+                    "type": "boolean",
+                    "example": true
                 }
             }
         },
