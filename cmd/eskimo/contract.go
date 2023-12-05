@@ -62,6 +62,10 @@ const (
 	invalidUsernameErrorCode   = "INVALID_USERNAME"
 	invalidKeywordErrorCode    = "INVALID_KEYWORD"
 	invalidPropertiesErrorCode = "INVALID_PROPERTIES"
+
+	requestingUserIDCtxValueKey = "requestingUserIDCtxValueKey"
+
+	adminRole = "admin"
 )
 
 var (
