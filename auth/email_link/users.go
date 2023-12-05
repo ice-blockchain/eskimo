@@ -155,8 +155,9 @@ func (c *client) getConfirmedEmailLinkSignIn(ctx context.Context, id *loginID, c
 	if ctx.Err() != nil {
 		return nil, errors.Wrap(ctx.Err(), "get user by id or email failed because context failed")
 	}
-	sql := `SELECT *
+	sql := `SELECT email_link_sign_ins.*, account_metadata.metadata
 			FROM email_link_sign_ins
+			LEFT JOIN account_metadata ON email_link_sign_ins.user_id = account_metadata.user_id
 			WHERE confirmation_code = $1 
 	  			  AND email = $2
 				  AND device_unique_id = $3`
