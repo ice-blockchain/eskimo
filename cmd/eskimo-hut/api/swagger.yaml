@@ -168,6 +168,8 @@ definitions:
         items:
           type: string
         type: array
+      potentiallyDuplicate:
+        type: boolean
     type: object
   main.RefreshToken:
     type: object
