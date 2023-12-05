@@ -1,0 +1,5 @@
+✅ Επαληθεύω τον λογαριασμό μου στο @ice_blockchain με το ψευδώνυμο: "{{.Username}}"
+
+👉 Μάθετε περισσότερα για "Το αποκεντρωμένο μέλλον" που χτίζει το #IceNetwork. 👇
+
+#Ethereum #Uniswap #Binance #HTX #KuCoin #OKX #ByBit #Gateio #Upbit

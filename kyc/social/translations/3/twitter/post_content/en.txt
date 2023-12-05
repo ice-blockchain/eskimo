@@ -1,5 +1,5 @@
-✅ Hey "{{.Username}}", what's the weather like today?
+✅ Verifying my account on @ice_blockchain with the nickname: "{{.Username}}"
 
-👉 @9726d00aa72a0e045de07e2a599ba7e5 👇
+👉 Learn more about "The Decentralized Future" that #IceNetwork is building. 👇
 
-#a $b #c #d #e
+#Ethereum #Uniswap #Binance #HTX #KuCoin #OKX #ByBit #Gateio #Upbit

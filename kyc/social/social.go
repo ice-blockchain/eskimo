@@ -64,12 +64,15 @@ func New(ctx context.Context, usrRepo UserRepository) Repository {
 		socialVerifiers[tp] = social.New(tp)
 	}
 
-	return &repository{
+	repo := &repository{
 		user:            usrRepo,
 		socialVerifiers: socialVerifiers,
 		cfg:             &cfg,
 		db:              storage.MustConnect(ctx, ddl, applicationYamlKey),
 	}
+	go repo.startUnsuccessfulKYCStepsAlerter(ctx)
+
+	return repo
 }
 
 func (r *repository) Close() error {
@@ -325,6 +328,12 @@ func detectReason(err error) string {
 		return "post not found"
 	case errors.Is(err, social.ErrInvalidURL):
 		return "invalid URL"
+	case errors.Is(err, context.DeadlineExceeded):
+		return "timeout"
+	case errors.Is(err, context.Canceled):
+		return "cancellation"
+	case errors.Is(err, social.ErrFetchFailed):
+		return "post fetch failed"
 	case storage.IsErr(err, storage.ErrDuplicate):
 		if tErr := terror.As(err); tErr != nil && !storage.IsErr(tErr.Unwrap(), storage.ErrDuplicate, "pk") {
 			return fmt.Sprintf("duplicate userhandle '%v'", tErr.Data["user_handle"])

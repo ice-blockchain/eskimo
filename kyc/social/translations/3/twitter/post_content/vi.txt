@@ -1,0 +1,5 @@
+✅ Xác minh tài khoản của tôi trên @ice_blockchain với biệt danh: "{{.Username}}"
+
+👉 Tìm hiểu thêm về "Tương lai Phi tập trung" mà #IceNetwork đang xây dựng. 👇
+
+#Ethereum #Uniswap #Binance #HTX #KuCoin #OKX #ByBit #Gateio #Upbit

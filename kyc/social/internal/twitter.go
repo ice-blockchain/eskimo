@@ -173,7 +173,20 @@ func (t *twitterVerifierImpl) countries() []string {
 		countries[ii], countries[jj] = countries[jj], countries[ii]
 	})
 
-	return countries
+	return removeDuplicates(countries)
+}
+
+func removeDuplicates(strSlice []string) []string {
+	allKeys := make(map[string]bool, len(strSlice))
+	list := make([]string, 0, len(strSlice))
+	for _, item := range strSlice {
+		if _, value := allKeys[item]; !value {
+			allKeys[item] = true
+			list = append(list, item)
+		}
+	}
+
+	return list
 }
 
 func newTwitterVerifier(sc webScraper, post string, allowedDomains, countries []string) *twitterVerifierImpl {
