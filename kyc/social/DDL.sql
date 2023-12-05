@@ -40,13 +40,3 @@ insert into unsuccessful_social_kyc_alerts (last_alert_at,    kyc_step,social)
                                            (current_timestamp,5,      'twitter')
 ON CONFLICT (kyc_step, social)
 DO NOTHING;
-
-
---
---
---
---FROM social_kyc_unsuccessful_attempts
---				WHERE kyc_step = $1
---				  AND social = $2
---				  AND created_at >= $3
---				GROUP BY mapped_reason
