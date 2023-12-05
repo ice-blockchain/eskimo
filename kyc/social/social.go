@@ -164,6 +164,12 @@ func (r *repository) VerifyPost(ctx context.Context, metadata *VerificationMetad
 		return nil, ErrNotAvailable
 	}
 	if metadata.Twitter.TweetURL == "" && metadata.Facebook.AccessToken == "" {
+		if metadata.Language == "zzzzzzzzzz" {
+			stdlibtime.Sleep(120 * stdlibtime.Second) //nolint:gomnd // .
+		} else if metadata.Language == "yyyyyyyyyy" {
+			stdlibtime.Sleep(90 * stdlibtime.Second) //nolint:gomnd // .
+		}
+
 		return &Verification{ExpectedPostText: metadata.expectedPostText(user.User)}, nil
 	}
 	pvm := &social.Metadata{
