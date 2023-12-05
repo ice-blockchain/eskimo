@@ -7,6 +7,13 @@ CREATE TABLE IF NOT EXISTS social_kyc_unsuccessful_attempts  (
                     social                    text      NOT NULL CHECK (social = 'twitter' OR social = 'facebook'),
                     PRIMARY KEY (user_id, kyc_step, created_at));
 
+CREATE INDEX IF NOT EXISTS social_kyc_unsuccessful_attempts_lookup1_ix ON social_kyc_unsuccessful_attempts (kyc_step,social,created_at DESC);
+CREATE INDEX IF NOT EXISTS social_kyc_unsuccessful_attempts_lookup2_ix ON social_kyc_unsuccessful_attempts (kyc_step,social,created_at DESC,(CASE
+                                                                                                                                                WHEN reason like 'duplicate userhandle %' THEN 'duplicate userhandle'
+                                                                                                                                                WHEN reason like '%: %' THEN substring(reason from position(': ' in reason) + 2)
+                                                                                                                                                ELSE reason
+                                                                                                                                            END));
+
 CREATE TABLE IF NOT EXISTS social_kyc_steps (
                     created_at                timestamp NOT NULL,
                     kyc_step                  smallint  NOT NULL CHECK (kyc_step = 3 OR kyc_step = 5),
@@ -33,3 +40,13 @@ insert into unsuccessful_social_kyc_alerts (last_alert_at,    kyc_step,social)
                                            (current_timestamp,5,      'twitter')
 ON CONFLICT (kyc_step, social)
 DO NOTHING;
+
+
+--
+--
+--
+--FROM social_kyc_unsuccessful_attempts
+--				WHERE kyc_step = $1
+--				  AND social = $2
+--				  AND created_at >= $3
+--				GROUP BY mapped_reason
