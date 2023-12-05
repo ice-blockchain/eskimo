@@ -18,10 +18,11 @@ import (
 type (
 	GetMetadataArg                  struct{}
 	ProcessFaceRecognitionResultArg struct {
-		Disabled      *bool    `json:"disabled" required:"true"`
-		APIKey        string   `header:"X-API-Key" swaggerignore:"true" required:"true" example:"some secret"`  //nolint:tagliatelle // Nope.
-		UserID        string   `header:"X-User-ID" swaggerignore:"true" required:"false" example:"some secret"` //nolint:tagliatelle // Nope.
-		LastUpdatedAt []string `json:"lastUpdatedAt" required:"true" example:"2006-01-02T15:04:05Z"`
+		Disabled             *bool    `json:"disabled" required:"true"`
+		PotentiallyDuplicate *bool    `json:"potentiallyDuplicate" required:"false"`
+		APIKey               string   `header:"X-API-Key" swaggerignore:"true" required:"true" example:"some secret"`  //nolint:tagliatelle // Nope.
+		UserID               string   `header:"X-User-ID" swaggerignore:"true" required:"false" example:"some secret"` //nolint:tagliatelle // Nope.
+		LastUpdatedAt        []string `json:"lastUpdatedAt" required:"true" example:"2006-01-02T15:04:05Z"`
 	}
 	Metadata struct {
 		UserID   string `json:"userId" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`

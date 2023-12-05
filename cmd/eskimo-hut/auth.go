@@ -435,10 +435,14 @@ func parseProcessFaceRecognitionResultRequest(req *server.Request[ProcessFaceRec
 	}
 	kycStepPassed := users.KYCStep(len(lastUpdatedAtDates))
 	usr.KYCStepPassed = &kycStepPassed
-	if *req.Data.Disabled {
+	switch {
+	case *req.Data.Disabled:
 		kycStepBlocked := users.FacialRecognitionKYCStep
 		usr.KYCStepBlocked = &kycStepBlocked
-	} else {
+	case req.Data.PotentiallyDuplicate != nil && *req.Data.PotentiallyDuplicate:
+		kycStepBlocked := users.LivenessDetectionKYCStep
+		usr.KYCStepBlocked = &kycStepBlocked
+	default:
 		kycStepBlocked := users.NoneKYCStep
 		usr.KYCStepBlocked = &kycStepBlocked
 	}
