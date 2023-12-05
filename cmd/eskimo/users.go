@@ -82,6 +82,9 @@ func (s *service) GetUserByID( //nolint:gocritic // False negative.
 	ctx context.Context,
 	req *server.Request[GetUserByIDArg, User],
 ) (*server.Response[User], *server.Response[server.ErrorResponse]) {
+	if req.AuthenticatedUser.Role == adminRole && req.Data.UserID != req.AuthenticatedUser.UserID {
+		ctx = context.WithValue(ctx, requestingUserIDCtxValueKey, req.Data.UserID) //nolint:revive,staticcheck //.
+	}
 	usr, err := s.usersRepository.GetUserByID(ctx, req.Data.UserID)
 	if err != nil {
 		if errors.Is(err, users.ErrNotFound) {
