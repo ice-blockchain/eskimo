@@ -62,7 +62,7 @@ func (r *repository) sendUnsuccessfulKYCStepsAlertToSlack(ctx context.Context, k
 		if err != nil {
 			return errors.Wrap(err, "failed to lock unsuccessful_social_kyc_alerts")
 		}
-		if time.Now().Sub(*alert.LastAlertAt.Time) < alertFrequency {
+		if time.Now().Sub(*alert.LastAlertAt.Time) < stdlibtime.Duration(float64(alertFrequency.Nanoseconds())*0.8) { //nolint:gomnd // .
 			return nil
 		}
 
