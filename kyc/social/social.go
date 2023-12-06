@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"sync/atomic"
 	"text/template"
 	stdlibtime "time"
 
@@ -63,6 +64,9 @@ func New(ctx context.Context, usrRepo UserRepository) Repository {
 	for _, tp := range AllTypes {
 		socialVerifiers[tp] = social.New(tp)
 	}
+	defaultFrequency := alertFrequency
+	cfg.alertFrequency = new(atomic.Pointer[stdlibtime.Duration])
+	cfg.alertFrequency.Store(&defaultFrequency)
 
 	repo := &repository{
 		user:            usrRepo,

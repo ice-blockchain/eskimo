@@ -22,6 +22,8 @@ CREATE TABLE IF NOT EXISTS social_kyc_steps (
                     user_handle               text      NOT NULL,
                     PRIMARY KEY (user_id, kyc_step));
 
+CREATE INDEX IF NOT EXISTS social_kyc_steps_lookup1_ix ON social_kyc_steps (kyc_step,social,created_at DESC);
+
 CREATE TABLE IF NOT EXISTS socials (
                     user_id                   text      NOT NULL PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
                     social                    text      NOT NULL CHECK (social = 'twitter' OR social = 'facebook'),
@@ -30,6 +32,7 @@ CREATE TABLE IF NOT EXISTS socials (
 
 CREATE TABLE IF NOT EXISTS unsuccessful_social_kyc_alerts (
                     last_alert_at             timestamp NOT NULL,
+                    frequency_in_seconds      bigint    NOT NULL DEFAULT 300,
                     kyc_step                  smallint  NOT NULL CHECK (kyc_step = 3 OR kyc_step = 5),
                     social                    text      NOT NULL CHECK (social = 'twitter' OR social = 'facebook'),
                     PRIMARY KEY (kyc_step, social))

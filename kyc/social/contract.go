@@ -7,6 +7,7 @@ import (
 	"embed"
 	"io"
 	"mime/multipart"
+	"sync/atomic"
 	"text/template"
 	stdlibtime "time"
 
@@ -114,6 +115,7 @@ type (
 		db              *storage.DB
 	}
 	config struct {
+		alertFrequency       *atomic.Pointer[stdlibtime.Duration]
 		Environment          string              `yaml:"environment" mapstructure:"environment"`
 		AlertSlackWebhook    string              `yaml:"alert-slack-webhook" mapstructure:"alert-slack-webhook"`       //nolint:tagliatelle // .
 		DelayBetweenSessions stdlibtime.Duration `yaml:"delay-between-sessions" mapstructure:"delay-between-sessions"` //nolint:tagliatelle // .

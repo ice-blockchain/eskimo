@@ -31,7 +31,7 @@ func (r *repository) startUnsuccessfulKYCStepsAlerter(ctx context.Context) {
 	} else if r.cfg.AlertSlackWebhook == "" || r.cfg.Environment == "" {
 		log.Panic("`alert-slack-webhook` is missing")
 	}
-	ticker := stdlibtime.NewTicker(alertFrequency)
+	ticker := stdlibtime.NewTicker(*r.cfg.alertFrequency.Load())
 	defer ticker.Stop()
 
 	for {
@@ -39,7 +39,7 @@ func (r *repository) startUnsuccessfulKYCStepsAlerter(ctx context.Context) {
 		case <-ticker.C:
 			const deadline = 30 * stdlibtime.Second
 			reqCtx, cancel := context.WithTimeout(ctx, deadline)
-			log.Error(errors.Wrapf(r.sendUnsuccessfulKYCStepsAlertToSlack(reqCtx, users.Social1KYCStep, TwitterType),
+			log.Error(errors.Wrapf(r.sendUnsuccessfulKYCStepsAlertToSlack(reqCtx, ticker, users.Social1KYCStep, TwitterType),
 				"failed to sendUnsuccessfulKYCStepsAlertToSlack[%v][%v]", users.Social1KYCStep, TwitterType))
 			cancel()
 		case <-ctx.Done():
@@ -49,21 +49,27 @@ func (r *repository) startUnsuccessfulKYCStepsAlerter(ctx context.Context) {
 }
 
 //nolint:funlen // .
-func (r *repository) sendUnsuccessfulKYCStepsAlertToSlack(ctx context.Context, kycStep users.KYCStep, social Type) error {
+func (r *repository) sendUnsuccessfulKYCStepsAlertToSlack(ctx context.Context, ticker *stdlibtime.Ticker, kycStep users.KYCStep, social Type) error {
 	return storage.DoInTransaction(ctx, r.db, func(conn storage.QueryExecer) error { //nolint:wrapcheck // Not needed.
-		sql := `SELECT last_alert_at 
+		sql := `SELECT last_alert_at, 
+					   frequency_in_seconds 
 				FROM unsuccessful_social_kyc_alerts 
 				WHERE kyc_step = $1
 				  AND social = $2
 				FOR UPDATE`
 		alert, err := storage.Get[struct {
-			LastAlertAt *time.Time `db:"last_alert_at"`
+			LastAlertAt        *time.Time `db:"last_alert_at"`
+			FrequencyInSeconds uint64     `db:"frequency_in_seconds"`
 		}](ctx, conn, sql, kycStep, social)
 		if err != nil {
 			return errors.Wrap(err, "failed to lock unsuccessful_social_kyc_alerts")
 		}
-		if time.Now().Sub(*alert.LastAlertAt.Time) < stdlibtime.Duration(float64(alertFrequency.Nanoseconds())*0.8) { //nolint:gomnd // .
+		if time.Now().Sub(*alert.LastAlertAt.Time) < stdlibtime.Duration(float64(r.cfg.alertFrequency.Load().Nanoseconds())*0.8) { //nolint:gomnd // .
 			return nil
+		}
+		if newFrequency := stdlibtime.Duration(alert.FrequencyInSeconds) * stdlibtime.Second; newFrequency != *r.cfg.alertFrequency.Load() {
+			r.cfg.alertFrequency.Store(&newFrequency)
+			ticker.Reset(newFrequency)
 		}
 
 		sql = `SELECT (CASE
@@ -76,7 +82,14 @@ func (r *repository) sendUnsuccessfulKYCStepsAlertToSlack(ctx context.Context, k
 				WHERE kyc_step = $1
 				  AND social = $2
 				  AND created_at >= $3
-				GROUP BY mapped_reason`
+				GROUP BY mapped_reason
+			   UNION ALL 
+			   SELECT 'success' AS mapped_reason,
+					  count(1) AS counter
+				FROM social_kyc_steps
+				WHERE kyc_step = $1
+				  AND social = $2
+				  AND created_at >= $3`
 		stats, err := storage.Select[unsuccessfulSocialKYCStats](ctx, conn, sql, kycStep, social, alert.LastAlertAt.Time)
 		if err != nil {
 			return errors.Wrap(err, "failed to select stats")
