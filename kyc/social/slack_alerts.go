@@ -109,13 +109,21 @@ type (
 	}
 )
 
+//nolint:funlen // .
 func (r *repository) sendSlackMessage(ctx context.Context, kycStep users.KYCStep, social Type, stats []*unsuccessfulSocialKYCStats) error {
 	if len(stats) == 0 {
 		return nil
 	}
 	rows := make([]string, 0, len(stats))
+	var hasExhaustedRetries bool
 	for _, stat := range stats {
+		if stat.Reason == exhaustedRetriesReason && stat.Counter > 0 {
+			hasExhaustedRetries = true
+		}
 		rows = append(rows, fmt.Sprintf("`%v`: `%v`", stat.Reason, stat.Counter))
+	}
+	if !hasExhaustedRetries || len(rows) == 0 {
+		return nil
 	}
 	message := struct {
 		Text string `json:"text,omitempty"`
