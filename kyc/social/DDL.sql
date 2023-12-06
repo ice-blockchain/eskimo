@@ -34,3 +34,9 @@ CREATE TABLE IF NOT EXISTS unsuccessful_social_kyc_alerts (
                     social                    text      NOT NULL CHECK (social = 'twitter' OR social = 'facebook'),
                     PRIMARY KEY (kyc_step, social))
                     WITH (FILLFACTOR = 70);
+
+insert into unsuccessful_social_kyc_alerts (last_alert_at,    kyc_step,social)
+                                    VALUES (current_timestamp,3,      'twitter'),
+                                           (current_timestamp,5,      'twitter')
+ON CONFLICT (kyc_step, social)
+DO NOTHING;
