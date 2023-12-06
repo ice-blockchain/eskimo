@@ -115,13 +115,13 @@ func (r *repository) updateReferredByForAllT1Referrals(ctx context.Context, user
 							  ) X
 						LIMIT 1
 				   ) new_referred_by,
-				   u.*
+				   u.ID as id
 			FROM users u
 			WHERE u.referred_by = $1
 			  AND u.id != $1`
 	type resp struct {
 		NewReferredBy UserID
-		User
+		ID            UserID `db:"id"`
 	}
 	res, err := storage.Select[resp](ctx, r.db, sql, userID)
 	if err != nil {
@@ -134,11 +134,13 @@ func (r *repository) updateReferredByForAllT1Referrals(ctx context.Context, user
 	for ii := range res {
 		go func(ix int) {
 			defer wg.Done()
-			res[ix].User.ReferredBy = res[ix].NewReferredBy
 			valTrue := true
-			res[ix].User.RandomReferredBy = &valTrue
-			errChan <- errors.Wrapf(r.ModifyUser(ctx, &res[ix].User, nil),
-				"failed to update referred by for userID:%v", res[ix].User.ID)
+			updatedReferral := new(User)
+			updatedReferral.ID = res[ix].ID
+			updatedReferral.ReferredBy = res[ix].NewReferredBy
+			updatedReferral.RandomReferredBy = &valTrue
+			errChan <- errors.Wrapf(r.ModifyUser(ctx, updatedReferral, nil),
+				"failed to update referred by for userID:%v", res[ix].ID)
 		}(ii)
 	}
 	wg.Wait()
