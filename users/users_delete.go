@@ -135,6 +135,7 @@ func (r *repository) updateReferredByForAllT1Referrals(ctx context.Context, user
 		go func(ix int) {
 			defer wg.Done()
 			res[ix].User.ReferredBy = res[ix].NewReferredBy
+			res[ix].User.KYCStepsCreatedAt = nil
 			valTrue := true
 			res[ix].User.RandomReferredBy = &valTrue
 			errChan <- errors.Wrapf(r.ModifyUser(ctx, &res[ix].User, nil),
