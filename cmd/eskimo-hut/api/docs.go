@@ -719,6 +719,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/social.Verification"
                         }
                     },
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/social.Verification"
+                        }
+                    },
                     "400": {
                         "description": "if validations fail",
                         "schema": {

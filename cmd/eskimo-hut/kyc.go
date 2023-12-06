@@ -115,6 +115,7 @@ func (s *service) StartOrContinueKYCStep4Session( //nolint:gocritic,funlen,reviv
 //	@Param			social				query		string							true	"the desired social you wish to verify it with"	Enums(facebook,twitter)
 //	@Param			request				body		kycsocial.VerificationMetadata	false	"Request params"
 //	@Success		200					{object}	kycsocial.Verification
+//	@Success		201					{object}	kycsocial.Verification
 //	@Failure		400					{object}	server.ErrorResponse	"if validations fail"
 //	@Failure		401					{object}	server.ErrorResponse	"if not authorized"
 //	@Failure		403					{object}	server.ErrorResponse	"not allowed due to various reasons"
@@ -146,6 +147,9 @@ func (s *service) VerifySocialKYCStep( //nolint:gocritic // .
 		default:
 			return nil, server.Unexpected(err)
 		}
+	}
+	if result.Result == kycsocial.SuccessVerificationResult {
+		return server.Created(result), nil
 	}
 
 	return server.OK(result), nil
