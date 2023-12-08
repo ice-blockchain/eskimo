@@ -258,7 +258,7 @@ func (u *User) genSQLUpdate(ctx context.Context, agendaUserIDs []UserID) (sql st
 				kycStepsLastUpdatedAt = append(kycStepsLastUpdatedAt, *updatedAt.Time)
 			}
 			params = append(params, kycStepsLastUpdatedAt)
-			sql += fmt.Sprintf(", KYC_STEPS_LAST_UPDATED_AT = $%[1]v::timestamp[], KYC_STEPS_CREATED_AT = NULLIF(array_remove(array[coalesce((KYC_STEPS_CREATED_AT)[1],($%[1]v::timestamp[])[1]),coalesce((KYC_STEPS_CREATED_AT)[2],($%[1]v::timestamp[])[2]),coalesce((KYC_STEPS_CREATED_AT)[3],($%[1]v::timestamp[])[3]),coalesce((KYC_STEPS_CREATED_AT)[4],($%[1]v::timestamp[])[4]),coalesce((KYC_STEPS_CREATED_AT)[5],($%[1]v::timestamp[])[5])],null),array[]::timestamp[])", nextIndex) //nolint:lll // .
+			sql += fmt.Sprintf(", KYC_STEPS_LAST_UPDATED_AT = NULLIF(array_remove(array[coalesce(($%[1]v::timestamp[])[1],(KYC_STEPS_LAST_UPDATED_AT)[1]),coalesce(($%[1]v::timestamp[])[2],(KYC_STEPS_LAST_UPDATED_AT)[2]),coalesce(($%[1]v::timestamp[])[3],(KYC_STEPS_LAST_UPDATED_AT)[3]),coalesce(($%[1]v::timestamp[])[4],(KYC_STEPS_LAST_UPDATED_AT)[4]),coalesce(($%[1]v::timestamp[])[5],(KYC_STEPS_LAST_UPDATED_AT)[5])],null),array[]::timestamp[]), KYC_STEPS_CREATED_AT = NULLIF(array_remove(array[coalesce((KYC_STEPS_CREATED_AT)[1],($%[1]v::timestamp[])[1]),coalesce((KYC_STEPS_CREATED_AT)[2],($%[1]v::timestamp[])[2]),coalesce((KYC_STEPS_CREATED_AT)[3],($%[1]v::timestamp[])[3]),coalesce((KYC_STEPS_CREATED_AT)[4],($%[1]v::timestamp[])[4]),coalesce((KYC_STEPS_CREATED_AT)[5],($%[1]v::timestamp[])[5])],null),array[]::timestamp[])", nextIndex) //nolint:lll // .
 			nextIndex++
 		}
 	}
@@ -277,7 +277,7 @@ func (u *User) genSQLUpdate(ctx context.Context, agendaUserIDs []UserID) (sql st
 	}
 	if u.KYCStepPassed != nil {
 		params = append(params, u.KYCStepPassed)
-		sql += fmt.Sprintf(", KYC_STEP_PASSED = $%v", nextIndex)
+		sql += fmt.Sprintf(", KYC_STEP_PASSED = GREATEST($%v,KYC_STEP_PASSED)", nextIndex)
 		nextIndex++
 	}
 	if u.KYCStepBlocked != nil {
