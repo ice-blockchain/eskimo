@@ -177,7 +177,7 @@ func (f *facebookVerifierImpl) VerifyPost(ctx context.Context, meta *Metadata) (
 	return userID, err
 }
 
-func newFacebookVerifier(fetcher dataFetcher, post, appID, appSecret string, allowLongLiveTokens bool) *facebookVerifierImpl {
+func newFacebookVerifier(fetcher dataFetcher, appID, appSecret string, allowLongLiveTokens bool) *facebookVerifierImpl {
 	if appID == "" || appSecret == "" || fetcher == nil { //nolint:gosec // False-Positive.
 		log.Panic("invalid Facebook config")
 	}
@@ -185,7 +185,6 @@ func newFacebookVerifier(fetcher dataFetcher, post, appID, appSecret string, all
 	return &facebookVerifierImpl{
 		AppID:               appID,
 		AppSecret:           appSecret,
-		Post:                post,
 		Fetcher:             fetcher,
 		AllowLongLiveTokens: allowLongLiveTokens,
 	}

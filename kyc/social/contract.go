@@ -115,7 +115,10 @@ type (
 		db              *storage.DB
 	}
 	config struct {
-		alertFrequency       *atomic.Pointer[stdlibtime.Duration]
+		alertFrequency *atomic.Pointer[stdlibtime.Duration]
+		SocialLinks    map[Type]struct {
+			PostURLs map[users.KYCStep]string `yaml:"post-urls" mapstructure:"post-urls"` //nolint:tagliatelle // .
+		} `yaml:"social-links" mapstructure:"social-links"` //nolint:tagliatelle // .
 		Environment          string              `yaml:"environment" mapstructure:"environment"`
 		AlertSlackWebhook    string              `yaml:"alert-slack-webhook" mapstructure:"alert-slack-webhook"`       //nolint:tagliatelle // .
 		DelayBetweenSessions stdlibtime.Duration `yaml:"delay-between-sessions" mapstructure:"delay-between-sessions"` //nolint:tagliatelle // .

@@ -20,11 +20,9 @@ func TestFacebookVerifyUserFeed(t *testing.T) {
 
 	conf := loadConfig()
 	require.NotNil(t, conf)
-	require.NotEmpty(t, conf.SocialLinks.Facebook.PostURL)
 
 	impl := newFacebookVerifier(
 		new(dataFetcherImpl),
-		conf.SocialLinks.Facebook.PostURL,
 		conf.SocialLinks.Facebook.AppID,
 		conf.SocialLinks.Facebook.AppSecret,
 		conf.SocialLinks.Facebook.AllowLongLiveTokens,
@@ -57,7 +55,7 @@ func TestFacebookVerifyUserFeed(t *testing.T) {
 	})
 
 	t.Run("BadScrape", func(t *testing.T) {
-		err := newFacebookVerifier(new(mockScraper), "1", "2", "3", false).VerifyUserFeed(context.TODO(), &Metadata{}, `1`)
+		err := newFacebookVerifier(new(mockScraper), "1", "2", false).VerifyUserFeed(context.TODO(), &Metadata{}, `1`)
 		require.ErrorIs(t, err, ErrScrapeFailed)
 	})
 }
@@ -66,7 +64,7 @@ func TestFacebookVerifyCtor(t *testing.T) {
 	t.Parallel()
 
 	require.Panics(t, func() {
-		newFacebookVerifier(nil, "", "", "", false)
+		newFacebookVerifier(nil, "", "", false)
 	})
 }
 
@@ -80,11 +78,9 @@ func TestFacebookVerifyToken(t *testing.T) {
 
 	conf := loadConfig()
 	require.NotNil(t, conf)
-	require.NotEmpty(t, conf.SocialLinks.Facebook.PostURL)
 
 	impl := newFacebookVerifier(
 		new(dataFetcherImpl),
-		conf.SocialLinks.Facebook.PostURL,
 		conf.SocialLinks.Facebook.AppID,
 		conf.SocialLinks.Facebook.AppSecret,
 		conf.SocialLinks.Facebook.AllowLongLiveTokens,

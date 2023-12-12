@@ -8,11 +8,11 @@ kyc/social:
   web-scraping-api:
   social-links:
     twitter:
-      post-url: /ice_blockchain/status/1712692723336032437
       domains:
         - twitter.com
         - x.com
         - t.co
     facebook:
-      post-url: https://www.facebook.com/reel/1463272597773681
+      app-id: test
+      app-secret: test
       allow-long-live-tokens: true

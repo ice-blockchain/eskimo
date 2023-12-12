@@ -13,7 +13,7 @@ import (
 func TestTwitterExtractUsernameFromURL(t *testing.T) {
 	t.Parallel()
 
-	impl := newTwitterVerifier(nil, "", nil, nil)
+	impl := newTwitterVerifier(nil, nil, nil)
 	require.NotNil(t, impl)
 
 	t.Run("OK", func(t *testing.T) {
@@ -42,7 +42,7 @@ func (*mockScraper) Fetch(context.Context, string) ([]byte, error) {
 func TestTwitterVerifyFetch(t *testing.T) {
 	t.Parallel()
 
-	impl := newTwitterVerifier(new(mockScraper), "", []string{"twitter.com"}, []string{"US", "MX", "CA"})
+	impl := newTwitterVerifier(new(mockScraper), []string{"twitter.com"}, []string{"US", "MX", "CA"})
 	require.NotNil(t, impl)
 
 	t.Run("BadURL", func(t *testing.T) {

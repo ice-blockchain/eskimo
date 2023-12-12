@@ -28,13 +28,13 @@ func (*twitterVerifierImpl) VerifyText(doc *goquery.Document, expectedText strin
 	return
 }
 
-func (t *twitterVerifierImpl) VerifyPostLink(ctx context.Context, doc *goquery.Document) (foundPost bool) {
+func (t *twitterVerifierImpl) VerifyPostLink(ctx context.Context, doc *goquery.Document, expectedPostURL string) (foundPost bool) {
 	doc.Find("a").EachWithBreak(func(_ int, s *goquery.Selection) bool {
 		for _, node := range s.Nodes {
 			for i := range node.Attr {
 				if node.Attr[i].Key == "href" && strings.HasPrefix(node.Attr[i].Val, "https://t.co") {
 					data, err := t.Scrape(ctx, node.Attr[i].Val)
-					foundPost = err == nil && strings.Contains(string(data), strings.ToLower(t.Post))
+					foundPost = err == nil && strings.Contains(string(data), strings.ToLower(expectedPostURL))
 
 					break
 				}
@@ -47,7 +47,7 @@ func (t *twitterVerifierImpl) VerifyPostLink(ctx context.Context, doc *goquery.D
 	return
 }
 
-func (t *twitterVerifierImpl) VerifyContent(ctx context.Context, oe *twitterOE, expectedText string) (err error) {
+func (t *twitterVerifierImpl) VerifyContent(ctx context.Context, oe *twitterOE, expectedText, expextedPostURL string) (err error) {
 	doc, err := goquery.NewDocumentFromReader(bytes.NewReader([]byte(oe.HTML)))
 	if err != nil {
 		return multierror.Append(ErrInvalidPageContent, err)
@@ -57,7 +57,7 @@ func (t *twitterVerifierImpl) VerifyContent(ctx context.Context, oe *twitterOE, 
 		return ErrTextNotFound
 	}
 
-	if !t.VerifyPostLink(ctx, doc) {
+	if !t.VerifyPostLink(ctx, doc, expextedPostURL) {
 		return ErrPostNotFound
 	}
 
@@ -164,7 +164,7 @@ func (t *twitterVerifierImpl) VerifyPost(ctx context.Context, meta *Metadata) (u
 		return username, err
 	}
 
-	return username, t.VerifyContent(ctx, oe, meta.ExpectedPostText)
+	return username, t.VerifyContent(ctx, oe, meta.ExpectedPostText, meta.ExpectedPostURL)
 }
 
 func (t *twitterVerifierImpl) countries() []string {
@@ -189,10 +189,9 @@ func removeDuplicates(strSlice []string) []string {
 	return list
 }
 
-func newTwitterVerifier(sc webScraper, post string, allowedDomains, countries []string) *twitterVerifierImpl {
+func newTwitterVerifier(sc webScraper, allowedDomains, countries []string) *twitterVerifierImpl {
 	return &twitterVerifierImpl{
 		Scraper:   sc,
-		Post:      post,
 		Domains:   allowedDomains,
 		Countries: countries,
 	}
