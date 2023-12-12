@@ -175,6 +175,15 @@ func (r *repository) VerifyPost(ctx context.Context, metadata *VerificationMetad
 		PostURL:          metadata.Twitter.TweetURL,
 		ExpectedPostText: metadata.expectedPostText(user.User),
 	}
+	if m, okSocial := r.cfg.PostURLs[metadata.Social]; okSocial {
+		if p, ok := m[metadata.KYCStep]; ok {
+			pvm.ExpectedPostURL = p
+		} else {
+			log.Warn(fmt.Sprintf("post url not found for KYCStep:%v,Social:%v", metadata.KYCStep, metadata.Social))
+		}
+	} else {
+		log.Warn(fmt.Sprintf("post url not found for Social:%v", metadata.Social))
+	}
 	if true { // Because we want to be less strict, for the moment.
 		pvm.ExpectedPostText = fmt.Sprintf("%q", user.Username)
 	}
