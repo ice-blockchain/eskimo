@@ -21,6 +21,7 @@ type (
 		AccessToken      string
 		PostURL          string
 		ExpectedPostText string
+		ExpectedPostURL  string
 	}
 
 	Verifier interface {
@@ -59,7 +60,6 @@ type (
 
 	twitterVerifierImpl struct {
 		Scraper   webScraper
-		Post      string
 		Domains   []string
 		Countries []string
 	}
@@ -77,7 +77,6 @@ type (
 	}
 
 	configTwitter struct {
-		PostURL   string   `yaml:"post-url" mapstructure:"post-url"` //nolint:tagliatelle // Nope.
 		Domains   []string `yaml:"domains"  mapstructure:"domains"`
 		Countries []string `yaml:"countries"  mapstructure:"countries"`
 	}
@@ -85,7 +84,6 @@ type (
 	configFacebook struct {
 		AppID               string `yaml:"app-id"     mapstructure:"app-id"`                             //nolint:tagliatelle // Nope.
 		AppSecret           string `yaml:"app-secret" mapstructure:"app-secret"`                         //nolint:tagliatelle // Nope.
-		PostURL             string `yaml:"post-url"   mapstructure:"post-url"`                           //nolint:tagliatelle // Nope.
 		AllowLongLiveTokens bool   `yaml:"allow-long-live-tokens" mapstructure:"allow-long-live-tokens"` //nolint:tagliatelle // Nope.
 	}
 
