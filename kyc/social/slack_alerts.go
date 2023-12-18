@@ -74,6 +74,7 @@ func (r *repository) sendUnsuccessfulKYCStepsAlertToSlack(ctx context.Context, t
 
 		sql = `SELECT (CASE
 							WHEN reason like 'duplicate userhandle %' THEN 'duplicate userhandle'
+							WHEN reason like 'duplicate socials %' THEN 'duplicate socials'
 							WHEN reason like '%: %' THEN substring(reason from position(': ' in reason) + 2)
 							ELSE reason
 						END)    AS mapped_reason,

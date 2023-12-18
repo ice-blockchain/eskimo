@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS social_kyc_unsuccessful_attempts  (
 CREATE INDEX IF NOT EXISTS social_kyc_unsuccessful_attempts_lookup1_ix ON social_kyc_unsuccessful_attempts (kyc_step,social,created_at DESC);
 CREATE INDEX IF NOT EXISTS social_kyc_unsuccessful_attempts_lookup2_ix ON social_kyc_unsuccessful_attempts (kyc_step,social,created_at DESC,(CASE
                                                                                                                                                 WHEN reason like 'duplicate userhandle %' THEN 'duplicate userhandle'
+                                                                                                                                                WHEN reason like 'duplicate socials %' THEN 'duplicate socials'
                                                                                                                                                 WHEN reason like '%: %' THEN substring(reason from position(': ' in reason) + 2)
                                                                                                                                                 ELSE reason
                                                                                                                                             END));

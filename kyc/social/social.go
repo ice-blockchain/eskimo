@@ -193,7 +193,7 @@ func (r *repository) VerifyPost(ctx context.Context, metadata *VerificationMetad
 			metadata.KYCStep, metadata.Social, metadata.Language, metadata.UserID))
 		reason := detectReason(err)
 		if userHandle != "" {
-			reason = userHandle + ": " + reason
+			reason = strings.ToLower(userHandle) + ": " + reason
 		}
 		if err = r.saveUnsuccessfulAttempt(ctx, now, reason, metadata); err != nil {
 			return nil, errors.Wrapf(err, "[1]failed to saveUnsuccessfulAttempt reason:%v,metadata:%#v", reason, metadata)
@@ -213,6 +213,7 @@ func (r *repository) VerifyPost(ctx context.Context, metadata *VerificationMetad
 		return &Verification{RemainingAttempts: &remainingAttempts, Result: FailureVerificationResult}, nil
 	}
 	if userHandle != "" { //nolint:nestif // .
+		userHandle = strings.ToLower(userHandle)
 		if err = r.saveSocial(ctx, metadata.Social, metadata.UserID, userHandle); err != nil {
 			if storage.IsErr(err, storage.ErrDuplicate) {
 				log.Error(errors.Wrapf(err, "[duplicate]social verification failed for KYCStep:%v,Social:%v,Language:%v,userID:%v,userHandle:%v",
@@ -325,6 +326,12 @@ func (r *repository) saveUnsuccessfulAttempt(ctx context.Context, now *time.Time
 func (r *repository) saveSocial(ctx context.Context, socialType Type, userID, userHandle string) error {
 	sql := `INSERT INTO socials(user_id,social,user_handle) VALUES ($1,$2,$3)`
 	_, err := storage.Exec(ctx, r.db, sql, userID, socialType, userHandle)
+	if err != nil && storage.IsErr(err, storage.ErrDuplicate, "pk") {
+		sql = `SELECT 1 WHERE EXISTS (SELECT 1 FROM socials WHERE user_id = $1 AND social = $2 AND lower(user_handle) = $3)`
+		if _, err2 := storage.ExecOne[struct{}](ctx, r.db, sql, userID, socialType, userHandle); err2 == nil {
+			return nil
+		}
+	}
 
 	return errors.Wrapf(err, "failed to `%v`; userID:%v, social:%v, userHandle:%v", sql, userID, socialType, userHandle)
 }
@@ -348,8 +355,12 @@ func detectReason(err error) string {
 	case errors.Is(err, social.ErrFetchFailed):
 		return "post fetch failed"
 	case storage.IsErr(err, storage.ErrDuplicate):
-		if tErr := terror.As(err); tErr != nil && !storage.IsErr(tErr.Unwrap(), storage.ErrDuplicate, "pk") {
-			return fmt.Sprintf("duplicate userhandle '%v'", tErr.Data["user_handle"])
+		if tErr := terror.As(err); tErr != nil {
+			if unwrapped := tErr.Unwrap(); storage.IsErr(unwrapped, storage.ErrDuplicate, "pk") {
+				return fmt.Sprintf("duplicate socials '%v'", tErr.Data["user_handle"])
+			} else if storage.IsErr(unwrapped, storage.ErrDuplicate) {
+				return fmt.Sprintf("duplicate userhandle '%v'", tErr.Data["user_handle"])
+			}
 		}
 
 		fallthrough
