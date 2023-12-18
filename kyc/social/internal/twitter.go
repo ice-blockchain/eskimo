@@ -34,7 +34,7 @@ func (t *twitterVerifierImpl) VerifyPostLink(ctx context.Context, doc *goquery.D
 			for i := range node.Attr {
 				if node.Attr[i].Key == "href" && strings.HasPrefix(node.Attr[i].Val, "https://t.co") {
 					data, err := t.Scrape(ctx, node.Attr[i].Val)
-					foundPost = err == nil && strings.Contains(string(data), strings.ToLower(expectedPostURL))
+					foundPost = err == nil && strings.Contains(strings.ToLower(string(data)), strings.ToLower(expectedPostURL))
 
 					break
 				}
