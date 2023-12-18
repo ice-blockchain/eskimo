@@ -23,7 +23,7 @@ const (
 	alertFrequency = 5 * stdlibtime.Minute
 )
 
-func (r *repository) startUnsuccessfulKYCStepsAlerter(ctx context.Context) {
+func (r *repository) startUnsuccessfulKYCStepsAlerter(ctx context.Context, kycStep users.KYCStep) {
 	if !r.cfg.EnableAlerts {
 		log.Info("unsuccessfulKYCSteps alerts not enabled")
 
@@ -31,7 +31,11 @@ func (r *repository) startUnsuccessfulKYCStepsAlerter(ctx context.Context) {
 	} else if r.cfg.AlertSlackWebhook == "" || r.cfg.Environment == "" {
 		log.Panic("`alert-slack-webhook` is missing")
 	}
-	ticker := stdlibtime.NewTicker(*r.cfg.alertFrequency.Load())
+	alertFrequencyDuration, found := r.cfg.alertFrequency.Load(kycStep)
+	if !found {
+		log.Panic(fmt.Sprintf("failed to get alertFrequency for %v", kycStep))
+	}
+	ticker := stdlibtime.NewTicker(alertFrequencyDuration.(stdlibtime.Duration)) //nolint:forcetypeassert // .
 	defer ticker.Stop()
 
 	for {
@@ -39,8 +43,8 @@ func (r *repository) startUnsuccessfulKYCStepsAlerter(ctx context.Context) {
 		case <-ticker.C:
 			const deadline = 30 * stdlibtime.Second
 			reqCtx, cancel := context.WithTimeout(ctx, deadline)
-			log.Error(errors.Wrapf(r.sendUnsuccessfulKYCStepsAlertToSlack(reqCtx, ticker, users.Social1KYCStep, TwitterType),
-				"failed to sendUnsuccessfulKYCStepsAlertToSlack[%v][%v]", users.Social1KYCStep, TwitterType))
+			log.Error(errors.Wrapf(r.sendUnsuccessfulKYCStepsAlertToSlack(reqCtx, ticker, kycStep, TwitterType),
+				"failed to sendUnsuccessfulKYCStepsAlertToSlack[%v][%v]", kycStep, TwitterType))
 			cancel()
 		case <-ctx.Done():
 			return
@@ -48,7 +52,7 @@ func (r *repository) startUnsuccessfulKYCStepsAlerter(ctx context.Context) {
 	}
 }
 
-//nolint:funlen // .
+//nolint:funlen,gocognit,revive // .
 func (r *repository) sendUnsuccessfulKYCStepsAlertToSlack(ctx context.Context, ticker *stdlibtime.Ticker, kycStep users.KYCStep, social Type) error {
 	return storage.DoInTransaction(ctx, r.db, func(conn storage.QueryExecer) error { //nolint:wrapcheck // Not needed.
 		sql := `SELECT last_alert_at, 
@@ -64,11 +68,15 @@ func (r *repository) sendUnsuccessfulKYCStepsAlertToSlack(ctx context.Context, t
 		if err != nil {
 			return errors.Wrap(err, "failed to lock unsuccessful_social_kyc_alerts")
 		}
-		if time.Now().Sub(*alert.LastAlertAt.Time) < stdlibtime.Duration(float64(r.cfg.alertFrequency.Load().Nanoseconds())*0.8) { //nolint:gomnd // .
+		freq, found := r.cfg.alertFrequency.Load(kycStep)
+		if !found {
+			log.Panic(fmt.Sprintf("failed to get alertFrequency for %v", kycStep))
+		}
+		if time.Now().Sub(*alert.LastAlertAt.Time) < stdlibtime.Duration(float64(freq.(stdlibtime.Duration).Nanoseconds())*0.8) { //nolint:gomnd,revive,forcetypeassert,lll // .
 			return nil
 		}
-		if newFrequency := stdlibtime.Duration(alert.FrequencyInSeconds) * stdlibtime.Second; newFrequency != *r.cfg.alertFrequency.Load() {
-			r.cfg.alertFrequency.Store(&newFrequency)
+		if newFrequency := stdlibtime.Duration(alert.FrequencyInSeconds) * stdlibtime.Second; newFrequency != freq.(stdlibtime.Duration) { //nolint:revive,forcetypeassert,lll // .
+			r.cfg.alertFrequency.Store(kycStep, newFrequency)
 			ticker.Reset(newFrequency)
 		}
 

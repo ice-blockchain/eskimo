@@ -7,7 +7,7 @@ import (
 	"embed"
 	"io"
 	"mime/multipart"
-	"sync/atomic"
+	"sync"
 	"text/template"
 	stdlibtime "time"
 
@@ -115,7 +115,7 @@ type (
 		db              *storage.DB
 	}
 	config struct {
-		alertFrequency *atomic.Pointer[stdlibtime.Duration]
+		alertFrequency *sync.Map // .map[users.KYCStep]stdlibtime.Duration.
 		SocialLinks    map[Type]struct {
 			PostURLs map[users.KYCStep]string `yaml:"post-urls" mapstructure:"post-urls"` //nolint:tagliatelle // .
 		} `yaml:"social-links" mapstructure:"social-links"` //nolint:tagliatelle // .

@@ -7,7 +7,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"sync/atomic"
+	"sync"
 	"text/template"
 	stdlibtime "time"
 
@@ -64,9 +64,7 @@ func New(ctx context.Context, usrRepo UserRepository) Repository {
 	for _, tp := range AllTypes {
 		socialVerifiers[tp] = social.New(tp)
 	}
-	defaultFrequency := alertFrequency
-	cfg.alertFrequency = new(atomic.Pointer[stdlibtime.Duration])
-	cfg.alertFrequency.Store(&defaultFrequency)
+	cfg.alertFrequency = new(sync.Map)
 
 	repo := &repository{
 		user:            usrRepo,
@@ -74,7 +72,10 @@ func New(ctx context.Context, usrRepo UserRepository) Repository {
 		cfg:             &cfg,
 		db:              storage.MustConnect(ctx, ddl, applicationYamlKey),
 	}
-	go repo.startUnsuccessfulKYCStepsAlerter(ctx)
+	for _, kycStep := range AllSupportedKYCSteps {
+		cfg.alertFrequency.Store(kycStep, alertFrequency)
+		go repo.startUnsuccessfulKYCStepsAlerter(ctx, kycStep)
+	}
 
 	return repo
 }
