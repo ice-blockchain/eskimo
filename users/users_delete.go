@@ -98,6 +98,8 @@ func (r *repository) updateReferredByForAllT1Referrals(ctx context.Context, user
 								FROM (  SELECT r.id 
 										FROM users r
 										WHERE 1=1
+											  AND r.id != 'bogus'
+											  AND r.id != 'icenetwork'
 											  AND r.id != $1
 											  AND r.id != u.id 
 											  AND r.referred_by != u.id 
