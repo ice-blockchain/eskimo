@@ -53,6 +53,7 @@ const (
 	Social1KYCStep
 	QuizKYCStep
 	Social2KYCStep
+	Social3KYCStep
 )
 
 var (

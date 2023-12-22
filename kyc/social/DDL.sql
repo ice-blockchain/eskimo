@@ -1,11 +1,17 @@
 -- SPDX-License-Identifier: ice License 1.0
 CREATE TABLE IF NOT EXISTS social_kyc_unsuccessful_attempts  (
                     created_at                timestamp NOT NULL,
-                    kyc_step                  smallint  NOT NULL CHECK (kyc_step = 3 OR kyc_step = 5),
+                    kyc_step                  smallint  NOT NULL CHECK (kyc_step = 3 OR kyc_step = 5 OR kyc_step = 6),
                     reason                    text      NOT NULL,
                     user_id                   text      NOT NULL REFERENCES users(id) ON DELETE CASCADE,
                     social                    text      NOT NULL CHECK (social = 'twitter' OR social = 'facebook'),
                     PRIMARY KEY (user_id, kyc_step, created_at));
+
+ALTER TABLE social_kyc_unsuccessful_attempts
+DROP CONSTRAINT social_kyc_unsuccessful_attempts_kyc_step_check;
+ALTER TABLE social_kyc_unsuccessful_attempts
+ADD CONSTRAINT social_kyc_unsuccessful_attempts_kyc_step_check
+CHECK (kyc_step = 3 OR kyc_step = 5 OR kyc_step = 6);
 
 CREATE INDEX IF NOT EXISTS social_kyc_unsuccessful_attempts_lookup1_ix ON social_kyc_unsuccessful_attempts (kyc_step,social,created_at DESC);
 CREATE INDEX IF NOT EXISTS social_kyc_unsuccessful_attempts_lookup2_ix ON social_kyc_unsuccessful_attempts (kyc_step,social,created_at DESC,(CASE
@@ -17,11 +23,17 @@ CREATE INDEX IF NOT EXISTS social_kyc_unsuccessful_attempts_lookup2_ix ON social
 
 CREATE TABLE IF NOT EXISTS social_kyc_steps (
                     created_at                timestamp NOT NULL,
-                    kyc_step                  smallint  NOT NULL CHECK (kyc_step = 3 OR kyc_step = 5),
+                    kyc_step                  smallint  NOT NULL CHECK (kyc_step = 3 OR kyc_step = 5 OR kyc_step = 6),
                     user_id                   text      NOT NULL REFERENCES users(id) ON DELETE CASCADE,
                     social                    text      NOT NULL CHECK (social = 'twitter' OR social = 'facebook'),
                     user_handle               text      NOT NULL,
                     PRIMARY KEY (user_id, kyc_step));
+
+ALTER TABLE social_kyc_steps
+DROP CONSTRAINT social_kyc_steps_kyc_step_check;
+ALTER TABLE social_kyc_steps
+ADD CONSTRAINT social_kyc_steps_kyc_step_check
+CHECK (kyc_step = 3 OR kyc_step = 5 OR kyc_step = 6);
 
 CREATE INDEX IF NOT EXISTS social_kyc_steps_lookup1_ix ON social_kyc_steps (kyc_step,social,created_at DESC);
 
@@ -34,13 +46,20 @@ CREATE TABLE IF NOT EXISTS socials (
 CREATE TABLE IF NOT EXISTS unsuccessful_social_kyc_alerts (
                     last_alert_at             timestamp NOT NULL,
                     frequency_in_seconds      bigint    NOT NULL DEFAULT 300,
-                    kyc_step                  smallint  NOT NULL CHECK (kyc_step = 3 OR kyc_step = 5),
+                    kyc_step                  smallint  NOT NULL CHECK (kyc_step = 3 OR kyc_step = 5 OR kyc_step = 6),
                     social                    text      NOT NULL CHECK (social = 'twitter' OR social = 'facebook'),
                     PRIMARY KEY (kyc_step, social))
                     WITH (FILLFACTOR = 70);
 
+ALTER TABLE unsuccessful_social_kyc_alerts
+DROP CONSTRAINT unsuccessful_social_kyc_alerts_kyc_step_check;
+ALTER TABLE unsuccessful_social_kyc_alerts
+ADD CONSTRAINT unsuccessful_social_kyc_alerts_kyc_step_check
+CHECK (kyc_step = 3 OR kyc_step = 5 OR kyc_step = 6);
+
 insert into unsuccessful_social_kyc_alerts (last_alert_at,    kyc_step,social)
                                     VALUES (current_timestamp,3,      'twitter'),
-                                           (current_timestamp,5,      'twitter')
+                                           (current_timestamp,5,      'twitter'),
+                                           (current_timestamp,6,      'twitter')
 ON CONFLICT (kyc_step, social)
 DO NOTHING;

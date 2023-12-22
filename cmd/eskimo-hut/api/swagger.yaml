@@ -489,6 +489,7 @@ definitions:
     - 3
     - 4
     - 5
+    - 6
     type: integer
     x-enum-varnames:
     - NoneKYCStep
@@ -497,6 +498,7 @@ definitions:
     - Social1KYCStep
     - QuizKYCStep
     - Social2KYCStep
+    - Social3KYCStep
 info:
   contact:
     name: ice.io

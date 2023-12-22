@@ -208,7 +208,7 @@ func (s *service) TryResetKYCSteps( //nolint:gocritic,funlen,gocognit,revive // 
 	ctx = users.ContextWithAuthorization(ctx, req.Data.Authorization)       //nolint:revive // .
 	for _, kycStep := range req.Data.SkipKYCSteps {
 		switch kycStep { //nolint:exhaustive // .
-		case users.Social1KYCStep, users.Social2KYCStep:
+		case users.Social1KYCStep, users.Social2KYCStep, users.Social3KYCStep:
 			if err := s.socialRepository.SkipVerification(ctx, kycStep, req.Data.UserID); err != nil {
 				if errors.Is(err, kycsocial.ErrNotAvailable) || errors.Is(err, kycsocial.ErrDuplicate) {
 					log.Error(errors.Wrapf(err, "skipVerification failed unexpectedly during tryResetKYCSteps for kycStep:%v,userID:%v",

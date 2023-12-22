@@ -52,6 +52,7 @@ kyc/social:
       post-urls:
         3: /ice_blockchain/status/1712692723336032437
         5: /ice_blockchain/status/1712692723336032437
+        6: /ice_blockchain/status/1712692723336032437
       domains:
         - twitter.com
         - x.com
@@ -64,6 +65,7 @@ kyc/social:
       post-urls:
         3: https://www.facebook.com/reel/1463272597773681
         5: https://www.facebook.com/reel/1463272597773681
+        6: https://www.facebook.com/reel/1463272597773681
       allow-long-live-tokens: true
 auth/email-link:
   wintr/connectors/storage/v2: *db
