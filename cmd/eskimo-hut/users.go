@@ -285,7 +285,7 @@ func buildUserForModification(req *server.Request[ModifyUserRequestBody, ModifyU
 	usr.Email = req.Data.Email
 	usr.AgendaPhoneNumberHashes = &req.Data.AgendaPhoneNumberHashes
 	usr.BlockchainAccountAddress = req.Data.BlockchainAccountAddress
-	usr.MiningBlockchainAccountAddress = req.Data.MiningBlockchainAccountAddress
+	usr.MiningBlockchainAccountAddress = strings.ToLower(req.Data.MiningBlockchainAccountAddress)
 	if req.Data.ClearMiningBlockchainAccountAddress != nil && *req.Data.ClearMiningBlockchainAccountAddress {
 		usr.MiningBlockchainAccountAddress = usr.ID
 	}
