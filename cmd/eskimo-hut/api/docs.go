@@ -130,6 +130,73 @@ const docTemplate = `{
                 }
             }
         },
+        "/auth/getValidUserForPhoneNumberMigration": {
+            "post": {
+                "description": "Returns minimal user information based on provided phone number, in the context of migrating a phone number only account to an email one.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "the phone number to identify the account based on",
+                        "name": "phoneNumber",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.User"
+                        }
+                    },
+                    "403": {
+                        "description": "code:ACCOUNT_LOST if account lost",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "code:USER_NOT_FOUND if user not found",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "code:EMAIL_ALREADY_SET if email already set",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    },
+                    "422": {
+                        "description": "if syntax fails",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    },
+                    "504": {
+                        "description": "if request times out",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/auth/processFaceRecognitionResult": {
             "post": {
                 "description": "Webhook to notify the service about the result of an user's face authentication process.",

@@ -24,6 +24,9 @@ type (
 		UserID               string   `header:"X-User-ID" swaggerignore:"true" required:"false" example:"some secret"` //nolint:tagliatelle // Nope.
 		LastUpdatedAt        []string `json:"lastUpdatedAt" required:"true" example:"2006-01-02T15:04:05Z"`
 	}
+	GetValidUserForPhoneNumberMigrationArg struct {
+		PhoneNumber string `form:"phoneNumber" swaggerignore:"true" allowUnauthorized:"true" required:"true" example:"+12099216581"`
+	}
 	Metadata struct {
 		UserID   string `json:"userId" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
 		Metadata string `json:"metadata"`
@@ -167,6 +170,8 @@ const (
 	raceConditionErrorCode                  = "RACE_CONDITION"
 	invalidPropertiesErrorCode              = "INVALID_PROPERTIES"
 	invalidEmail                            = "INVALID_EMAIL"
+	emailAlreadySetErrorCode                = "EMAIL_ALREADY_SET"
+	accountLostErrorCode                    = "ACCOUNT_LOST"
 
 	linkExpiredErrorCode    = "EXPIRED_LINK"
 	invalidOTPCodeErrorCode = "INVALID_OTP"

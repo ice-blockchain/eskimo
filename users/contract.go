@@ -182,6 +182,7 @@ type (
 	ReadRepository interface {
 		GetUsers(ctx context.Context, keyword string, limit, offset uint64) ([]*MinimalUserProfile, error)
 		GetUserByUsername(ctx context.Context, username string) (*UserProfile, error)
+		GetUserByPhoneNumber(ctx context.Context, phoneNumber string) (*User, error)
 		GetUserByID(ctx context.Context, userID string) (*UserProfile, error)
 
 		GetTopCountries(ctx context.Context, keyword string, limit, offset uint64) ([]*CountryStatistics, error)

@@ -126,6 +126,21 @@ func (r *repository) GetUserByUsername(ctx context.Context, username string) (*U
 	return resp, nil
 }
 
+func (r *repository) GetUserByPhoneNumber(ctx context.Context, phoneNumber string) (*User, error) {
+	usr, err := storage.Get[User](ctx, r.db, `SELECT * FROM users WHERE phone_number = $1 AND phone_number != id`, phoneNumber)
+	if err != nil {
+		if errors.Is(err, ErrNotFound) {
+			return nil, nil
+		}
+
+		return nil, errors.Wrapf(err, "failed to get user by phoneNumber `%v`", phoneNumber)
+	}
+	r.sanitizeUser(usr)
+	r.sanitizeUserForUI(usr)
+
+	return usr, nil
+}
+
 //nolint:funlen // Big sql.
 func (r *repository) GetUsers(ctx context.Context, keyword string, limit, offset uint64) (result []*MinimalUserProfile, err error) {
 	if ctx.Err() != nil {

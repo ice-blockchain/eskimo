@@ -28,7 +28,8 @@ func (s *service) setupAuthRoutes(router *server.Router) {
 		POST("auth/signInWithEmailLink", server.RootHandler(s.SignIn)).
 		POST("auth/getConfirmationStatus", server.RootHandler(s.Status)).
 		POST("auth/getMetadata", server.RootHandler(s.Metadata)).
-		POST("auth/processFaceRecognitionResult", server.RootHandler(s.ProcessFaceRecognitionResult))
+		POST("auth/processFaceRecognitionResult", server.RootHandler(s.ProcessFaceRecognitionResult)).
+		POST("auth/getValidUserForPhoneNumberMigration", server.RootHandler(s.GetValidUserForPhoneNumberMigration))
 }
 
 // SendSignInLinkToEmail godoc
@@ -448,4 +449,44 @@ func parseProcessFaceRecognitionResultRequest(req *server.Request[ProcessFaceRec
 	}
 
 	return usr, nil
+}
+
+// GetValidUserForPhoneNumberMigration godoc
+//
+//	@Schemes
+//	@Description	Returns minimal user information based on provided phone number, in the context of migrating a phone number only account to an email one.
+//	@Tags			Auth
+//	@Accept			json
+//	@Produce		json
+//	@Param			phoneNumber	query		string	true	"the phone number to identify the account based on"
+//	@Success		200			{object}	User
+//	@Failure		403			{object}	server.ErrorResponse	"code:ACCOUNT_LOST if account lost"
+//	@Failure		404			{object}	server.ErrorResponse	"code:USER_NOT_FOUND if user not found"
+//	@Failure		409			{object}	server.ErrorResponse	"code:EMAIL_ALREADY_SET if email already set"
+//	@Failure		422			{object}	server.ErrorResponse	"if syntax fails"
+//	@Failure		500			{object}	server.ErrorResponse
+//	@Failure		504			{object}	server.ErrorResponse	"if request times out"
+//	@Router			/auth/getValidUserForPhoneNumberMigration [POST].
+func (s *service) GetValidUserForPhoneNumberMigration(
+	ctx context.Context,
+	req *server.Request[GetValidUserForPhoneNumberMigrationArg, User],
+) (successResp *server.Response[User], errorResp *server.Response[server.ErrorResponse]) {
+	usr, err := s.usersProcessor.GetUserByPhoneNumber(ctx, req.Data.PhoneNumber)
+	if err != nil {
+		return nil, server.Unexpected(errors.Wrapf(err, "failed to GetUserByPhoneNumber(%v)", req.Data.PhoneNumber))
+	}
+
+	switch {
+	case usr == nil:
+		return nil, server.NotFound(users.ErrNotFound, userNotFoundErrorCode)
+	case usr.Email != "":
+		return nil, server.Conflict(users.ErrDuplicate, emailAlreadySetErrorCode)
+	case !usr.IsHuman():
+		return nil, server.ForbiddenWithCode(errors.New("account is lost"), accountLostErrorCode)
+	}
+
+	minimalUsr := new(User)
+	minimalUsr.ID = usr.ID
+
+	return server.OK(minimalUsr), nil
 }
