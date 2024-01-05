@@ -465,7 +465,7 @@ func parseProcessFaceRecognitionResultRequest(req *server.Request[ProcessFaceRec
 //	@Accept			json
 //	@Produce		json
 //	@Param			phoneNumber	query		string	true	"the phone number to identify the account based on"
-//	@Param			email		query		string	true	"the email to be linked to the account"
+//	@Param			email		query		string	false	"the email to be linked to the account"
 //	@Success		200			{object}	User
 //	@Failure		400			{object}	server.ErrorResponse	"code:INVALID_EMAIL if email is invalid"
 //	@Failure		403			{object}	server.ErrorResponse	"code:ACCOUNT_LOST if account lost"
@@ -480,7 +480,7 @@ func (s *service) GetValidUserForPhoneNumberMigration( //nolint:funlen // .
 	req *server.Request[GetValidUserForPhoneNumberMigrationArg, User],
 ) (successResp *server.Response[User], errorResp *server.Response[server.ErrorResponse]) {
 	req.Data.Email = strings.TrimSpace(strings.ToLower(req.Data.Email))
-	if _, err := mail.ParseAddress(req.Data.Email); err != nil {
+	if _, err := mail.ParseAddress(req.Data.Email); req.Data.Email != "" && err != nil {
 		return nil, server.BadRequest(err, invalidEmail)
 	}
 

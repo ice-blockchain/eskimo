@@ -26,7 +26,7 @@ type (
 	}
 	GetValidUserForPhoneNumberMigrationArg struct {
 		PhoneNumber string `form:"phoneNumber" swaggerignore:"true" allowUnauthorized:"true" required:"true" example:"+12099216581"`
-		Email       string `form:"email" swaggerignore:"true" required:"true" example:"jdoe@gmail.com"`
+		Email       string `form:"email" swaggerignore:"true" required:"false" example:"jdoe@gmail.com"`
 	}
 	Metadata struct {
 		UserID   string `json:"userId" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`

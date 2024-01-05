@@ -154,8 +154,7 @@ const docTemplate = `{
                         "type": "string",
                         "description": "the email to be linked to the account",
                         "name": "email",
-                        "in": "query",
-                        "required": true
+                        "in": "query"
                     }
                 ],
                 "responses": {

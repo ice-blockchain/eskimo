@@ -595,7 +595,6 @@ paths:
       - description: the email to be linked to the account
         in: query
         name: email
-        required: true
         type: string
       produces:
       - application/json
