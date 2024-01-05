@@ -224,7 +224,7 @@ func (c *client) upsertEmailLinkSignIn(ctx context.Context, toEmail, deviceUniqu
 								created_at    				     	   = EXCLUDED.created_at,
 								confirmation_code 		          	   = EXCLUDED.confirmation_code,
 								confirmation_code_wrong_attempts_count = EXCLUDED.confirmation_code_wrong_attempts_count,
-								phone_number_to_email_migration_user_id = COALESCE(NULLIF(EXCLUDED.phone_number_to_email_migration_user_id,''),phone_number_to_email_migration_user_id),
+								phone_number_to_email_migration_user_id = COALESCE(NULLIF(EXCLUDED.phone_number_to_email_migration_user_id,''),email_link_sign_ins.phone_number_to_email_migration_user_id),
 						        email_confirmed_at                     = null,
 						        user_id                                = null
 						WHERE   (extract(epoch from email_link_sign_ins.created_at)::bigint/%[1]v)  != (extract(epoch from EXCLUDED.created_at::timestamp)::bigint/%[1]v)
