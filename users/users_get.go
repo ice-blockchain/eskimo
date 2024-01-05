@@ -127,10 +127,11 @@ func (r *repository) GetUserByUsername(ctx context.Context, username string) (*U
 }
 
 func (r *repository) GetUserByPhoneNumber(ctx context.Context, phoneNumber string) (*User, error) {
-	usr, err := storage.Get[User](ctx, r.db, `SELECT * FROM users WHERE phone_number = $1 AND phone_number != id`, phoneNumber)
+	sql := `SELECT * FROM users WHERE phone_number = $1 AND phone_number != id`
+	usr, err := storage.Get[User](ctx, r.db, sql, phoneNumber)
 	if err != nil {
 		if errors.Is(err, ErrNotFound) {
-			return nil, nil
+			return nil, nil //nolint:nilnil // Nope.
 		}
 
 		return nil, errors.Wrapf(err, "failed to get user by phoneNumber `%v`", phoneNumber)
@@ -139,6 +140,23 @@ func (r *repository) GetUserByPhoneNumber(ctx context.Context, phoneNumber strin
 	r.sanitizeUserForUI(usr)
 
 	return usr, nil
+}
+
+func (r *repository) IsEmailUsedBySomebodyElse(ctx context.Context, userID, email string) (bool, error) {
+	sql := `SELECT id FROM users where email = $1`
+	usr, err := storage.Get[struct{ ID string }](ctx, r.db, sql, email)
+	if err != nil {
+		if errors.Is(err, storage.ErrNotFound) {
+			return false, nil
+		}
+
+		return false, errors.Wrapf(err, "failed to check email ownership for userID:%v,email:%v", userID, email)
+	}
+	if usr.ID == userID {
+		return false, ErrDuplicate
+	}
+
+	return true, nil
 }
 
 //nolint:funlen // Big sql.

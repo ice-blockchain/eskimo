@@ -26,6 +26,7 @@ type (
 	}
 	GetValidUserForPhoneNumberMigrationArg struct {
 		PhoneNumber string `form:"phoneNumber" swaggerignore:"true" allowUnauthorized:"true" required:"true" example:"+12099216581"`
+		Email       string `form:"email" swaggerignore:"true" required:"true" example:"jdoe@gmail.com"`
 	}
 	Metadata struct {
 		UserID   string `json:"userId" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
@@ -106,6 +107,8 @@ type (
 		users.DeviceMetadata
 	}
 	SendSignInLinkToEmailRequestArg struct {
+		APIKey         string `header:"X-API-Key" swaggerignore:"true" required:"false" example:"some secret"` //nolint:tagliatelle // Nope.
+		UserID         string `header:"X-User-ID" swaggerignore:"true" required:"false" example:"some secret"` //nolint:tagliatelle // Nope.
 		Email          string `json:"email" allowUnauthorized:"true" required:"true" example:"jdoe@gmail.com"`
 		DeviceUniqueID string `json:"deviceUniqueId" required:"true" example:"70063ABB-E69F-4FD2-8B83-90DD372802DA"`
 		Language       string `json:"language" required:"true" example:"en"`
@@ -170,6 +173,7 @@ const (
 	raceConditionErrorCode                  = "RACE_CONDITION"
 	invalidPropertiesErrorCode              = "INVALID_PROPERTIES"
 	invalidEmail                            = "INVALID_EMAIL"
+	emailUsedBySomebodyElseEmail            = "EMAIL_USED_BY_SOMEBODY_ELSE"
 	emailAlreadySetErrorCode                = "EMAIL_ALREADY_SET"
 	accountLostErrorCode                    = "ACCOUNT_LOST"
 

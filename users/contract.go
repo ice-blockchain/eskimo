@@ -190,6 +190,8 @@ type (
 
 		GetReferrals(ctx context.Context, userID string, referralType ReferralType, limit, offset uint64) (*Referrals, error)
 		GetReferralAcquisitionHistory(ctx context.Context, userID string) ([]*ReferralAcquisition, error)
+
+		IsEmailUsedBySomebodyElse(ctx context.Context, userID, email string) (bool, error)
 	}
 	WriteRepository interface {
 		CreateUser(ctx context.Context, usr *User, clientIP net.IP) error

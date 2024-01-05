@@ -40,7 +40,9 @@ func (s *service) setupAuthRoutes(router *server.Router) {
 //	@Accept			json
 //	@Produce		json
 //	@Param			request			body		SendSignInLinkToEmailRequestArg	true	"Request params"
-//	@Param			X-Forwarded-For	header		string							false	"Client IP"	default(1.1.1.1)
+//	@Param			X-API-Key		header		string							false	"Insert your api key"							default(<Add api key here>)
+//	@Param			X-User-ID		header		string							false	"UserID to process phone number migration for"	default()
+//	@Param			X-Forwarded-For	header		string							false	"Client IP"										default(1.1.1.1)
 //	@Success		200				{object}	Auth
 //	@Failure		403				{object}	server.ErrorResponse	"if too many pending auth requests from one IP"
 //	@Failure		409				{object}	server.ErrorResponse	"if email conflicts with another user's"
@@ -48,14 +50,18 @@ func (s *service) setupAuthRoutes(router *server.Router) {
 //	@Failure		500				{object}	server.ErrorResponse
 //	@Failure		504				{object}	server.ErrorResponse	"if request times out"
 //	@Router			/auth/sendSignInLinkToEmail [POST].
-func (s *service) SendSignInLinkToEmail( //nolint:gocritic // .
+func (s *service) SendSignInLinkToEmail( //nolint:gocritic,funlen // .
 	ctx context.Context,
 	req *server.Request[SendSignInLinkToEmailRequestArg, Auth],
 ) (*server.Response[Auth], *server.Response[server.ErrorResponse]) {
+	if req.Data.UserID != "" && cfg.APIKey != req.Data.APIKey {
+		return nil, server.Forbidden(errors.New("not allowed"))
+	}
 	email := strings.TrimSpace(strings.ToLower(req.Data.Email))
 	if _, err := mail.ParseAddress(email); err != nil {
 		return nil, server.BadRequest(err, invalidEmail)
 	}
+	ctx = emaillink.ContextWithPhoneNumberToEmailMigration(ctx, req.Data.UserID) //nolint:revive // Not a problem.
 	loginSession, err := s.authEmailLinkClient.SendSignInLinkToEmail(ctx, email, req.Data.DeviceUniqueID, req.Data.Language, req.ClientIP.String())
 	if err != nil {
 		switch {
@@ -459,18 +465,25 @@ func parseProcessFaceRecognitionResultRequest(req *server.Request[ProcessFaceRec
 //	@Accept			json
 //	@Produce		json
 //	@Param			phoneNumber	query		string	true	"the phone number to identify the account based on"
+//	@Param			email		query		string	true	"the email to be linked to the account"
 //	@Success		200			{object}	User
+//	@Failure		400			{object}	server.ErrorResponse	"code:INVALID_EMAIL if email is invalid"
 //	@Failure		403			{object}	server.ErrorResponse	"code:ACCOUNT_LOST if account lost"
 //	@Failure		404			{object}	server.ErrorResponse	"code:USER_NOT_FOUND if user not found"
-//	@Failure		409			{object}	server.ErrorResponse	"code:EMAIL_ALREADY_SET if email already set"
+//	@Failure		409			{object}	server.ErrorResponse	"code:EMAIL_ALREADY_SET if email already set;code:EMAIL_USED_BY_SOMEBODY_ELSE if email use"
 //	@Failure		422			{object}	server.ErrorResponse	"if syntax fails"
 //	@Failure		500			{object}	server.ErrorResponse
 //	@Failure		504			{object}	server.ErrorResponse	"if request times out"
 //	@Router			/auth/getValidUserForPhoneNumberMigration [POST].
-func (s *service) GetValidUserForPhoneNumberMigration(
+func (s *service) GetValidUserForPhoneNumberMigration( //nolint:funlen // .
 	ctx context.Context,
 	req *server.Request[GetValidUserForPhoneNumberMigrationArg, User],
 ) (successResp *server.Response[User], errorResp *server.Response[server.ErrorResponse]) {
+	req.Data.Email = strings.TrimSpace(strings.ToLower(req.Data.Email))
+	if _, err := mail.ParseAddress(req.Data.Email); err != nil {
+		return nil, server.BadRequest(err, invalidEmail)
+	}
+
 	usr, err := s.usersProcessor.GetUserByPhoneNumber(ctx, req.Data.PhoneNumber)
 	if err != nil {
 		return nil, server.Unexpected(errors.Wrapf(err, "failed to GetUserByPhoneNumber(%v)", req.Data.PhoneNumber))
@@ -483,6 +496,17 @@ func (s *service) GetValidUserForPhoneNumberMigration(
 		return nil, server.Conflict(users.ErrDuplicate, emailAlreadySetErrorCode)
 	case !usr.IsHuman():
 		return nil, server.ForbiddenWithCode(errors.New("account is lost"), accountLostErrorCode)
+	}
+
+	emailUsedBySomebodyElse, err := s.usersProcessor.IsEmailUsedBySomebodyElse(ctx, usr.ID, req.Data.Email)
+	if err != nil {
+		if errors.Is(err, users.ErrDuplicate) {
+			return nil, server.Conflict(users.ErrDuplicate, emailAlreadySetErrorCode)
+		}
+
+		return nil, server.Unexpected(errors.Wrapf(err, "failed to IsEmailUsedBySomebodyElse(%v,%v)", usr.ID, req.Data.Email))
+	} else if emailUsedBySomebodyElse {
+		return nil, server.Conflict(users.ErrDuplicate, emailUsedBySomebodyElseEmail)
 	}
 
 	minimalUsr := new(User)

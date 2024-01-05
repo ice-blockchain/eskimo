@@ -51,7 +51,7 @@ func (c *client) getUserIDFromEmail(ctx context.Context, searchEmail, idIfNotFou
 					FROM users 
 						WHERE email = $1
 				UNION ALL
-				(SELECT COALESCE(user_id, $2) AS id, 2 as idx
+				(SELECT COALESCE(user_id, phone_number_to_email_migration_user_id, $2) AS id, 2 as idx
 					FROM email_link_sign_ins
 						WHERE email = $1)
 			) t ORDER BY idx LIMIT 1`
@@ -94,6 +94,7 @@ func (c *client) getUserByIDOrPk(ctx context.Context, userID string, id *loginID
 					otp,
 					confirmation_code,
 					user_id,
+					phone_number_to_email_migration_user_id,
 					email,
 					device_unique_id,
 					language,
@@ -111,6 +112,7 @@ func (c *client) getUserByIDOrPk(ctx context.Context, userID string, id *loginID
 					otp,
 					confirmation_code,
 					$1 												   AS user_id,
+					phone_number_to_email_migration_user_id,
 					email,
 					$3 												   AS device_unique_id,
 					'en' 											   AS language,
@@ -131,6 +133,7 @@ func (c *client) getUserByIDOrPk(ctx context.Context, userID string, id *loginID
 					emails.otp       						 	  	   AS otp,
 					emails.confirmation_code       			 	  	   AS confirmation_code,
 					u.id 									 	  	   AS user_id,
+					emails.phone_number_to_email_migration_user_id 	   AS phone_number_to_email_migration_user_id,
 					u.email,
 					emails.device_unique_id 				 	  	   AS device_unique_id,
 					u.language			    				 	  	   AS language,

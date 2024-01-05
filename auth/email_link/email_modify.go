@@ -74,6 +74,9 @@ func (c *client) getResetAuthLink(token, language, confirmationCode string) stri
 }
 
 func (c *client) resetEmailModification(ctx context.Context, userID users.UserID, oldEmail string) error {
+	if oldEmail == "" {
+		return nil
+	}
 	usr := new(users.User)
 	usr.ID = userID
 	usr.Email = oldEmail

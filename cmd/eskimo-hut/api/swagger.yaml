@@ -592,6 +592,11 @@ paths:
         name: phoneNumber
         required: true
         type: string
+      - description: the email to be linked to the account
+        in: query
+        name: email
+        required: true
+        type: string
       produces:
       - application/json
       responses:
@@ -599,6 +604,10 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/main.User'
+        "400":
+          description: code:INVALID_EMAIL if email is invalid
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
         "403":
           description: code:ACCOUNT_LOST if account lost
           schema:
@@ -608,7 +617,8 @@ paths:
           schema:
             $ref: '#/definitions/server.ErrorResponse'
         "409":
-          description: code:EMAIL_ALREADY_SET if email already set
+          description: code:EMAIL_ALREADY_SET if email already set;code:EMAIL_USED_BY_SOMEBODY_ELSE
+            if email use
           schema:
             $ref: '#/definitions/server.ErrorResponse'
         "422":
@@ -749,6 +759,16 @@ paths:
         required: true
         schema:
           $ref: '#/definitions/main.SendSignInLinkToEmailRequestArg'
+      - default: <Add api key here>
+        description: Insert your api key
+        in: header
+        name: X-API-Key
+        type: string
+      - default: ""
+        description: UserID to process phone number migration for
+        in: header
+        name: X-User-ID
+        type: string
       - default: 1.1.1.1
         description: Client IP
         in: header

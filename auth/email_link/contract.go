@@ -73,6 +73,8 @@ const (
 	jwtIssuer          = "ice.io"
 	defaultLanguage    = "en"
 
+	phoneNumberToEmailMigrationCtxValueKey = "phoneNumberToEmailMigrationCtxValueKey"
+
 	signInEmailType        string = "signin"
 	notifyEmailChangedType string = "notify_changed"
 	modifyEmailType        string = "modify_email"
@@ -139,6 +141,7 @@ type (
 		EmailConfirmedAt                   *time.Time
 		Metadata                           *users.JSON `json:"metadata,omitempty"`
 		UserID                             *string     `json:"userId" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
+		PhoneNumberToEmailMigrationUserID  *string     `json:"-" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
 		Email                              string      `json:"email,omitempty" example:"someone1@example.com"`
 		OTP                                string      `json:"otp,omitempty" example:"207d0262-2554-4df9-b954-08cb42718b25"`
 		Language                           string      `json:"language,omitempty" example:"en"`

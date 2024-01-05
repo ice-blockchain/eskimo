@@ -209,20 +209,22 @@ func (c *client) sendEmailWithType(ctx context.Context, emailType, toEmail, lang
 //nolint:revive // .
 func (c *client) upsertEmailLinkSignIn(ctx context.Context, toEmail, deviceUniqueID, otp, code string, now *time.Time) error {
 	confirmationCodeWrongAttempts := 0
-	params := []any{now.Time, toEmail, deviceUniqueID, otp, code, confirmationCodeWrongAttempts}
+	params := []any{now.Time, toEmail, deviceUniqueID, otp, code, confirmationCodeWrongAttempts, userIDForPhoneNumberToEmailMigration(ctx)}
 	sql := fmt.Sprintf(`INSERT INTO email_link_sign_ins (
 							created_at,
 							email,
 							device_unique_id,
 							otp,
 							confirmation_code,
-							confirmation_code_wrong_attempts_count)
-						VALUES ($1, $2, $3, $4, $5, $6)
+							confirmation_code_wrong_attempts_count,
+							phone_number_to_email_migration_user_id)
+						VALUES ($1, $2, $3, $4, $5, $6, NULLIF($7,''))
 						ON CONFLICT (email, device_unique_id) DO UPDATE 
 							SET otp           				     	   = EXCLUDED.otp, 
 								created_at    				     	   = EXCLUDED.created_at,
 								confirmation_code 		          	   = EXCLUDED.confirmation_code,
 								confirmation_code_wrong_attempts_count = EXCLUDED.confirmation_code_wrong_attempts_count,
+								phone_number_to_email_migration_user_id = COALESCE(NULLIF(EXCLUDED.phone_number_to_email_migration_user_id,''),phone_number_to_email_migration_user_id),
 						        email_confirmed_at                     = null,
 						        user_id                                = null
 						WHERE   (extract(epoch from email_link_sign_ins.created_at)::bigint/%[1]v)  != (extract(epoch from EXCLUDED.created_at::timestamp)::bigint/%[1]v)

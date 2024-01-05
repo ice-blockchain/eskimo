@@ -250,3 +250,17 @@ func (c *client) startOldLoginAttemptsCleaner(ctx context.Context) {
 		}
 	}
 }
+
+func ContextWithPhoneNumberToEmailMigration(ctx context.Context, userID string) context.Context {
+	if userID == "" {
+		return ctx
+	}
+
+	return context.WithValue(ctx, phoneNumberToEmailMigrationCtxValueKey, userID) //nolint:revive,staticcheck // Not an issue.
+}
+
+func userIDForPhoneNumberToEmailMigration(ctx context.Context) (userID string) {
+	userID, _ = ctx.Value(phoneNumberToEmailMigrationCtxValueKey).(string) //nolint:errcheck,revive // Not needed.
+
+	return
+}

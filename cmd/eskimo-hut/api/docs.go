@@ -149,6 +149,13 @@ const docTemplate = `{
                         "name": "phoneNumber",
                         "in": "query",
                         "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "the email to be linked to the account",
+                        "name": "email",
+                        "in": "query",
+                        "required": true
                     }
                 ],
                 "responses": {
@@ -156,6 +163,12 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/main.User"
+                        }
+                    },
+                    "400": {
+                        "description": "code:INVALID_EMAIL if email is invalid",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
                         }
                     },
                     "403": {
@@ -171,7 +184,7 @@ const docTemplate = `{
                         }
                     },
                     "409": {
-                        "description": "code:EMAIL_ALREADY_SET if email already set",
+                        "description": "code:EMAIL_ALREADY_SET if email already set;code:EMAIL_USED_BY_SOMEBODY_ELSE if email use",
                         "schema": {
                             "$ref": "#/definitions/server.ErrorResponse"
                         }
@@ -384,6 +397,20 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/main.SendSignInLinkToEmailRequestArg"
                         }
+                    },
+                    {
+                        "type": "string",
+                        "default": "\u003cAdd api key here\u003e",
+                        "description": "Insert your api key",
+                        "name": "X-API-Key",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "default": "",
+                        "description": "UserID to process phone number migration for",
+                        "name": "X-User-ID",
+                        "in": "header"
                     },
                     {
                         "type": "string",

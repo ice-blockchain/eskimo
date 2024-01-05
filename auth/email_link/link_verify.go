@@ -37,7 +37,7 @@ func (c *client) SignIn(ctx context.Context, emailLinkPayload, confirmationCode 
 		return errors.Wrapf(vErr, "can't verify sign in for id:%#v", id)
 	}
 	var emailConfirmed bool
-	if token.OldEmail != "" {
+	if token.OldEmail != "" || (els.PhoneNumberToEmailMigrationUserID != nil && *els.PhoneNumberToEmailMigrationUserID != "") {
 		if err = c.handleEmailModification(ctx, els, email, token.OldEmail, token.NotifyEmail); err != nil {
 			return errors.Wrapf(err, "failed to handle email modification:%v", email)
 		}
@@ -152,6 +152,7 @@ func (c *client) finishAuthProcess(
 					user_id = $3,
 					otp = $3,
 					email_confirmed_at = %[1]v,
+					phone_number_to_email_migration_user_id = null,
 					issued_token_seq = COALESCE(issued_token_seq, 0) + 1,
 					previously_issued_token_seq = COALESCE(issued_token_seq, 0) + 1
 			WHERE email_link_sign_ins.email = $1

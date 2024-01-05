@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS email_link_sign_ins (
            otp                                    TEXT NOT NULL,
            confirmation_code                      TEXT,
            user_id                                TEXT,
+           phone_number_to_email_migration_user_id TEXT,
            device_unique_id                       TEXT,
            primary key(email, device_unique_id))
            WITH (FILLFACTOR = 70);
@@ -24,6 +25,9 @@ CREATE TABLE IF NOT EXISTS account_metadata (
 
 ALTER TABLE email_link_sign_ins
     ADD COLUMN IF NOT EXISTS previously_issued_token_seq BIGINT DEFAULT 0 NOT NULL;
+
+ALTER TABLE email_link_sign_ins
+    ADD COLUMN IF NOT EXISTS phone_number_to_email_migration_user_id TEXT;
 
 CREATE TABLE IF NOT EXISTS sign_ins_per_ip (
        login_session_number  BIGINT DEFAULT 0 NOT NULL,
