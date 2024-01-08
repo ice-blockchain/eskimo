@@ -20,7 +20,7 @@ require (
 	github.com/testcontainers/testcontainers-go v0.27.0
 	github.com/zeebo/xxh3 v1.0.2
 	golang.org/x/mod v0.14.0
-	golang.org/x/net v0.19.0
+	golang.org/x/net v0.20.0
 )
 
 require (
