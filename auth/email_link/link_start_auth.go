@@ -48,7 +48,7 @@ func (c *client) SendSignInLinkToEmail(ctx context.Context, emailValue, deviceUn
 	if err != nil {
 		return "", errors.Wrap(err, "can't call generateLoginSession")
 	}
-	if loginSessionNumber > 0 && clientIP != "" {
+	if loginSessionNumber > 0 && clientIP != "" && userIDForPhoneNumberToEmailMigration(ctx) == "" {
 		if ipErr := c.upsertIPLoginAttempt(ctx, &id, clientIP, loginSessionNumber); ipErr != nil {
 			return "", errors.Wrapf(ipErr, "failed increment login attempts for IP:%v (session num %v)", clientIP, loginSessionNumber)
 		}
@@ -128,7 +128,7 @@ func (c *client) validateEmailSignIn(ctx context.Context, id *loginID) error {
 }
 
 func (c *client) decrementIPLoginAttempts(ctx context.Context, ip string, loginSessionNumber int64) error {
-	if ip != "" && loginSessionNumber > 0 {
+	if ip != "" && loginSessionNumber > 0 && userIDForPhoneNumberToEmailMigration(ctx) == "" {
 		sql := `UPDATE sign_ins_per_ip SET
 					login_attempts = GREATEST(sign_ins_per_ip.login_attempts - 1, 0)
 				WHERE ip = $1 AND login_session_number = $2`

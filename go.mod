@@ -20,7 +20,7 @@ require (
 	github.com/testcontainers/testcontainers-go v0.27.0
 	github.com/zeebo/xxh3 v1.0.2
 	golang.org/x/mod v0.14.0
-	golang.org/x/net v0.19.0
+	golang.org/x/net v0.20.0
 )
 
 require (
@@ -50,12 +50,12 @@ require (
 	github.com/distribution/reference v0.5.0 // indirect
 	github.com/docker/distribution v2.8.3+incompatible // indirect
 	github.com/docker/docker v24.0.7+incompatible // indirect
-	github.com/docker/go-connections v0.4.0 // indirect
+	github.com/docker/go-connections v0.5.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.3 // indirect
-	github.com/georgysavva/scany/v2 v2.0.0 // indirect
+	github.com/georgysavva/scany/v2 v2.1.0 // indirect
 	github.com/gin-contrib/sse v0.1.0 // indirect
 	github.com/gin-gonic/gin v1.9.1 // indirect
 	github.com/go-logr/logr v1.4.1 // indirect
@@ -109,7 +109,7 @@ require (
 	github.com/quic-go/qpack v0.4.0 // indirect
 	github.com/quic-go/qtls-go1-20 v0.4.1 // indirect
 	github.com/quic-go/quic-go v0.40.1 // indirect
-	github.com/refraction-networking/utls v1.6.0 // indirect
+	github.com/refraction-networking/utls v1.6.1 // indirect
 	github.com/rs/zerolog v1.31.0 // indirect
 	github.com/sagikazarmark/locafero v0.4.0 // indirect
 	github.com/sagikazarmark/slog-shim v0.1.0 // indirect
@@ -140,7 +140,7 @@ require (
 	go.uber.org/mock v0.4.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/arch v0.7.0 // indirect
-	golang.org/x/crypto v0.17.0 // indirect
+	golang.org/x/crypto v0.18.0 // indirect
 	golang.org/x/exp v0.0.0-20240103183307-be819d1f06fc // indirect
 	golang.org/x/oauth2 v0.15.0 // indirect
 	golang.org/x/sync v0.6.0 // indirect
