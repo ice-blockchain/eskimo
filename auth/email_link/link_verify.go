@@ -41,7 +41,7 @@ func (c *client) SignIn(ctx context.Context, emailLinkPayload, confirmationCode 
 		if err = c.handleEmailModification(ctx, els, email, token.OldEmail, token.NotifyEmail); err != nil {
 			return errors.Wrapf(err, "failed to handle email modification:%v", email)
 		}
-		emailConfirmed = true
+		emailConfirmed = token.OldEmail != ""
 		els.Email = email
 	}
 	if fErr := c.finishAuthProcess(ctx, &id, *els.UserID, token.OTP, els.IssuedTokenSeq, emailConfirmed, els.Metadata); fErr != nil {

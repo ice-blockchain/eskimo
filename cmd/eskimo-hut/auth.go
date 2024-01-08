@@ -510,6 +510,7 @@ func (s *service) GetValidUserForPhoneNumberMigration( //nolint:funlen // .
 	}
 
 	minimalUsr := new(User)
+	minimalUsr.User = new(users.User)
 	minimalUsr.ID = usr.ID
 
 	return server.OK(minimalUsr), nil
