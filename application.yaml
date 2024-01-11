@@ -67,6 +67,12 @@ kyc/social:
         5: https://www.facebook.com/reel/1463272597773681
         6: https://www.facebook.com/reel/1463272597773681
       allow-long-live-tokens: true
+kyc/quiz:
+  wintr/connectors/storage/v2: *db
+  maxSessionDurationSeconds: 600
+  maxQuestionsPerSession: 3
+  maxWrongAnswersPerSession: 1
+  sessionCoolDownSeconds: 3600
 auth/email-link:
   wintr/connectors/storage/v2: *db
   fromEmailAddress: no-reply@ice.io

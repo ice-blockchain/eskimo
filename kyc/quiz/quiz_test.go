@@ -48,14 +48,14 @@ func helperSolveQuestion(t *testing.T, text string) uint8 {
 func helperForceFinishSession(t *testing.T, r *repositoryImpl, userID UserID, result bool) {
 	t.Helper()
 
-	_, err := storage.Exec(context.TODO(), r.DB, "update quizz_sessions set ended_at = now(), ended_successfully = $2 where user_id = $1", userID, result)
+	_, err := storage.Exec(context.TODO(), r.DB, "update quiz_sessions set ended_at = now(), ended_successfully = $2 where user_id = $1", userID, result)
 	require.NoError(t, err)
 }
 
 func helperForceResetSessionStartedAt(t *testing.T, r *repositoryImpl, userID UserID) {
 	t.Helper()
 
-	_, err := storage.Exec(context.TODO(), r.DB, "update quizz_sessions set ended_at = NULL, started_at = to_timestamp(42) where user_id = $1", userID)
+	_, err := storage.Exec(context.TODO(), r.DB, "update quiz_sessions set ended_at = NULL, started_at = to_timestamp(42) where user_id = $1", userID)
 	require.NoError(t, err)
 }
 
@@ -66,7 +66,7 @@ func helperSessionReset(t *testing.T, r *repositoryImpl, userID UserID, full boo
 	require.NoError(t, err)
 
 	if full {
-		_, err = storage.Exec(context.TODO(), r.DB, "delete from failed_quizz_sessions where user_id = $1", userID)
+		_, err = storage.Exec(context.TODO(), r.DB, "delete from failed_quiz_sessions where user_id = $1", userID)
 		require.NoError(t, err)
 	}
 }
@@ -167,8 +167,8 @@ func testManagerSessionStart(ctx context.Context, t *testing.T, r *repositoryImp
 			session, err := r.StartQuizSession(ctx, "bogus", "en")
 			require.NoError(t, err)
 
-			for i := uint(0); i < uint(session.Progress.MaxQuestions); i++ {
-				session, err = r.ContinueQuizSession(ctx, "bogus", i+uint(1), 0)
+			for i := uint8(0); i < uint8(session.Progress.MaxQuestions); i++ {
+				session, err = r.ContinueQuizSession(ctx, "bogus", i+uint8(1), 0)
 				require.NoError(t, err)
 				require.NotNil(t, session)
 			}
@@ -222,7 +222,7 @@ func testManagerSessionContinueErrors(ctx context.Context, t *testing.T, r *repo
 		helperSessionReset(t, r, "bogus", true)
 		_, err := r.StartQuizSession(ctx, "bogus", "en")
 		require.NoError(t, err)
-		for _, n := range []uint{0, 4, 5, 6, 7, 10, 20, 100} {
+		for _, n := range []uint8{0, 4, 5, 6, 7, 10, 20, 100} {
 			_, err = r.ContinueQuizSession(ctx, "bogus", n, 1)
 			require.ErrorIs(t, err, ErrUnknownQuestionNumber)
 		}

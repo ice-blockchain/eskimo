@@ -122,7 +122,7 @@ func (r *repositoryImpl) CheckUserFailedSession(ctx context.Context, userID User
 	}
 
 	const stmt = `
-select max(ended_at) as ended_at from failed_quizz_sessions where user_id = $1 having max(ended_at) > $2
+select max(ended_at) as ended_at from failed_quiz_sessions where user_id = $1 having max(ended_at) > $2
 	`
 
 	term := now.
@@ -151,7 +151,7 @@ func (r *repositoryImpl) CheckUserActiveSession(ctx context.Context, userID User
 		Finished             bool            `db:"finished"`
 		FinishedSuccessfully bool            `db:"ended_successfully"`
 	}
-	const stmt = `select started_at, ended_at is not null as finished, ended_successfully from quizz_sessions where user_id = $1`
+	const stmt = `select started_at, ended_at is not null as finished, ended_successfully from quiz_sessions where user_id = $1`
 
 	data, err := storage.Get[userSession](ctx, tx, stmt, userID)
 	if err != nil {
@@ -220,8 +220,8 @@ func (*repositoryImpl) CreateSessionEntry( //nolint:revive //.
 	tx storage.QueryExecer,
 ) error {
 	const stmt = `
-insert into quizz_sessions (user_id, language, questions, started_at, answers) values ($1, $2, $3, $4, '{}'::smallint[])
-	on conflict on constraint quizz_sessions_pkey do update
+insert into quiz_sessions (user_id, language, questions, started_at, answers) values ($1, $2, $3, $4, '{}'::smallint[])
+	on conflict on constraint quiz_sessions_pkey do update
 	set
 		started_at = excluded.started_at,
 		questions = excluded.questions,
@@ -335,7 +335,7 @@ select
 	array_agg(questions.correct_option order by q.nr) as correct_answers,
 	ended_successfully
 from
-	quizz_sessions session,
+	quiz_sessions session,
 	questions
 	inner join unnest(session.questions) with ordinality AS q(id, nr)
 	on questions.id = q.id
@@ -399,7 +399,7 @@ func (*repositoryImpl) CheckQuestionNumber(ctx context.Context, questions []uint
 
 func (*repositoryImpl) UserAddAnswer(ctx context.Context, userID UserID, tx storage.QueryExecer, answer uint8) ([]uint8, error) {
 	const stmt = `
-update quizz_sessions
+update quiz_sessions
 set
 	answers = array_append(answers, $2)
 where
@@ -438,7 +438,7 @@ func (r *repositoryImpl) UserMarkSessionAsFinished(
 ) error {
 	const stmt = `
 with result as (
-	update quizz_sessions
+	update quiz_sessions
 	set
 		ended_at = $3,
 		ended_successfully = $2
@@ -446,7 +446,7 @@ with result as (
 		user_id = $1
 	returning *
 )
-insert into failed_quizz_sessions (started_at, ended_at, questions, answers, language, user_id, skipped)
+insert into failed_quiz_sessions (started_at, ended_at, questions, answers, language, user_id, skipped)
 select
 	result.started_at,
 	result.ended_at,
@@ -572,7 +572,7 @@ func (r *repositoryImpl) ContinueQuizSession( //nolint:funlen,revive //.
 func (r *repositoryImpl) ResetQuizSession(ctx context.Context, userID UserID) error {
 	// $1: user_id.
 	const stmt = `
-		delete from quizz_sessions
+		delete from quiz_sessions
 		where
 			user_id = $1
 	`

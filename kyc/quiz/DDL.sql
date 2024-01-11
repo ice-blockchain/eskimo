@@ -2,7 +2,7 @@
 
 create table if not exists questions
 (
-    id             bigint not null generated always as identity,
+    id             bigint    not null,
     correct_option smallint  not null,
     options        text[]    not null,
     language       text      not null,
@@ -11,7 +11,7 @@ create table if not exists questions
     primary key (language, id)
 );
 
-create table if not exists failed_quizz_sessions
+create table if not exists failed_quiz_sessions
 (
     started_at         timestamp  not null,
     ended_at           timestamp  not null,
@@ -23,7 +23,7 @@ create table if not exists failed_quizz_sessions
     primary key (user_id, started_at)
 );
 
-create table if not exists quizz_sessions
+create table if not exists quiz_sessions
 (
     started_at         timestamp  not null,
     ended_at           timestamp,

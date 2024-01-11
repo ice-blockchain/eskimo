@@ -16,15 +16,8 @@ users: &users
       - postgresql://root:pass@localhost:5432/ice
 
 kyc/quiz:
+  <<: *users
   maxSessionDurationSeconds: 600
   maxQuestionsPerSession: 3
   maxWrongAnswersPerSession: 1
   sessionCoolDownSeconds: 3600
-  wintr/connectors/storage/v2:
-    runDDL: true
-    primaryURL: postgresql://root:pass@localhost:5432/ice
-    credentials:
-      user: root
-      password: pass
-    replicaURLs:
-      - postgresql://root:pass@localhost:5432/ice

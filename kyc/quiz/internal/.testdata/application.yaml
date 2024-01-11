@@ -1,8 +1,0 @@
-# SPDX-License-Identifier: ice License 1.0
-
-development: true
-logger:
-  encoder: console
-  level: debug
-self:
-  #Add your configs here.
