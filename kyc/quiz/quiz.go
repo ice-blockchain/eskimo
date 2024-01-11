@@ -5,7 +5,6 @@ package quiz
 import (
 	"context"
 	"fmt"
-	"strconv"
 	stdlibtime "time"
 
 	"github.com/hashicorp/go-multierror"
@@ -78,16 +77,43 @@ func (r *repositoryImpl) CheckUserKYC(ctx context.Context, userID UserID) error 
 		return errors.Wrapf(err, "failed to get user by id: %v", userID)
 	}
 
-	if profile.KYCStepPassed == nil || *profile.KYCStepPassed != (users.QuizKYCStep-1) {
-		state := "not set"
-		if profile.KYCStepPassed != nil {
-			state = strconv.Itoa(int(*profile.KYCStepPassed))
-		}
+	return r.validateKycStep(profile.User)
+}
 
-		return errors.Wrap(ErrInvalidKYCState, state)
+//nolint:revive // .
+func (r *repositoryImpl) validateKycStep(user *users.User) error {
+	if sessionCoolDown := stdlibtime.Duration(r.config.SessionCoolDownSeconds) * stdlibtime.Second; user.KYCStepPassed == nil ||
+		*user.KYCStepPassed < users.QuizKYCStep-1 ||
+		(user.KYCStepPassed != nil &&
+			*user.KYCStepPassed == users.QuizKYCStep-1 &&
+			user.KYCStepsLastUpdatedAt != nil &&
+			len(*user.KYCStepsLastUpdatedAt) >= int(users.QuizKYCStep) &&
+			!(*user.KYCStepsLastUpdatedAt)[users.QuizKYCStep-1].IsNil() &&
+			time.Now().Sub(*(*user.KYCStepsLastUpdatedAt)[users.QuizKYCStep-1].Time) < sessionCoolDown) ||
+		user.KYCStepPassed != nil && *user.KYCStepPassed >= users.QuizKYCStep {
+		return ErrInvalidKYCState
 	}
 
 	return nil
+}
+
+func (r *repositoryImpl) SkipQuizSession(ctx context.Context, userID UserID) error {
+	if err := r.CheckUserKYC(ctx, userID); err != nil {
+		return err
+	}
+
+	now := stdlibtime.Now()
+	for _, fn := range []func(context.Context, UserID, stdlibtime.Time, storage.QueryExecer) error{
+		r.CheckUserFailedSession,
+		r.CheckUserActiveSession,
+	} {
+		if err := fn(ctx, userID, now, r.DB); err != nil {
+			return err
+		}
+	}
+
+	return errors.Wrapf(r.UserMarkSessionAsFinished(ctx, userID, now, r.DB, false, true),
+		"failed to UserMarkSessionAsFinished for userID:%v", userID)
 }
 
 func (r *repositoryImpl) CheckUserFailedSession(ctx context.Context, userID UserID, now stdlibtime.Time, tx storage.QueryExecer) error {
@@ -121,9 +147,9 @@ select max(ended_at) as ended_at from failed_quizz_sessions where user_id = $1 h
 
 func (r *repositoryImpl) CheckUserActiveSession(ctx context.Context, userID UserID, now stdlibtime.Time, tx storage.QueryExecer) error {
 	type userSession struct {
-		StartedAt         stdlibtime.Time `db:"started_at"`
-		Finished          bool            `db:"finished"`
-		FinishedSuccfully bool            `db:"ended_successfully"`
+		StartedAt            stdlibtime.Time `db:"started_at"`
+		Finished             bool            `db:"finished"`
+		FinishedSuccessfully bool            `db:"ended_successfully"`
 	}
 	const stmt = `select started_at, ended_at is not null as finished, ended_successfully from quizz_sessions where user_id = $1`
 
@@ -137,7 +163,7 @@ func (r *repositoryImpl) CheckUserActiveSession(ctx context.Context, userID User
 	}
 
 	if data.Finished {
-		if data.FinishedSuccfully {
+		if data.FinishedSuccessfully {
 			return ErrSessionFinished
 		}
 
@@ -170,7 +196,7 @@ select id, options, question from questions where "language" = $1 order by rando
 	}
 
 	for i := range questions {
-		questions[i].Number = uint(i + 1)
+		questions[i].Number = uint8(i + 1)
 	}
 
 	return questions, nil
@@ -271,7 +297,7 @@ func (r *repositoryImpl) StartQuizSession(ctx context.Context, userID UserID, la
 	return quiz, err
 }
 
-func calculateProgress(correctAnswers, currentAnswers []uint) (correctNum, incorrectNum uint8) {
+func calculateProgress(correctAnswers, currentAnswers []uint8) (correctNum, incorrectNum uint8) {
 	correct := correctAnswers
 	if len(currentAnswers) < len(correctAnswers) {
 		correct = correctAnswers[:len(currentAnswers)]
@@ -296,8 +322,8 @@ func (r *repositoryImpl) CheckUserRunningSession( //nolint:funlen //.
 ) (userProgress, error) {
 	type userSession struct {
 		userProgress
-		Finished          bool `db:"finished"`
-		FinishedSuccfully bool `db:"ended_successfully"`
+		Finished             bool `db:"finished"`
+		FinishedSuccessfully bool `db:"ended_successfully"`
 	}
 	const stmt = `
 select
@@ -335,7 +361,7 @@ group by
 	}
 
 	if data.Finished {
-		if data.FinishedSuccfully {
+		if data.FinishedSuccessfully {
 			return userProgress{}, ErrSessionFinished
 		}
 
@@ -350,12 +376,12 @@ group by
 	return data.userProgress, nil
 }
 
-func (*repositoryImpl) CheckQuestionNumber(ctx context.Context, questions []uint, num uint, tx storage.QueryExecer) (uint, error) {
+func (*repositoryImpl) CheckQuestionNumber(ctx context.Context, questions []uint8, num uint8, tx storage.QueryExecer) (uint8, error) {
 	type currentQuestion struct {
 		CorrectOption uint8 `db:"correct_option"`
 	}
 
-	if num == 0 || num > uint(len(questions)) {
+	if num == 0 || num > uint8(len(questions)) {
 		return 0, ErrUnknownQuestionNumber
 	}
 
@@ -368,10 +394,10 @@ func (*repositoryImpl) CheckQuestionNumber(ctx context.Context, questions []uint
 		return 0, errors.Wrap(err, "failed to get current question data")
 	}
 
-	return uint(data.CorrectOption), nil
+	return data.CorrectOption, nil
 }
 
-func (*repositoryImpl) UserAddAnswer(ctx context.Context, userID UserID, tx storage.QueryExecer, answer uint8) ([]uint, error) {
+func (*repositoryImpl) UserAddAnswer(ctx context.Context, userID UserID, tx storage.QueryExecer, answer uint8) ([]uint8, error) {
 	const stmt = `
 update quizz_sessions
 set
@@ -393,7 +419,7 @@ returning answers
 	return data.Answers, nil
 }
 
-func (*repositoryImpl) LoadQuestionByID(ctx context.Context, tx storage.QueryExecer, lang string, questionID uint) (*Question, error) {
+func (*repositoryImpl) LoadQuestionByID(ctx context.Context, tx storage.QueryExecer, lang string, questionID uint8) (*Question, error) {
 	const stmt = `
 select id, options, question from questions where "language" = $1 and id = $2
 	`
@@ -406,7 +432,10 @@ select id, options, question from questions where "language" = $1 and id = $2
 	return question, nil
 }
 
-func (*repositoryImpl) UserMarkSessionAsFinished(ctx context.Context, userID UserID, now stdlibtime.Time, tx storage.QueryExecer, successful bool) error {
+//nolint:revive // .
+func (r *repositoryImpl) UserMarkSessionAsFinished(
+	ctx context.Context, userID UserID, now stdlibtime.Time, tx storage.QueryExecer, successful, skipped bool,
+) error {
 	const stmt = `
 with result as (
 	update quizz_sessions
@@ -417,24 +446,24 @@ with result as (
 		user_id = $1
 	returning *
 )
-insert into failed_quizz_sessions (started_at, ended_at, questions, answers, language, user_id)
+insert into failed_quizz_sessions (started_at, ended_at, questions, answers, language, user_id, skipped)
 select
 	result.started_at,
 	result.ended_at,
 	result.questions,
 	result.answers,
 	result.language,
-	result.user_id
+	result.user_id,
+    $4 AS skipped
 from result
 where
 	result.ended_successfully = false
 	`
-
-	if _, err := storage.Exec(ctx, tx, stmt, userID, successful, now); err != nil {
+	if _, err := storage.Exec(ctx, tx, stmt, userID, successful, now, skipped); err != nil {
 		return errors.Wrap(err, "failed to mark session as finished")
 	}
 
-	return nil
+	return errors.Wrap(r.modifyUser(ctx, successful, time.New(now), userID), "failed to modifyUser")
 }
 
 func (r *repositoryImpl) fetchUserProfileForModify(ctx context.Context, userID UserID) (*users.User, error) {
@@ -460,34 +489,34 @@ func (r *repositoryImpl) fetchUserProfileForModify(ctx context.Context, userID U
 	return usr, nil
 }
 
-func (r *repositoryImpl) modifyUser(ctx context.Context, now *time.Time, userID UserID) error {
-	usr, err := r.fetchUserProfileForModify(ctx, userID)
+//nolint:revive // .
+func (r *repositoryImpl) modifyUser(ctx context.Context, success bool, now *time.Time, userID UserID) error {
+	user, err := r.fetchUserProfileForModify(ctx, userID)
 	if err != nil {
 		return err
 	}
+	usr := new(users.User)
+	usr.ID = user.ID
 
-	step := users.QuizKYCStep
-	usr.KYCStepPassed = &step
+	newKYCStep := users.QuizKYCStep
+	if success {
+		usr.KYCStepPassed = &newKYCStep
+	}
 
-	if len(*usr.KYCStepsLastUpdatedAt) < int(step) {
+	usr.KYCStepsLastUpdatedAt = user.KYCStepsLastUpdatedAt
+	if len(*usr.KYCStepsLastUpdatedAt) < int(newKYCStep) {
 		*usr.KYCStepsLastUpdatedAt = append(*usr.KYCStepsLastUpdatedAt, now)
 	} else {
-		(*usr.KYCStepsLastUpdatedAt)[int(step)-1] = now
-	}
-	if len(*usr.KYCStepsCreatedAt) < int(step) {
-		*usr.KYCStepsCreatedAt = append(*usr.KYCStepsCreatedAt, now)
-	} else {
-		(*usr.KYCStepsCreatedAt)[int(step)-1] = now
+		(*usr.KYCStepsLastUpdatedAt)[int(newKYCStep)-1] = now
 	}
 
 	return errors.Wrapf(r.Users.ModifyUser(ctx, usr, nil), "failed to modify user %#v", usr)
 }
 
-func (r *repositoryImpl) ContinueQuizSession( //nolint:funlen,revive,gocognit //.
+func (r *repositoryImpl) ContinueQuizSession( //nolint:funlen,revive //.
 	ctx context.Context,
 	userID UserID,
-	question uint,
-	answer uint8,
+	question, answer uint8,
 ) (quiz *Quiz, err error) {
 	err = storage.DoInTransaction(ctx, r.DB, func(tx storage.QueryExecer) error {
 		now := stdlibtime.Now().Truncate(stdlibtime.Second).UTC()
@@ -498,7 +527,7 @@ func (r *repositoryImpl) ContinueQuizSession( //nolint:funlen,revive,gocognit //
 		_, err = r.CheckQuestionNumber(ctx, progress.Questions, question, tx)
 		if err != nil {
 			return wrapErrorInTx(err)
-		} else if uint(len(progress.Answers)) != question-1 {
+		} else if uint8(len(progress.Answers)) != question-1 {
 			return wrapErrorInTx(errors.Wrap(ErrUnknownQuestionNumber, "please answer questions in order"))
 		}
 		newAnswers, aErr := r.UserAddAnswer(ctx, userID, tx, answer)
@@ -528,13 +557,10 @@ func (r *repositoryImpl) ContinueQuizSession( //nolint:funlen,revive,gocognit //
 
 		if int(incorrectNum) > r.config.MaxWrongAnswersPerSession {
 			quiz.Result = FailureResult
-			err = r.UserMarkSessionAsFinished(ctx, userID, now, tx, false)
+			err = r.UserMarkSessionAsFinished(ctx, userID, now, tx, false, false)
 		} else {
 			quiz.Result = SuccessResult
-			err = r.UserMarkSessionAsFinished(ctx, userID, now, tx, true)
-			if err == nil {
-				err = r.modifyUser(ctx, time.New(now), userID)
-			}
+			err = r.UserMarkSessionAsFinished(ctx, userID, now, tx, true, false)
 		}
 
 		return wrapErrorInTx(err)

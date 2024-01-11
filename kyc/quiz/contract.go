@@ -30,7 +30,9 @@ type (
 
 		StartQuizSession(ctx context.Context, userID UserID, lang string) (*Quiz, error)
 
-		ContinueQuizSession(ctx context.Context, userID UserID, question uint, answer uint8) (*Quiz, error)
+		SkipQuizSession(ctx context.Context, userID UserID) error
+
+		ContinueQuizSession(ctx context.Context, userID UserID, question, answer uint8) (*Quiz, error)
 	}
 
 	UserRepository interface {
@@ -56,7 +58,7 @@ type (
 	Question struct {
 		Text    string   `json:"text" example:"Какая температура на улице?" db:"question"`
 		Options []string `json:"options" example:"+21,-2,+33,0" db:"options"`
-		Number  uint     `json:"number" example:"1"`
+		Number  uint8    `json:"number" example:"1"`
 		ID      uint     `json:"-" db:"id"`
 	}
 )
@@ -89,9 +91,9 @@ type (
 	userProgress struct {
 		StartedAt      stdlibtime.Time `db:"started_at"`
 		Lang           string          `db:"language"`
-		Questions      []uint          `db:"questions"`
-		Answers        []uint          `db:"answers"`
-		CorrectAnswers []uint          `db:"correct_answers"`
+		Questions      []uint8         `db:"questions"`
+		Answers        []uint8         `db:"answers"`
+		CorrectAnswers []uint8         `db:"correct_answers"`
 	}
 	repositoryImpl struct {
 		DB       *storage.DB

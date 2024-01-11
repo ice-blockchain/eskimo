@@ -143,9 +143,9 @@ type (
 		Authorization string `header:"Authorization" swaggerignore:"true" required:"true" allowForbiddenWriteOperation:"true" allowUnauthorized:"true"`
 	}
 	StartOrContinueKYCStep4SessionRequestBody struct {
+		QuestionNumber *uint8 `form:"questionNumber" required:"true" swaggerignore:"true" example:"11"`
+		SelectedOption *uint8 `form:"selectedOption" required:"true" swaggerignore:"true" example:"0"`
 		Language       string `form:"language" required:"true" swaggerignore:"true" example:"en"`
-		QuestionNumber uint   `form:"questionNumber" required:"true" swaggerignore:"true" example:"11"`
-		SelectedOption uint8  `form:"selectedOption" required:"true" swaggerignore:"true" example:"0"`
 	}
 	TryResetKYCStepsRequestBody struct {
 		Authorization    string          `header:"Authorization" swaggerignore:"true" required:"true" example:"some token"`
@@ -189,11 +189,8 @@ const (
 
 	noPendingLoginSessionErrorCode = "NO_PENDING_LOGIN_SESSION"
 
-	quizAlreadyCompletedSuccessfullyErrorCode = "QUIZ_ALREADY_COMPLETED_SUCCESSFULLY"
-	quizNotAvailableErrorCode                 = "QUIZ_NOT_AVAILABLE"
-	quizAlreadyRunningErrorCode               = "QUIZ_ALREADY_RUNNING"
-	quizUnknownQuestionNumErrorCode           = "QUIZ_UNKNOWN_QUESTION_NUM"
-	quizExpiredErrorCode                      = "QUIZ_EXPIRED"
+	quizAlreadyRunningErrorCode     = "QUIZ_ALREADY_RUNNING"
+	quizUnknownQuestionNumErrorCode = "QUIZ_UNKNOWN_QUESTION_NUM"
 
 	socialKYCStepAlreadyCompletedSuccessfullyErrorCode = "SOCIAL_KYC_STEP_ALREADY_COMPLETED_SUCCESSFULLY"
 	socialKYCStepNotAvailableErrorCode                 = "SOCIAL_KYC_STEP_NOT_AVAILABLE"
@@ -214,7 +211,7 @@ type (
 	// | service implements server.State and is responsible for managing the state and lifecycle of the package.
 	service struct {
 		usersProcessor      users.Processor
-		kycquiz             kycquiz.Repository
+		quizRepository      kycquiz.Repository
 		authEmailLinkClient emaillink.Client
 		socialRepository    kycsocial.Repository
 	}

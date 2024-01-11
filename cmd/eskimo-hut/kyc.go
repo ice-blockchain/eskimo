@@ -47,7 +47,7 @@ func (s *service) setupKYCRoutes(router *server.Router) {
 //	@Failure		500					{object}	server.ErrorResponse
 //	@Failure		504					{object}	server.ErrorResponse	"if request times out"
 //	@Router			/kyc/startOrContinueKYCStep4Session/users/{userId} [POST].
-func (s *service) StartOrContinueKYCStep4Session( //nolint:gocritic,funlen,revive,gocognit,gocyclo,cyclop // .
+func (s *service) StartOrContinueKYCStep4Session( //nolint:gocritic,funlen,revive,gocognit,cyclop // .
 	ctx context.Context,
 	req *server.Request[StartOrContinueKYCStep4SessionRequestBody, kycquiz.Quiz],
 ) (*server.Response[kycquiz.Quiz], *server.Response[server.ErrorResponse]) {
@@ -57,15 +57,15 @@ func (s *service) StartOrContinueKYCStep4Session( //nolint:gocritic,funlen,reviv
 	)
 
 	// Handle the session start.
-	if req.Data.QuestionNumber == magicNumberQuizStart && req.Data.SelectedOption == magicNumberQuizStart {
+	if *req.Data.QuestionNumber == magicNumberQuizStart && *req.Data.SelectedOption == magicNumberQuizStart {
 		var (
 			err  error
 			quiz *kycquiz.Quiz
 		)
 	langLoop:
 		for _, lang := range []string{req.Data.Language, defaultLanguage} {
-			quiz, err = s.kycquiz.StartQuizSession(ctx, req.AuthenticatedUser.UserID, lang)
-			if err != nil {
+			if quiz, err = s.quizRepository.StartQuizSession(ctx, req.AuthenticatedUser.UserID, lang); err != nil {
+				err = errors.Wrapf(err, "failed to StartQuizSession for userID:%v,language:%v", req.AuthenticatedUser.UserID, lang)
 				switch {
 				case errors.Is(err, kycquiz.ErrUnknownLanguage):
 					continue langLoop
@@ -76,13 +76,8 @@ func (s *service) StartOrContinueKYCStep4Session( //nolint:gocritic,funlen,reviv
 				case errors.Is(err, kycquiz.ErrSessionIsAlreadyRunning):
 					return nil, server.ForbiddenWithCode(errors.Errorf("another quiz session is already running"), quizAlreadyRunningErrorCode)
 
-				case errors.Is(err, kycquiz.ErrSessionFinished):
-					return nil, server.Conflict(
-						errors.Errorf("quiz session already finished successfully, ignore it and proceed with mining"),
-						quizAlreadyCompletedSuccessfullyErrorCode)
-
-				case errors.Is(err, kycquiz.ErrSessionFinishedWithError):
-					return nil, server.Conflict(errors.Errorf("quiz session already finished with error"), quizNotAvailableErrorCode)
+				case errors.Is(err, kycquiz.ErrSessionFinished), errors.Is(err, kycquiz.ErrSessionFinishedWithError), errors.Is(err, kycquiz.ErrInvalidKYCState): //nolint:lll // .
+					return nil, server.BadRequest(err, raceConditionErrorCode)
 
 				default:
 					return nil, server.Unexpected(err)
@@ -94,25 +89,18 @@ func (s *service) StartOrContinueKYCStep4Session( //nolint:gocritic,funlen,reviv
 	}
 
 	// Handle the session continuation.
-	session, err := s.kycquiz.ContinueQuizSession(ctx, req.AuthenticatedUser.UserID, req.Data.QuestionNumber, req.Data.SelectedOption)
+	session, err := s.quizRepository.ContinueQuizSession(ctx, req.AuthenticatedUser.UserID, *req.Data.QuestionNumber, *req.Data.SelectedOption)
 	if err != nil {
+		err = errors.Wrapf(err, "failed to ContinueQuizSession for userID:%v,question:%v,option:%v", req.AuthenticatedUser.UserID, *req.Data.QuestionNumber, *req.Data.SelectedOption) //nolint:lll // .
 		switch {
 		case errors.Is(err, kycquiz.ErrUnknownUser) || errors.Is(err, kycquiz.ErrUnknownSession):
 			return nil, server.NotFound(err, userNotFoundErrorCode)
 
-		case errors.Is(err, kycquiz.ErrSessionFinished):
-			return nil, server.Conflict(
-				errors.Errorf("quiz session already finished successfully, ignore it and proceed with mining"),
-				quizAlreadyCompletedSuccessfullyErrorCode)
-
-		case errors.Is(err, kycquiz.ErrSessionFinishedWithError):
-			return nil, server.Conflict(errors.Errorf("quiz session already finished with error"), quizNotAvailableErrorCode)
+		case errors.Is(err, kycquiz.ErrSessionExpired), errors.Is(err, kycquiz.ErrSessionFinished), errors.Is(err, kycquiz.ErrSessionFinishedWithError), errors.Is(err, kycquiz.ErrInvalidKYCState): //nolint:lll // .
+			return nil, server.BadRequest(err, raceConditionErrorCode)
 
 		case errors.Is(err, kycquiz.ErrUnknownQuestionNumber):
 			return nil, server.BadRequest(err, quizUnknownQuestionNumErrorCode)
-
-		case errors.Is(err, kycquiz.ErrSessionExpired):
-			return nil, server.Conflict(errors.Errorf("this quiz session has expired, please start a new one"), quizExpiredErrorCode)
 
 		default:
 			return nil, server.Unexpected(err)
@@ -220,7 +208,7 @@ func validateVerifySocialKYCStep(req *server.Request[kycsocial.VerificationMetad
 //	@Failure		500					{object}	server.ErrorResponse
 //	@Failure		504					{object}	server.ErrorResponse	"if request times out"
 //	@Router			/kyc/tryResetKYCSteps/users/{userId} [POST].
-func (s *service) TryResetKYCSteps( //nolint:gocritic,funlen,gocognit,revive // .
+func (s *service) TryResetKYCSteps( //nolint:gocritic,funlen,gocognit,revive,cyclop,gocyclo // .
 	ctx context.Context,
 	req *server.Request[TryResetKYCStepsRequestBody, User],
 ) (*server.Response[User], *server.Response[server.ErrorResponse]) {
@@ -240,6 +228,16 @@ func (s *service) TryResetKYCSteps( //nolint:gocritic,funlen,gocognit,revive // 
 				}
 				if err != nil {
 					return nil, server.Unexpected(errors.Wrapf(err, "failed to skip kycStep %v", kycStep))
+				}
+			}
+		case users.QuizKYCStep:
+			if err := s.quizRepository.SkipQuizSession(ctx, req.Data.UserID); err != nil {
+				if errors.Is(err, kycquiz.ErrInvalidKYCState) || errors.Is(err, kycquiz.ErrSessionFinished) || errors.Is(err, kycquiz.ErrSessionFinishedWithError) || errors.Is(err, kycquiz.ErrSessionExpired) { //nolint:lll // .
+					log.Error(errors.Wrapf(err, "skipQuizSession failed unexpectedly during tryResetKYCSteps for userID:%v", req.Data.UserID))
+					err = nil
+				}
+				if err != nil {
+					return nil, server.Unexpected(errors.Wrapf(err, "failed to SkipQuizSession for userID:%v", req.Data.UserID))
 				}
 			}
 		}
