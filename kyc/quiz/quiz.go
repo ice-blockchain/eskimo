@@ -254,47 +254,133 @@ func wrapErrorInTx(err error) error {
 	return err
 }
 
-func (r *repositoryImpl) StartQuizSession(ctx context.Context, userID UserID, lang string) (quiz *Quiz, err error) { //nolint:funlen //.
-	fnCheck := []func(context.Context, UserID, stdlibtime.Time, storage.QueryExecer) error{
-		r.CheckUserFailedSession,
-		r.CheckUserActiveSession,
-	}
-
-	err = r.CheckUserKYC(ctx, userID)
+func (r *repositoryImpl) StartQuizSession(ctx context.Context, userID UserID, lang string) (*Quiz, error) { //nolint:funlen //.
+	err := r.CheckUserKYC(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
 
-	err = storage.DoInTransaction(ctx, r.DB, func(tx storage.QueryExecer) error {
-		now := stdlibtime.Now().Truncate(stdlibtime.Second).UTC()
-		for _, fn := range fnCheck {
-			if err = fn(ctx, userID, now, tx); err != nil {
-				return wrapErrorInTx(err)
+	questions, err := r.SelectQuestions(ctx, r.DB, lang)
+	if err != nil {
+		return nil, err
+	}
+
+	// $1: user_id.
+	// $2: language.
+	// $3: questions.
+	// $4: session cool down (seconds).
+	// $5: max session duration (seconds).
+	const stmt = `
+	with session_failed as (
+		select
+			max(ended_at) as ended_at
+		from
+			failed_quiz_sessions
+		where
+			user_id = $1
+		having
+			max(ended_at) > (now() - make_interval(secs => $4))
+	),
+	session_active as (
+		select
+			quiz_sessions.started_at,
+			quiz_sessions.started_at + make_interval(secs => $5) as deadline,
+			quiz_sessions.ended_at is not null as finished,
+			quiz_sessions.ended_successfully
+		from
+			quiz_sessions
+		where
+			quiz_sessions.user_id = $1 and
+			not exists (select false from session_failed)
+		for update
+	),
+	session_upsert as (
+		insert into quiz_sessions
+			(user_id, language, questions, started_at, answers)
+		select
+			$1,
+			$2,
+			$3,
+			now(),
+			'{}'::smallint[]
+		where
+			coalesce((select false from session_failed), true) and
+			coalesce((select finished is false and session_active.deadline < now() from session_active), true)
+		on conflict on constraint quiz_sessions_pkey do
+		update
+		set
+			ended_at = null,
+			ended_successfully = false,
+			started_at = excluded.started_at,
+			questions = excluded.questions,
+			answers = excluded.answers,
+			language = excluded.language
+		returning
+			quiz_sessions.*,
+			quiz_sessions.started_at + make_interval(secs => $5) as deadline
+	)
+	select
+		session_failed.ended_at as failed_at,
+		session_active.started_at as active_started_at,
+		session_active.deadline as active_deadline,
+		session_active.finished as active_finished,
+		session_active.ended_successfully as active_ended_successfully,
+		session_upsert.started_at as upsert_started_at,
+		session_upsert.deadline as upsert_deadline
+	from
+		(values(true))
+	full outer join session_failed on true
+	full outer join session_active on true
+	full outer join session_upsert on true
+`
+
+	data, err := storage.Get[struct {
+		FailedAt                *time.Time `db:"failed_at"`
+		ActiveStartedAt         *time.Time `db:"active_started_at"`
+		ActiveDeadline          *time.Time `db:"active_deadline"`
+		ActiveFinished          *bool      `db:"active_finished"`
+		ActiveEndedSuccessfully *bool      `db:"active_ended_successfully"`
+		UpsertStartedAt         *time.Time `db:"upsert_started_at"`
+		UpsertDeadline          *time.Time `db:"upsert_deadline"`
+	}](ctx, r.DB, stmt, userID, lang, questionsToSlice(questions), r.config.SessionCoolDownSeconds, r.config.MaxSessionDurationSeconds)
+	if err != nil {
+		if errors.Is(err, storage.ErrRelationNotFound) {
+			err = ErrUnknownUser
+		}
+
+		return nil, errors.Wrap(err, "failed to start session")
+	}
+
+	now := stdlibtime.Now().Truncate(stdlibtime.Second).UTC()
+	switch {
+	case data.FailedAt != nil: // Failed session is still in cool down.
+		return nil, errors.Wrapf(ErrSessionFinishedWithError, "wait until %v",
+			data.FailedAt.Add(stdlibtime.Duration(r.config.SessionCoolDownSeconds)*stdlibtime.Second))
+
+	case data.ActiveStartedAt != nil && data.UpsertStartedAt == nil: // Active session is still running or ended with some result.
+		if *data.ActiveFinished {
+			if *data.ActiveEndedSuccessfully {
+				return nil, ErrSessionFinished
 			}
+
+			return nil, ErrSessionFinishedWithError
 		}
 
-		questions, qErr := r.SelectQuestions(ctx, tx, lang)
-		if qErr != nil {
-			return wrapErrorInTx(qErr)
+		if data.ActiveDeadline.After(now) {
+			return nil, errors.Wrapf(ErrSessionIsAlreadyRunning, "wait %s before next session", data.ActiveDeadline.Sub(now))
 		}
 
-		err = r.CreateSessionEntry(ctx, userID, lang, questions, now, tx)
-		if err != nil {
-			return wrapErrorInTx(err)
-		}
-
-		quiz = &Quiz{
+	case data.UpsertStartedAt != nil: // New session is started.
+		return &Quiz{
 			Progress: &Progress{
-				ExpiresAt:    time.New(now.Add(stdlibtime.Duration(r.config.MaxSessionDurationSeconds) * stdlibtime.Second)),
+				ExpiresAt:    data.UpsertDeadline,
 				NextQuestion: questions[0],
 				MaxQuestions: uint8(len(questions)),
 			},
-		}
+		}, nil
+	}
 
-		return nil
-	})
-
-	return quiz, err
+	panic("unreachable: " + userID)
 }
 
 func calculateProgress(correctAnswers, currentAnswers []uint8) (correctNum, incorrectNum uint8) {
