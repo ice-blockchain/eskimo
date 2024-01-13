@@ -150,6 +150,13 @@ func testManagerSessionStart(ctx context.Context, t *testing.T, r *repositoryImp
 				_, err := r.StartQuizSession(ctx, "bogus", "en")
 				require.ErrorIs(t, err, ErrSessionFinishedWithError)
 			})
+			t.Run("CoolDown", func(t *testing.T) {
+				helperForceFinishSession(t, r, "bogus", false)
+				_, err := storage.Exec(ctx, r.DB, "update quiz_sessions set started_at = to_timestamp(40), ended_at = to_timestamp(42), ended_successfully = false where user_id = $1", "bogus")
+				require.NoError(t, err)
+				_, err = r.StartQuizSession(ctx, "bogus", "en")
+				require.NoError(t, err)
+			})
 		})
 		t.Run("Expired", func(t *testing.T) {
 			helperForceResetSessionStartedAt(t, r, "bogus")

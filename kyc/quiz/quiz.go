@@ -102,17 +102,17 @@ func (r *repositoryImpl) SkipQuizSession(ctx context.Context, userID UserID) err
 		return err
 	}
 
-	now := stdlibtime.Now()
+	now := time.Now()
 	for _, fn := range []func(context.Context, UserID, stdlibtime.Time, storage.QueryExecer) error{
 		r.CheckUserFailedSession,
 		r.CheckUserActiveSession,
 	} {
-		if err := fn(ctx, userID, now, r.DB); err != nil {
+		if err := fn(ctx, userID, *now.Time, r.DB); err != nil {
 			return err
 		}
 	}
 
-	return errors.Wrapf(r.UserMarkSessionAsFinished(ctx, userID, now, r.DB, false, true),
+	return errors.Wrapf(r.UserMarkSessionAsFinished(ctx, userID, *now.Time, r.DB, false, true),
 		"failed to UserMarkSessionAsFinished for userID:%v", userID)
 }
 
@@ -147,11 +147,12 @@ select max(ended_at) as ended_at from failed_quiz_sessions where user_id = $1 ha
 
 func (r *repositoryImpl) CheckUserActiveSession(ctx context.Context, userID UserID, now stdlibtime.Time, tx storage.QueryExecer) error {
 	type userSession struct {
-		StartedAt            stdlibtime.Time `db:"started_at"`
-		Finished             bool            `db:"finished"`
-		FinishedSuccessfully bool            `db:"ended_successfully"`
+		StartedAt            time.Time  `db:"started_at"`
+		EndedAt              *time.Time `db:"ended_at"`
+		Finished             bool       `db:"finished"`
+		FinishedSuccessfully bool       `db:"ended_successfully"`
 	}
-	const stmt = `select started_at, ended_at is not null as finished, ended_successfully from quiz_sessions where user_id = $1`
+	const stmt = `select started_at, ended_at, ended_at is not null as finished, ended_successfully from quiz_sessions where user_id = $1`
 
 	data, err := storage.Get[userSession](ctx, tx, stmt, userID)
 	if err != nil {
@@ -167,7 +168,10 @@ func (r *repositoryImpl) CheckUserActiveSession(ctx context.Context, userID User
 			return ErrSessionFinished
 		}
 
-		return ErrSessionFinishedWithError
+		cooldown := data.EndedAt.Add(stdlibtime.Duration(r.config.SessionCoolDownSeconds) * stdlibtime.Second)
+		if cooldown.After(now) {
+			return ErrSessionFinishedWithError
+		}
 	}
 
 	deadline := data.StartedAt.Add(stdlibtime.Duration(r.config.MaxSessionDurationSeconds) * stdlibtime.Second)
@@ -285,6 +289,7 @@ func (r *repositoryImpl) StartQuizSession(ctx context.Context, userID UserID, la
 		select
 			quiz_sessions.started_at,
 			quiz_sessions.started_at + make_interval(secs => $5) as deadline,
+			quiz_sessions.ended_at,
 			quiz_sessions.ended_at is not null as finished,
 			quiz_sessions.ended_successfully
 		from
@@ -305,7 +310,11 @@ func (r *repositoryImpl) StartQuizSession(ctx context.Context, userID UserID, la
 			'{}'::smallint[]
 		where
 			coalesce((select false from session_failed), true) and
-			coalesce((select finished is false and session_active.deadline < now() from session_active), true)
+			coalesce((select
+						(finished is false and session_active.deadline < now()) or
+						(finished is true and ended_successfully is false and ((ended_at + make_interval(secs => $4)) < now()))
+					from
+						session_active), true)
 		on conflict on constraint quiz_sessions_pkey do
 		update
 		set
@@ -325,6 +334,7 @@ func (r *repositoryImpl) StartQuizSession(ctx context.Context, userID UserID, la
 		session_active.deadline as active_deadline,
 		session_active.finished as active_finished,
 		session_active.ended_successfully as active_ended_successfully,
+		session_active.ended_at as active_ended_at,
 		session_upsert.started_at as upsert_started_at,
 		session_upsert.deadline as upsert_deadline
 	from
@@ -340,6 +350,7 @@ func (r *repositoryImpl) StartQuizSession(ctx context.Context, userID UserID, la
 		ActiveDeadline          *time.Time `db:"active_deadline"`
 		ActiveFinished          *bool      `db:"active_finished"`
 		ActiveEndedSuccessfully *bool      `db:"active_ended_successfully"`
+		ActiveEndedAt           *time.Time `db:"active_ended_at"`
 		UpsertStartedAt         *time.Time `db:"upsert_started_at"`
 		UpsertDeadline          *time.Time `db:"upsert_deadline"`
 	}](ctx, r.DB, stmt, userID, lang, questionsToSlice(questions), r.config.SessionCoolDownSeconds, r.config.MaxSessionDurationSeconds)
