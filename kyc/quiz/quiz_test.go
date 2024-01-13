@@ -17,10 +17,10 @@ func helperInsertQuestion(t *testing.T, r *repositoryImpl) {
 	t.Helper()
 
 	const stmt = `
-insert into questions (correct_option, options, language, question) values
-	(1, '{"Paris",    "Melbourne", "Warsaw", "Guadalajara"}', 'en', 'What is the capital of France?'),
-	(2, '{"Kyiv",     "Madrid",    "Milan",  "Schaarzen"}',   'en', 'What is the capital of Spain?'),
-	(3, '{"Waalkerk", "İstanbul",  "Berlin", "Wien"}',        'en', 'What is the capital of Germany?')
+insert into questions (id, correct_option, options, language, question) values
+	(10, 1, '{"Paris",    "Melbourne", "Warsaw", "Guadalajara"}', 'en', 'What is the capital of France?'),
+	(20, 2, '{"Kyiv",     "Madrid",    "Milan",  "Schaarzen"}',   'en', 'What is the capital of Spain?'),
+	(30, 3, '{"Waalkerk", "İstanbul",  "Berlin", "Wien"}',        'en', 'What is the capital of Germany?')
 on conflict do nothing;
 	`
 
@@ -133,7 +133,7 @@ func testManagerSessionStart(ctx context.Context, t *testing.T, r *repositoryImp
 			require.NotNil(t, session.Progress.ExpiresAt)
 			require.NotEmpty(t, session.Progress.NextQuestion)
 			require.Equal(t, uint8(3), session.Progress.MaxQuestions)
-			require.Equal(t, uint(1), session.Progress.NextQuestion.Number)
+			require.Equal(t, uint8(1), session.Progress.NextQuestion.Number)
 		})
 		t.Run("AlreadyExists", func(t *testing.T) {
 			_, err := r.StartQuizSession(ctx, "bogus", "en")
@@ -150,6 +150,13 @@ func testManagerSessionStart(ctx context.Context, t *testing.T, r *repositoryImp
 				_, err := r.StartQuizSession(ctx, "bogus", "en")
 				require.ErrorIs(t, err, ErrSessionFinishedWithError)
 			})
+			t.Run("CoolDown", func(t *testing.T) {
+				helperForceFinishSession(t, r, "bogus", false)
+				_, err := storage.Exec(ctx, r.DB, "update quiz_sessions set started_at = to_timestamp(40), ended_at = to_timestamp(42), ended_successfully = false where user_id = $1", "bogus")
+				require.NoError(t, err)
+				_, err = r.StartQuizSession(ctx, "bogus", "en")
+				require.NoError(t, err)
+			})
 		})
 		t.Run("Expired", func(t *testing.T) {
 			helperForceResetSessionStartedAt(t, r, "bogus")
@@ -160,7 +167,7 @@ func testManagerSessionStart(ctx context.Context, t *testing.T, r *repositoryImp
 			require.NotNil(t, session.Progress.ExpiresAt)
 			require.NotEmpty(t, session.Progress.NextQuestion)
 			require.Equal(t, uint8(3), session.Progress.MaxQuestions)
-			require.Equal(t, uint(1), session.Progress.NextQuestion.Number)
+			require.Equal(t, uint8(1), session.Progress.NextQuestion.Number)
 		})
 		t.Run("CoolDown", func(t *testing.T) {
 			helperSessionReset(t, r, "bogus", true)
@@ -178,7 +185,63 @@ func testManagerSessionStart(ctx context.Context, t *testing.T, r *repositoryImp
 			require.ErrorIs(t, err, ErrSessionFinishedWithError)
 		})
 	})
+}
 
+func testManagerSessionSkip(ctx context.Context, t *testing.T, r *repositoryImpl) {
+	t.Run("OK", func(t *testing.T) {
+		helperSessionReset(t, r, "bogus", true)
+
+		_, err := r.StartQuizSession(ctx, "bogus", "en")
+		require.NoError(t, err)
+
+		err = r.SkipQuizSession(ctx, "bogus")
+		require.NoError(t, err)
+
+		_, err = r.StartQuizSession(ctx, "bogus", "en")
+		require.ErrorIs(t, err, ErrSessionFinishedWithError)
+	})
+	t.Run("UnknownSession", func(t *testing.T) {
+		helperSessionReset(t, r, "bogus", true)
+
+		err := r.SkipQuizSession(ctx, "bogus")
+		require.ErrorIs(t, err, ErrUnknownSession)
+	})
+	t.Run("Expired", func(t *testing.T) {
+		helperSessionReset(t, r, "bogus", true)
+
+		_, err := r.StartQuizSession(ctx, "bogus", "en")
+		require.NoError(t, err)
+
+		helperForceResetSessionStartedAt(t, r, "bogus")
+
+		err = r.SkipQuizSession(ctx, "bogus")
+		require.ErrorIs(t, err, ErrSessionExpired)
+	})
+	t.Run("Finished", func(t *testing.T) {
+		t.Run("Success", func(t *testing.T) {
+			helperSessionReset(t, r, "bogus", true)
+
+			_, err := r.StartQuizSession(ctx, "bogus", "en")
+			require.NoError(t, err)
+
+			helperForceFinishSession(t, r, "bogus", true)
+
+			err = r.SkipQuizSession(ctx, "bogus")
+			require.ErrorIs(t, err, ErrSessionFinished)
+		})
+		t.Run("Error", func(t *testing.T) {
+			helperSessionReset(t, r, "bogus", true)
+
+			_, err := r.StartQuizSession(ctx, "bogus", "en")
+			require.NoError(t, err)
+
+			err = r.SkipQuizSession(ctx, "bogus")
+			require.NoError(t, err)
+
+			err = r.SkipQuizSession(ctx, "bogus")
+			require.ErrorIs(t, err, ErrSessionFinishedWithError)
+		})
+	})
 }
 
 func testManagerSessionContinueErrors(ctx context.Context, t *testing.T, r *repositoryImpl) {
@@ -302,7 +365,7 @@ func testManagerSessionContinueWithIncorrectAnswers(ctx context.Context, t *test
 	require.NotEmpty(t, session.Progress.NextQuestion)
 	require.Equal(t, uint8(3), session.Progress.MaxQuestions)
 	require.NotEmpty(t, session.Progress.NextQuestion.Text)
-	require.Equal(t, uint(1), session.Progress.NextQuestion.Number)
+	require.Equal(t, uint8(1), session.Progress.NextQuestion.Number)
 
 	session, err = r.ContinueQuizSession(ctx, "bogus", session.Progress.NextQuestion.Number, 0)
 	require.NoError(t, err)
@@ -314,7 +377,7 @@ func testManagerSessionContinueWithIncorrectAnswers(ctx context.Context, t *test
 	require.NotEmpty(t, session.Progress.NextQuestion.Text)
 	require.Equal(t, uint8(0), session.Progress.CorrectAnswers)
 	require.Equal(t, uint8(1), session.Progress.IncorrectAnswers)
-	require.Equal(t, uint(2), session.Progress.NextQuestion.Number)
+	require.Equal(t, uint8(2), session.Progress.NextQuestion.Number)
 
 	ans := helperSolveQuestion(t, session.Progress.NextQuestion.Text)
 	t.Logf("q: %v, ans: %d", session.Progress.NextQuestion.Text, ans)
@@ -328,7 +391,7 @@ func testManagerSessionContinueWithIncorrectAnswers(ctx context.Context, t *test
 	require.NotEmpty(t, session.Progress.NextQuestion.Text)
 	require.Equal(t, uint8(1), session.Progress.CorrectAnswers)
 	require.Equal(t, uint8(1), session.Progress.IncorrectAnswers)
-	require.Equal(t, uint(3), session.Progress.NextQuestion.Number)
+	require.Equal(t, uint8(3), session.Progress.NextQuestion.Number)
 
 	session, err = r.ContinueQuizSession(ctx, "bogus", session.Progress.NextQuestion.Number, 0)
 	require.NoError(t, err)
@@ -362,6 +425,10 @@ func TestSessionManager(t *testing.T) {
 		testManagerSessionContinueErrors(ctx, t, repo)
 		testManagerSessionContinueWithCorrectAnswers(ctx, t, repo)
 		testManagerSessionContinueWithIncorrectAnswers(ctx, t, repo)
+	})
+
+	t.Run("Skip", func(t *testing.T) {
+		testManagerSessionSkip(ctx, t, repo)
 	})
 
 	require.NoError(t, repo.Close())
