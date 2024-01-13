@@ -97,89 +97,59 @@ func (r *repositoryImpl) validateKycStep(user *users.User) error {
 	return nil
 }
 
-func (r *repositoryImpl) SkipQuizSession(ctx context.Context, userID UserID) error {
+func (r *repositoryImpl) SkipQuizSession(ctx context.Context, userID UserID) error { //nolint:funlen //.
+	// $1: user_id.
+	const stmt = `
+	select
+		started_at,
+		ended_at is not null as finished,
+		ended_successfully
+	from
+		quiz_sessions
+	where
+		user_id = $1
+	for update
+	`
+
 	if err := r.CheckUserKYC(ctx, userID); err != nil {
 		return err
 	}
 
-	now := time.Now()
-	for _, fn := range []func(context.Context, UserID, stdlibtime.Time, storage.QueryExecer) error{
-		r.CheckUserFailedSession,
-		r.CheckUserActiveSession,
-	} {
-		if err := fn(ctx, userID, *now.Time, r.DB); err != nil {
-			return err
-		}
-	}
+	err := storage.DoInTransaction(ctx, r.DB, func(tx storage.QueryExecer) error {
+		now := time.Now()
 
-	return errors.Wrapf(r.UserMarkSessionAsFinished(ctx, userID, *now.Time, r.DB, false, true),
-		"failed to UserMarkSessionAsFinished for userID:%v", userID)
-}
+		data, err := storage.Get[struct {
+			StartedAt *time.Time `db:"started_at"`
+			Finished  bool       `db:"finished"`
+			Success   bool       `db:"ended_successfully"`
+		}](ctx, tx, stmt, userID)
+		if err != nil {
+			if errors.Is(err, storage.ErrNotFound) {
+				return wrapErrorInTx(ErrUnknownSession)
+			}
 
-func (r *repositoryImpl) CheckUserFailedSession(ctx context.Context, userID UserID, now stdlibtime.Time, tx storage.QueryExecer) error {
-	type failedSession struct {
-		EndedAt stdlibtime.Time `db:"ended_at"`
-	}
-
-	const stmt = `
-select max(ended_at) as ended_at from failed_quiz_sessions where user_id = $1 having max(ended_at) > $2
-	`
-
-	term := now.
-		Add(stdlibtime.Duration(-r.config.SessionCoolDownSeconds) * stdlibtime.Second).
-		Truncate(stdlibtime.Second)
-	data, err := storage.Get[failedSession](ctx, tx, stmt, userID, term)
-	if err != nil {
-		if errors.Is(err, storage.ErrNotFound) {
-			return nil
+			return errors.Wrap(wrapErrorInTx(err), "failed to get session data")
 		}
 
-		return errors.Wrap(err, "failed to get failed session data")
-	}
+		switch {
+		case data.StartedAt == nil:
+			return wrapErrorInTx(ErrUnknownSession)
 
-	next := data.EndedAt.
-		Add(stdlibtime.Duration(r.config.SessionCoolDownSeconds) * stdlibtime.Second).
-		Truncate(stdlibtime.Second).
-		UTC()
+		case data.StartedAt.Add(stdlibtime.Duration(r.config.MaxSessionDurationSeconds) * stdlibtime.Second).Before(*now.Time):
+			return wrapErrorInTx(ErrSessionExpired)
 
-	return errors.Wrapf(ErrSessionFinishedWithError, "wait until %v", next)
-}
+		case data.Finished:
+			if data.Success {
+				return wrapErrorInTx(ErrSessionFinished)
+			}
 
-func (r *repositoryImpl) CheckUserActiveSession(ctx context.Context, userID UserID, now stdlibtime.Time, tx storage.QueryExecer) error {
-	type userSession struct {
-		StartedAt            time.Time  `db:"started_at"`
-		EndedAt              *time.Time `db:"ended_at"`
-		Finished             bool       `db:"finished"`
-		FinishedSuccessfully bool       `db:"ended_successfully"`
-	}
-	const stmt = `select started_at, ended_at, ended_at is not null as finished, ended_successfully from quiz_sessions where user_id = $1`
-
-	data, err := storage.Get[userSession](ctx, tx, stmt, userID)
-	if err != nil {
-		if errors.Is(err, storage.ErrNotFound) {
-			return nil
+			return wrapErrorInTx(ErrSessionFinishedWithError)
 		}
 
-		return errors.Wrap(err, "failed to get active session data")
-	}
+		return wrapErrorInTx(r.UserMarkSessionAsFinished(ctx, userID, *now.Time, tx, false, true))
+	})
 
-	if data.Finished {
-		if data.FinishedSuccessfully {
-			return ErrSessionFinished
-		}
-
-		cooldown := data.EndedAt.Add(stdlibtime.Duration(r.config.SessionCoolDownSeconds) * stdlibtime.Second)
-		if cooldown.After(now) {
-			return ErrSessionFinishedWithError
-		}
-	}
-
-	deadline := data.StartedAt.Add(stdlibtime.Duration(r.config.MaxSessionDurationSeconds) * stdlibtime.Second)
-	if deadline.After(now) {
-		return ErrSessionIsAlreadyRunning
-	}
-
-	return nil
+	return errors.Wrap(err, "failed to skip session")
 }
 
 func (r *repositoryImpl) SelectQuestions(ctx context.Context, tx storage.QueryExecer, lang string) ([]*Question, error) {
@@ -213,35 +183,6 @@ func questionsToSlice(questions []*Question) []uint {
 	}
 
 	return result
-}
-
-func (*repositoryImpl) CreateSessionEntry( //nolint:revive //.
-	ctx context.Context,
-	userID UserID,
-	lang string,
-	questions []*Question,
-	now stdlibtime.Time,
-	tx storage.QueryExecer,
-) error {
-	const stmt = `
-insert into quiz_sessions (user_id, language, questions, started_at, answers) values ($1, $2, $3, $4, '{}'::smallint[])
-	on conflict on constraint quiz_sessions_pkey do update
-	set
-		started_at = excluded.started_at,
-		questions = excluded.questions,
-		answers = excluded.answers,
-		language = excluded.language,
-		ended_successfully = false
-	`
-
-	_, err := storage.Exec(ctx, tx, stmt, userID, lang, questionsToSlice(questions), now)
-	if err != nil {
-		if errors.Is(err, storage.ErrRelationNotFound) {
-			err = ErrUnknownUser
-		}
-	}
-
-	return errors.Wrap(err, "failed to create session entry")
 }
 
 func wrapErrorInTx(err error) error {
@@ -551,7 +492,7 @@ select
 	result.answers,
 	result.language,
 	result.user_id,
-    $4 AS skipped
+	$4 AS skipped
 from result
 where
 	result.ended_successfully = false
