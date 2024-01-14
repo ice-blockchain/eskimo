@@ -279,7 +279,7 @@ func (r *repositoryImpl) StartQuizSession(ctx context.Context, userID UserID, la
 		session_upsert.started_at as upsert_started_at,
 		session_upsert.deadline as upsert_deadline
 	from
-		(values(true))
+		(values(true)) dummy
 	full outer join session_failed on true
 	full outer join session_active on true
 	full outer join session_upsert on true
