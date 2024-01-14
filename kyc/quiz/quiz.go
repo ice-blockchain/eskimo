@@ -585,6 +585,12 @@ func (r *repositoryImpl) ContinueQuizSession( //nolint:funlen,revive //.
 			},
 		}
 
+		if int(incorrectNum) >= r.config.MaxWrongAnswersPerSession {
+			quiz.Result = FailureResult
+
+			return wrapErrorInTx(r.UserMarkSessionAsFinished(ctx, userID, now, tx, false, false))
+		}
+
 		if len(newAnswers) != len(progress.CorrectAnswers) {
 			nextQuestion, nErr := r.LoadQuestionByID(ctx, tx, progress.Lang, progress.Questions[question])
 			if nErr != nil {
@@ -597,15 +603,9 @@ func (r *repositoryImpl) ContinueQuizSession( //nolint:funlen,revive //.
 			return nil
 		}
 
-		if int(incorrectNum) > r.config.MaxWrongAnswersPerSession {
-			quiz.Result = FailureResult
-			err = r.UserMarkSessionAsFinished(ctx, userID, now, tx, false, false)
-		} else {
-			quiz.Result = SuccessResult
-			err = r.UserMarkSessionAsFinished(ctx, userID, now, tx, true, false)
-		}
+		quiz.Result = SuccessResult
 
-		return wrapErrorInTx(err)
+		return wrapErrorInTx(r.UserMarkSessionAsFinished(ctx, userID, now, tx, true, false))
 	})
 
 	return quiz, err
