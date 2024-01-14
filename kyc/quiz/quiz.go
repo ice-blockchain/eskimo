@@ -585,7 +585,7 @@ func (r *repositoryImpl) ContinueQuizSession( //nolint:funlen,revive //.
 			},
 		}
 
-		if int(incorrectNum) >= r.config.MaxWrongAnswersPerSession {
+		if int(incorrectNum) > r.config.MaxWrongAnswersPerSession {
 			quiz.Result = FailureResult
 
 			return wrapErrorInTx(r.UserMarkSessionAsFinished(ctx, userID, now, tx, false, false))
