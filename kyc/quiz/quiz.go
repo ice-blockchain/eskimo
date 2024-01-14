@@ -414,7 +414,7 @@ group by
 	return data.userProgress, nil
 }
 
-func (*repositoryImpl) CheckQuestionNumber(ctx context.Context, questions []uint8, num uint8, tx storage.QueryExecer) (uint8, error) {
+func (*repositoryImpl) CheckQuestionNumber(ctx context.Context, lang string, questions []uint8, num uint8, tx storage.QueryExecer) (uint8, error) {
 	type currentQuestion struct {
 		CorrectOption uint8 `db:"correct_option"`
 	}
@@ -423,7 +423,7 @@ func (*repositoryImpl) CheckQuestionNumber(ctx context.Context, questions []uint
 		return 0, ErrUnknownQuestionNumber
 	}
 
-	data, err := storage.Get[currentQuestion](ctx, tx, `select correct_option from questions where id = $1`, questions[num-1])
+	data, err := storage.Get[currentQuestion](ctx, tx, `select correct_option from questions where id = $1 and "language" = $2`, questions[num-1], lang)
 	if err != nil {
 		if errors.Is(err, storage.ErrNotFound) {
 			return 0, ErrUnknownQuestionNumber
@@ -562,7 +562,7 @@ func (r *repositoryImpl) ContinueQuizSession( //nolint:funlen,revive //.
 		if pErr != nil {
 			return wrapErrorInTx(pErr)
 		}
-		_, err = r.CheckQuestionNumber(ctx, progress.Questions, question, tx)
+		_, err = r.CheckQuestionNumber(ctx, progress.Lang, progress.Questions, question, tx)
 		if err != nil {
 			return wrapErrorInTx(err)
 		} else if uint8(len(progress.Answers)) != question-1 {

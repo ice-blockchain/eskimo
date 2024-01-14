@@ -20,7 +20,10 @@ func helperInsertQuestion(t *testing.T, r *repositoryImpl) {
 insert into questions (id, correct_option, options, language, question) values
 	(10, 1, '{"Paris",    "Melbourne", "Warsaw", "Guadalajara"}', 'en', 'What is the capital of France?'),
 	(20, 2, '{"Kyiv",     "Madrid",    "Milan",  "Schaarzen"}',   'en', 'What is the capital of Spain?'),
-	(30, 3, '{"Waalkerk", "İstanbul",  "Berlin", "Wien"}',        'en', 'What is the capital of Germany?')
+	(30, 3, '{"Waalkerk", "İstanbul",  "Berlin", "Wien"}',        'en', 'What is the capital of Germany?'),
+	(10, 1, '{"Paris",    "Melbourne", "Warsaw", "Guadalajara"}', 'xx', 'What is the capital of France???'),
+	(20, 2, '{"Kyiv",     "Madrid",    "Milan",  "Schaarzen"}',   'xx', 'What is the capital of Spain???'),
+	(30, 3, '{"Waalkerk", "İstanbul",  "Berlin", "Wien"}',        'xx', 'What is the capital of Germany???')
 on conflict do nothing;
 	`
 
