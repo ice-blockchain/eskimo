@@ -118,7 +118,7 @@ func (r *repositoryImpl) SkipQuizSession(ctx context.Context, userID UserID) err
 	err := storage.DoInTransaction(ctx, r.DB, func(tx storage.QueryExecer) error {
 		now := time.Now()
 
-		data, err := storage.Get[struct {
+		data, err := storage.ExecOne[struct {
 			StartedAt *time.Time `db:"started_at"`
 			Finished  bool       `db:"finished"`
 			Success   bool       `db:"ended_successfully"`
@@ -285,7 +285,7 @@ func (r *repositoryImpl) StartQuizSession(ctx context.Context, userID UserID, la
 	full outer join session_upsert on true
 `
 
-	data, err := storage.Get[struct {
+	data, err := storage.ExecOne[struct {
 		FailedAt                *time.Time `db:"failed_at"`
 		ActiveStartedAt         *time.Time `db:"active_started_at"`
 		ActiveDeadline          *time.Time `db:"active_deadline"`
@@ -445,7 +445,7 @@ where
 returning answers
 	`
 
-	data, err := storage.Get[userProgress](ctx, tx, stmt, userID, answer)
+	data, err := storage.ExecOne[userProgress](ctx, tx, stmt, userID, answer)
 	if err != nil {
 		if errors.Is(err, storage.ErrNotFound) {
 			return nil, ErrUnknownSession
