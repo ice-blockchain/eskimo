@@ -363,9 +363,13 @@ func (r *repositoryImpl) CheckUserRunningSession( //nolint:funlen //.
 		Finished             bool `db:"finished"`
 		FinishedSuccessfully bool `db:"ended_successfully"`
 	}
+
+	// $1: user_id.
+	// $2: max session duration (seconds).
 	const stmt = `
 select
 	started_at,
+	started_at + make_interval(secs => $2) as deadline,
 	ended_at is not null as finished,
 	questions,
 	session.language,
@@ -389,7 +393,7 @@ group by
 	ended_successfully
 `
 
-	data, err := storage.Get[userSession](ctx, tx, stmt, userID)
+	data, err := storage.Get[userSession](ctx, tx, stmt, userID, r.config.MaxSessionDurationSeconds)
 	if err != nil {
 		if errors.Is(err, storage.ErrNotFound) {
 			return userProgress{}, ErrUnknownSession
@@ -587,7 +591,7 @@ func (r *repositoryImpl) ContinueQuizSession( //nolint:funlen,revive //.
 				return wrapErrorInTx(nErr)
 			}
 			nextQuestion.Number = question + 1
-			quiz.Progress.ExpiresAt = time.New(now.Add(stdlibtime.Duration(r.config.MaxSessionDurationSeconds) * stdlibtime.Second))
+			quiz.Progress.ExpiresAt = progress.Deadline
 			quiz.Progress.NextQuestion = nextQuestion
 
 			return nil
