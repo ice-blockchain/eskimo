@@ -4,7 +4,9 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"slices"
+	"strings"
 
 	"github.com/pkg/errors"
 
@@ -21,6 +23,25 @@ func (s *service) setupKYCRoutes(router *server.Router) {
 		POST("kyc/startOrContinueKYCStep4Session/users/:userId", server.RootHandler(s.StartOrContinueKYCStep4Session)).
 		POST("kyc/verifySocialKYCStep/users/:userId", server.RootHandler(s.VerifySocialKYCStep)).
 		POST("kyc/tryResetKYCSteps/users/:userId", server.RootHandler(s.TryResetKYCSteps))
+}
+
+func (s *service) startQuizSession(ctx context.Context, userID users.UserID, lang string) (*kycquiz.Quiz, error) {
+	const defaultLanguage = "en"
+
+	if strings.EqualFold(lang, defaultLanguage) {
+		return s.quizRepository.StartQuizSession(ctx, userID, defaultLanguage) //nolint:wrapcheck // .
+	}
+
+	quiz, err := s.quizRepository.StartQuizSession(ctx, userID, lang)
+	if err != nil {
+		if errors.Is(err, kycquiz.ErrUnknownLanguage) {
+			log.Warn(fmt.Sprintf("failed to StartQuizSession for userID:%v,language:%v, trying default language:%v", userID, lang, defaultLanguage))
+
+			return s.quizRepository.StartQuizSession(ctx, userID, defaultLanguage) //nolint:wrapcheck // .
+		}
+	}
+
+	return quiz, err //nolint:wrapcheck // .
 }
 
 // StartOrContinueKYCStep4Session godoc
@@ -47,41 +68,32 @@ func (s *service) setupKYCRoutes(router *server.Router) {
 //	@Failure		500					{object}	server.ErrorResponse
 //	@Failure		504					{object}	server.ErrorResponse	"if request times out"
 //	@Router			/kyc/startOrContinueKYCStep4Session/users/{userId} [POST].
-func (s *service) StartOrContinueKYCStep4Session( //nolint:gocritic,funlen,revive,gocognit,cyclop // .
+func (s *service) StartOrContinueKYCStep4Session( //nolint:gocritic,funlen // .
 	ctx context.Context,
 	req *server.Request[StartOrContinueKYCStep4SessionRequestBody, kycquiz.Quiz],
 ) (*server.Response[kycquiz.Quiz], *server.Response[server.ErrorResponse]) {
 	const (
 		magicNumberQuizStart = 222
-		defaultLanguage      = "en"
 	)
 
 	// Handle the session start.
 	if *req.Data.QuestionNumber == magicNumberQuizStart && *req.Data.SelectedOption == magicNumberQuizStart {
-		var (
-			err  error
-			quiz *kycquiz.Quiz
-		)
-	langLoop:
-		for _, lang := range []string{req.Data.Language, defaultLanguage} {
-			if quiz, err = s.quizRepository.StartQuizSession(ctx, req.AuthenticatedUser.UserID, lang); err != nil {
-				err = errors.Wrapf(err, "failed to StartQuizSession for userID:%v,language:%v", req.AuthenticatedUser.UserID, lang)
-				switch {
-				case errors.Is(err, kycquiz.ErrUnknownLanguage):
-					continue langLoop
+		quiz, err := s.startQuizSession(ctx, req.AuthenticatedUser.UserID, req.Data.Language)
+		err = errors.Wrapf(err, "failed to StartQuizSession for userID:%v,language:%v", req.AuthenticatedUser.UserID, req.Data.Language)
+		if err != nil {
+			log.Error(err)
+			switch {
+			case errors.Is(err, kycquiz.ErrUnknownUser):
+				return nil, server.NotFound(err, userNotFoundErrorCode)
 
-				case errors.Is(err, kycquiz.ErrUnknownUser):
-					return nil, server.NotFound(err, userNotFoundErrorCode)
+			case errors.Is(err, kycquiz.ErrSessionIsAlreadyRunning):
+				return nil, server.ForbiddenWithCode(errors.Errorf("another quiz session is already running"), quizAlreadyRunningErrorCode)
 
-				case errors.Is(err, kycquiz.ErrSessionIsAlreadyRunning):
-					return nil, server.ForbiddenWithCode(errors.Errorf("another quiz session is already running"), quizAlreadyRunningErrorCode)
+			case errors.Is(err, kycquiz.ErrSessionFinished), errors.Is(err, kycquiz.ErrSessionFinishedWithError), errors.Is(err, kycquiz.ErrInvalidKYCState): //nolint:lll // .
+				return nil, server.BadRequest(err, raceConditionErrorCode)
 
-				case errors.Is(err, kycquiz.ErrSessionFinished), errors.Is(err, kycquiz.ErrSessionFinishedWithError), errors.Is(err, kycquiz.ErrInvalidKYCState): //nolint:lll // .
-					return nil, server.BadRequest(err, raceConditionErrorCode)
-
-				default:
-					return nil, server.Unexpected(err)
-				}
+			default:
+				return nil, server.Unexpected(err)
 			}
 		}
 
