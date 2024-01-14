@@ -7,7 +7,6 @@ import (
 	_ "embed"
 	"io"
 	"mime/multipart"
-	stdlibtime "time"
 
 	"github.com/ice-blockchain/eskimo/users"
 	"github.com/ice-blockchain/wintr/connectors/storage/v2"
@@ -89,11 +88,12 @@ type (
 		Msg string
 	}
 	userProgress struct {
-		StartedAt      stdlibtime.Time `db:"started_at"`
-		Lang           string          `db:"language"`
-		Questions      []uint8         `db:"questions"`
-		Answers        []uint8         `db:"answers"`
-		CorrectAnswers []uint8         `db:"correct_answers"`
+		StartedAt      *time.Time `db:"started_at"`
+		Deadline       *time.Time `db:"deadline"`
+		Lang           string     `db:"language"`
+		Questions      []uint8    `db:"questions"`
+		Answers        []uint8    `db:"answers"`
+		CorrectAnswers []uint8    `db:"correct_answers"`
 	}
 	repositoryImpl struct {
 		DB       *storage.DB
