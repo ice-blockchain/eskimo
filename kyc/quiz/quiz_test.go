@@ -177,7 +177,7 @@ func testManagerSessionStart(ctx context.Context, t *testing.T, r *repositoryImp
 			session, err := r.StartQuizSession(ctx, "bogus", "en")
 			require.NoError(t, err)
 
-			for i := uint8(0); i < uint8(r.config.MaxWrongAnswersPerSession); i++ {
+			for i := uint8(0); i < uint8(r.config.MaxWrongAnswersPerSession+1); i++ {
 				session, err = r.ContinueQuizSession(ctx, "bogus", i+uint8(1), 0)
 				require.NoError(t, err)
 				require.NotNil(t, session)
@@ -378,12 +378,23 @@ func testManagerSessionContinueWithIncorrectAnswers(ctx context.Context, t *test
 	session, err = r.ContinueQuizSession(ctx, "bogus", session.Progress.NextQuestion.Number, 0)
 	require.NoError(t, err)
 	require.NotNil(t, session)
+	require.NotNil(t, session.Progress)
+	require.Empty(t, session.Result)
+	require.NotNil(t, session.Progress.ExpiresAt)
+	require.NotEmpty(t, session.Progress.NextQuestion)
+	require.Equal(t, uint8(3), session.Progress.MaxQuestions)
+	require.NotEmpty(t, session.Progress.NextQuestion.Text)
+	require.Equal(t, uint8(2), session.Progress.NextQuestion.Number)
+
+	session, err = r.ContinueQuizSession(ctx, "bogus", session.Progress.NextQuestion.Number, 0)
+	require.NoError(t, err)
+	require.NotNil(t, session)
 	require.Equal(t, FailureResult, session.Result)
 	require.NotNil(t, session.Progress)
 	require.Nil(t, session.Progress.NextQuestion)
 	require.Equal(t, uint8(3), session.Progress.MaxQuestions)
 	require.Equal(t, uint8(0), session.Progress.CorrectAnswers)
-	require.Equal(t, uint8(1), session.Progress.IncorrectAnswers)
+	require.Equal(t, uint8(2), session.Progress.IncorrectAnswers)
 }
 
 func TestSessionManager(t *testing.T) {
