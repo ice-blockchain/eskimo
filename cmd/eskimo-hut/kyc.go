@@ -108,7 +108,7 @@ func (s *service) StartOrContinueKYCStep4Session( //nolint:gocritic,funlen // .
 		case errors.Is(err, kycquiz.ErrUnknownUser) || errors.Is(err, kycquiz.ErrUnknownSession):
 			return nil, server.NotFound(err, userNotFoundErrorCode)
 
-		case errors.Is(err, kycquiz.ErrSessionExpired), errors.Is(err, kycquiz.ErrSessionFinished), errors.Is(err, kycquiz.ErrSessionFinishedWithError), errors.Is(err, kycquiz.ErrInvalidKYCState): //nolint:lll // .
+		case errors.Is(err, kycquiz.ErrSessionFinished), errors.Is(err, kycquiz.ErrSessionFinishedWithError), errors.Is(err, kycquiz.ErrInvalidKYCState): //nolint:lll // .
 			return nil, server.BadRequest(err, raceConditionErrorCode)
 
 		case errors.Is(err, kycquiz.ErrUnknownQuestionNumber):
@@ -244,7 +244,7 @@ func (s *service) TryResetKYCSteps( //nolint:gocritic,funlen,gocognit,revive,cyc
 			}
 		case users.QuizKYCStep:
 			if err := s.quizRepository.SkipQuizSession(ctx, req.Data.UserID); err != nil {
-				if errors.Is(err, kycquiz.ErrInvalidKYCState) || errors.Is(err, kycquiz.ErrSessionFinished) || errors.Is(err, kycquiz.ErrSessionFinishedWithError) || errors.Is(err, kycquiz.ErrSessionExpired) { //nolint:lll // .
+				if errors.Is(err, kycquiz.ErrInvalidKYCState) || errors.Is(err, kycquiz.ErrSessionFinished) || errors.Is(err, kycquiz.ErrSessionFinishedWithError) { //nolint:lll // .
 					log.Error(errors.Wrapf(err, "skipQuizSession failed unexpectedly during tryResetKYCSteps for userID:%v", req.Data.UserID))
 					err = nil
 				}

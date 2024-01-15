@@ -69,7 +69,6 @@ var (
 	ErrSessionIsAlreadyRunning  = newError("another session is already running")
 	ErrSessionFinished          = newError("session closed")
 	ErrSessionFinishedWithError = newError("session closed with error")
-	ErrSessionExpired           = newError("session expired")
 	ErrUnknownQuestionNumber    = newError("unknown question number")
 	ErrUnknownSession           = newError("unknown session and/or user")
 )
@@ -78,9 +77,11 @@ const (
 	applicationYamlKey = "kyc/quiz"
 )
 
-var ( //nolint:gofumpt //.
+var (
 	//go:embed DDL.sql
 	ddl string
+
+	errSessionExpired = newError("session expired")
 )
 
 type (
