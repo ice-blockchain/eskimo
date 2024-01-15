@@ -475,7 +475,7 @@ func parseProcessFaceRecognitionResultRequest(req *server.Request[ProcessFaceRec
 //	@Failure		500			{object}	server.ErrorResponse
 //	@Failure		504			{object}	server.ErrorResponse	"if request times out"
 //	@Router			/auth/getValidUserForPhoneNumberMigration [POST].
-func (s *service) GetValidUserForPhoneNumberMigration( //nolint:funlen // .
+func (s *service) GetValidUserForPhoneNumberMigration( //nolint:funlen,revive // .
 	ctx context.Context,
 	req *server.Request[GetValidUserForPhoneNumberMigrationArg, User],
 ) (successResp *server.Response[User], errorResp *server.Response[server.ErrorResponse]) {
@@ -507,6 +507,15 @@ func (s *service) GetValidUserForPhoneNumberMigration( //nolint:funlen // .
 		return nil, server.Unexpected(errors.Wrapf(err, "failed to IsEmailUsedBySomebodyElse(%v,%v)", usr.ID, req.Data.Email))
 	} else if emailUsedBySomebodyElse {
 		return nil, server.Conflict(users.ErrDuplicate, emailUsedBySomebodyElseEmail)
+	}
+	if req.Data.Email != "" {
+		if uid, gErr := server.Auth(ctx).GetUserUIDByEmail(ctx, req.Data.Email); gErr != nil || uid != "" {
+			if gErr != nil {
+				return nil, server.Unexpected(err)
+			}
+
+			return nil, server.Conflict(users.ErrDuplicate, emailUsedBySomebodyElseEmail)
+		}
 	}
 
 	minimalUsr := new(User)
