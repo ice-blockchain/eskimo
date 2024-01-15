@@ -99,11 +99,8 @@ func (r *repositoryImpl) validateKycStep(user *users.User) error {
 
 func (r *repositoryImpl) SkipQuizSession(ctx context.Context, userID UserID) error { //nolint:funlen //.
 	// $1: user_id.
-	// $2: max session duration (seconds).
 	const stmt = `
 	select
-		started_at,
-		started_at + make_interval(secs => $2) as deadline,
 		ended_at is not null as finished,
 		ended_successfully
 	from
@@ -121,11 +118,9 @@ func (r *repositoryImpl) SkipQuizSession(ctx context.Context, userID UserID) err
 		now := time.Now()
 
 		data, err := storage.ExecOne[struct {
-			StartedAt *time.Time `db:"started_at"`
-			Deadline  *time.Time `db:"deadline"`
-			Finished  bool       `db:"finished"`
-			Success   bool       `db:"ended_successfully"`
-		}](ctx, tx, stmt, userID, r.config.MaxSessionDurationSeconds)
+			Finished bool `db:"finished"`
+			Success  bool `db:"ended_successfully"`
+		}](ctx, tx, stmt, userID)
 		if err != nil {
 			if errors.Is(err, storage.ErrNotFound) {
 				return wrapErrorInTx(ErrUnknownSession)
@@ -134,14 +129,7 @@ func (r *repositoryImpl) SkipQuizSession(ctx context.Context, userID UserID) err
 			return errors.Wrap(wrapErrorInTx(err), "failed to get session data")
 		}
 
-		switch {
-		case data.StartedAt == nil:
-			return wrapErrorInTx(ErrUnknownSession)
-
-		case data.Deadline.Before(*now.Time):
-			return wrapErrorInTx(ErrSessionExpired)
-
-		case data.Finished:
+		if data.Finished {
 			if data.Success {
 				return wrapErrorInTx(ErrSessionFinished)
 			}
@@ -384,11 +372,6 @@ func (r *repositoryImpl) startNewSession( //nolint:funlen,revive //.
 }
 
 func (r *repositoryImpl) StartQuizSession(ctx context.Context, userID UserID, lang string) (quiz *Quiz, err error) {
-	err = r.CheckUserKYC(ctx, userID)
-	if err != nil {
-		return nil, err
-	}
-
 	questions, err := r.SelectQuestions(ctx, r.DB, lang)
 	if err != nil {
 		return nil, err
@@ -401,6 +384,11 @@ func (r *repositoryImpl) StartQuizSession(ctx context.Context, userID UserID, la
 			return wrapErrorInTx(fErr)
 		} else if cooldown != nil {
 			return wrapErrorInTx(errors.Wrapf(ErrSessionFinishedWithError, "wait until %v", cooldown))
+		}
+
+		err = r.CheckUserKYC(ctx, userID)
+		if err != nil {
+			return wrapErrorInTx(err)
 		}
 
 		quiz, err = r.startNewSession(ctx, userID, now, tx, lang, questions)
@@ -488,7 +476,7 @@ group by
 
 	deadline := data.StartedAt.Add(stdlibtime.Duration(r.config.MaxSessionDurationSeconds) * stdlibtime.Second)
 	if deadline.Before(now) {
-		return userProgress{}, ErrSessionExpired
+		return userProgress{}, errSessionExpired
 	}
 
 	return data.userProgress, nil
@@ -640,7 +628,7 @@ func (r *repositoryImpl) ContinueQuizSession( //nolint:funlen,revive,gocognit //
 		now := stdlibtime.Now().Truncate(stdlibtime.Second).UTC()
 		progress, pErr := r.CheckUserRunningSession(ctx, userID, now, tx)
 		if pErr != nil {
-			if errors.Is(pErr, ErrSessionExpired) {
+			if errors.Is(pErr, errSessionExpired) {
 				quiz = &Quiz{Result: FailureResult}
 				pErr = r.UserMarkSessionAsFinished(ctx, userID, now, tx, false, false)
 			}

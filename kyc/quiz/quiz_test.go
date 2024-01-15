@@ -213,7 +213,7 @@ func testManagerSessionSkip(ctx context.Context, t *testing.T, r *repositoryImpl
 		helperForceResetSessionStartedAt(t, r, "bogus")
 
 		err = r.SkipQuizSession(ctx, "bogus")
-		require.ErrorIs(t, err, ErrSessionExpired)
+		require.NoError(t, err)
 	})
 	t.Run("Finished", func(t *testing.T) {
 		t.Run("Success", func(t *testing.T) {
