@@ -99,9 +99,11 @@ func (r *repositoryImpl) validateKycStep(user *users.User) error {
 
 func (r *repositoryImpl) SkipQuizSession(ctx context.Context, userID UserID) error { //nolint:funlen //.
 	// $1: user_id.
+	// $2: max session duration (seconds).
 	const stmt = `
 	select
 		started_at,
+		started_at + make_interval(secs => $2) as deadline,
 		ended_at is not null as finished,
 		ended_successfully
 	from
@@ -120,9 +122,10 @@ func (r *repositoryImpl) SkipQuizSession(ctx context.Context, userID UserID) err
 
 		data, err := storage.ExecOne[struct {
 			StartedAt *time.Time `db:"started_at"`
+			Deadline  *time.Time `db:"deadline"`
 			Finished  bool       `db:"finished"`
 			Success   bool       `db:"ended_successfully"`
-		}](ctx, tx, stmt, userID)
+		}](ctx, tx, stmt, userID, r.config.MaxSessionDurationSeconds)
 		if err != nil {
 			if errors.Is(err, storage.ErrNotFound) {
 				return wrapErrorInTx(ErrUnknownSession)
@@ -135,7 +138,7 @@ func (r *repositoryImpl) SkipQuizSession(ctx context.Context, userID UserID) err
 		case data.StartedAt == nil:
 			return wrapErrorInTx(ErrUnknownSession)
 
-		case data.StartedAt.Add(stdlibtime.Duration(r.config.MaxSessionDurationSeconds) * stdlibtime.Second).Before(*now.Time):
+		case data.Deadline.Before(*now.Time):
 			return wrapErrorInTx(ErrSessionExpired)
 
 		case data.Finished:
@@ -555,7 +558,7 @@ func (r *repositoryImpl) modifyUser(ctx context.Context, success bool, now *time
 	return errors.Wrapf(r.Users.ModifyUser(ctx, usr, nil), "failed to modify user %#v", usr)
 }
 
-func (r *repositoryImpl) ContinueQuizSession( //nolint:funlen,revive //.
+func (r *repositoryImpl) ContinueQuizSession( //nolint:funlen,revive,gocognit //.
 	ctx context.Context,
 	userID UserID,
 	question, answer uint8,
@@ -564,6 +567,11 @@ func (r *repositoryImpl) ContinueQuizSession( //nolint:funlen,revive //.
 		now := stdlibtime.Now().Truncate(stdlibtime.Second).UTC()
 		progress, pErr := r.CheckUserRunningSession(ctx, userID, now, tx)
 		if pErr != nil {
+			if errors.Is(pErr, ErrSessionExpired) {
+				quiz = &Quiz{Result: FailureResult}
+				pErr = r.UserMarkSessionAsFinished(ctx, userID, now, tx, false, false)
+			}
+
 			return wrapErrorInTx(pErr)
 		}
 		_, err = r.CheckQuestionNumber(ctx, progress.Lang, progress.Questions, question, tx)

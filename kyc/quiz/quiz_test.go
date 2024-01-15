@@ -280,8 +280,13 @@ func testManagerSessionContinueErrors(ctx context.Context, t *testing.T, r *repo
 		data, err := r.StartQuizSession(ctx, "bogus", "en")
 		require.NoError(t, err)
 		helperForceResetSessionStartedAt(t, r, "bogus")
-		_, err = r.ContinueQuizSession(ctx, "bogus", data.Progress.NextQuestion.Number, 1)
-		require.ErrorIs(t, err, ErrSessionExpired)
+		data, err = r.ContinueQuizSession(ctx, "bogus", data.Progress.NextQuestion.Number, 1)
+		require.NoError(t, err)
+		require.Nil(t, data.Progress)
+		require.Equal(t, FailureResult, data.Result)
+
+		_, err = r.StartQuizSession(ctx, "bogus", "en")
+		require.ErrorIs(t, err, ErrSessionFinishedWithError)
 	})
 
 	t.Run("UnknownQuestionNumber", func(t *testing.T) {
