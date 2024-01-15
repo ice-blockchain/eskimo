@@ -90,7 +90,7 @@ func (r *repositoryImpl) validateKycStep(user *users.User) error {
 			len(*user.KYCStepsLastUpdatedAt) >= int(users.QuizKYCStep) &&
 			!(*user.KYCStepsLastUpdatedAt)[users.QuizKYCStep-1].IsNil() &&
 			time.Now().Sub(*(*user.KYCStepsLastUpdatedAt)[users.QuizKYCStep-1].Time) < sessionCoolDown) ||
-		user.KYCStepPassed != nil && *user.KYCStepPassed >= users.QuizKYCStep {
+		(user.KYCStepPassed != nil && *user.KYCStepPassed >= users.QuizKYCStep) {
 		return ErrInvalidKYCState
 	}
 
