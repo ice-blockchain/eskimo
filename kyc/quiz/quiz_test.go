@@ -164,13 +164,8 @@ func testManagerSessionStart(ctx context.Context, t *testing.T, r *repositoryImp
 		t.Run("Expired", func(t *testing.T) {
 			helperForceResetSessionStartedAt(t, r, "bogus")
 			session, err := r.StartQuizSession(ctx, "bogus", "en")
-			require.NoError(t, err)
-			require.NotNil(t, session)
-			require.NotNil(t, session.Progress)
-			require.NotNil(t, session.Progress.ExpiresAt)
-			require.NotEmpty(t, session.Progress.NextQuestion)
-			require.Equal(t, uint8(3), session.Progress.MaxQuestions)
-			require.Equal(t, uint8(1), session.Progress.NextQuestion.Number)
+			require.ErrorIs(t, err, ErrSessionFinishedWithError)
+			require.Nil(t, session)
 		})
 		t.Run("CoolDown", func(t *testing.T) {
 			helperSessionReset(t, r, "bogus", true)
