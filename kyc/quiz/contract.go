@@ -66,7 +66,6 @@ var (
 	ErrUnknownLanguage          = newError("unknown language")
 	ErrInvalidKYCState          = newError("invalid KYC state")
 	ErrUnknownUser              = newError("unknown user")
-	ErrSessionIsAlreadyRunning  = newError("another session is already running")
 	ErrSessionFinished          = newError("session closed")
 	ErrSessionFinishedWithError = newError("session closed with error")
 	ErrUnknownQuestionNumber    = newError("unknown question number")

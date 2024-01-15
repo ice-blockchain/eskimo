@@ -190,15 +190,14 @@ func wrapErrorInTx(err error) error {
 	return err
 }
 
-func (r *repositoryImpl) finishExpiredSession( //nolint:funlen //.
+func (r *repositoryImpl) finishUnfinishedSession( //nolint:funlen //.
 	ctx context.Context,
 	userID UserID,
 	now *time.Time,
 	tx storage.QueryExecer,
 ) (*time.Time, error) {
 	// $1: user_id.
-	// $2: max session duration (seconds).
-	// $3: session cool down (seconds).
+	// $2: session cool down (seconds).
 	const stmt = `
 	with result as (
 		update quiz_sessions
@@ -207,8 +206,7 @@ func (r *repositoryImpl) finishExpiredSession( //nolint:funlen //.
 			ended_successfully = false
 		where
 			user_id = $1 and
-			ended_at is null and
-			started_at + make_interval(secs => $2) < now()
+			ended_at is null
 		returning *
 	)
 	insert into failed_quiz_sessions (started_at, ended_at, questions, answers, language, user_id, skipped)
@@ -223,11 +221,11 @@ func (r *repositoryImpl) finishExpiredSession( //nolint:funlen //.
 	from
 		result
 	returning
-		ended_at + make_interval(secs => $3) as cooldown_at
+		ended_at + make_interval(secs => $2) as cooldown_at
 	`
 	data, err := storage.ExecOne[struct {
 		CooldownAt *time.Time `db:"cooldown_at"`
-	}](ctx, tx, stmt, userID, r.config.MaxSessionDurationSeconds, r.config.SessionCoolDownSeconds)
+	}](ctx, tx, stmt, userID, r.config.SessionCoolDownSeconds)
 	if err != nil {
 		if errors.Is(err, storage.ErrNotFound) {
 			err = nil
@@ -354,10 +352,6 @@ func (r *repositoryImpl) startNewSession( //nolint:funlen,revive //.
 			return nil, ErrSessionFinishedWithError
 		}
 
-		if data.ActiveDeadline.After(*now.Time) {
-			return nil, errors.Wrapf(ErrSessionIsAlreadyRunning, "wait %s before next session", data.ActiveDeadline.Sub(*now.Time))
-		}
-
 	case data.UpsertStartedAt != nil: // New session is started.
 		return &Quiz{
 			Progress: &Progress{
@@ -379,7 +373,7 @@ func (r *repositoryImpl) StartQuizSession(ctx context.Context, userID UserID, la
 
 	err = storage.DoInTransaction(ctx, r.DB, func(tx storage.QueryExecer) error {
 		now := time.Now()
-		cooldown, fErr := r.finishExpiredSession(ctx, userID, now, tx)
+		cooldown, fErr := r.finishUnfinishedSession(ctx, userID, now, tx)
 		if fErr != nil {
 			return wrapErrorInTx(fErr)
 		} else if cooldown != nil {
