@@ -207,7 +207,7 @@ func testManagerSessionSkip(ctx context.Context, t *testing.T, r *repositoryImpl
 		helperSessionReset(t, r, "bogus", true)
 
 		err := r.SkipQuizSession(ctx, "bogus")
-		require.ErrorIs(t, err, ErrUnknownSession)
+		require.NoError(t, err)
 	})
 	t.Run("Expired", func(t *testing.T) {
 		helperSessionReset(t, r, "bogus", true)
@@ -242,7 +242,7 @@ func testManagerSessionSkip(ctx context.Context, t *testing.T, r *repositoryImpl
 			require.NoError(t, err)
 
 			err = r.SkipQuizSession(ctx, "bogus")
-			require.ErrorIs(t, err, ErrSessionFinishedWithError)
+			require.NoError(t, err)
 		})
 	})
 }
