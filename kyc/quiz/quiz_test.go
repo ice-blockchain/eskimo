@@ -140,7 +140,7 @@ func testManagerSessionStart(ctx context.Context, t *testing.T, r *repositoryImp
 		})
 		t.Run("AlreadyExists", func(t *testing.T) {
 			_, err := r.StartQuizSession(ctx, "bogus", "en")
-			require.ErrorIs(t, err, ErrSessionIsAlreadyRunning)
+			require.ErrorIs(t, err, ErrSessionFinishedWithError)
 		})
 		t.Run("Finished", func(t *testing.T) {
 			t.Run("Success", func(t *testing.T) {

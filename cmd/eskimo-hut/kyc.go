@@ -86,9 +86,6 @@ func (s *service) StartOrContinueKYCStep4Session( //nolint:gocritic,funlen // .
 			case errors.Is(err, kycquiz.ErrUnknownUser):
 				return nil, server.NotFound(err, userNotFoundErrorCode)
 
-			case errors.Is(err, kycquiz.ErrSessionIsAlreadyRunning):
-				return nil, server.ForbiddenWithCode(errors.Errorf("another quiz session is already running"), quizAlreadyRunningErrorCode)
-
 			case errors.Is(err, kycquiz.ErrSessionFinished), errors.Is(err, kycquiz.ErrSessionFinishedWithError), errors.Is(err, kycquiz.ErrInvalidKYCState): //nolint:lll // .
 				return nil, server.BadRequest(err, raceConditionErrorCode)
 
