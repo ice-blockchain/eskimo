@@ -16,7 +16,7 @@ import (
 	"github.com/ice-blockchain/wintr/time"
 )
 
-//nolint:funlen // Big rollback logic.
+//nolint:funlen,gocognit,nestif,revive // Big rollback logic.
 func (c *client) handleEmailModification(ctx context.Context, els *emailLinkSignIn, newEmail, oldEmail, notifyEmail string) error {
 	usr := new(users.User)
 	usr.ID = *els.UserID
@@ -28,8 +28,13 @@ func (c *client) handleEmailModification(ctx context.Context, els *emailLinkSign
 	if els.Metadata != nil {
 		if firebaseID, hasFirebaseID := (*els.Metadata)[auth.FirebaseIDClaim]; hasFirebaseID {
 			if fErr := server.Auth(ctx).UpdateEmail(ctx, firebaseID.(string), newEmail); fErr != nil { //nolint:forcetypeassert // .
+				oldEmailVal := oldEmail
+				if els.PhoneNumberToEmailMigrationUserID != nil && *els.PhoneNumberToEmailMigrationUserID != "" {
+					oldEmailVal = usr.ID
+				}
+
 				return multierror.Append( //nolint:wrapcheck // .
-					errors.Wrapf(c.resetEmailModification(ctx, usr.ID, oldEmail), "[reset] resetEmailModification failed for email:%v", oldEmail),
+					errors.Wrapf(c.resetEmailModification(ctx, usr.ID, oldEmailVal), "[reset] resetEmailModification failed for email:%v", oldEmailVal),
 					errors.Wrapf(fErr, "failed to change email in firebase to:%v fbUserID:%v", newEmail, firebaseID),
 				).ErrorOrNil()
 			}
