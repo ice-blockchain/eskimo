@@ -194,7 +194,6 @@ func (r *repositoryImpl) finishUnfinishedSession( //nolint:funlen //.
 	ctx context.Context,
 	userID UserID,
 	now *time.Time,
-	tx storage.QueryExecer,
 ) (*time.Time, error) {
 	// $1: user_id.
 	// $2: session cool down (seconds).
@@ -225,7 +224,7 @@ func (r *repositoryImpl) finishUnfinishedSession( //nolint:funlen //.
 	`
 	data, err := storage.ExecOne[struct {
 		CooldownAt *time.Time `db:"cooldown_at"`
-	}](ctx, tx, stmt, userID, r.config.SessionCoolDownSeconds)
+	}](ctx, r.DB, stmt, userID, r.config.SessionCoolDownSeconds)
 	if err != nil {
 		if errors.Is(err, storage.ErrNotFound) {
 			err = nil
@@ -240,7 +239,6 @@ func (r *repositoryImpl) finishUnfinishedSession( //nolint:funlen //.
 func (r *repositoryImpl) startNewSession( //nolint:funlen //.
 	ctx context.Context,
 	userID UserID,
-	tx storage.QueryExecer,
 	lang string,
 	questions []*Question,
 ) (*Quiz, error) {
@@ -328,7 +326,7 @@ func (r *repositoryImpl) startNewSession( //nolint:funlen //.
 		ActiveEndedAt           *time.Time `db:"active_ended_at"`
 		UpsertStartedAt         *time.Time `db:"upsert_started_at"`
 		UpsertDeadline          *time.Time `db:"upsert_deadline"`
-	}](ctx, tx, stmt, userID, lang, questionsToSlice(questions), r.config.SessionCoolDownSeconds, r.config.MaxSessionDurationSeconds)
+	}](ctx, r.DB, stmt, userID, lang, questionsToSlice(questions), r.config.SessionCoolDownSeconds, r.config.MaxSessionDurationSeconds)
 	if err != nil {
 		if errors.Is(err, storage.ErrRelationNotFound) {
 			err = ErrUnknownUser
@@ -364,32 +362,25 @@ func (r *repositoryImpl) startNewSession( //nolint:funlen //.
 	panic("unreachable: " + userID)
 }
 
-func (r *repositoryImpl) StartQuizSession(ctx context.Context, userID UserID, lang string) (quiz *Quiz, err error) {
+func (r *repositoryImpl) StartQuizSession(ctx context.Context, userID UserID, lang string) (*Quiz, error) {
 	questions, err := r.SelectQuestions(ctx, r.DB, lang)
 	if err != nil {
 		return nil, err
 	}
 
-	err = storage.DoInTransaction(ctx, r.DB, func(tx storage.QueryExecer) error {
-		now := time.Now()
-		cooldown, fErr := r.finishUnfinishedSession(ctx, userID, now, tx)
-		if fErr != nil {
-			return wrapErrorInTx(fErr)
-		} else if cooldown != nil {
-			return wrapErrorInTx(errors.Wrapf(ErrSessionFinishedWithError, "wait until %v", cooldown))
-		}
+	cooldown, err := r.finishUnfinishedSession(ctx, userID, time.Now())
+	if err != nil {
+		return nil, err
+	} else if cooldown != nil {
+		return nil, errors.Wrapf(ErrSessionFinishedWithError, "cooldown until %v", cooldown)
+	}
 
-		err = r.CheckUserKYC(ctx, userID)
-		if err != nil {
-			return wrapErrorInTx(err)
-		}
+	err = r.CheckUserKYC(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
 
-		quiz, err = r.startNewSession(ctx, userID, tx, lang, questions)
-
-		return wrapErrorInTx(err)
-	})
-
-	return quiz, err
+	return r.startNewSession(ctx, userID, lang, questions)
 }
 
 func calculateProgress(correctAnswers, currentAnswers []uint8) (correctNum, incorrectNum uint8) {

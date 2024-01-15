@@ -53,6 +53,11 @@ func helperForceFinishSession(t *testing.T, r *repositoryImpl, userID UserID, re
 
 	_, err := storage.Exec(context.TODO(), r.DB, "update quiz_sessions set ended_at = now(), ended_successfully = $2 where user_id = $1", userID, result)
 	require.NoError(t, err)
+
+	if result {
+		_, err = storage.Exec(context.TODO(), r.DB, `delete from failed_quiz_sessions where user_id = $1`, userID)
+		require.NoError(t, err)
+	}
 }
 
 func helperForceResetSessionStartedAt(t *testing.T, r *repositoryImpl, userID UserID) {
