@@ -97,6 +97,18 @@ func (r *repositoryImpl) validateKycStep(user *users.User) error {
 	return nil
 }
 
+func (*repositoryImpl) addFailedAttempt(ctx context.Context, userID UserID, now *time.Time, tx storage.Execer) error {
+	// $1: user_id.
+	// $2: now.
+	const stmt = `
+		insert into failed_quiz_sessions (started_at, ended_at, questions, answers, language, user_id, skipped)
+		values ($2, $2, '{}', '{}', 'en', $1, true)
+	`
+	_, err := storage.Exec(ctx, tx, stmt, userID, now.Time)
+
+	return errors.Wrap(err, "failed to add failed attempt")
+}
+
 func (r *repositoryImpl) SkipQuizSession(ctx context.Context, userID UserID) error { //nolint:funlen //.
 	// $1: user_id.
 	const stmt = `
@@ -123,7 +135,12 @@ func (r *repositoryImpl) SkipQuizSession(ctx context.Context, userID UserID) err
 		}](ctx, tx, stmt, userID)
 		if err != nil {
 			if errors.Is(err, storage.ErrNotFound) {
-				return wrapErrorInTx(ErrUnknownSession)
+				err = r.addFailedAttempt(ctx, userID, now, tx)
+				if err == nil {
+					err = r.modifyUser(ctx, false, now, userID)
+				}
+
+				return err
 			}
 
 			return errors.Wrap(wrapErrorInTx(err), "failed to get session data")
@@ -134,7 +151,7 @@ func (r *repositoryImpl) SkipQuizSession(ctx context.Context, userID UserID) err
 				return wrapErrorInTx(ErrSessionFinished)
 			}
 
-			return wrapErrorInTx(ErrSessionFinishedWithError)
+			return r.modifyUser(ctx, false, now, userID)
 		}
 
 		return wrapErrorInTx(r.UserMarkSessionAsFinished(ctx, userID, *now.Time, tx, false, true))
@@ -190,11 +207,7 @@ func wrapErrorInTx(err error) error {
 	return err
 }
 
-func (r *repositoryImpl) finishUnfinishedSession( //nolint:funlen //.
-	ctx context.Context,
-	userID UserID,
-	now *time.Time,
-) (*time.Time, error) {
+func (r *repositoryImpl) finishUnfinishedSession(ctx context.Context, userID UserID) (*time.Time, error) { //nolint:funlen //.
 	// $1: user_id.
 	// $2: session cool down (seconds).
 	const stmt = `
@@ -220,9 +233,11 @@ func (r *repositoryImpl) finishUnfinishedSession( //nolint:funlen //.
 	from
 		result
 	returning
+		ended_at,
 		ended_at + make_interval(secs => $2) as cooldown_at
 	`
 	data, err := storage.ExecOne[struct {
+		EndedAt    *time.Time `db:"ended_at"`
 		CooldownAt *time.Time `db:"cooldown_at"`
 	}](ctx, r.DB, stmt, userID, r.config.SessionCoolDownSeconds)
 	if err != nil {
@@ -233,7 +248,7 @@ func (r *repositoryImpl) finishUnfinishedSession( //nolint:funlen //.
 		return nil, err
 	}
 
-	return data.CooldownAt, errors.Wrapf(r.modifyUser(ctx, false, now, userID), "failed to modifyUser")
+	return data.CooldownAt, errors.Wrapf(r.modifyUser(ctx, false, data.EndedAt, userID), "failed to modifyUser")
 }
 
 func (r *repositoryImpl) startNewSession( //nolint:funlen //.
@@ -368,7 +383,7 @@ func (r *repositoryImpl) StartQuizSession(ctx context.Context, userID UserID, la
 		return nil, err
 	}
 
-	cooldown, err := r.finishUnfinishedSession(ctx, userID, time.Now())
+	cooldown, err := r.finishUnfinishedSession(ctx, userID)
 	if err != nil {
 		return nil, err
 	} else if cooldown != nil {
