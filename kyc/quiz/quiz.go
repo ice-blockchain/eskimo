@@ -237,10 +237,9 @@ func (r *repositoryImpl) finishUnfinishedSession( //nolint:funlen //.
 	return data.CooldownAt, errors.Wrapf(r.modifyUser(ctx, false, now, userID), "failed to modifyUser")
 }
 
-func (r *repositoryImpl) startNewSession( //nolint:funlen,revive //.
+func (r *repositoryImpl) startNewSession( //nolint:funlen //.
 	ctx context.Context,
 	userID UserID,
-	now *time.Time,
 	tx storage.QueryExecer,
 	lang string,
 	questions []*Question,
@@ -385,7 +384,7 @@ func (r *repositoryImpl) StartQuizSession(ctx context.Context, userID UserID, la
 			return wrapErrorInTx(err)
 		}
 
-		quiz, err = r.startNewSession(ctx, userID, now, tx, lang, questions)
+		quiz, err = r.startNewSession(ctx, userID, tx, lang, questions)
 
 		return wrapErrorInTx(err)
 	})
