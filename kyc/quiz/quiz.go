@@ -97,6 +97,18 @@ func (r *repositoryImpl) validateKycStep(user *users.User) error {
 	return nil
 }
 
+func (*repositoryImpl) addFailedAttempt(ctx context.Context, userID UserID, now *time.Time, tx storage.Execer) error {
+	// $1: user_id.
+	// $2: now.
+	const stmt = `
+		insert into failed_quiz_sessions (started_at, ended_at, questions, answers, language, user_id, skipped)
+		values ($2, $2, '{}', '{}', 'en', $1, true)
+	`
+	_, err := storage.Exec(ctx, tx, stmt, userID, now.Time)
+
+	return errors.Wrap(err, "failed to add failed attempt")
+}
+
 func (r *repositoryImpl) SkipQuizSession(ctx context.Context, userID UserID) error { //nolint:funlen //.
 	// $1: user_id.
 	const stmt = `
@@ -123,7 +135,12 @@ func (r *repositoryImpl) SkipQuizSession(ctx context.Context, userID UserID) err
 		}](ctx, tx, stmt, userID)
 		if err != nil {
 			if errors.Is(err, storage.ErrNotFound) {
-				return r.modifyUser(ctx, false, now, userID)
+				err = r.addFailedAttempt(ctx, userID, now, tx)
+				if err == nil {
+					err = r.modifyUser(ctx, false, now, userID)
+				}
+
+				return err
 			}
 
 			return errors.Wrap(wrapErrorInTx(err), "failed to get session data")
