@@ -151,7 +151,7 @@ type (
 		Authorization    string          `header:"Authorization" swaggerignore:"true" required:"true" example:"some token"`
 		XAccountMetadata string          `header:"X-Account-Metadata" swaggerignore:"true" required:"false" example:"some token"`
 		UserID           string          `uri:"userId" required:"true" allowForbiddenWriteOperation:"true" swaggerignore:"true" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"` //nolint:lll // .
-		SkipKYCSteps     []users.KYCStep `form:"skipKYCSteps" swaggerignore:"true" example:"3,4,5,6"`
+		SkipKYCSteps     []users.KYCStep `form:"skipKYCSteps" swaggerignore:"true" example:"3,4,5,6,7,8,9,10"`
 	}
 )
 

@@ -39,7 +39,7 @@ var (
 	//nolint:gochecknoglobals // Its loaded once at startup.
 	AllTypes = []Type{FacebookType, TwitterType}
 	//nolint:gochecknoglobals // Its loaded once at startup.
-	AllSupportedKYCSteps = []users.KYCStep{users.Social1KYCStep, users.Social2KYCStep, users.Social3KYCStep}
+	AllSupportedKYCSteps = []users.KYCStep{users.Social1KYCStep, users.Social2KYCStep, users.Social3KYCStep, users.Social4KYCStep, users.Social5KYCStep, users.Social6KYCStep, users.Social7KYCStep} //nolint:lll // .
 )
 
 type (

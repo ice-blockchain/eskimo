@@ -54,6 +54,10 @@ const (
 	QuizKYCStep
 	Social2KYCStep
 	Social3KYCStep
+	Social4KYCStep
+	Social5KYCStep
+	Social6KYCStep
+	Social7KYCStep
 )
 
 var (

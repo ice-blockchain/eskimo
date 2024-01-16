@@ -828,7 +828,11 @@ const docTemplate = `{
                 3,
                 4,
                 5,
-                6
+                6,
+                7,
+                8,
+                9,
+                10
             ],
             "x-enum-varnames": [
                 "NoneKYCStep",
@@ -837,7 +841,11 @@ const docTemplate = `{
                 "Social1KYCStep",
                 "QuizKYCStep",
                 "Social2KYCStep",
-                "Social3KYCStep"
+                "Social3KYCStep",
+                "Social4KYCStep",
+                "Social5KYCStep",
+                "Social6KYCStep",
+                "Social7KYCStep"
             ]
         },
         "users.MinimalUserProfile": {
