@@ -119,12 +119,15 @@ type (
 	}
 
 	kycConfigJSON struct {
-		Social1KYC                   struct{} `json:"social1-kyc"`     //nolint:tagliatelle // .
-		Social2KYC                   struct{} `json:"social2-kyc"`     //nolint:tagliatelle // .
-		WebSocial1KYC                struct{} `json:"web-social1-kyc"` //nolint:tagliatelle // .
-		WebSocial2KYC                struct{} `json:"web-social2-kyc"` //nolint:tagliatelle // .
+		Social1KYC struct {
+			XPostLink string `json:"x-post-link"` //nolint:tagliatelle // .
+		} `json:"social1-kyc"` //nolint:tagliatelle // .
+		Social2KYC struct {
+			XPostLink string `json:"x-post-link"` //nolint:tagliatelle // .
+		} `json:"social2-kyc"` //nolint:tagliatelle // .
 		DynamicDistributionSocialKYC []*struct {
-			KYCStep users.KYCStep `json:"step"` //nolint:tagliatelle // .
+			XPostLink string        `json:"xPostLink"`
+			KYCStep   users.KYCStep `json:"step"` //nolint:tagliatelle // .
 		} `json:"dynamic-distribution-kyc"` //nolint:tagliatelle // .
 	}
 

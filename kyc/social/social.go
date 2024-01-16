@@ -176,7 +176,7 @@ func (r *repository) VerifyPost(ctx context.Context, metadata *VerificationMetad
 		AccessToken:      metadata.Facebook.AccessToken,
 		PostURL:          metadata.Twitter.TweetURL,
 		ExpectedPostText: metadata.expectedPostText(user.User),
-		ExpectedPostURL:  r.cfg.SocialLinks[metadata.Social].PostURLs[metadata.KYCStep],
+		ExpectedPostURL:  r.expectedPostURL(metadata),
 	}
 	if pvm.ExpectedPostURL == "" {
 		log.Warn(fmt.Sprintf("post url not found for KYCStep:%v,Social:%v", metadata.KYCStep, metadata.Social))
@@ -385,4 +385,33 @@ func (vm *VerificationMetadata) expectedPostText(user *users.User) string {
 	log.Panic(errors.Wrapf(templ.content.Execute(bf, user), "failed to execute postContentLanguageTemplateType template for data:%#v", user))
 
 	return bf.String()
+}
+
+func (r *repository) expectedPostURL(metadata *VerificationMetadata) string {
+	var url string
+	if metadata.Social == TwitterType {
+		switch metadata.KYCStep { //nolint:exhaustive // Not needed. Everything else is validated before this.
+		case users.Social1KYCStep:
+			url = r.cfg.kycConfigJSON.Load().Social1KYC.XPostLink
+		case users.Social2KYCStep:
+			url = r.cfg.kycConfigJSON.Load().Social2KYC.XPostLink
+		default:
+			for _, val := range r.cfg.kycConfigJSON.Load().DynamicDistributionSocialKYC {
+				if val != nil && val.KYCStep == metadata.KYCStep {
+					url = val.XPostLink
+
+					break
+				}
+			}
+		}
+	}
+	if url = strings.Replace(url, `https://x.com`, "", 1); url != "" {
+		if paramsIndex := strings.IndexRune(url, '?'); paramsIndex > 0 {
+			url = url[:paramsIndex]
+		}
+
+		return url
+	}
+
+	return r.cfg.SocialLinks[metadata.Social].PostURLs[metadata.KYCStep]
 }
