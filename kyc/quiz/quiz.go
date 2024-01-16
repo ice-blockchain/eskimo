@@ -5,6 +5,7 @@ package quiz
 import (
 	"context"
 	"fmt"
+	"sync/atomic"
 	stdlibtime "time"
 
 	"github.com/hashicorp/go-multierror"
@@ -33,6 +34,10 @@ func mustLoadConfig() config {
 		panic("session_cool_down_seconds is not set")
 	}
 
+	defaultAlertFrequency := alertFrequency
+	cfg.alertFrequency = new(atomic.Pointer[stdlibtime.Duration])
+	cfg.alertFrequency.Store(&defaultAlertFrequency)
+
 	return cfg
 }
 
@@ -45,7 +50,10 @@ func newError(msg string) error {
 }
 
 func NewRepository(ctx context.Context, userRepo UserRepository) Repository {
-	return newRepositoryImpl(ctx, userRepo)
+	repo := newRepositoryImpl(ctx, userRepo)
+	go repo.startAlerter(ctx)
+
+	return repo
 }
 
 func newRepositoryImpl(ctx context.Context, userRepo UserRepository) *repositoryImpl {
@@ -97,14 +105,14 @@ func (r *repositoryImpl) validateKycStep(user *users.User) error {
 	return nil
 }
 
-func (*repositoryImpl) addFailedAttempt(ctx context.Context, userID UserID, now *time.Time, tx storage.Execer) error {
+func (*repositoryImpl) addFailedAttempt(ctx context.Context, userID UserID, now *time.Time, tx storage.Execer, skipped bool) error {
 	// $1: user_id.
 	// $2: now.
 	const stmt = `
 		insert into failed_quiz_sessions (started_at, ended_at, questions, answers, language, user_id, skipped)
-		values ($2, $2, '{}', '{}', 'en', $1, true)
+		values ($2, $2, '{}', '{}', 'en', $1, $2)
 	`
-	_, err := storage.Exec(ctx, tx, stmt, userID, now.Time)
+	_, err := storage.Exec(ctx, tx, stmt, userID, now.Time, skipped)
 
 	return errors.Wrap(err, "failed to add failed attempt")
 }
@@ -135,7 +143,7 @@ func (r *repositoryImpl) SkipQuizSession(ctx context.Context, userID UserID) err
 		}](ctx, tx, stmt, userID)
 		if err != nil {
 			if errors.Is(err, storage.ErrNotFound) {
-				err = r.addFailedAttempt(ctx, userID, now, tx)
+				err = r.addFailedAttempt(ctx, userID, now, tx, true)
 				if err == nil {
 					err = r.modifyUser(ctx, false, now, userID)
 				}

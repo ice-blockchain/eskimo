@@ -8,6 +8,7 @@ import (
 	"io"
 	"mime/multipart"
 	"sync"
+	"sync/atomic"
 	"text/template"
 	stdlibtime "time"
 
@@ -79,6 +80,8 @@ type (
 
 const (
 	applicationYamlKey = "kyc/social"
+
+	requestDeadline = 25 * stdlibtime.Second
 )
 
 const (
@@ -114,11 +117,24 @@ type (
 		cfg             *config
 		db              *storage.DB
 	}
+
+	kycConfigJSON struct {
+		Social1KYC                   struct{} `json:"social1-kyc"`     //nolint:tagliatelle // .
+		Social2KYC                   struct{} `json:"social2-kyc"`     //nolint:tagliatelle // .
+		WebSocial1KYC                struct{} `json:"web-social1-kyc"` //nolint:tagliatelle // .
+		WebSocial2KYC                struct{} `json:"web-social2-kyc"` //nolint:tagliatelle // .
+		DynamicDistributionSocialKYC []*struct {
+			KYCStep users.KYCStep `json:"step"` //nolint:tagliatelle // .
+		} `json:"dynamic-distribution-kyc"` //nolint:tagliatelle // .
+	}
+
 	config struct {
 		alertFrequency *sync.Map // .map[users.KYCStep]stdlibtime.Duration.
+		kycConfigJSON  *atomic.Pointer[kycConfigJSON]
 		SocialLinks    map[Type]struct {
 			PostURLs map[users.KYCStep]string `yaml:"post-urls" mapstructure:"post-urls"` //nolint:tagliatelle // .
 		} `yaml:"social-links" mapstructure:"social-links"` //nolint:tagliatelle // .
+		ConfigJSONURL        string              `yaml:"config-json-url" mapstructure:"config-json-url"` //nolint:tagliatelle // .
 		Environment          string              `yaml:"environment" mapstructure:"environment"`
 		AlertSlackWebhook    string              `yaml:"alert-slack-webhook" mapstructure:"alert-slack-webhook"`       //nolint:tagliatelle // .
 		DelayBetweenSessions stdlibtime.Duration `yaml:"delay-between-sessions" mapstructure:"delay-between-sessions"` //nolint:tagliatelle // .

@@ -38,6 +38,7 @@ wintr/connectors/storage/v2: &db
   replicaURLs:
     - postgresql://root:pass@localhost:5433/eskimo
 kyc/social:
+  config-json-url: https://somewhere.com/something/somebogus.json
   environment: local
   enable-alerts: false
   alert-slack-webhook: https://hooks.slack.com/services/dummy/dummy/dummy
@@ -68,6 +69,9 @@ kyc/social:
         6: https://www.facebook.com/reel/1463272597773681
       allow-long-live-tokens: true
 kyc/quiz:
+  environment: local
+  enable-alerts: false
+  alert-slack-webhook: https://hooks.slack.com/services/dummy/dummy/dummy
   wintr/connectors/storage/v2: *db
   maxSessionDurationSeconds: 600
   maxQuestionsPerSession: 3

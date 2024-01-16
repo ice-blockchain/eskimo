@@ -7,6 +7,8 @@ import (
 	_ "embed"
 	"io"
 	"mime/multipart"
+	"sync/atomic"
+	stdlibtime "time"
 
 	"github.com/ice-blockchain/eskimo/users"
 	"github.com/ice-blockchain/wintr/connectors/storage/v2"
@@ -104,9 +106,13 @@ type (
 		config
 	}
 	config struct {
-		MaxSessionDurationSeconds int `yaml:"maxSessionDurationSeconds"`
-		MaxQuestionsPerSession    int `yaml:"maxQuestionsPerSession"`
-		MaxWrongAnswersPerSession int `yaml:"maxWrongAnswersPerSession"`
-		SessionCoolDownSeconds    int `yaml:"sessionCoolDownSeconds"`
+		alertFrequency            *atomic.Pointer[stdlibtime.Duration]
+		Environment               string `yaml:"environment" mapstructure:"environment"`
+		AlertSlackWebhook         string `yaml:"alert-slack-webhook" mapstructure:"alert-slack-webhook"` //nolint:tagliatelle // .
+		MaxSessionDurationSeconds int    `yaml:"maxSessionDurationSeconds"`
+		MaxQuestionsPerSession    int    `yaml:"maxQuestionsPerSession"`
+		MaxWrongAnswersPerSession int    `yaml:"maxWrongAnswersPerSession"`
+		SessionCoolDownSeconds    int    `yaml:"sessionCoolDownSeconds"`
+		EnableAlerts              bool   `yaml:"enable-alerts" mapstructure:"enable-alerts"` //nolint:tagliatelle // .
 	}
 )

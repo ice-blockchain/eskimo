@@ -76,6 +76,7 @@ func New(ctx context.Context, usrRepo UserRepository) Repository {
 		cfg.alertFrequency.Store(kycStep, alertFrequency)
 		go repo.startUnsuccessfulKYCStepsAlerter(ctx, kycStep)
 	}
+	go repo.startKYCConfigJSONSyncer(ctx)
 
 	return repo
 }
