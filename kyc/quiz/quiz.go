@@ -160,6 +160,12 @@ func (r *repositoryImpl) SkipQuizSession(ctx context.Context, userID UserID) err
 	return errors.Wrap(err, "failed to skip session")
 }
 
+func (r *repositoryImpl) TryFinishUnfinishedQuizSession(ctx context.Context, userID UserID) error {
+	_, err := r.finishUnfinishedSession(ctx, time.Now(), userID)
+
+	return errors.Wrapf(err, "failed to finishUnfinishedSession for userID:%v", userID)
+}
+
 func (r *repositoryImpl) SelectQuestions(ctx context.Context, tx storage.QueryExecer, lang string) ([]*Question, error) {
 	const stmt = `
 select id, options, question from questions where "language" = $1 order by random() limit $2
@@ -207,7 +213,7 @@ func wrapErrorInTx(err error) error {
 	return err
 }
 
-func (r *repositoryImpl) finishUnfinishedSession(ctx context.Context, userID UserID) (*time.Time, error) { //nolint:funlen //.
+func (r *repositoryImpl) finishUnfinishedSession(ctx context.Context, now *time.Time, userID UserID) (*time.Time, error) { //nolint:funlen //.
 	// $1: user_id.
 	// $2: session cool down (seconds).
 	const stmt = `
@@ -233,11 +239,9 @@ func (r *repositoryImpl) finishUnfinishedSession(ctx context.Context, userID Use
 	from
 		result
 	returning
-		ended_at,
 		ended_at + make_interval(secs => $2) as cooldown_at
 	`
 	data, err := storage.ExecOne[struct {
-		EndedAt    *time.Time `db:"ended_at"`
 		CooldownAt *time.Time `db:"cooldown_at"`
 	}](ctx, r.DB, stmt, userID, r.config.SessionCoolDownSeconds)
 	if err != nil {
@@ -248,7 +252,7 @@ func (r *repositoryImpl) finishUnfinishedSession(ctx context.Context, userID Use
 		return nil, err
 	}
 
-	return data.CooldownAt, errors.Wrapf(r.modifyUser(ctx, false, data.EndedAt, userID), "failed to modifyUser")
+	return data.CooldownAt, errors.Wrapf(r.modifyUser(ctx, false, now, userID), "failed to modifyUser")
 }
 
 func (r *repositoryImpl) startNewSession( //nolint:funlen //.
@@ -383,7 +387,7 @@ func (r *repositoryImpl) StartQuizSession(ctx context.Context, userID UserID, la
 		return nil, err
 	}
 
-	cooldown, err := r.finishUnfinishedSession(ctx, userID)
+	cooldown, err := r.finishUnfinishedSession(ctx, time.Now(), userID)
 	if err != nil {
 		return nil, err
 	} else if cooldown != nil {

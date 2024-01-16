@@ -251,6 +251,17 @@ func (s *service) TryResetKYCSteps( //nolint:gocritic,funlen,gocognit,revive,cyc
 			}
 		}
 	}
+	if len(req.Data.SkipKYCSteps) == 0 { //nolint:nestif // .
+		if err := s.quizRepository.TryFinishUnfinishedQuizSession(ctx, req.Data.UserID); err != nil {
+			if errors.Is(err, kycquiz.ErrInvalidKYCState) || errors.Is(err, kycquiz.ErrSessionFinished) || errors.Is(err, kycquiz.ErrSessionFinishedWithError) { //nolint:lll // .
+				log.Error(errors.Wrapf(err, "tryFinishUnfinishedQuizSession failed unexpectedly during tryResetKYCSteps for userID:%v", req.Data.UserID))
+				err = nil
+			}
+			if err != nil {
+				return nil, server.Unexpected(errors.Wrapf(err, "failed to tryFinishUnfinishedQuizSession for userID:%v", req.Data.UserID))
+			}
+		}
+	}
 	resp, err := s.usersProcessor.TryResetKYCSteps(ctx, req.Data.UserID)
 	if err = errors.Wrapf(err, "failed to TryResetKYCSteps for userID:%v", req.Data.UserID); err != nil {
 		switch {

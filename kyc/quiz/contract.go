@@ -31,6 +31,8 @@ type (
 
 		SkipQuizSession(ctx context.Context, userID UserID) error
 
+		TryFinishUnfinishedQuizSession(ctx context.Context, userID UserID) error
+
 		ContinueQuizSession(ctx context.Context, userID UserID, question, answer uint8) (*Quiz, error)
 	}
 
