@@ -1,0 +1,7 @@
+🌟 @ice_blockchain Spot Trading hiện đã mở trên #OKX!
+
+📈 $ICE/USDT - Giao dịch Ngay
+
+🙌 Tham gia vào đội của tôi trên #Ice bằng cách sử dụng mã giới thiệu của tôi "{{.Username}}"
+
+#IceNetwork #DecentralizedFuture

@@ -1,1 +1,7 @@
-TODO configure me!5 "{{.Username}}"
+🌟 @ice_blockchain Spot Trading is now open on #OKX!
+
+📈 $ICE/USDT - Trade Now
+
+🙌 Join my team on #Ice using my referral code "{{.Username}}"
+
+#IceNetwork #DecentralizedFuture
