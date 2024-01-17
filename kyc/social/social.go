@@ -387,8 +387,7 @@ func (vm *VerificationMetadata) expectedPostText(user *users.User) string {
 	return bf.String()
 }
 
-func (r *repository) expectedPostURL(metadata *VerificationMetadata) string {
-	var url string
+func (r *repository) expectedPostURL(metadata *VerificationMetadata) (url string) {
 	if metadata.Social == TwitterType {
 		switch metadata.KYCStep { //nolint:exhaustive // Not needed. Everything else is validated before this.
 		case users.Social1KYCStep:
@@ -404,14 +403,12 @@ func (r *repository) expectedPostURL(metadata *VerificationMetadata) string {
 				}
 			}
 		}
-	}
-	if url = strings.Replace(url, `https://x.com`, "", 1); url != "" {
-		if paramsIndex := strings.IndexRune(url, '?'); paramsIndex > 0 {
+
+		url = strings.Replace(url, `https://x.com`, "", 1)
+		if paramsIndex := strings.IndexRune(url, '?'); url != "" && paramsIndex > 0 {
 			url = url[:paramsIndex]
 		}
-
-		return url
 	}
 
-	return r.cfg.SocialLinks[metadata.Social].PostURLs[metadata.KYCStep]
+	return url
 }

@@ -50,10 +50,6 @@ kyc/social:
   web-scraping-api:
   social-links:
     twitter:
-      post-urls:
-        3: /ice_blockchain/status/1712692723336032437
-        5: /ice_blockchain/status/1712692723336032437
-        6: /ice_blockchain/status/1712692723336032437
       domains:
         - twitter.com
         - x.com
@@ -63,10 +59,6 @@ kyc/social:
         - CA
         - US
     facebook:
-      post-urls:
-        3: https://www.facebook.com/reel/1463272597773681
-        5: https://www.facebook.com/reel/1463272597773681
-        6: https://www.facebook.com/reel/1463272597773681
       allow-long-live-tokens: true
 kyc/quiz:
   environment: local

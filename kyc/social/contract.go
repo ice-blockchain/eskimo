@@ -132,11 +132,8 @@ type (
 	}
 
 	config struct {
-		alertFrequency *sync.Map // .map[users.KYCStep]stdlibtime.Duration.
-		kycConfigJSON  *atomic.Pointer[kycConfigJSON]
-		SocialLinks    map[Type]struct {
-			PostURLs map[users.KYCStep]string `yaml:"post-urls" mapstructure:"post-urls"` //nolint:tagliatelle // .
-		} `yaml:"social-links" mapstructure:"social-links"` //nolint:tagliatelle // .
+		alertFrequency       *sync.Map // .map[users.KYCStep]stdlibtime.Duration.
+		kycConfigJSON        *atomic.Pointer[kycConfigJSON]
 		ConfigJSONURL        string              `yaml:"config-json-url" mapstructure:"config-json-url"` //nolint:tagliatelle // .
 		Environment          string              `yaml:"environment" mapstructure:"environment"`
 		AlertSlackWebhook    string              `yaml:"alert-slack-webhook" mapstructure:"alert-slack-webhook"`       //nolint:tagliatelle // .
