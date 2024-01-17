@@ -108,9 +108,10 @@ func (r *repositoryImpl) validateKycStep(user *users.User) error {
 func (*repositoryImpl) addFailedAttempt(ctx context.Context, userID UserID, now *time.Time, tx storage.Execer, skipped bool) error {
 	// $1: user_id.
 	// $2: now.
+	// $3: skipped.
 	const stmt = `
 		insert into failed_quiz_sessions (started_at, ended_at, questions, answers, language, user_id, skipped)
-		values ($2, $2, '{}', '{}', 'en', $1, $2)
+		values ($2, $2, '{}', '{}', 'en', $1, $3)
 	`
 	_, err := storage.Exec(ctx, tx, stmt, userID, now.Time, skipped)
 
