@@ -46,9 +46,15 @@ func (r *repositoryImpl) startAlerter(ctx context.Context) {
 	}
 }
 
+// .
+var (
+	errRaceCondition = errors.New("race condition")
+)
+
 //nolint:funlen // .
 func (r *repositoryImpl) sendAlertToSlack(ctx context.Context, ticker *stdlibtime.Ticker) error {
-	return storage.DoInTransaction(ctx, r.DB, func(conn storage.QueryExecer) error { //nolint:wrapcheck // Not needed.
+	var stats []*quizStats
+	if err := storage.DoInTransaction(ctx, r.DB, func(conn storage.QueryExecer) error {
 		sql := `SELECT last_alert_at, 
 					   frequency_in_seconds 
 				FROM quiz_alerts 
@@ -62,7 +68,7 @@ func (r *repositoryImpl) sendAlertToSlack(ctx context.Context, ticker *stdlibtim
 			return errors.Wrap(err, "failed to lock quiz_alerts")
 		}
 		if time.Now().Sub(*alert.LastAlertAt.Time) < stdlibtime.Duration(float64(r.config.alertFrequency.Load().Nanoseconds())*0.8) { //nolint:gomnd // .
-			return nil
+			return errRaceCondition
 		}
 		if newFrequency := stdlibtime.Duration(alert.FrequencyInSeconds) * stdlibtime.Second; newFrequency != *r.config.alertFrequency.Load() {
 			r.config.alertFrequency.Store(&newFrequency)
@@ -91,13 +97,9 @@ func (r *repositoryImpl) sendAlertToSlack(ctx context.Context, ticker *stdlibtim
 			   WHERE ended_successfully IS TRUE 
 				 AND ended_at IS NOT NULL
 				 AND ended_at >= $1`
-		stats, err := storage.Select[quizStats](ctx, conn, sql, alert.LastAlertAt.Time, r.config.MaxSessionDurationSeconds, r.config.MaxQuestionsPerSession-r.config.MaxWrongAnswersPerSession) //nolint:lll // .
+		stats, err = storage.Select[quizStats](ctx, conn, sql, alert.LastAlertAt.Time, r.config.MaxSessionDurationSeconds, r.config.MaxQuestionsPerSession-r.config.MaxWrongAnswersPerSession) //nolint:lll // .
 		if err != nil {
 			return errors.Wrap(err, "failed to select stats")
-		}
-
-		if err = r.sendSlackMessage(ctx, stats); err != nil {
-			return errors.Wrap(err, "failed to sendSlackMessage")
 		}
 
 		sql = `UPDATE quiz_alerts 
@@ -112,7 +114,14 @@ func (r *repositoryImpl) sendAlertToSlack(ctx context.Context, ticker *stdlibtim
 		}
 
 		return nil
-	})
+	}); err != nil {
+		return errors.Wrap(err, "doInTransaction failed")
+	}
+
+	sendMsgCtx, cancel := context.WithTimeout(context.Background(), requestDeadline)
+	defer cancel()
+
+	return errors.Wrap(r.sendSlackMessage(sendMsgCtx, stats), "failed to sendSlackMessage") //nolint:contextcheck // .
 }
 
 type (

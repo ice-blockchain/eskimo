@@ -78,6 +78,8 @@ var (
 
 const (
 	applicationYamlKey = "kyc/quiz"
+
+	requestDeadline = 25 * stdlibtime.Second
 )
 
 var (
