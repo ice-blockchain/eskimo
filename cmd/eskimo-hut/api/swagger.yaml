@@ -567,6 +567,11 @@ paths:
         name: Authorization
         required: true
         type: string
+      - default: android - 1.15.1
+        description: App version
+        in: header
+        name: Mobile-App-Version
+        type: string
       produces:
       - application/json
       responses:

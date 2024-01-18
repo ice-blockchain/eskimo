@@ -11,6 +11,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/ice-blockchain/eskimo/users"
+	"github.com/ice-blockchain/wintr/auth"
 	"github.com/ice-blockchain/wintr/connectors/storage/v2"
 	"github.com/ice-blockchain/wintr/terror"
 	"github.com/ice-blockchain/wintr/time"
@@ -249,8 +250,49 @@ func (c *client) UpdateMetadata(ctx context.Context, userID string, newData *use
 	return newData, nil
 }
 
-func (c *client) Metadata(ctx context.Context, userID, tokenEmail string) (string, *users.JSON, error) {
-	md, err := storage.Get[metadata](ctx, c.db, `
+//nolint:revive // .
+func (c *client) placeholderMetadata(userID, tokenEmail, appVersion string, isFirebase bool) (*metadata, error) {
+	var md *metadata
+	for _, disabledVersion := range c.cfg.SkipMetadataAppVersions {
+		idClaim := auth.IceIDClaim
+		registeredWith := auth.ProviderIce
+		if isFirebase {
+			idClaim = auth.FirebaseIDClaim
+			registeredWith = auth.ProviderFirebase
+		}
+		if appVersion == disabledVersion {
+			val := users.JSON(map[string]any{
+				auth.RegisteredWithProviderClaim: registeredWith,
+				idClaim:                          userID,
+			})
+			md = &metadata{
+				Metadata: &val,
+				Email:    &tokenEmail,
+				UserID:   &userID,
+			}
+
+			break
+		}
+	}
+	if md != nil {
+		return md, ErrMetadataPlaceholder
+	}
+
+	return md, nil
+}
+
+//nolint:funlen // .
+func (c *client) Metadata(ctx context.Context, userID, tokenEmail, appVersion string, isFirebase bool) (string, *users.JSON, error) {
+	md, err := c.placeholderMetadata(userID, tokenEmail, appVersion, isFirebase)
+	if md != nil && err != nil {
+		var encoded string
+		if encoded, err = c.authClient.GenerateMetadata(time.Now(), userID, *md.Metadata); err != nil {
+			return "", nil, errors.Wrapf(err, "failed to encode metadata:%#v for userID:%v", md, userID)
+		}
+
+		return encoded, md.Metadata, nil
+	}
+	md, err = storage.Get[metadata](ctx, c.db, `
 	SELECT COALESCE(user_id, id) as user_id, metadata, email FROM (
 		SELECT account_metadata.*, u.email, u.id, 1 as idx 
 		  FROM users u 
@@ -273,7 +315,7 @@ func (c *client) Metadata(ctx context.Context, userID, tokenEmail string) (strin
 		}
 	}
 	encoded := ""
-	if md.Metadata != nil {
+	if md != nil && md.Metadata != nil {
 		if encoded, err = c.authClient.GenerateMetadata(time.Now(), userID, *md.Metadata); err != nil {
 			return "", nil, errors.Wrapf(err, "failed to encode metadata:%#v for userID:%v", md, userID)
 		}

@@ -226,25 +226,28 @@ func (s *service) Status( //nolint:gocritic // .
 //	@Description	Fetches user's metadata based on token's data
 //	@Tags			Auth
 //	@Produce		json
-//	@Param			Authorization	header		string	true	"Insert your access token"	default(Bearer <Add access token here>)
-//	@Success		200				{object}	Metadata
-//	@Failure		404				{object}	server.ErrorResponse	"if user do not have a metadata yet"
-//	@Failure		500				{object}	server.ErrorResponse
-//	@Failure		504				{object}	server.ErrorResponse	"if request times out"
+//	@Param			Authorization		header		string	true	"Insert your access token"	default(Bearer <Add access token here>)
+//	@Param			Mobile-App-Version	header		string	false	"App version"				default(android - 1.15.1)
+//	@Success		200					{object}	Metadata
+//	@Failure		404					{object}	server.ErrorResponse	"if user do not have a metadata yet"
+//	@Failure		500					{object}	server.ErrorResponse
+//	@Failure		504					{object}	server.ErrorResponse	"if request times out"
 //	@Router			/auth/getMetadata [POST].
 func (s *service) Metadata(
 	ctx context.Context,
 	req *server.Request[GetMetadataArg, Metadata],
 ) (successResp *server.Response[Metadata], errorResp *server.Response[server.ErrorResponse]) {
-	md, mdFields, err := s.authEmailLinkClient.Metadata(ctx, req.AuthenticatedUser.UserID, req.AuthenticatedUser.Email)
+	md, mdFields, err := s.authEmailLinkClient.Metadata(ctx, req.AuthenticatedUser.UserID, req.AuthenticatedUser.Email, req.Data.AppVersion, req.AuthenticatedUser.IsFirebase()) //nolint:lll //.
 	if err != nil {
 		switch {
 		case errors.Is(err, emaillink.ErrUserNotFound):
-			return s.findMetadataUsingIceID(ctx, &req.AuthenticatedUser, err)
+			return s.findMetadataUsingIceID(ctx, &req.AuthenticatedUser, req.Data.AppVersion, err)
 		case errors.Is(err, emaillink.ErrUserDataMismatch):
 			if fbErr := s.handleFirebaseEmailMismatch(ctx, &req.AuthenticatedUser, err); fbErr != nil {
 				return nil, server.BadRequest(fbErr, dataMismatchErrorCode)
 			}
+		case errors.Is(err, emaillink.ErrMetadataPlaceholder):
+			return server.OK(&Metadata{Metadata: md, UserID: req.AuthenticatedUser.UserID}), nil
 		default:
 			return nil, server.Unexpected(errors.Wrapf(err, "failed to get metadata for user by id: %v", req.AuthenticatedUser.UserID))
 		}
@@ -262,7 +265,7 @@ func (s *service) Metadata(
 }
 
 //nolint:funlen,gocognit,revive // .
-func (s *service) findMetadataUsingIceID(ctx context.Context, loggedInUser *server.AuthenticatedUser, err error) (
+func (s *service) findMetadataUsingIceID(ctx context.Context, loggedInUser *server.AuthenticatedUser, appVersion string, err error) (
 	successResp *server.Response[Metadata],
 	errorResp *server.Response[server.ErrorResponse],
 ) {
@@ -276,7 +279,7 @@ func (s *service) findMetadataUsingIceID(ctx context.Context, loggedInUser *serv
 		).ErrorOrNil(), metadataNotFoundErrorCode)
 	}
 	if iceID != "" { //nolint:nestif // Error processing
-		md, mdFields, iErr = s.authEmailLinkClient.Metadata(ctx, iceID, loggedInUser.Email)
+		md, mdFields, iErr = s.authEmailLinkClient.Metadata(ctx, iceID, loggedInUser.Email, appVersion, loggedInUser.IsFirebase())
 		if iErr != nil {
 			switch {
 			case errors.Is(iErr, emaillink.ErrUserNotFound):

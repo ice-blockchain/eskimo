@@ -16,6 +16,8 @@ cmd/eskimo:
     refreshExpirationTime: 24h
     accessExpirationTime: 1h
     jwtSecret: bogus
+  wintr/auth/firebase:
+    allowEmailPassword: true
 cmd/eskimo-hut:
   api-key: bogus-secret
   host: localhost:1443
@@ -29,6 +31,8 @@ cmd/eskimo-hut:
     refreshExpirationTime: 24h
     accessExpirationTime: 1h
     jwtSecret: bogus
+  wintr/auth/firebase:
+    allowEmailPassword: true
 wintr/connectors/storage/v2: &db
   runDDL: true
   primaryURL: postgresql://root:pass@localhost:5433/eskimo
@@ -38,7 +42,7 @@ wintr/connectors/storage/v2: &db
   replicaURLs:
     - postgresql://root:pass@localhost:5433/eskimo
 kyc/social:
-  config-json-url: https://somewhere.com/something/somebogus.json
+  config-json-url: https://ice-staging.b-cdn.net/assets/auth-config.json
   environment: local
   enable-alerts: false
   alert-slack-webhook: https://hooks.slack.com/services/dummy/dummy/dummy
@@ -48,6 +52,8 @@ kyc/social:
   max-attempts-allowed: 3
   wintr/connectors/storage/v2: *db
   web-scraping-api:
+    api-key: bogus
+    url: bogus
   social-links:
     twitter:
       post-urls:
@@ -68,6 +74,9 @@ kyc/social:
         5: https://www.facebook.com/reel/1463272597773681
         6: https://www.facebook.com/reel/1463272597773681
       allow-long-live-tokens: true
+      app-id: bogus
+      app-secret: bogus
+
 kyc/quiz:
   environment: local
   enable-alerts: false
@@ -81,6 +90,8 @@ auth/email-link:
   wintr/connectors/storage/v2: *db
   fromEmailAddress: no-reply@ice.io
   fromEmailName: ice
+  skipMetadataAppVersions:
+    - android - v1.15.1
   emailValidation:
     authLink: https://some.webpage.example/somePath
     jwtSecret: bogus
@@ -165,3 +176,8 @@ users_test:
     <<: *usersMessageBroker
     consumingTopics: *usersMessageBrokerTopics
     consumerGroup: eskimo-local-test
+self:
+  wintr/auth/ice:
+    refreshExpirationTime: 24h
+    accessExpirationTime: 1h
+    jwtSecret: bogus

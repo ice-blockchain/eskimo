@@ -100,6 +100,13 @@ const docTemplate = `{
                         "name": "Authorization",
                         "in": "header",
                         "required": true
+                    },
+                    {
+                        "type": "string",
+                        "default": "android - 1.15.1",
+                        "description": "App version",
+                        "name": "Mobile-App-Version",
+                        "in": "header"
                     }
                 ],
                 "responses": {

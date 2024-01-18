@@ -17,7 +17,9 @@ import (
 // Public API.
 
 type (
-	GetMetadataArg                  struct{}
+	GetMetadataArg struct {
+		AppVersion string `header:"Mobile-App-Version" swaggerignore:"true" required:"false" example:"v.1.2.3"` //nolint:tagliatelle // Nope.
+	}
 	ProcessFaceRecognitionResultArg struct {
 		Disabled             *bool    `json:"disabled" required:"true"`
 		PotentiallyDuplicate *bool    `json:"potentiallyDuplicate" required:"false"`

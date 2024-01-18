@@ -37,7 +37,7 @@ type (
 	IceUserIDClient interface {
 		io.Closer
 		IceUserID(ctx context.Context, mail string) (iceID string, err error)
-		Metadata(ctx context.Context, userID, emailAddress string) (metadata string, metadataFields *users.JSON, err error)
+		Metadata(ctx context.Context, userID, emailAddress, appVersion string, isFirebase bool) (metadata string, metadataFields *users.JSON, err error)
 	}
 	Tokens struct {
 		RefreshToken string `json:"refreshToken,omitempty" example:"eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJPbmxpbmUgSldUIEJ1aWxkZXIiLCJpYXQiOjE2ODQzMjQ0NTYsImV4cCI6MTcxNTg2MDQ1NiwiYXVkIjoiIiwic3ViIjoianJvY2tldEBleGFtcGxlLmNvbSIsIm90cCI6IjUxMzRhMzdkLWIyMWEtNGVhNi1hNzk2LTAxOGIwMjMwMmFhMCJ9.q3xa8Gwg2FVCRHLZqkSedH3aK8XBqykaIy85rRU40nM"` //nolint:lll // .
@@ -64,6 +64,7 @@ var (
 	ErrNoPendingLoginSession            = errors.New("no pending login session")
 	ErrUserBlocked                      = errors.New("user is blocked")
 	ErrTooManyAttempts                  = errors.New("too many attempts")
+	ErrMetadataPlaceholder              = errors.New("placeholder")
 )
 
 // Private API.
@@ -100,9 +101,10 @@ type (
 		userModifier UserModifier
 	}
 	config struct {
-		FromEmailName    string `yaml:"fromEmailName"`
-		FromEmailAddress string `yaml:"fromEmailAddress"`
-		LoginSession     struct {
+		FromEmailName           string   `yaml:"fromEmailName"`
+		FromEmailAddress        string   `yaml:"fromEmailAddress"`
+		SkipMetadataAppVersions []string `yaml:"skipMetadataAppVersions"`
+		LoginSession            struct {
 			JwtSecret string `yaml:"jwtSecret"`
 		} `yaml:"loginSession"`
 		EmailValidation struct {
