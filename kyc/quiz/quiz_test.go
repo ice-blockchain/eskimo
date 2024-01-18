@@ -79,6 +79,20 @@ func helperSessionReset(t *testing.T, r *repositoryImpl, userID UserID, full boo
 	}
 }
 
+func helperSessionHasFailedEntry(t *testing.T, r *repositoryImpl, userID UserID, expected bool) {
+	t.Helper()
+
+	count, err := storage.Get[int](context.Background(), r.DB, "select count(*) from failed_quiz_sessions where user_id = $1", userID)
+	require.NoError(t, err)
+	require.NotNil(t, count)
+
+	if expected {
+		require.GreaterOrEqual(t, *count, 1)
+	} else {
+		require.Zero(t, *count)
+	}
+}
+
 type mockUserReader struct{}
 
 func (*mockUserReader) GetUserByID(ctx context.Context, userID UserID) (*UserProfile, error) {
@@ -199,6 +213,7 @@ func testManagerSessionSkip(ctx context.Context, t *testing.T, r *repositoryImpl
 
 		err = r.SkipQuizSession(ctx, "bogus")
 		require.NoError(t, err)
+		helperSessionHasFailedEntry(t, r, "bogus", true)
 
 		_, err = r.StartQuizSession(ctx, "bogus", "en")
 		require.ErrorIs(t, err, ErrSessionFinishedWithError)
@@ -208,6 +223,7 @@ func testManagerSessionSkip(ctx context.Context, t *testing.T, r *repositoryImpl
 
 		err := r.SkipQuizSession(ctx, "bogus")
 		require.NoError(t, err)
+		helperSessionHasFailedEntry(t, r, "bogus", true)
 	})
 	t.Run("Expired", func(t *testing.T) {
 		helperSessionReset(t, r, "bogus", true)
@@ -219,6 +235,7 @@ func testManagerSessionSkip(ctx context.Context, t *testing.T, r *repositoryImpl
 
 		err = r.SkipQuizSession(ctx, "bogus")
 		require.NoError(t, err)
+		helperSessionHasFailedEntry(t, r, "bogus", true)
 	})
 	t.Run("Finished", func(t *testing.T) {
 		t.Run("Success", func(t *testing.T) {
@@ -231,6 +248,7 @@ func testManagerSessionSkip(ctx context.Context, t *testing.T, r *repositoryImpl
 
 			err = r.SkipQuizSession(ctx, "bogus")
 			require.ErrorIs(t, err, ErrSessionFinished)
+			helperSessionHasFailedEntry(t, r, "bogus", false)
 		})
 		t.Run("Error", func(t *testing.T) {
 			helperSessionReset(t, r, "bogus", true)
@@ -243,6 +261,8 @@ func testManagerSessionSkip(ctx context.Context, t *testing.T, r *repositoryImpl
 
 			err = r.SkipQuizSession(ctx, "bogus")
 			require.NoError(t, err)
+
+			helperSessionHasFailedEntry(t, r, "bogus", true)
 		})
 	})
 }

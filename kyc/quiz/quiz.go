@@ -105,68 +105,63 @@ func (r *repositoryImpl) validateKycStep(user *users.User) error {
 	return nil
 }
 
-func (*repositoryImpl) addFailedAttempt(ctx context.Context, userID UserID, now *time.Time, tx storage.Execer, skipped bool) error {
-	// $1: user_id.
-	// $2: now.
-	// $3: skipped.
-	const stmt = `
-		insert into failed_quiz_sessions (started_at, ended_at, questions, answers, language, user_id, skipped)
-		values ($2, $2, '{}', '{}', 'en', $1, $3)
-	`
-	_, err := storage.Exec(ctx, tx, stmt, userID, now.Time, skipped)
-
-	return errors.Wrap(err, "failed to add failed attempt")
-}
-
 func (r *repositoryImpl) SkipQuizSession(ctx context.Context, userID UserID) error { //nolint:funlen //.
 	// $1: user_id.
 	const stmt = `
+	with finished_session as (
+		update quiz_sessions
+		set
+			ended_at = now(),
+			ended_successfully = false
+		where
+			user_id = $1 and
+			ended_at is null
+		returning *
+	),
+	log_failed_attempt as (
+		insert into failed_quiz_sessions
+			(started_at, ended_at, questions, answers, language, user_id, skipped)
+		select
+			coalesce(finished_session.started_at, now()),
+			coalesce(finished_session.ended_at, now()),
+			coalesce(finished_session.questions, '{}'),
+			coalesce(finished_session.answers, '{}'),
+			coalesce(finished_session.language, 'en'),
+			$1,
+			true
+		from (values(true)) dummy
+		full outer join finished_session on true
+		where
+			not exists (select true from quiz_sessions where user_id = $1 and ended_successfully is true)
+		returning *
+	)
 	select
-		ended_at is not null as finished,
-		ended_successfully
-	from
-		quiz_sessions
-	where
-		user_id = $1
-	for update
+		finished_session.ended_at,
+		finished_session.ended_successfully,
+		log_failed_attempt.skipped
+	from (values(true)) dummy
+	full outer join finished_session on true
+	full outer join log_failed_attempt on true
 	`
 
 	if err := r.CheckUserKYC(ctx, userID); err != nil {
 		return err
 	}
 
-	err := storage.DoInTransaction(ctx, r.DB, func(tx storage.QueryExecer) error {
-		now := time.Now()
+	data, err := storage.ExecOne[struct {
+		EndedAt *time.Time `db:"ended_at"`
+		Success *bool      `db:"ended_successfully"`
+		Skipped *bool      `db:"skipped"`
+	}](ctx, r.DB, stmt, userID)
+	if err != nil {
+		return errors.Wrap(err, "failed to skip session")
+	}
 
-		data, err := storage.ExecOne[struct {
-			Finished bool `db:"finished"`
-			Success  bool `db:"ended_successfully"`
-		}](ctx, tx, stmt, userID)
-		if err != nil {
-			if errors.Is(err, storage.ErrNotFound) {
-				err = r.addFailedAttempt(ctx, userID, now, tx, true)
-				if err == nil {
-					err = r.modifyUser(ctx, false, now, userID)
-				}
+	if data.Success == nil && data.Skipped == nil && data.EndedAt == nil {
+		return ErrSessionFinished
+	}
 
-				return err
-			}
-
-			return errors.Wrap(wrapErrorInTx(err), "failed to get session data")
-		}
-
-		if data.Finished {
-			if data.Success {
-				return wrapErrorInTx(ErrSessionFinished)
-			}
-
-			return r.modifyUser(ctx, false, now, userID)
-		}
-
-		return wrapErrorInTx(r.UserMarkSessionAsFinished(ctx, userID, *now.Time, tx, false, true))
-	})
-
-	return errors.Wrap(err, "failed to skip session")
+	return r.modifyUser(ctx, false, data.EndedAt, userID)
 }
 
 func (r *repositoryImpl) TryFinishUnfinishedQuizSession(ctx context.Context, userID UserID) error {
