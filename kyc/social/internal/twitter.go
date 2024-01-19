@@ -7,12 +7,14 @@ import (
 	"context"
 	"encoding/json"
 	"math/rand"
+	"net/http"
 	"net/url"
 	"slices"
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/hashicorp/go-multierror"
+	"github.com/imroc/req/v3"
 	"github.com/pkg/errors"
 
 	"github.com/ice-blockchain/wintr/time"
@@ -33,8 +35,8 @@ func (t *twitterVerifierImpl) VerifyPostLink(ctx context.Context, doc *goquery.D
 		for _, node := range s.Nodes {
 			for i := range node.Attr {
 				if node.Attr[i].Key == "href" && strings.HasPrefix(node.Attr[i].Val, "https://t.co") {
-					data, err := t.Scrape(ctx, node.Attr[i].Val)
-					foundPost = err == nil && strings.Contains(strings.ToLower(string(data)), strings.ToLower(expectedPostURL))
+					result, err := t.Scrape(ctx, node.Attr[i].Val)
+					foundPost = err == nil && strings.Contains(strings.ToLower(string(result.Content)), strings.ToLower(expectedPostURL))
 
 					break
 				}
@@ -84,15 +86,33 @@ func (*twitterVerifierImpl) ExtractUsernameFromURL(postURL string) (username str
 	return
 }
 
-func (t *twitterVerifierImpl) Scrape(ctx context.Context, target string) (content []byte, err error) {
-	for _, country := range t.countries() {
-		if content, err = t.Scraper.Scrape(ctx, target, func(m map[string]string) map[string]string {
-			m["country"] = country
-			delete(m, "render_js")
-			delete(m, "wait_until")
+func twitterRetryFn(resp *req.Response, err error) bool {
+	if err != nil {
+		return true
+	}
 
-			return m
-		}); err == nil {
+	switch resp.GetStatusCode() {
+	case http.StatusOK, http.StatusForbidden:
+		return false
+
+	default:
+		return true
+	}
+}
+
+func (t *twitterVerifierImpl) Scrape(ctx context.Context, target string) (result *webScraperResult, err error) { //nolint:funlen // .
+	for _, country := range t.countries() {
+		if result, err = t.Scraper.Scrape(ctx, target,
+			webScraperOptions{
+				Retry: twitterRetryFn,
+				ProxyOptions: func(m map[string]string) map[string]string {
+					m["country"] = country
+					delete(m, "render_js")
+					delete(m, "wait_until")
+
+					return m
+				},
+			}); err == nil {
 			break
 		}
 	}
@@ -100,13 +120,28 @@ func (t *twitterVerifierImpl) Scrape(ctx context.Context, target string) (conten
 		return nil, multierror.Append(ErrFetchFailed, err)
 	}
 
-	return content, nil
+	switch result.Code {
+	case http.StatusOK:
+		return result, nil
+
+	case http.StatusForbidden:
+		const errorText = `Sorry, you are not authorized to see this status.`
+
+		if strings.Contains(string(result.Content), errorText) {
+			return nil, ErrTweetPrivate
+		}
+
+		fallthrough
+
+	default:
+		return nil, multierror.Append(ErrFetchFailed, errors.Errorf("unexpected status code: `%v`, response: `%v`", result.Code, string(result.Content)))
+	}
 }
 
 func (t *twitterVerifierImpl) FetchOE(ctx context.Context, postURL string) (*twitterOE, error) {
 	var (
-		data []byte
-		err  error
+		result *webScraperResult
+		err    error
 	)
 
 	target := url.URL{
@@ -116,12 +151,12 @@ func (t *twitterVerifierImpl) FetchOE(ctx context.Context, postURL string) (*twi
 		RawQuery: url.Values{"url": {postURL}}.Encode(),
 	}
 
-	if data, err = t.Scrape(ctx, target.String()); err != nil {
+	if result, err = t.Scrape(ctx, target.String()); err != nil {
 		return nil, err
 	}
 
 	var oe twitterOE
-	if err = json.Unmarshal(data, &oe); err != nil {
+	if err = json.Unmarshal(result.Content, &oe); err != nil {
 		return nil, multierror.Append(ErrInvalidPageContent, err)
 	} else if oe.HTML == "" {
 		return nil, errors.Wrap(ErrInvalidPageContent, "empty page")

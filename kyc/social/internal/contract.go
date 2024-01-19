@@ -5,6 +5,7 @@ package social
 import (
 	"context"
 
+	"github.com/imroc/req/v3"
 	"github.com/pkg/errors"
 )
 
@@ -30,14 +31,22 @@ type (
 )
 
 type (
-	webScraperOptionsFunc func(map[string]string) map[string]string
+	webScraperOptions struct {
+		Retry        req.RetryConditionFunc
+		ProxyOptions func(map[string]string) map[string]string
+	}
+
+	webScraperResult struct {
+		Content []byte
+		Code    int
+	}
 
 	webScraper interface {
-		Scrape(ctx context.Context, url string, opts webScraperOptionsFunc) (content []byte, err error)
+		Scrape(ctx context.Context, url string, opts webScraperOptions) (result *webScraperResult, err error)
 	}
 
 	dataFetcher interface {
-		Fetch(ctx context.Context, url string) (content []byte, err error)
+		Fetch(ctx context.Context, url string, retry req.RetryConditionFunc) (content []byte, httpCode int, err error)
 	}
 
 	censorer interface {
@@ -142,4 +151,5 @@ var (
 	ErrFetchReadFailed    = errors.New("cannot read fetched post")
 	ErrScrapeFailed       = errors.New("cannot scrape target")
 	ErrInvalidToken       = errors.New("invalid token")
+	ErrTweetPrivate       = errors.New("tweet is private or does not exist")
 )

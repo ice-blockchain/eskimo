@@ -57,7 +57,7 @@ func (f *facebookVerifierImpl) BuildURL(endpoint string, args map[string]string)
 }
 
 func (f *facebookVerifierImpl) FetchFeed(ctx context.Context, targetURL string) (resp facebookFeedResponse, err error) {
-	data, err := f.Fetcher.Fetch(ctx, targetURL)
+	data, _, err := f.Fetcher.Fetch(ctx, targetURL, nil)
 	if err != nil {
 		return resp, multierror.Append(ErrScrapeFailed, err)
 	}
@@ -145,7 +145,7 @@ func (f *facebookVerifierImpl) VerifyToken(ctx context.Context, meta *Metadata) 
 			"access_token": f.AppID + "|" + f.AppSecret,
 		})
 
-	data, err := f.Fetcher.Fetch(ctx, targetURL)
+	data, _, err := f.Fetcher.Fetch(ctx, targetURL, nil)
 	if err != nil {
 		return "", multierror.Append(ErrScrapeFailed, err)
 	}

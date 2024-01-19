@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/go-multierror"
+	"github.com/imroc/req/v3"
 	"github.com/stretchr/testify/require"
 )
 
@@ -31,12 +32,12 @@ func TestTwitterExtractUsernameFromURL(t *testing.T) {
 
 type mockScraper struct{}
 
-func (*mockScraper) Scrape(context.Context, string, webScraperOptionsFunc) ([]byte, error) {
-	return []byte{}, multierror.Append(ErrScrapeFailed, ErrFetchFailed)
+func (*mockScraper) Scrape(context.Context, string, webScraperOptions) (*webScraperResult, error) {
+	return nil, multierror.Append(ErrScrapeFailed, ErrFetchFailed)
 }
 
-func (*mockScraper) Fetch(context.Context, string) ([]byte, error) {
-	return []byte{}, multierror.Append(ErrScrapeFailed, ErrFetchFailed)
+func (*mockScraper) Fetch(context.Context, string, req.RetryConditionFunc) ([]byte, int, error) {
+	return []byte{}, 0, multierror.Append(ErrScrapeFailed, ErrFetchFailed)
 }
 
 func TestTwitterVerifyFetch(t *testing.T) {

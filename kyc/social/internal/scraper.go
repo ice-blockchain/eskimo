@@ -30,7 +30,7 @@ func (c *censorerImpl) Censor(err error) error {
 	return errors.New(msg)
 }
 
-func (d *dataFetcherImpl) Fetch(ctx context.Context, target string) ([]byte, error) {
+func (d *dataFetcherImpl) Fetch(ctx context.Context, target string, retry req.RetryConditionFunc) (data []byte, code int, err error) {
 	resp, err := req.DefaultClient().
 		R().
 		SetContext(ctx).
@@ -44,30 +44,35 @@ func (d *dataFetcherImpl) Fetch(ctx context.Context, target string) ([]byte, err
 			}
 		}).
 		SetRetryCondition(func(resp *req.Response, err error) bool {
+			if retry != nil {
+				return retry(resp, err)
+			}
+
 			return !(err == nil && resp.GetStatusCode() == http.StatusOK)
 		}).
 		Get(target)
 	if err != nil {
-		return nil, multierror.Append(ErrFetchFailed, d.Censorer.Censor(err))
+		return nil, 0, multierror.Append(ErrFetchFailed, d.Censorer.Censor(err))
 	}
 
-	data, err := resp.ToBytes()
+	data, err = resp.ToBytes()
 	if err != nil {
-		return nil, multierror.Append(ErrFetchReadFailed, d.Censorer.Censor(err))
+		return nil, 0, multierror.Append(ErrFetchReadFailed, d.Censorer.Censor(err))
 	}
 
-	if resp.GetStatusCode() != http.StatusOK {
-		return nil, multierror.Append(ErrFetchFailed, errors.Errorf("unexpected status code: `%v`, response: `%v`", resp.GetStatusCode(), string(data)))
+	return data, resp.GetStatusCode(), nil
+}
+
+func (s *webScraperImpl) Scrape(ctx context.Context, target string, opts webScraperOptions) (*webScraperResult, error) {
+	data, code, err := s.Fetcher.Fetch(ctx, s.BuildQuery(target, opts.ProxyOptions), opts.Retry)
+	if err != nil {
+		return nil, err //nolint:wrapcheck // False-Positive.
 	}
 
-	return data, nil
+	return &webScraperResult{Code: code, Content: data}, nil
 }
 
-func (s *webScraperImpl) Scrape(ctx context.Context, target string, options webScraperOptionsFunc) ([]byte, error) {
-	return s.Fetcher.Fetch(ctx, s.BuildQuery(target, options)) //nolint:wrapcheck // False-Positive.
-}
-
-func (s *webScraperImpl) BuildQuery(target string, options webScraperOptionsFunc) string {
+func (s *webScraperImpl) BuildQuery(target string, options func(map[string]string) map[string]string) string {
 	conf := map[string]string{
 		"render_js":  "1",
 		"device":     "mobile",
