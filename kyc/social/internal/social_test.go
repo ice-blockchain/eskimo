@@ -42,6 +42,25 @@ func TestTwitterKYC(t *testing.T) {
 	})
 }
 
+func TestTwitterPrivate(t *testing.T) {
+	t.Parallel()
+
+	conf := loadConfig()
+	require.NotNil(t, conf)
+
+	sc := newMustWebScraper(conf.WebScrapingAPI.URL, conf.WebScrapingAPI.APIKey)
+	require.NotNil(t, sc)
+
+	verifier := newTwitterVerifier(sc, []string{"twitter.com"}, []string{"US", "MX", "CA"})
+	require.NotNil(t, verifier)
+
+	ctx, cancel := context.WithTimeout(context.TODO(), time.Minute)
+	defer cancel()
+
+	_, err := verifier.VerifyPost(ctx, &Metadata{PostURL: `https://twitter.com/root/status/1748008059103039495`, ExpectedPostText: "foo", ExpectedPostURL: "bar"})
+	require.ErrorIs(t, err, ErrTweetPrivate)
+}
+
 func TestFacebookKYC(t *testing.T) {
 	t.Parallel()
 
