@@ -511,7 +511,7 @@ func (s *service) GetValidUserForPhoneNumberMigration( //nolint:funlen,revive //
 	if req.Data.Email != "" {
 		if uid, gErr := server.Auth(ctx).GetUserUIDByEmail(ctx, req.Data.Email); gErr != nil || uid != "" {
 			if gErr != nil {
-				return nil, server.Unexpected(err)
+				return nil, server.Unexpected(gErr)
 			}
 
 			return nil, server.Conflict(users.ErrDuplicate, emailUsedBySomebodyElseEmail)
