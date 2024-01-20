@@ -93,7 +93,7 @@ type (
 		Checksum string `form:"checksum" formMultipart:"checksum"`
 	}
 	DeleteUserArg struct {
-		UserID string `uri:"userId" required:"true" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
+		UserID string `uri:"userId" required:"true" allowForbiddenWriteOperation:"true" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"`
 	}
 	GetDeviceLocationArg struct {
 		// Optional. Set it to `-` if unknown.
