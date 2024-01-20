@@ -378,6 +378,11 @@ func (s *service) DeleteUser( //nolint:gocritic // False negative.
 	ctx context.Context,
 	req *server.Request[DeleteUserArg, any],
 ) (*server.Response[any], *server.Response[server.ErrorResponse]) {
+	if req.Data.UserID != req.AuthenticatedUser.UserID {
+		if req.AuthenticatedUser.Role != adminRole {
+			return nil, server.Forbidden(errors.New("not allowed"))
+		}
+	}
 	if err := s.usersProcessor.DeleteUser(ctx, req.Data.UserID); err != nil {
 		if errors.Is(err, users.ErrNotFound) {
 			return server.NoContent(), nil
