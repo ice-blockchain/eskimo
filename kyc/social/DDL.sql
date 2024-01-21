@@ -67,3 +67,9 @@ insert into unsuccessful_social_kyc_alerts (last_alert_at,    kyc_step,social)
                                            (current_timestamp,10,     'twitter')
 ON CONFLICT (kyc_step, social)
 DO NOTHING;
+
+ALTER TABLE socials DROP CONSTRAINT socials_pkey, ADD PRIMARY KEY (social, user_handle);
+ALTER TABLE socials DROP CONSTRAINT IF EXISTS socials_social_user_handle_key;
+
+CREATE INDEX IF NOT EXISTS socials_lookup_userid_idx ON socials (user_id);
+CREATE INDEX IF NOT EXISTS socials_lookup_userid_per_social ON socials (user_id, social);
