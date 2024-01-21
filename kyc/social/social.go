@@ -327,30 +327,6 @@ func (r *repository) saveUnsuccessfulAttempt(ctx context.Context, now *time.Time
 
 func (r *repository) saveSocial(ctx context.Context, socialType Type, userID, userHandle string) error {
 	_, err := storage.Exec(ctx, r.db, `INSERT INTO socials(user_id,social,user_handle) VALUES ($1,$2,$3)`, userID, socialType, userHandle)
-	if err == nil {
-		return nil
-	}
-
-	if storage.IsErr(err, storage.ErrDuplicate, "pk") {
-		savedUser, errSavedUser := storage.Get[struct {
-			UserID string `db:"user_id"`
-		}](ctx, r.db, `SELECT user_id FROM socials WHERE social = $1 AND lower(user_handle) = $2`, socialType, userHandle)
-		if errSavedUser != nil {
-			if errors.Is(errSavedUser, storage.ErrNotFound) {
-				log.Warn(fmt.Sprintf("cannot find user by social:%v, userHandle:%v but had conflict %v", socialType, userHandle, err))
-				errSavedUser = nil
-			}
-
-			return errors.Wrapf(errSavedUser, "save: failed to get user by social:%v, userHandle:%v", socialType, userHandle)
-		}
-
-		if savedUser.UserID != userID {
-			// Wrap the original (storage.ErrDuplicate) error but with additional data.
-			return errors.Wrapf(err, "duplicate social:%v, userHandle:%v", socialType, userHandle)
-		}
-
-		return nil
-	}
 
 	return errors.Wrapf(err, "failed to save social:%v, userID:%v, userHandle:%v", socialType, userID, userHandle)
 }
