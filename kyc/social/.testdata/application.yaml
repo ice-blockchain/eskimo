@@ -1,0 +1,19 @@
+# SPDX-License-Identifier: ice License 1.0
+
+development: true
+logger:
+  encoder: console
+  level: debug
+
+users: &users
+  wintr/connectors/storage/v2:
+    runDDL: true
+    primaryURL: postgresql://root:pass@localhost:5432/ice
+    credentials:
+      user: root
+      password: pass
+    replicaURLs:
+      - postgresql://root:pass@localhost:5432/ice
+
+kyc/social:
+  <<: *users
