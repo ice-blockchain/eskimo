@@ -352,8 +352,6 @@ func detectReason(err error) string {
 	case storage.IsErr(err, storage.ErrDuplicate):
 		if tErr := terror.As(err); tErr != nil {
 			if unwrapped := tErr.Unwrap(); storage.IsErr(unwrapped, storage.ErrDuplicate, "pk") {
-				return fmt.Sprintf("duplicate socials '%v'", tErr.Data["user_handle"])
-			} else if storage.IsErr(unwrapped, storage.ErrDuplicate) {
 				return fmt.Sprintf("duplicate userhandle '%v'", tErr.Data["user_handle"])
 			}
 		}
