@@ -277,7 +277,7 @@ func (u *User) genSQLUpdate(ctx context.Context, agendaUserIDs []UserID) (sql st
 	}
 	if u.KYCStepPassed != nil {
 		params = append(params, u.KYCStepPassed)
-		sql += fmt.Sprintf(", KYC_STEP_PASSED = GREATEST($%v,KYC_STEP_PASSED)", nextIndex)
+		sql += fmt.Sprintf(", KYC_STEP_PASSED = (CASE WHEN $%[1]v = 0 THEN 0 ELSE GREATEST($%[1]v,KYC_STEP_PASSED) END)", nextIndex)
 		nextIndex++
 	}
 	if u.KYCStepBlocked != nil {
