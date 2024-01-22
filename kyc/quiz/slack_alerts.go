@@ -80,9 +80,7 @@ func (r *repositoryImpl) sendAlertToSlack(ctx context.Context, ticker *stdlibtim
 							THEN 'skipped' 
 						WHEN EXTRACT(EPOCH FROM (ended_at - started_at))  >= $2 
 							THEN 'expired'
-						WHEN cardinality(answers) < $3
-						    THEN 'failed'
-						ELSE 'unknown'
+						ELSE 'failed'
 					   END)	   AS mapped_reason,
 					  count(1) AS counter
 			   FROM failed_quiz_sessions
