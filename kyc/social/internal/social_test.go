@@ -42,6 +42,31 @@ func TestTwitterKYC(t *testing.T) {
 	})
 }
 
+func TestTwitterKYCNoRepost(t *testing.T) {
+	t.Parallel()
+
+	const (
+		expectedText = `✅ Verifying my account on @ice_blockchain with the nickname: "john"`
+		targetURL    = `https://twitter.com/JohnDoe1495747/status/1750103621184700443`
+	)
+
+	conf := loadConfig()
+	require.NotNil(t, conf)
+
+	sc := newMustWebScraper(conf.WebScrapingAPI.URL, conf.WebScrapingAPI.APIKey)
+	require.NotNil(t, sc)
+
+	verifier := newTwitterVerifier(sc, []string{"twitter.com"}, []string{"US", "MX", "CA"})
+	require.NotNil(t, verifier)
+
+	ctx, cancel := context.WithTimeout(context.TODO(), time.Minute)
+	defer cancel()
+
+	username, err := verifier.VerifyPost(ctx, &Metadata{PostURL: targetURL, ExpectedPostText: expectedText})
+	require.NoError(t, err)
+	require.Equal(t, "JohnDoe1495747", username)
+}
+
 func TestTwitterPrivate(t *testing.T) {
 	t.Parallel()
 

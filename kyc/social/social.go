@@ -178,9 +178,6 @@ func (r *repository) VerifyPost(ctx context.Context, metadata *VerificationMetad
 		ExpectedPostText: metadata.expectedPostText(user.User),
 		ExpectedPostURL:  r.expectedPostURL(metadata),
 	}
-	if pvm.ExpectedPostURL == "" {
-		log.Warn(fmt.Sprintf("post url not found for KYCStep:%v,Social:%v", metadata.KYCStep, metadata.Social))
-	}
 	if true { // Because we want to be less strict, for the moment.
 		pvm.ExpectedPostText = fmt.Sprintf("%q", user.Username)
 	}

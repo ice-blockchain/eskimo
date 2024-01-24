@@ -59,7 +59,7 @@ func (t *twitterVerifierImpl) VerifyContent(ctx context.Context, oe *twitterOE, 
 		return ErrTextNotFound
 	}
 
-	if !t.VerifyPostLink(ctx, doc, expextedPostURL) {
+	if expextedPostURL != "" && !t.VerifyPostLink(ctx, doc, expextedPostURL) {
 		return ErrPostNotFound
 	}
 
