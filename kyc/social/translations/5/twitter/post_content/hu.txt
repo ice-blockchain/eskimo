@@ -1,5 +1,5 @@
 🌟 #Snowman (SNOW), az @ice_blockchain hivatalos meme érmeje, méltányos indításként jelent meg a #Uniswap-en
 
-Kereskedj most: https://app.uniswap.org/tokens/ethereum/0xd1f3d2f5c12a205fc912358878b089eae48a557f
+Kereskedj most: https://dexscreener.com/ethereum/0xd1f3d2f5c12a205fc912358878b089eae48a557f
 
 🙌 Csatlakozz hozzám a #Ice "{{.Username}}" oldalon

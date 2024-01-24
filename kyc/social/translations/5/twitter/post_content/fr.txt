@@ -1,5 +1,5 @@
 🌟 #Snowman (SNOW), la cryptomonnaie mème officielle de @ice_blockchain, est sortie en tant que lancement équitable sur #Uniswap
 
-Tradez maintenant : https://app.uniswap.org/tokens/ethereum/0xd1f3d2f5c12a205fc912358878b089eae48a557f
+Tradez maintenant : https://dexscreener.com/ethereum/0xd1f3d2f5c12a205fc912358878b089eae48a557f
 
 🙌 Rejoignez-moi sur #Ice "{{.Username}}"

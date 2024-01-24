@@ -1,5 +1,5 @@
 🌟 #Snowman (SNOW), @ice_blockchain-in rəsmi meme-coin-i, #Uniswap-da adil başlanğıc kimi buraxıldı
 
-İndi ticarət edin: https://app.uniswap.org/tokens/ethereum/0xd1f3d2f5c12a205fc912358878b089eae48a557f
+İndi ticarət edin: https://dexscreener.com/ethereum/0xd1f3d2f5c12a205fc912358878b089eae48a557f
 
 🙌 Mənə qoşulun #Ice "{{.Username}}"

@@ -1,5 +1,5 @@
 🌟 #Snowman (SNOW), המטבע הממ, הרשמי של @ice_blockchain, הושק כהשקה הוגנת ב- #Uniswap
 
-סחרו עכשיו: https://app.uniswap.org/tokens/ethereum/0xd1f3d2f5c12a205fc912358878b089eae48a557f
+סחרו עכשיו: https://dexscreener.com/ethereum/0xd1f3d2f5c12a205fc912358878b089eae48a557f
 
 🙌 הצטרפו אלי ב- #Ice "{{.Username}}"

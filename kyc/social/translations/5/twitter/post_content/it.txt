@@ -1,5 +1,5 @@
 🌟 #Snowman (SNOW), la moneta meme ufficiale di @ice_blockchain, è stata lanciata in modo equo su #Uniswap
 
-Commercia Ora: https://app.uniswap.org/tokens/ethereum/0xd1f3d2f5c12a205fc912358878b089eae48a557f
+Commercia Ora: https://dexscreener.com/ethereum/0xd1f3d2f5c12a205fc912358878b089eae48a557f
 
 🙌 Unisciti a me su #Ice "{{.Username}}"

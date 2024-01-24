@@ -1,5 +1,5 @@
 🌟 #Snowman (SNOW), die amptelike meme-munt van @ice_blockchain, vrygestel as 'n regverdige bekendstelling op #Uniswap
 
-Handel Nou: https://app.uniswap.org/tokens/ethereum/0xd1f3d2f5c12a205fc912358878b089eae48a557f
+Handel Nou: https://dexscreener.com/ethereum/0xd1f3d2f5c12a205fc912358878b089eae48a557f
 
 🙌 Sluit aan by my op #Ice "{{.Username}}"

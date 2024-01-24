@@ -1,5 +1,5 @@
 🌟 #Snowman (SNOW) ، عملة الميم الرسمية لـ @ice_blockchain ، تم إصدارها كإطلاق عادل على #Uniswap
 
-التداول الآن: https://app.uniswap.org/tokens/ethereum/0xd1f3d2f5c12a205fc912358878b089eae48a557f
+التداول الآن: https://dexscreener.com/ethereum/0xd1f3d2f5c12a205fc912358878b089eae48a557f
 
 🙌 انضم إلي في #Ice "{{.Username}}"

@@ -1,5 +1,5 @@
 🌟 #Snowman (SNOW), официалната мем-монета на @ice_blockchain, пусната като честен старт на #Uniswap
 
-Търгувайте сега: https://app.uniswap.org/tokens/ethereum/0xd1f3d2f5c12a205fc912358878b089eae48a557f
+Търгувайте сега: https://dexscreener.com/ethereum/0xd1f3d2f5c12a205fc912358878b089eae48a557f
 
 🙌 Присъединете се към мен в #Ice "{{.Username}}"

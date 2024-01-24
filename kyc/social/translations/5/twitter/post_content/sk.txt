@@ -1,5 +1,5 @@
 🌟 #Snowman (SNOW), oficiálna meme minca od @ice_blockchain, bola uvedená na trh ako spravodlivý štart na #Uniswap
 
-Obchodujte teraz: https://app.uniswap.org/tokens/ethereum/0xd1f3d2f5c12a205fc912358878b089eae48a557f
+Obchodujte teraz: https://dexscreener.com/ethereum/0xd1f3d2f5c12a205fc912358878b089eae48a557f
 
 🙌 Pripojte sa ku mne na #Ice "{{.Username}}"
