@@ -1,7 +1,5 @@
-🌟 @ice_blockchain のスポットトレーディングは現在 #OKX で利用可能です！
+🌟 #Snowman ($SNOW)、@ice_blockchainの公式ミームコインは、#Uniswapで公平なローンチとしてリリースされました
 
-📈 $ICE/USDT - 今すぐトレード
+今すぐ取引：https://app.uniswap.org/tokens/ethereum/0xd1f3d2f5c12a205fc912358878b089eae48a557f
 
-🙌 私の紹介コード "{{.Username}}" を使用して #Ice で私のチームに参加してください
-
-#IceNetwork #DecentralizedFuture
+🙌 #Ice "{{.Username}}" で私に参加してください

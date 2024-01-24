@@ -1,7 +1,5 @@
-🌟 @ice_blockchain Spot Ticaret şimdi #OKX'de açık!
+🌟 #Snowman ($SNOW), @ice_blockchain'ın resmi meme parası olarak #Uniswap'te adil bir lansman olarak piyasaya sürüldü
 
-📈 $ICE/USDT - Şimdi ticaret yapın
+Şimdi Ticaret Yapın: https://app.uniswap.org/tokens/ethereum/0xd1f3d2f5c12a205fc912358878b089eae48a557f
 
-🙌 Referral kodum "{{.Username}}" kullanarak #Ice'daki takımıma katılın
-
-#IceNetwork #DecentralizedFuture
+🙌 Bana #Ice "{{.Username}}" katılın

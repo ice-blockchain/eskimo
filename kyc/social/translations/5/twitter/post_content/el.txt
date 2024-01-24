@@ -1,7 +1,5 @@
-🌟 Ο Spot Trading από το @ice_blockchain είναι τώρα διαθέσιμο στο #OKX!
+🌟 #Snowman ($SNOW), η επίσημη κόρη του μιμί του @ice_blockchain κυκλοφόρησε ως δίκαιη έναρξη στο #Uniswap
 
-📈 $ICE/USDT - Κάντε εμπόριο τώρα
+Εμπόριο τώρα: https://app.uniswap.org/tokens/ethereum/0xd1f3d2f5c12a205fc912358878b089eae48a557f
 
-🙌 Εγγραφείτε στην ομάδα μου στο #Ice χρησιμοποιώντας τον αναφορικό μου κωδικό "{{.Username}}"
-
-#IceNetwork #DecentralizedFuture
+🙌 Έλα στο #Ice μαζί μου "{{.Username}}"

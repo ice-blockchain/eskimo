@@ -1,7 +1,5 @@
-🌟 Spot Trading จาก @ice_blockchain เปิดให้บริการแล้วบน #OKX!
+🌟 #Snowman ($SNOW), สกุลเงินมีมอย่างเป็นทางการของ @ice_blockchain ได้ถูกปล่อยแบบเป็นธรรมใน #Uniswap
 
-📈 $ICE/USDT - ซื้อขายตอนนี้
+ซื้อขายตอนนี้: https://app.uniswap.org/tokens/ethereum/0xd1f3d2f5c12a205fc912358878b089eae48a557f
 
-🙌 เข้าร่วมทีมของฉันบน #Ice โดยใช้รหัสอ้างอิง "{{.Username}}"
-
-#IceNetwork #DecentralizedFuture
+🙌 เข้าร่วมกับฉันใน #Ice "{{.Username}}"

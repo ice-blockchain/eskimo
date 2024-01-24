@@ -1,7 +1,5 @@
-🌟 Tregtia në vend të @ice_blockchain është tani e hapur në #OKX!
+🌟 #Snowman ($SNOW), monedha meme zyrtare e @ice_blockchain, u lëshua si një nisje e drejtë në #Uniswap
 
-📈 $ICE/USDT - Tregtoni tani
+Tregto Tani: https://app.uniswap.org/tokens/ethereum/0xd1f3d2f5c12a205fc912358878b089eae48a557f
 
-🙌 Bashkohuni me ekipin tim në #Ice duke përdorur kodin tim të referencës "{{.Username}}"
-
-#IceNetwork #DecentralizedFuture
+🙌 Bashkohuni me mua në #Ice "{{.Username}}"

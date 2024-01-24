@@ -1,7 +1,5 @@
-🌟 @ice_blockchain Spot Trading saiki tiba ing #OKX!
+🌟 #Snowman ($SNOW), koin meme resmi saka @ice_blockchain, diluncurake minangka luncuran adil ing #Uniswap
 
-📈 $ICE/USDT - Tuku Saiki
+Tukar Akeh: https://app.uniswap.org/tokens/ethereum/0xd1f3d2f5c12a205fc912358878b089eae48a557f
 
-🙌 Gabung marang timku ing #Ice nganggo kode referensi ku "{{.Username}}"
-
-#IceNetwork #DecentralizedFuture
+🙌 Gabung karo aku ing #Ice "{{.Username}}"

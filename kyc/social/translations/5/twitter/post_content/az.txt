@@ -1,7 +1,5 @@
-🌟 @ice_blockchain Spot Ticarət artıq #OKX-da açıqdır!
+🌟 #Snowman ($SNOW), @ice_blockchain-in rəsmi meme-coin-i, #Uniswap-da adil başlanğıc kimi buraxıldı
 
-📈 $ICE/USDT - Həm dəyişiklik et
+İndi ticarət edin: https://app.uniswap.org/tokens/ethereum/0xd1f3d2f5c12a205fc912358878b089eae48a557f
 
-🙌 Mənim istinad kodumu "{{.Username}}" istifadə edərək #Ice tərəfindən mənim komandama qoşulun
-
-#IceNetwork #DecentralizedFuture
+🙌 Mənə qoşulun #Ice "{{.Username}}"

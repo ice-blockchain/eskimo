@@ -1,7 +1,5 @@
-🌟 La négociation au comptant de @ice_blockchain est désormais ouverte sur #OKX!
+🌟 #Snowman ($SNOW), la cryptomonnaie mème officielle de @ice_blockchain, est sortie en tant que lancement équitable sur #Uniswap
 
-📈 $ICE/USDT - Tradez maintenant
+Tradez maintenant : https://app.uniswap.org/tokens/ethereum/0xd1f3d2f5c12a205fc912358878b089eae48a557f
 
-🙌 Rejoignez mon équipe sur #Ice en utilisant mon code de parrainage "{{.Username}}"
-
-#IceNetwork #DecentralizedFuture
+🙌 Rejoignez-moi sur #Ice "{{.Username}}"

@@ -1,7 +1,5 @@
-🌟 @ice_blockchain Je nyní otevřený Spot Trading na #OKX!
+🌟 #Snowman ($SNOW), oficiální meme mince od @ice_blockchain, byla vydána jako férový start na #Uniswap
 
-📈 $ICE/USDT - Obchodujte nyní
+Obchodujte nyní: https://app.uniswap.org/tokens/ethereum/0xd1f3d2f5c12a205fc912358878b089eae48a557f
 
-🙌 Přidejte se do mého týmu na #Ice s mým odkazovým kódem "{{.Username}}"
-
-#IceNetwork #DecentralizedFuture
+🙌 Připojte se ke mně na #Ice "{{.Username}}"
