@@ -38,10 +38,16 @@ CHECK (kyc_step = 3 OR kyc_step = 5 OR kyc_step = 6 OR kyc_step = 7 OR kyc_step 
 CREATE INDEX IF NOT EXISTS social_kyc_steps_lookup1_ix ON social_kyc_steps (kyc_step,social,created_at DESC);
 
 CREATE TABLE IF NOT EXISTS socials (
-                    user_id                   text      NOT NULL PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+                    user_id                   text      NOT NULL REFERENCES users(id) ON DELETE CASCADE,
                     social                    text      NOT NULL CHECK (social = 'twitter' OR social = 'facebook'),
                     user_handle               text      NOT NULL,
-                    UNIQUE (social, user_handle));
+                    PRIMARY KEY (social, user_handle));
+
+ALTER TABLE socials DROP CONSTRAINT socials_pkey, ADD PRIMARY KEY (social, user_handle);
+ALTER TABLE socials DROP CONSTRAINT IF EXISTS socials_social_user_handle_key;
+
+CREATE INDEX IF NOT EXISTS socials_lookup_userid_idx ON socials (user_id);
+CREATE INDEX IF NOT EXISTS socials_lookup_userid_per_social ON socials (user_id, social);
 
 CREATE TABLE IF NOT EXISTS unsuccessful_social_kyc_alerts (
                     last_alert_at             timestamp NOT NULL,
@@ -67,9 +73,3 @@ insert into unsuccessful_social_kyc_alerts (last_alert_at,    kyc_step,social)
                                            (current_timestamp,10,     'twitter')
 ON CONFLICT (kyc_step, social)
 DO NOTHING;
-
-ALTER TABLE socials DROP CONSTRAINT socials_pkey, ADD PRIMARY KEY (social, user_handle);
-ALTER TABLE socials DROP CONSTRAINT IF EXISTS socials_social_user_handle_key;
-
-CREATE INDEX IF NOT EXISTS socials_lookup_userid_idx ON socials (user_id);
-CREATE INDEX IF NOT EXISTS socials_lookup_userid_per_social ON socials (user_id, social);

@@ -323,9 +323,19 @@ func (r *repository) saveUnsuccessfulAttempt(ctx context.Context, now *time.Time
 }
 
 func (r *repository) saveSocial(ctx context.Context, socialType Type, userID, userHandle string) error {
-	_, err := storage.Exec(ctx, r.db, `INSERT INTO socials(user_id,social,user_handle) VALUES ($1,$2,$3)`, userID, socialType, userHandle)
+	sql := `INSERT INTO socials(user_id,social,user_handle) VALUES ($1,$2,$3)`
+	_, err := storage.Exec(ctx, r.db, sql, userID, socialType, userHandle)
+	if err != nil && storage.IsErr(err, storage.ErrDuplicate, "pk") {
+		sql = `SELECT true AS bogus WHERE EXISTS (SELECT 1 FROM socials WHERE user_id = $1 AND social = $2 AND lower(user_handle) = $3)`
+		if _, err2 := storage.ExecOne[struct{ Bogus bool }](ctx, r.db, sql, userID, socialType, userHandle); err2 == nil {
+			return nil
+		} else if !storage.IsErr(err2, storage.ErrNotFound) {
+			err = errors.Wrapf(err2, "failed to check if user used the same userhandle previously; userID:%v, social:%v, userHandle:%v",
+				userID, socialType, userHandle)
+		}
+	}
 
-	return errors.Wrapf(err, "failed to save social:%v, userID:%v, userHandle:%v", socialType, userID, userHandle)
+	return errors.Wrapf(err, "failed to `%v`; userID:%v, social:%v, userHandle:%v", sql, userID, socialType, userHandle)
 }
 
 func detectReason(err error) string {
