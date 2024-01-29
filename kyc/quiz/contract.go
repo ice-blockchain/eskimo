@@ -83,6 +83,7 @@ var (
 	ErrSessionFinishedWithError = newError("session closed with error")
 	ErrUnknownQuestionNumber    = newError("unknown question number")
 	ErrUnknownSession           = newError("unknown session and/or user")
+	ErrNotAvailable             = newError("quiz kyc not available")
 )
 
 const (
@@ -118,12 +119,16 @@ type (
 	}
 	config struct {
 		alertFrequency            *atomic.Pointer[stdlibtime.Duration]
-		Environment               string `yaml:"environment" mapstructure:"environment"`
-		AlertSlackWebhook         string `yaml:"alert-slack-webhook" mapstructure:"alert-slack-webhook"` //nolint:tagliatelle // .
-		MaxSessionDurationSeconds int    `yaml:"maxSessionDurationSeconds"`
-		MaxQuestionsPerSession    int    `yaml:"maxQuestionsPerSession"`
-		MaxWrongAnswersPerSession int    `yaml:"maxWrongAnswersPerSession"`
-		SessionCoolDownSeconds    int    `yaml:"sessionCoolDownSeconds"`
-		EnableAlerts              bool   `yaml:"enable-alerts" mapstructure:"enable-alerts"` //nolint:tagliatelle // .
+		Environment               string              `yaml:"environment" mapstructure:"environment"`
+		AlertSlackWebhook         string              `yaml:"alert-slack-webhook" mapstructure:"alert-slack-webhook"`                  //nolint:tagliatelle // .
+		GlobalStartDate           string              `yaml:"global-state-date" mapstructure:"global-state-date" example:"YYYY-MM-DD"` //nolint:tagliatelle // .
+		AvailabilityWindow        stdlibtime.Duration `yaml:"availability-window" mapstructure:"availability-window"`                  //nolint:tagliatelle // .
+		MaxSessionDurationSeconds int                 `yaml:"maxSessionDurationSeconds"`
+		MaxQuestionsPerSession    int                 `yaml:"maxQuestionsPerSession"`
+		MaxWrongAnswersPerSession int                 `yaml:"maxWrongAnswersPerSession"`
+		SessionCoolDownSeconds    int                 `yaml:"sessionCoolDownSeconds"`
+		EnableAlerts              bool                `yaml:"enable-alerts" mapstructure:"enable-alerts"`               //nolint:tagliatelle // .
+		MaxAttemptsAllowed        uint8               `yaml:"max-attempts-allowed" mapstructure:"max-attempts-allowed"` //nolint:tagliatelle // .
+		MaxResetCount             uint8               `yaml:"max-reset-count" mapstructure:"max-reset-count"`           //nolint:tagliatelle // .
 	}
 )

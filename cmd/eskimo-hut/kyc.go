@@ -90,6 +90,9 @@ func (s *service) StartOrContinueKYCStep4Session( //nolint:gocritic,funlen // .
 			case errors.Is(err, kycquiz.ErrSessionFinished), errors.Is(err, kycquiz.ErrSessionFinishedWithError), errors.Is(err, kycquiz.ErrInvalidKYCState): //nolint:lll // .
 				return nil, server.BadRequest(err, raceConditionErrorCode)
 
+			case errors.Is(err, kycquiz.ErrNotAvailable):
+				return nil, server.ForbiddenWithCode(err, quizDisbledErrorCode)
+
 			default:
 				return nil, server.Unexpected(err)
 			}

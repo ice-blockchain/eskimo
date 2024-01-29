@@ -194,6 +194,7 @@ const (
 	noPendingLoginSessionErrorCode = "NO_PENDING_LOGIN_SESSION"
 
 	quizUnknownQuestionNumErrorCode = "QUIZ_UNKNOWN_QUESTION_NUM"
+	quizDisbledErrorCode            = "QUIZ_DISABLED"
 
 	socialKYCStepAlreadyCompletedSuccessfullyErrorCode = "SOCIAL_KYC_STEP_ALREADY_COMPLETED_SUCCESSFULLY"
 	socialKYCStepNotAvailableErrorCode                 = "SOCIAL_KYC_STEP_NOT_AVAILABLE"

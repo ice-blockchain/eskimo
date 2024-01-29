@@ -13,6 +13,11 @@ import (
 	"github.com/ice-blockchain/wintr/connectors/storage/v2"
 )
 
+const (
+	testQuizMaxAttempts = 3
+	testQuizMaxResets   = 2
+)
+
 func helperInsertQuestion(t *testing.T, r *repositoryImpl) {
 	t.Helper()
 
@@ -57,6 +62,9 @@ func helperForceFinishSession(t *testing.T, r *repositoryImpl, userID UserID, re
 	if result {
 		_, err = storage.Exec(context.TODO(), r.DB, `delete from failed_quiz_sessions where user_id = $1`, userID)
 		require.NoError(t, err)
+
+		_, err = storage.Exec(context.TODO(), r.DB, `delete from quiz_resets where user_id = $1`, userID)
+		require.NoError(t, err)
 	}
 }
 
@@ -64,6 +72,16 @@ func helperForceResetSessionStartedAt(t *testing.T, r *repositoryImpl, userID Us
 	t.Helper()
 
 	_, err := storage.Exec(context.TODO(), r.DB, "update quiz_sessions set ended_at = NULL, started_at = to_timestamp(42) where user_id = $1", userID)
+	require.NoError(t, err)
+}
+
+func helperUpdateFailedSessionEndedAt(t *testing.T, r *repositoryImpl, userID UserID) {
+	t.Helper()
+
+	_, err := storage.Exec(context.TODO(), r.DB, "update failed_quiz_sessions set ended_at = to_timestamp(42) where user_id = $1", userID)
+	require.NoError(t, err)
+
+	_, err = storage.Exec(context.TODO(), r.DB, "update quiz_sessions set ended_at = to_timestamp(42) where user_id = $1", userID)
 	require.NoError(t, err)
 }
 
@@ -76,7 +94,21 @@ func helperSessionReset(t *testing.T, r *repositoryImpl, userID UserID, full boo
 	if full {
 		_, err = storage.Exec(context.TODO(), r.DB, "delete from failed_quiz_sessions where user_id = $1", userID)
 		require.NoError(t, err)
+
+		_, err = storage.Exec(context.TODO(), r.DB, "delete from quiz_sessions_history where user_id = $1", userID)
+		require.NoError(t, err)
+
+		_, err = storage.Exec(context.TODO(), r.DB, `delete from quiz_resets where user_id = $1`, userID)
+		require.NoError(t, err)
 	}
+}
+
+func helperEnsureHistory(t *testing.T, r *repositoryImpl, userID UserID, count uint) {
+	t.Helper()
+
+	data, err := storage.Get[int](context.Background(), r.DB, "select count(1) from quiz_sessions_history where user_id = $1", userID)
+	require.NoError(t, err)
+	require.Equal(t, count, uint(*data), "unexpected history count")
 }
 
 type mockUserReader struct{}
@@ -187,6 +219,42 @@ func testManagerSessionStart(ctx context.Context, t *testing.T, r *repositoryImp
 			_, err = r.StartQuizSession(ctx, "bogus", "en")
 			require.ErrorIs(t, err, ErrSessionFinishedWithError)
 		})
+	})
+
+	t.Run("MaxAttempts", func(t *testing.T) {
+		helperSessionReset(t, r, "bogus", true)
+
+		for i := uint8(0); i < uint8(r.config.MaxAttemptsAllowed); i++ {
+			_, err := r.StartQuizSession(ctx, "bogus", "en")
+			require.NoError(t, err)
+
+			err = r.SkipQuizSession(ctx, "bogus")
+			require.NoError(t, err)
+
+			helperUpdateFailedSessionEndedAt(t, r, "bogus")
+		}
+
+		helperEnsureHistory(t, r, "bogus", uint(r.config.MaxAttemptsAllowed))
+	})
+
+	t.Run("ResetAttempts", func(t *testing.T) {
+		helperSessionReset(t, r, "bogus", true)
+
+		for reset := uint8(1); reset <= r.config.MaxResetCount+1; reset++ {
+			for i := uint8(0); i < uint8(r.config.MaxAttemptsAllowed); i++ {
+				_, err := r.StartQuizSession(ctx, "bogus", "en")
+				require.NoError(t, err)
+
+				err = r.SkipQuizSession(ctx, "bogus")
+				require.NoError(t, err)
+
+				helperUpdateFailedSessionEndedAt(t, r, "bogus")
+			}
+			helperEnsureHistory(t, r, "bogus", uint(r.config.MaxAttemptsAllowed*reset))
+		}
+
+		_, err := r.StartQuizSession(ctx, "bogus", "en")
+		require.ErrorIs(t, err, ErrNotAvailable)
 	})
 }
 
@@ -413,6 +481,9 @@ func TestSessionManager(t *testing.T) {
 
 	repo := newRepositoryImpl(ctx, new(mockUserReader))
 	require.NotNil(t, repo)
+
+	repo.config.MaxAttemptsAllowed = testQuizMaxAttempts
+	repo.config.MaxResetCount = testQuizMaxResets
 
 	helperInsertQuestion(t, repo)
 
