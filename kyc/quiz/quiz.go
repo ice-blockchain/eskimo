@@ -169,10 +169,34 @@ func (r *repositoryImpl) SkipQuizSession(ctx context.Context, userID UserID) err
 	return errors.Wrap(err, "failed to skip session")
 }
 
-func (r *repositoryImpl) TryFinishUnfinishedQuizSession(ctx context.Context, userID UserID) error {
-	_, err := r.finishUnfinishedSession(ctx, time.Now(), userID)
+func (r *repositoryImpl) CheckQuizStatus(ctx context.Context, userID UserID) (*QuizStatus, error) {
+	sql := `SELECT GREATEST($5 - coalesce(count(fqs.user_id),0),0)			  							 AS kyc_quiz_remaining_attempts,
+				   (qr.user_id IS NOT NULL AND cardinality(qr.resets) > $4) 							 AS kyc_quiz_disabled,
+				   qr.resets  							 									 			 AS kyc_quiz_reset_at,
+				   (qs.user_id IS NOT NULL AND qs.ended_at is not null AND qs.ended_successfully = true) AS kyc_quiz_completed,
+				   GREATEST(u.created_at,$2) + (interval '1 second' * $3) 	  							 AS kyc_quiz_availability_ended_at,
+				   (qs.user_id IS NOT NULL AND qs.ended_at IS NULL)			  							 AS has_unfinished_sessions
+			FROM users u
+				LEFT JOIN quiz_resets qr 
+  					   ON qr.user_id = u.id
+				LEFT JOIN quiz_sessions qs
+					   ON qs.user_id = u.id
+				LEFT JOIN failed_quiz_sessions fqs
+					   ON fqs.user_id = u.id
+					  AND fqs.started_at >= GREATEST(u.created_at,$2) 
+			WHERE u.id = $1`
+	quizStatus, err := storage.ExecOne[QuizStatus](ctx, r.DB, sql, userID, time.Now().Time, 0, 0, 0 /* , globalQuizStartDate, quizAvailabilityWindowSeconds, maxResetsAllowed, maxAttemptsAllowed.*/) //nolint:lll // .
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to exec CheckQuizStatus sql for userID:%v", userID)
+	}
 
-	return errors.Wrapf(err, "failed to finishUnfinishedSession for userID:%v", userID)
+	if quizStatus.HasUnfinishedSessions {
+		if _, err = r.finishUnfinishedSession(ctx, time.Now(), userID); err != nil {
+			return nil, errors.Wrapf(err, "failed to finishUnfinishedSession for userID:%v", userID)
+		}
+	}
+
+	return quizStatus, nil
 }
 
 func (r *repositoryImpl) SelectQuestions(ctx context.Context, tx storage.QueryExecer, lang string) ([]*Question, error) {

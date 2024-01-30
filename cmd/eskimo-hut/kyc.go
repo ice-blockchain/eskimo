@@ -21,6 +21,7 @@ func (s *service) setupKYCRoutes(router *server.Router) {
 	router.
 		Group("v1w").
 		POST("kyc/startOrContinueKYCStep4Session/users/:userId", server.RootHandler(s.StartOrContinueKYCStep4Session)).
+		POST("kyc/checkKYCStep4Status/users/:userId", server.RootHandler(s.CheckKYCStep4Status)).
 		POST("kyc/verifySocialKYCStep/users/:userId", server.RootHandler(s.VerifySocialKYCStep)).
 		POST("kyc/tryResetKYCSteps/users/:userId", server.RootHandler(s.TryResetKYCSteps))
 }
@@ -117,6 +118,37 @@ func (s *service) StartOrContinueKYCStep4Session( //nolint:gocritic,funlen // .
 	}
 
 	return server.OK(session), nil
+}
+
+// CheckKYCStep4Status godoc
+//
+//	@Schemes
+//	@Description	Checks the status of the quiz kyc step (4).
+//	@Tags			KYC
+//	@Accept			json
+//	@Produce		json
+//
+//	@Param			Authorization		header		string	true	"Insert your access token"		default(Bearer <Add access token here>)
+//	@Param			X-Account-Metadata	header		string	false	"Insert your metadata token"	default(<Add metadata token here>)
+//	@Param			userId				path		string	true	"ID of the user"
+//	@Success		200					{object}	kycquiz.QuizStatus
+//	@Failure		400					{object}	server.ErrorResponse	"if validations fail"
+//	@Failure		401					{object}	server.ErrorResponse	"if not authorized"
+//	@Failure		403					{object}	server.ErrorResponse	"not allowed due to various reasons"
+//	@Failure		422					{object}	server.ErrorResponse	"if syntax fails"
+//	@Failure		500					{object}	server.ErrorResponse
+//	@Failure		504					{object}	server.ErrorResponse	"if request times out"
+//	@Router			/kyc/checkKYCStep4Status/users/{userId} [POST].
+func (s *service) CheckKYCStep4Status( //nolint:gocritic // .
+	ctx context.Context,
+	req *server.Request[CheckKYCStep4StatusRequestBody, kycquiz.QuizStatus],
+) (*server.Response[kycquiz.QuizStatus], *server.Response[server.ErrorResponse]) {
+	resp, err := s.quizRepository.CheckQuizStatus(ctx, req.AuthenticatedUser.UserID)
+	if err != nil {
+		return nil, server.Unexpected(errors.Wrapf(err, "failed to CheckQuizStatus for userID:%v", req.AuthenticatedUser.UserID))
+	}
+
+	return server.OK(resp), nil
 }
 
 // VerifySocialKYCStep godoc
@@ -251,15 +283,14 @@ func (s *service) TryResetKYCSteps( //nolint:gocritic,funlen,gocognit,revive,cyc
 			}
 		}
 	}
-	if len(req.Data.SkipKYCSteps) == 0 { //nolint:nestif // .
-		if err := s.quizRepository.TryFinishUnfinishedQuizSession(ctx, req.Data.UserID); err != nil {
-			if errors.Is(err, kycquiz.ErrInvalidKYCState) || errors.Is(err, kycquiz.ErrSessionFinished) || errors.Is(err, kycquiz.ErrSessionFinishedWithError) { //nolint:lll // .
-				log.Error(errors.Wrapf(err, "tryFinishUnfinishedQuizSession failed unexpectedly during tryResetKYCSteps for userID:%v", req.Data.UserID))
-				err = nil
-			}
-			if err != nil {
-				return nil, server.Unexpected(errors.Wrapf(err, "failed to tryFinishUnfinishedQuizSession for userID:%v", req.Data.UserID))
-			}
+	quizStatus, err := s.quizRepository.CheckQuizStatus(ctx, req.Data.UserID)
+	if err != nil {
+		if errors.Is(err, kycquiz.ErrInvalidKYCState) || errors.Is(err, kycquiz.ErrSessionFinished) || errors.Is(err, kycquiz.ErrSessionFinishedWithError) {
+			log.Error(errors.Wrapf(err, "checkQuizStatus failed unexpectedly during tryResetKYCSteps for userID:%v", req.Data.UserID))
+			err = nil
+		}
+		if err != nil {
+			return nil, server.Unexpected(errors.Wrapf(err, "failed to CheckQuizStatus for userID:%v", req.Data.UserID))
 		}
 	}
 	resp, err := s.usersProcessor.TryResetKYCSteps(ctx, req.Data.UserID)
@@ -272,5 +303,5 @@ func (s *service) TryResetKYCSteps( //nolint:gocritic,funlen,gocognit,revive,cyc
 		}
 	}
 
-	return server.OK(&User{User: resp, Checksum: resp.Checksum()}), nil
+	return server.OK(&User{User: resp, QuizStatus: quizStatus, Checksum: resp.Checksum()}), nil
 }

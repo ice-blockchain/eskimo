@@ -33,7 +33,7 @@ type (
 
 		SkipQuizSession(ctx context.Context, userID UserID) error
 
-		TryFinishUnfinishedQuizSession(ctx context.Context, userID UserID) error
+		CheckQuizStatus(ctx context.Context, userID UserID) (*QuizStatus, error)
 
 		ContinueQuizSession(ctx context.Context, userID UserID, question, answer uint8) (*Quiz, error)
 	}
@@ -41,6 +41,15 @@ type (
 	UserRepository interface {
 		GetUserByID(ctx context.Context, userID string) (*users.UserProfile, error)
 		ModifyUser(ctx context.Context, usr *users.User, profilePicture *multipart.FileHeader) error
+	}
+
+	QuizStatus struct { //nolint:revive // Nope cuz we want to be able to embed this
+		KYCQuizAvailabilityEndedAt *time.Time   `json:"kycQuizAvailabilityEndedAt" db:"kyc_quiz_availability_ended_at"`
+		KYCQuizResetAt             []*time.Time `json:"kycQuizResetAt,omitempty" db:"kyc_quiz_reset_at"`
+		KYCQuizRemainingAttempts   uint8        `json:"kycQuizRemainingAttempts,omitempty" db:"kyc_quiz_remaining_attempts"`
+		KYCQuizDisabled            bool         `json:"kycQuizDisabled" db:"kyc_quiz_disabled"`
+		KYCQuizCompleted           bool         `json:"kycQuizCompleted" db:"kyc_quiz_completed"`
+		HasUnfinishedSessions      bool         `json:"-"`
 	}
 
 	Result string

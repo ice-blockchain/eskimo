@@ -127,6 +127,7 @@ type (
 	}
 	User struct {
 		*users.User
+		*kycquiz.QuizStatus
 		Checksum string `json:"checksum,omitempty" example:"1232412415326543647657"`
 	}
 	Auth struct {
@@ -147,7 +148,8 @@ type (
 		SelectedOption *uint8 `form:"selectedOption" required:"true" swaggerignore:"true" example:"0"`
 		Language       string `form:"language" required:"true" swaggerignore:"true" example:"en"`
 	}
-	TryResetKYCStepsRequestBody struct {
+	CheckKYCStep4StatusRequestBody struct{}
+	TryResetKYCStepsRequestBody    struct {
 		Authorization    string          `header:"Authorization" swaggerignore:"true" required:"true" example:"some token"`
 		XAccountMetadata string          `header:"X-Account-Metadata" swaggerignore:"true" required:"false" example:"some token"`
 		UserID           string          `uri:"userId" required:"true" allowForbiddenWriteOperation:"true" swaggerignore:"true" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"` //nolint:lll // .

@@ -103,6 +103,18 @@ definitions:
       id:
         example: did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2
         type: string
+      kycQuizAvailabilityEndedAt:
+        type: string
+      kycQuizCompleted:
+        type: boolean
+      kycQuizDisabled:
+        type: boolean
+      kycQuizRemainingAttempts:
+        type: integer
+      kycQuizResetAt:
+        items:
+          type: string
+        type: array
       kycStepBlocked:
         allOf:
         - $ref: '#/definitions/users.KYCStep'
@@ -315,6 +327,18 @@ definitions:
       id:
         example: did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2
         type: string
+      kycQuizAvailabilityEndedAt:
+        type: string
+      kycQuizCompleted:
+        type: boolean
+      kycQuizDisabled:
+        type: boolean
+      kycQuizRemainingAttempts:
+        type: integer
+      kycQuizResetAt:
+        items:
+          type: string
+        type: array
       kycStepBlocked:
         allOf:
         - $ref: '#/definitions/users.KYCStep'
@@ -408,6 +432,21 @@ definitions:
         $ref: '#/definitions/quiz.Progress'
       result:
         $ref: '#/definitions/quiz.Result'
+    type: object
+  quiz.QuizStatus:
+    properties:
+      kycQuizAvailabilityEndedAt:
+        type: string
+      kycQuizCompleted:
+        type: boolean
+      kycQuizDisabled:
+        type: boolean
+      kycQuizRemainingAttempts:
+        type: integer
+      kycQuizResetAt:
+        items:
+          type: string
+        type: array
     type: object
   quiz.Result:
     enum:
@@ -849,6 +888,61 @@ paths:
             $ref: '#/definitions/server.ErrorResponse'
       tags:
       - Auth
+  /kyc/checkKYCStep4Status/users/{userId}:
+    post:
+      consumes:
+      - application/json
+      description: Checks the status of the quiz kyc step (4).
+      parameters:
+      - default: Bearer <Add access token here>
+        description: Insert your access token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - default: <Add metadata token here>
+        description: Insert your metadata token
+        in: header
+        name: X-Account-Metadata
+        type: string
+      - description: ID of the user
+        in: path
+        name: userId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/quiz.QuizStatus'
+        "400":
+          description: if validations fail
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "401":
+          description: if not authorized
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "403":
+          description: not allowed due to various reasons
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "422":
+          description: if syntax fails
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+        "504":
+          description: if request times out
+          schema:
+            $ref: '#/definitions/server.ErrorResponse'
+      tags:
+      - KYC
   /kyc/startOrContinueKYCStep4Session/users/{userId}:
     post:
       consumes:

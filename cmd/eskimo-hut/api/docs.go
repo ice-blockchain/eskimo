@@ -519,6 +519,88 @@ const docTemplate = `{
                 }
             }
         },
+        "/kyc/checkKYCStep4Status/users/{userId}": {
+            "post": {
+                "description": "Checks the status of the quiz kyc step (4).",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "KYC"
+                ],
+                "parameters": [
+                    {
+                        "type": "string",
+                        "default": "Bearer \u003cAdd access token here\u003e",
+                        "description": "Insert your access token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "default": "\u003cAdd metadata token here\u003e",
+                        "description": "Insert your metadata token",
+                        "name": "X-Account-Metadata",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "ID of the user",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/quiz.QuizStatus"
+                        }
+                    },
+                    "400": {
+                        "description": "if validations fail",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "if not authorized",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "not allowed due to various reasons",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    },
+                    "422": {
+                        "description": "if syntax fails",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    },
+                    "504": {
+                        "description": "if request times out",
+                        "schema": {
+                            "$ref": "#/definitions/server.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/kyc/startOrContinueKYCStep4Session/users/{userId}": {
             "post": {
                 "description": "Starts or continues the kyc 4 session (Quiz), if available and if not already finished successfully.",
@@ -1613,6 +1695,24 @@ const docTemplate = `{
                     "type": "string",
                     "example": "did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"
                 },
+                "kycQuizAvailabilityEndedAt": {
+                    "type": "string"
+                },
+                "kycQuizCompleted": {
+                    "type": "boolean"
+                },
+                "kycQuizDisabled": {
+                    "type": "boolean"
+                },
+                "kycQuizRemainingAttempts": {
+                    "type": "integer"
+                },
+                "kycQuizResetAt": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "kycStepBlocked": {
                     "allOf": [
                         {
@@ -1922,6 +2022,24 @@ const docTemplate = `{
                     "type": "string",
                     "example": "did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2"
                 },
+                "kycQuizAvailabilityEndedAt": {
+                    "type": "string"
+                },
+                "kycQuizCompleted": {
+                    "type": "boolean"
+                },
+                "kycQuizDisabled": {
+                    "type": "boolean"
+                },
+                "kycQuizRemainingAttempts": {
+                    "type": "integer"
+                },
+                "kycQuizResetAt": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "kycStepBlocked": {
                     "allOf": [
                         {
@@ -2057,6 +2175,29 @@ const docTemplate = `{
                 },
                 "result": {
                     "$ref": "#/definitions/quiz.Result"
+                }
+            }
+        },
+        "quiz.QuizStatus": {
+            "type": "object",
+            "properties": {
+                "kycQuizAvailabilityEndedAt": {
+                    "type": "string"
+                },
+                "kycQuizCompleted": {
+                    "type": "boolean"
+                },
+                "kycQuizDisabled": {
+                    "type": "boolean"
+                },
+                "kycQuizRemainingAttempts": {
+                    "type": "integer"
+                },
+                "kycQuizResetAt": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 }
             }
         },
