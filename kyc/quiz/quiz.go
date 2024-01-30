@@ -205,7 +205,7 @@ func (r *repositoryImpl) CheckQuizStatus(ctx context.Context, userID UserID) (*Q
 	return status, err
 }
 
-func (r *repositoryImpl) checkQuizStatus(ctx context.Context, userID UserID) (*QuizStatus, error) {
+func (r *repositoryImpl) checkQuizStatus(ctx context.Context, userID UserID) (*QuizStatus, error) { //nolint:funlen //.
 	// $1: user_id.
 	// $2: global start date.
 	// $3: availability window (seconds).
