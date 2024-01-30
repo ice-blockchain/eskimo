@@ -6,6 +6,7 @@ import (
 	"context"
 	"mime/multipart"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -470,6 +471,57 @@ func testManagerSessionContinueWithIncorrectAnswers(ctx context.Context, t *test
 	require.Equal(t, uint8(2), session.Progress.IncorrectAnswers)
 }
 
+func testManagerSessionStatus(ctx context.Context, t *testing.T, r *repositoryImpl) {
+	t.Run("Check", func(t *testing.T) {
+		helperSessionReset(t, r, "bogus", true)
+
+		session, err := r.StartQuizSession(ctx, "bogus", "en")
+		require.NoError(t, err)
+		require.NotNil(t, session)
+
+		status, err := r.checkQuizStatus(ctx, "bogus")
+		require.NoError(t, err)
+		require.NotNil(t, status)
+
+		t.Logf("status: %#v", status)
+		require.True(t, status.HasUnfinishedSessions)
+		require.True(t, status.KYCQuizAvailabilityEndedAt.After(time.Now()))
+		require.Equal(t, uint8(testQuizMaxAttempts), status.KYCQuizRemainingAttempts)
+		require.False(t, status.KYCQuizDisabled)
+		require.False(t, status.KYCQuizCompleted)
+	})
+
+	t.Run("UnknownUserOrSession", func(t *testing.T) {
+		_, err := r.checkQuizStatus(ctx, "unknown_user")
+		require.ErrorIs(t, err, ErrUnknownSession)
+	})
+
+	t.Run("CheckWithFinish", func(t *testing.T) {
+		helperSessionReset(t, r, "bogus", true)
+
+		session, err := r.StartQuizSession(ctx, "bogus", "en")
+		require.NoError(t, err)
+		require.NotNil(t, session)
+
+		// Check + reset.
+		status, err := r.CheckQuizStatus(ctx, "bogus")
+		require.NoError(t, err)
+		require.NotNil(t, status)
+		require.True(t, status.HasUnfinishedSessions)
+
+		// Just check.
+		status, err = r.checkQuizStatus(ctx, "bogus")
+		require.NoError(t, err)
+		require.NotNil(t, session)
+		t.Logf("status: %#v", status)
+		require.False(t, status.HasUnfinishedSessions)
+		require.True(t, status.KYCQuizAvailabilityEndedAt.After(time.Now()))
+		require.Equal(t, uint8(testQuizMaxAttempts-1), status.KYCQuizRemainingAttempts)
+		require.False(t, status.KYCQuizDisabled)
+		require.False(t, status.KYCQuizCompleted)
+	})
+}
+
 func TestSessionManager(t *testing.T) {
 	t.Parallel()
 
@@ -484,6 +536,8 @@ func TestSessionManager(t *testing.T) {
 
 	repo.config.MaxAttemptsAllowed = testQuizMaxAttempts
 	repo.config.MaxResetCount = testQuizMaxResets
+	repo.config.GlobalStartDate = time.Now().Format("2006-01-02")
+	repo.config.AvailabilityWindowSeconds = 60 * 60 * 24 * 7 // 1 week.
 
 	helperInsertQuestion(t, repo)
 
@@ -498,6 +552,10 @@ func TestSessionManager(t *testing.T) {
 
 	t.Run("Skip", func(t *testing.T) {
 		testManagerSessionSkip(ctx, t, repo)
+	})
+
+	t.Run("Status", func(t *testing.T) {
+		testManagerSessionStatus(ctx, t, repo)
 	})
 
 	require.NoError(t, repo.Close())

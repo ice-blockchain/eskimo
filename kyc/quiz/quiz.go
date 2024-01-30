@@ -120,7 +120,7 @@ func (r *repositoryImpl) IsUserOutOfTimeWindow(user *users.User) bool {
 		panic("base date is not set")
 	}
 
-	return time.Now().Sub(*base) > r.config.AvailabilityWindow
+	return time.Now().Sub(*base) > stdlibtime.Duration(r.config.AvailabilityWindowSeconds)*stdlibtime.Second
 }
 
 func (r *repositoryImpl) addFailedAttempt(ctx context.Context, userID UserID, now *time.Time, tx storage.QueryExecer, skipped bool) (bool, error) {
@@ -192,7 +192,26 @@ func (r *repositoryImpl) SkipQuizSession(ctx context.Context, userID UserID) err
 }
 
 func (r *repositoryImpl) CheckQuizStatus(ctx context.Context, userID UserID) (*QuizStatus, error) {
-	sql := `SELECT GREATEST($5 - coalesce(count(fqs.user_id),0),0)			  							 AS kyc_quiz_remaining_attempts,
+	status, err := r.checkQuizStatus(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	if status.HasUnfinishedSessions {
+		_, err = r.finishUnfinishedSession(ctx, r.DB, time.Now(), userID)
+		err = errors.Wrapf(err, "failed to finish unfinished session for userID:%v", userID)
+	}
+
+	return status, err
+}
+
+func (r *repositoryImpl) checkQuizStatus(ctx context.Context, userID UserID) (*QuizStatus, error) {
+	// $1: user_id.
+	// $2: global start date.
+	// $3: availability window (seconds).
+	// $4: max reset count.
+	// $5: max attempts allowed.
+	const sql = `SELECT GREATEST($5 - coalesce(count(fqs.user_id),0),0)			  						 AS kyc_quiz_remaining_attempts,
 				   (qr.user_id IS NOT NULL AND cardinality(qr.resets) > $4) 							 AS kyc_quiz_disabled,
 				   qr.resets  							 									 			 AS kyc_quiz_reset_at,
 				   (qs.user_id IS NOT NULL AND qs.ended_at is not null AND qs.ended_successfully = true) AS kyc_quiz_completed,
@@ -210,18 +229,22 @@ func (r *repositoryImpl) CheckQuizStatus(ctx context.Context, userID UserID) (*Q
 			GROUP BY qr.user_id,
 					 qs.user_id,
 					 u.id`
-	quizStatus, err := storage.ExecOne[QuizStatus](ctx, r.DB, sql, userID, time.Now().Time, 0, 0, 0 /* , globalQuizStartDate, quizAvailabilityWindowSeconds, maxResetsAllowed, maxAttemptsAllowed.*/) //nolint:lll // .
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to exec CheckQuizStatus sql for userID:%v", userID)
+	quizStatus, err := storage.ExecOne[QuizStatus](
+		ctx,
+		r.DB,
+		sql,
+		userID,
+		r.GetGlobalStartDate(),
+		r.config.AvailabilityWindowSeconds,
+		r.config.MaxResetCount,
+		r.config.MaxAttemptsAllowed,
+	)
+
+	if errors.Is(err, storage.ErrNotFound) {
+		err = ErrUnknownSession
 	}
 
-	if quizStatus.HasUnfinishedSessions {
-		if _, err = r.finishUnfinishedSession(ctx, r.DB, time.Now(), userID); err != nil {
-			return nil, errors.Wrapf(err, "failed to finishUnfinishedSession for userID:%v", userID)
-		}
-	}
-
-	return quizStatus, nil
+	return quizStatus, errors.Wrapf(err, "failed to exec CheckQuizStatus sql for userID:%v", userID)
 }
 
 func (r *repositoryImpl) SelectQuestions(ctx context.Context, tx storage.QueryExecer, lang string) ([]*Question, error) {
@@ -259,7 +282,7 @@ func questionsToSlice(questions []*Question) []uint {
 
 func (r *repositoryImpl) GetGlobalStartDate() *stdlibtime.Time {
 	if r.config.GlobalStartDate == "" {
-		log.Panic("global-state-date is not set")
+		log.Panic("global-start-date is not set")
 	}
 
 	baseDate, err := stdlibtime.ParseInLocation("2006-01-02", r.config.GlobalStartDate, stdlibtime.UTC)
