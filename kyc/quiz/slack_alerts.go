@@ -95,7 +95,7 @@ func (r *repositoryImpl) sendAlertToSlack(ctx context.Context, ticker *stdlibtim
 			   WHERE ended_successfully IS TRUE 
 				 AND ended_at IS NOT NULL
 				 AND ended_at >= $1`
-		stats, err = storage.Select[quizStats](ctx, conn, sql, alert.LastAlertAt.Time, r.config.MaxSessionDurationSeconds, r.config.MaxQuestionsPerSession-r.config.MaxWrongAnswersPerSession) //nolint:lll // .
+		stats, err = storage.Select[quizStats](ctx, conn, sql, alert.LastAlertAt.Time, r.config.MaxSessionDurationSeconds)
 		if err != nil {
 			return errors.Wrap(err, "failed to select stats")
 		}
