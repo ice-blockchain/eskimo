@@ -6,12 +6,13 @@ import (
 	"context"
 	"mime/multipart"
 	"testing"
-	"time"
+	stdlibtime "time"
 
 	"github.com/stretchr/testify/require"
 
 	"github.com/ice-blockchain/eskimo/users"
 	"github.com/ice-blockchain/wintr/connectors/storage/v2"
+	"github.com/ice-blockchain/wintr/time"
 )
 
 const (
@@ -491,7 +492,7 @@ func testManagerSessionStatus(ctx context.Context, t *testing.T, r *repositoryIm
 
 		t.Logf("status: %#v", status)
 		require.True(t, status.HasUnfinishedSessions)
-		require.True(t, status.KYCQuizAvailabilityEndedAt.After(time.Now()))
+		require.True(t, status.KYCQuizAvailabilityEndedAt.After(stdlibtime.Now()))
 		require.Equal(t, uint8(testQuizMaxAttempts), status.KYCQuizRemainingAttempts)
 		require.False(t, status.KYCQuizDisabled)
 		require.False(t, status.KYCQuizCompleted)
@@ -521,7 +522,7 @@ func testManagerSessionStatus(ctx context.Context, t *testing.T, r *repositoryIm
 		require.NotNil(t, session)
 		t.Logf("status: %#v", status)
 		require.False(t, status.HasUnfinishedSessions)
-		require.True(t, status.KYCQuizAvailabilityEndedAt.After(time.Now()))
+		require.True(t, status.KYCQuizAvailabilityEndedAt.After(stdlibtime.Now()))
 		require.Equal(t, uint8(testQuizMaxAttempts-1), status.KYCQuizRemainingAttempts)
 		require.False(t, status.KYCQuizDisabled)
 		require.False(t, status.KYCQuizCompleted)
@@ -535,7 +536,7 @@ func testManagerSessionStatus(ctx context.Context, t *testing.T, r *repositoryIm
 		require.NotNil(t, session)
 
 		configCopy := r.config
-		r.config.GlobalStartDate = time.Now().Add(-time.Hour * 100).Format("2006-01-02")
+		r.config.GlobalStartDate = time.New(stdlibtime.Now().Add(-stdlibtime.Hour * 100))
 		r.config.AvailabilityWindowSeconds = 1
 
 		reader := r.Users.(*mockUserReader)
@@ -567,9 +568,9 @@ func testManagerSessionStatus(ctx context.Context, t *testing.T, r *repositoryIm
 		require.False(t, status.KYCQuizDisabled)
 		require.False(t, status.KYCQuizCompleted)
 
-		require.True(t, status.KYCQuizAvailabilityEndedAt.Before(time.Now()))
+		require.True(t, status.KYCQuizAvailabilityEndedAt.Before(stdlibtime.Now()))
 		require.Len(t, status.KYCQuizResetAt, 1)
-		require.True(t, status.KYCQuizResetAt[0].Before(time.Now()))
+		require.True(t, status.KYCQuizResetAt[0].Before(stdlibtime.Now()))
 		require.Equal(t, uint8(testQuizMaxAttempts), status.KYCQuizRemainingAttempts)
 
 		reader.OnModifyUser = nil
@@ -592,7 +593,7 @@ func TestSessionManager(t *testing.T) {
 	cnt := uint8(testQuizMaxResets)
 	repo.config.MaxAttemptsAllowed = testQuizMaxAttempts
 	repo.config.MaxResetCount = &cnt
-	repo.config.GlobalStartDate = time.Now().Format("2006-01-02")
+	repo.config.GlobalStartDate = time.Now()
 	repo.config.AvailabilityWindowSeconds = 60 * 60 * 24 * 7 // 1 week.
 
 	helperInsertQuestion(t, repo)

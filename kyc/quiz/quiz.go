@@ -13,7 +13,6 @@ import (
 	"github.com/ice-blockchain/eskimo/users"
 	appcfg "github.com/ice-blockchain/wintr/config"
 	"github.com/ice-blockchain/wintr/connectors/storage/v2"
-	"github.com/ice-blockchain/wintr/log"
 	"github.com/ice-blockchain/wintr/time"
 )
 
@@ -36,6 +35,10 @@ func mustLoadConfig() config {
 
 	if cfg.MaxResetCount == nil {
 		panic("maxResetCount is not set")
+	}
+
+	if cfg.GlobalStartDate == nil {
+		panic("globalStartDate is not set")
 	}
 
 	defaultAlertFrequency := alertFrequency
@@ -113,20 +116,6 @@ func (r *repositoryImpl) validateKycStep(user *users.User) error {
 	return nil
 }
 
-func (r *repositoryImpl) IsUserOutOfTimeWindow(user *users.User) bool {
-	base := r.GetGlobalStartDate()
-
-	if base == nil || (user.CreatedAt != nil && user.CreatedAt.After(*base)) {
-		base = user.CreatedAt.Time
-	}
-
-	if base == nil {
-		panic("base date is not set")
-	}
-
-	return time.Now().Sub(*base) > stdlibtime.Duration(r.config.AvailabilityWindowSeconds)*stdlibtime.Second
-}
-
 func (r *repositoryImpl) addFailedAttempt(ctx context.Context, userID UserID, now *time.Time, tx storage.QueryExecer, skipped bool) (bool, error) {
 	// $1: user_id.
 	// $2: now.
@@ -195,29 +184,28 @@ func (r *repositoryImpl) SkipQuizSession(ctx context.Context, userID UserID) err
 	return errors.Wrap(err, "failed to skip session")
 }
 
-func (r *repositoryImpl) prepareUserForReset(ctx context.Context, userID UserID, now *time.Time, tx storage.QueryExecer) (bool, error) {
+func (r *repositoryImpl) prepareUserForReset(ctx context.Context, userID UserID, now *time.Time, tx storage.QueryExecer) error {
 	count, err := storage.Get[int](ctx, tx, "select count(1) from failed_quiz_sessions where user_id = $1", userID)
 	if err != nil {
 		if !errors.Is(err, storage.ErrNotFound) {
-			return false, errors.Wrap(err, "failed to get failed attempts count")
+			return errors.Wrap(err, "failed to get failed attempts count")
 		}
 
 		var zero int
 		count = &zero
 	}
 
-	blocked := false
 	if *count < int(r.config.MaxAttemptsAllowed) {
 		for i := 0; i < int(r.config.MaxAttemptsAllowed)-*count; i++ {
 			ts := now.Add(-stdlibtime.Second * stdlibtime.Duration(i))
-			blocked, err = r.addFailedAttempt(ctx, userID, time.New(ts), tx, true)
+			_, err = r.addFailedAttempt(ctx, userID, time.New(ts), tx, true)
 			if err != nil {
-				return blocked, err
+				return err
 			}
 		}
 	}
 
-	return blocked, nil
+	return nil
 }
 
 func (r *repositoryImpl) CheckQuizStatus(ctx context.Context, userID UserID) (*QuizStatus, error) { //nolint:funlen //.
@@ -238,7 +226,7 @@ func (r *repositoryImpl) CheckQuizStatus(ctx context.Context, userID UserID) (*Q
 
 	if status.KYCQuizAvailabilityEndedAt.Before(*now.Time) {
 		err = storage.DoInTransaction(ctx, r.DB, func(tx storage.QueryExecer) error {
-			_, prepareErr := r.prepareUserForReset(ctx, userID, now, tx)
+			prepareErr := r.prepareUserForReset(ctx, userID, now, tx)
 			if prepareErr != nil {
 				return prepareErr
 			}
@@ -287,7 +275,7 @@ func (r *repositoryImpl) getQuizStatus(ctx context.Context, userID UserID) (*Qui
 		r.DB,
 		sql,
 		userID,
-		r.GetGlobalStartDate(),
+		r.config.GlobalStartDate.Time,
 		r.config.AvailabilityWindowSeconds,
 		*r.config.MaxResetCount,
 		r.config.MaxAttemptsAllowed,
@@ -331,17 +319,6 @@ func questionsToSlice(questions []*Question) []uint {
 	}
 
 	return result
-}
-
-func (r *repositoryImpl) GetGlobalStartDate() *stdlibtime.Time {
-	if r.config.GlobalStartDate == "" {
-		log.Panic("global-start-date is not set")
-	}
-
-	baseDate, err := stdlibtime.ParseInLocation("2006-01-02", r.config.GlobalStartDate, stdlibtime.UTC)
-	log.Panic(err)
-
-	return &baseDate
 }
 
 func (r *repositoryImpl) moveFailedAttempts(ctx context.Context, tx storage.QueryExecer, now *time.Time, userID UserID) (bool, error) { //nolint:funlen //.
