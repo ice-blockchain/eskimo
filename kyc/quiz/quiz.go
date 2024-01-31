@@ -191,21 +191,70 @@ func (r *repositoryImpl) SkipQuizSession(ctx context.Context, userID UserID) err
 	return errors.Wrap(err, "failed to skip session")
 }
 
-func (r *repositoryImpl) CheckQuizStatus(ctx context.Context, userID UserID) (*QuizStatus, error) {
-	status, err := r.checkQuizStatus(ctx, userID)
+func (r *repositoryImpl) prepareUserForReset(ctx context.Context, userID UserID, now *time.Time, tx storage.QueryExecer) (bool, error) {
+	count, err := storage.Get[int](ctx, tx, "select count(1) from failed_quiz_sessions where user_id = $1", userID)
+	if err != nil {
+		if !errors.Is(err, storage.ErrNotFound) {
+			return false, errors.Wrap(err, "failed to get failed attempts count")
+		}
+
+		var zero int
+		count = &zero
+	}
+
+	blocked := false
+	if *count < int(r.config.MaxAttemptsAllowed) {
+		for i := 0; i < int(r.config.MaxAttemptsAllowed)-*count; i++ {
+			ts := now.Add(-stdlibtime.Second * stdlibtime.Duration(i))
+			blocked, err = r.addFailedAttempt(ctx, userID, time.New(ts), tx, true)
+			if err != nil {
+				return blocked, err
+			}
+		}
+	}
+
+	return blocked, nil
+}
+
+func (r *repositoryImpl) CheckQuizStatus(ctx context.Context, userID UserID) (*QuizStatus, error) { //nolint:funlen //.
+	status, err := r.getQuizStatus(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
 
+	now := time.Now()
+	reRead := false
 	if status.HasUnfinishedSessions {
-		_, err = r.finishUnfinishedSession(ctx, r.DB, time.Now(), userID)
-		err = errors.Wrapf(err, "failed to finish unfinished session for userID:%v", userID)
+		_, err = r.finishUnfinishedSession(ctx, r.DB, now, userID)
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to finish unfinished session for userID:%v", userID)
+		}
+		reRead = true
+	}
+
+	if status.KYCQuizAvailabilityEndedAt.Before(*now.Time) {
+		err = storage.DoInTransaction(ctx, r.DB, func(tx storage.QueryExecer) error {
+			_, prepareErr := r.prepareUserForReset(ctx, userID, now, tx)
+			if prepareErr != nil {
+				return prepareErr
+			}
+
+			return r.modifyUser(ctx, false, true, now, userID)
+		})
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to prepare user for reset for userID:%v", userID)
+		}
+		reRead = true
+	}
+
+	if reRead {
+		status, err = r.getQuizStatus(ctx, userID)
 	}
 
 	return status, err
 }
 
-func (r *repositoryImpl) checkQuizStatus(ctx context.Context, userID UserID) (*QuizStatus, error) { //nolint:funlen //.
+func (r *repositoryImpl) getQuizStatus(ctx context.Context, userID UserID) (*QuizStatus, error) { //nolint:funlen //.
 	// $1: user_id.
 	// $2: global start date.
 	// $3: availability window (seconds).

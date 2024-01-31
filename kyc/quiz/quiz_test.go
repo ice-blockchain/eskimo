@@ -112,7 +112,9 @@ func helperEnsureHistory(t *testing.T, r *repositoryImpl, userID UserID, count u
 	require.Equal(t, count, uint(*data), "unexpected history count")
 }
 
-type mockUserReader struct{}
+type mockUserReader struct {
+	OnModifyUser func(ctx context.Context, usr *users.User, profilePicture *multipart.FileHeader) error
+}
 
 func (*mockUserReader) GetUserByID(ctx context.Context, userID UserID) (*UserProfile, error) {
 	profile := &UserProfile{
@@ -138,7 +140,11 @@ func (*mockUserReader) GetUserByID(ctx context.Context, userID UserID) (*UserPro
 	return profile, nil
 }
 
-func (*mockUserReader) ModifyUser(ctx context.Context, usr *users.User, profilePicture *multipart.FileHeader) error {
+func (m *mockUserReader) ModifyUser(ctx context.Context, usr *users.User, profilePicture *multipart.FileHeader) error {
+	if m.OnModifyUser != nil {
+		return m.OnModifyUser(ctx, usr, profilePicture)
+	}
+
 	return nil
 }
 
@@ -479,7 +485,7 @@ func testManagerSessionStatus(ctx context.Context, t *testing.T, r *repositoryIm
 		require.NoError(t, err)
 		require.NotNil(t, session)
 
-		status, err := r.checkQuizStatus(ctx, "bogus")
+		status, err := r.getQuizStatus(ctx, "bogus")
 		require.NoError(t, err)
 		require.NotNil(t, status)
 
@@ -492,7 +498,7 @@ func testManagerSessionStatus(ctx context.Context, t *testing.T, r *repositoryIm
 	})
 
 	t.Run("UnknownUserOrSession", func(t *testing.T) {
-		_, err := r.checkQuizStatus(ctx, "unknown_user")
+		_, err := r.getQuizStatus(ctx, "unknown_user")
 		require.ErrorIs(t, err, ErrUnknownSession)
 	})
 
@@ -507,10 +513,10 @@ func testManagerSessionStatus(ctx context.Context, t *testing.T, r *repositoryIm
 		status, err := r.CheckQuizStatus(ctx, "bogus")
 		require.NoError(t, err)
 		require.NotNil(t, status)
-		require.True(t, status.HasUnfinishedSessions)
+		require.False(t, status.HasUnfinishedSessions)
 
 		// Just check.
-		status, err = r.checkQuizStatus(ctx, "bogus")
+		status, err = r.getQuizStatus(ctx, "bogus")
 		require.NoError(t, err)
 		require.NotNil(t, session)
 		t.Logf("status: %#v", status)
@@ -519,6 +525,55 @@ func testManagerSessionStatus(ctx context.Context, t *testing.T, r *repositoryIm
 		require.Equal(t, uint8(testQuizMaxAttempts-1), status.KYCQuizRemainingAttempts)
 		require.False(t, status.KYCQuizDisabled)
 		require.False(t, status.KYCQuizCompleted)
+	})
+
+	t.Run("PrepareForReset", func(t *testing.T) {
+		helperSessionReset(t, r, "bogus", true)
+
+		session, err := r.StartQuizSession(ctx, "bogus", "en")
+		require.NoError(t, err)
+		require.NotNil(t, session)
+
+		configCopy := r.config
+		r.config.GlobalStartDate = time.Now().Add(-time.Hour * 100).Format("2006-01-02")
+		r.config.AvailabilityWindowSeconds = 1
+
+		reader := r.Users.(*mockUserReader)
+		require.NotNil(t, reader)
+		callNum := 0
+		reader.OnModifyUser = func(ctx context.Context, usr *users.User, profilePicture *multipart.FileHeader) error {
+			t.Logf("user motify key blocked: %#v", usr.KYCStepBlocked)
+
+			if callNum == 0 {
+				require.Nil(t, usr.KYCStepBlocked)
+			} else if callNum == 1 {
+				require.NotNil(t, usr.KYCStepBlocked)
+				require.Equal(t, users.QuizKYCStep, *usr.KYCStepBlocked)
+			} else {
+				require.FailNow(t, "unexpected call num")
+			}
+
+			callNum++
+
+			return nil
+		}
+
+		status, err := r.CheckQuizStatus(ctx, "bogus")
+		require.NoError(t, err)
+
+		t.Logf("status: %#v", status)
+
+		require.False(t, status.HasUnfinishedSessions)
+		require.False(t, status.KYCQuizDisabled)
+		require.False(t, status.KYCQuizCompleted)
+
+		require.True(t, status.KYCQuizAvailabilityEndedAt.Before(time.Now()))
+		require.Len(t, status.KYCQuizResetAt, 1)
+		require.True(t, status.KYCQuizResetAt[0].Before(time.Now()))
+		require.Equal(t, uint8(testQuizMaxAttempts), status.KYCQuizRemainingAttempts)
+
+		reader.OnModifyUser = nil
+		r.config = configCopy
 	})
 }
 
