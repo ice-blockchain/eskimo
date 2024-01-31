@@ -185,18 +185,13 @@ func (r *repositoryImpl) SkipQuizSession(ctx context.Context, userID UserID) err
 }
 
 func (r *repositoryImpl) prepareUserForReset(ctx context.Context, userID UserID, now *time.Time, tx storage.QueryExecer) error {
-	count, err := storage.Get[int](ctx, tx, "select count(1) from failed_quiz_sessions where user_id = $1", userID)
+	count, err := r.NumberOfFailedAttempts(ctx, tx, userID)
 	if err != nil {
-		if !errors.Is(err, storage.ErrNotFound) {
-			return errors.Wrap(err, "failed to get failed attempts count")
-		}
-
-		var zero int
-		count = &zero
+		return errors.Wrap(err, "failed to get failed attempts count")
 	}
 
-	if *count < int(r.config.MaxAttemptsAllowed) {
-		for i := 0; i < int(r.config.MaxAttemptsAllowed)-*count; i++ {
+	if count < int(r.config.MaxAttemptsAllowed) {
+		for i := 0; i < int(r.config.MaxAttemptsAllowed)-count; i++ {
 			ts := now.Add(-stdlibtime.Second * stdlibtime.Duration(i))
 			_, err = r.addFailedAttempt(ctx, userID, time.New(ts), tx, true)
 			if err != nil {
@@ -321,17 +316,40 @@ func questionsToSlice(questions []*Question) []uint {
 	return result
 }
 
-func (r *repositoryImpl) moveFailedAttempts(ctx context.Context, tx storage.QueryExecer, now *time.Time, userID UserID) (bool, error) { //nolint:funlen //.
-	count, err := storage.Get[int](ctx, tx, "select count(1) from failed_quiz_sessions where user_id = $1", userID)
+func (r *repositoryImpl) NumberOfFailedAttempts(ctx context.Context, tx storage.QueryExecer, userID UserID) (int, error) {
+	// $1: user_id.
+	// $2: global start date.
+	const stmt = `
+select
+	count(1)
+from
+	failed_quiz_sessions
+left join users u on
+	id = user_id
+where
+	user_id = $1 and
+	started_at >= GREATEST(u.created_at, $2)
+`
+	count, err := storage.Get[int](ctx, tx, stmt, userID, r.config.GlobalStartDate.Time)
 	if err != nil {
 		if errors.Is(err, storage.ErrNotFound) {
-			return false, nil
+			return 0, nil
 		}
 
+		return 0, errors.Wrap(err, "failed to get failed attempts count")
+
+	}
+
+	return *count, nil
+}
+
+func (r *repositoryImpl) moveFailedAttempts(ctx context.Context, tx storage.QueryExecer, now *time.Time, userID UserID) (bool, error) { //nolint:funlen //.
+	count, err := r.NumberOfFailedAttempts(ctx, tx, userID)
+	if err != nil {
 		return false, errors.Wrap(err, "failed to get failed attempts count")
 	}
 
-	if *count < int(r.config.MaxAttemptsAllowed) {
+	if count < int(r.config.MaxAttemptsAllowed) {
 		return false, nil
 	}
 

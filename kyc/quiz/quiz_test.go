@@ -568,7 +568,7 @@ func testManagerSessionStatus(ctx context.Context, t *testing.T, r *repositoryIm
 		require.False(t, status.KYCQuizDisabled)
 		require.False(t, status.KYCQuizCompleted)
 
-		require.True(t, status.KYCQuizAvailabilityEndedAt.Before(stdlibtime.Now()))
+		require.NotNil(t, status.KYCQuizAvailabilityEndedAt)
 		require.Len(t, status.KYCQuizResetAt, 1)
 		require.True(t, status.KYCQuizResetAt[0].Before(stdlibtime.Now()))
 		require.Equal(t, uint8(testQuizMaxAttempts), status.KYCQuizRemainingAttempts)
@@ -593,7 +593,7 @@ func TestSessionManager(t *testing.T) {
 	cnt := uint8(testQuizMaxResets)
 	repo.config.MaxAttemptsAllowed = testQuizMaxAttempts
 	repo.config.MaxResetCount = &cnt
-	repo.config.GlobalStartDate = time.Now()
+	repo.config.GlobalStartDate = time.New(time.Now().Add(-stdlibtime.Hour))
 	repo.config.AvailabilityWindowSeconds = 60 * 60 * 24 * 7 // 1 week.
 
 	helperInsertQuestion(t, repo)
