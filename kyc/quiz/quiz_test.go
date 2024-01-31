@@ -247,7 +247,7 @@ func testManagerSessionStart(ctx context.Context, t *testing.T, r *repositoryImp
 	t.Run("ResetAttempts", func(t *testing.T) {
 		helperSessionReset(t, r, "bogus", true)
 
-		for reset := uint8(1); reset <= r.config.MaxResetCount+1; reset++ {
+		for reset := uint8(1); reset <= *r.config.MaxResetCount+1; reset++ {
 			for i := uint8(0); i < uint8(r.config.MaxAttemptsAllowed); i++ {
 				_, err := r.StartQuizSession(ctx, "bogus", "en")
 				require.NoError(t, err)
@@ -589,8 +589,9 @@ func TestSessionManager(t *testing.T) {
 	repo := newRepositoryImpl(ctx, new(mockUserReader))
 	require.NotNil(t, repo)
 
+	cnt := uint8(testQuizMaxResets)
 	repo.config.MaxAttemptsAllowed = testQuizMaxAttempts
-	repo.config.MaxResetCount = testQuizMaxResets
+	repo.config.MaxResetCount = &cnt
 	repo.config.GlobalStartDate = time.Now().Format("2006-01-02")
 	repo.config.AvailabilityWindowSeconds = 60 * 60 * 24 * 7 // 1 week.
 

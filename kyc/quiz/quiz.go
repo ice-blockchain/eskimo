@@ -23,15 +23,19 @@ func mustLoadConfig() config {
 	appcfg.MustLoadFromKey(applicationYamlKey, &cfg)
 
 	if cfg.MaxSessionDurationSeconds == 0 {
-		panic("max_session_duration_seconds is not set")
+		panic("maxSessionDurationSeconds is not set")
 	}
 
 	if cfg.MaxQuestionsPerSession == 0 {
-		panic("max_questions_per_session is not set")
+		panic("maxQuestionsPerSession is not set")
 	}
 
 	if cfg.SessionCoolDownSeconds == 0 {
-		panic("session_cool_down_seconds is not set")
+		panic("sessionCoolDownSeconds is not set")
+	}
+
+	if cfg.MaxResetCount == nil {
+		panic("maxResetCount is not set")
 	}
 
 	defaultAlertFrequency := alertFrequency
@@ -285,7 +289,7 @@ func (r *repositoryImpl) getQuizStatus(ctx context.Context, userID UserID) (*Qui
 		userID,
 		r.GetGlobalStartDate(),
 		r.config.AvailabilityWindowSeconds,
-		r.config.MaxResetCount,
+		*r.config.MaxResetCount,
 		r.config.MaxAttemptsAllowed,
 	)
 
@@ -579,13 +583,9 @@ func (r *repositoryImpl) startNewSession( //nolint:funlen //.
 func (r *repositoryImpl) IsQuizEnabledForUser(ctx context.Context, userID UserID) (bool, error) {
 	const stmt = `select false as val from quiz_resets where user_id = $1 and cardinality(resets) > $2`
 
-	if r.config.MaxResetCount == 0 {
-		return true, nil
-	}
-
 	_, err := storage.Get[struct {
 		Val bool `db:"val"`
-	}](ctx, r.DB, stmt, userID, r.config.MaxResetCount)
+	}](ctx, r.DB, stmt, userID, *r.config.MaxResetCount)
 	if err != nil {
 		if errors.Is(err, storage.ErrNotFound) {
 			return true, nil

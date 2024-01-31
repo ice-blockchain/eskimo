@@ -21,3 +21,5 @@ kyc/quiz:
   maxQuestionsPerSession: 3
   maxWrongAnswersPerSession: 1
   sessionCoolDownSeconds: 3600
+  maxResetCount: 2
+  maxAttemptsAllowed: 3
