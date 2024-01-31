@@ -337,7 +337,6 @@ where
 		}
 
 		return 0, errors.Wrap(err, "failed to get failed attempts count")
-
 	}
 
 	return *count, nil
