@@ -106,17 +106,17 @@ type (
 		ProfilePictureURL string `json:"profilePictureUrl,omitempty" example:"https://somecdn.com/p1.jpg" db:"profile_picture_name"`
 	}
 	PreStaking struct {
-		Years      *uint64  `json:"years,omitempty" swaggerignore:"true" example:"1" db:"pre_staking_years"`
-		Allocation *float64 `json:"allocation,omitempty" swaggerignore:"true" example:"100.00" db:"pre_staking_allocation"`
-		Bonus      *float64 `json:"bonus,omitempty" swaggerignore:"true" example:"100.00" db:"pre_staking_bonus"`
+		Years      uint64  `json:"years,omitempty" swaggerignore:"true" example:"1" db:"pre_staking_years"`
+		Allocation float64 `json:"allocation,omitempty" swaggerignore:"true" example:"100.00" db:"pre_staking_allocation"`
+		Bonus      float64 `json:"bonus,omitempty" swaggerignore:"true" example:"100.00" db:"pre_staking_bonus"`
 	}
 	PreStakingSummary struct {
-		*PreStaking
 		UserID string `json:"userId,omitempty" example:"edfd8c02-75e0-4687-9ac2-1ce4723865c4"`
+		PreStaking
 	}
 	preStakingSnapshot struct {
-		*PreStakingSummary
 		Before *PreStakingSummary `json:"before,omitempty"`
+		PreStakingSummary
 	}
 	User struct {
 		CreatedAt               *time.Time                  `json:"createdAt,omitempty" example:"2022-01-03T16:20:52.156534Z" db:"created_at"`
@@ -133,7 +133,6 @@ type (
 		KYCStepBlocked          *KYCStep                    `json:"kycStepBlocked,omitempty" example:"0" db:"kyc_step_blocked"`
 		ClientData              *JSON                       `json:"clientData,omitempty" db:"client_data"`
 		RepeatableKYCSteps      *map[KYCStep]*time.Time     `json:"repeatableKYCSteps,omitempty" db:"-"` //nolint:tagliatelle // Nope.
-		PrivateUserInformation
 		PublicUserInformation
 		ReferredBy                           UserID   `json:"referredBy,omitempty" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2" db:"referred_by"`
 		PhoneNumberHash                      string   `json:"phoneNumberHash,omitempty" example:"Ef86A6021afCDe5673511376B2" swaggerignore:"true" db:"phone_number_hash"`
@@ -144,7 +143,8 @@ type (
 		Language                             string   `json:"language,omitempty" example:"en" db:"language"`
 		Lookup                               string   `json:"-" example:"username" db:"lookup"`
 		AgendaContactUserIDs                 []string `json:"agendaContactUserIDs,omitempty" swaggerignore:"true" db:"agenda_contact_user_ids"`
-		HashCode                             int64    `json:"hashCode,omitempty" example:"43453546464576547" swaggerignore:"true" db:"hash_code"`
+		PrivateUserInformation
+		HashCode int64 `json:"hashCode,omitempty" example:"43453546464576547" swaggerignore:"true" db:"hash_code"`
 	}
 	MinimalUserProfile struct {
 		Verified *bool       `json:"verified,omitempty" example:"true"`
