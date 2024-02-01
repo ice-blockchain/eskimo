@@ -83,6 +83,7 @@ var (
 	ErrSessionFinishedWithError = newError("session closed with error")
 	ErrUnknownQuestionNumber    = newError("unknown question number")
 	ErrUnknownSession           = newError("unknown session and/or user")
+	ErrNotAvailable             = newError("quiz kyc not available")
 )
 
 const (
@@ -118,12 +119,16 @@ type (
 	}
 	config struct {
 		alertFrequency            *atomic.Pointer[stdlibtime.Duration]
-		Environment               string `yaml:"environment" mapstructure:"environment"`
-		AlertSlackWebhook         string `yaml:"alert-slack-webhook" mapstructure:"alert-slack-webhook"` //nolint:tagliatelle // .
-		MaxSessionDurationSeconds int    `yaml:"maxSessionDurationSeconds"`
-		MaxQuestionsPerSession    int    `yaml:"maxQuestionsPerSession"`
-		MaxWrongAnswersPerSession int    `yaml:"maxWrongAnswersPerSession"`
-		SessionCoolDownSeconds    int    `yaml:"sessionCoolDownSeconds"`
-		EnableAlerts              bool   `yaml:"enable-alerts" mapstructure:"enable-alerts"` //nolint:tagliatelle // .
+		MaxResetCount             *uint8     `yaml:"maxResetCount"`
+		GlobalStartDate           *time.Time `yaml:"globalStartDate" example:"YYYY-MM-DD"`
+		Environment               string     `yaml:"environment" mapstructure:"environment"`
+		AlertSlackWebhook         string     `yaml:"alert-slack-webhook" mapstructure:"alert-slack-webhook"` //nolint:tagliatelle // .
+		AvailabilityWindowSeconds int        `yaml:"availabilityWindowSeconds"`
+		MaxSessionDurationSeconds int        `yaml:"maxSessionDurationSeconds"`
+		MaxQuestionsPerSession    int        `yaml:"maxQuestionsPerSession"`
+		MaxWrongAnswersPerSession int        `yaml:"maxWrongAnswersPerSession"`
+		SessionCoolDownSeconds    int        `yaml:"sessionCoolDownSeconds"`
+		EnableAlerts              bool       `yaml:"enable-alerts" mapstructure:"enable-alerts"` //nolint:tagliatelle // .
+		MaxAttemptsAllowed        uint8      `yaml:"maxAttemptsAllowed"`
 	}
 )

@@ -6,11 +6,18 @@ import (
 	"context"
 	"mime/multipart"
 	"testing"
+	stdlibtime "time"
 
 	"github.com/stretchr/testify/require"
 
 	"github.com/ice-blockchain/eskimo/users"
 	"github.com/ice-blockchain/wintr/connectors/storage/v2"
+	"github.com/ice-blockchain/wintr/time"
+)
+
+const (
+	testQuizMaxAttempts = 3
+	testQuizMaxResets   = 2
 )
 
 func helperInsertQuestion(t *testing.T, r *repositoryImpl) {
@@ -57,6 +64,9 @@ func helperForceFinishSession(t *testing.T, r *repositoryImpl, userID UserID, re
 	if result {
 		_, err = storage.Exec(context.TODO(), r.DB, `delete from failed_quiz_sessions where user_id = $1`, userID)
 		require.NoError(t, err)
+
+		_, err = storage.Exec(context.TODO(), r.DB, `delete from quiz_resets where user_id = $1`, userID)
+		require.NoError(t, err)
 	}
 }
 
@@ -64,6 +74,16 @@ func helperForceResetSessionStartedAt(t *testing.T, r *repositoryImpl, userID Us
 	t.Helper()
 
 	_, err := storage.Exec(context.TODO(), r.DB, "update quiz_sessions set ended_at = NULL, started_at = to_timestamp(42) where user_id = $1", userID)
+	require.NoError(t, err)
+}
+
+func helperUpdateFailedSessionEndedAt(t *testing.T, r *repositoryImpl, userID UserID) {
+	t.Helper()
+
+	_, err := storage.Exec(context.TODO(), r.DB, "update failed_quiz_sessions set ended_at = to_timestamp(42) where user_id = $1", userID)
+	require.NoError(t, err)
+
+	_, err = storage.Exec(context.TODO(), r.DB, "update quiz_sessions set ended_at = to_timestamp(42) where user_id = $1", userID)
 	require.NoError(t, err)
 }
 
@@ -76,10 +96,26 @@ func helperSessionReset(t *testing.T, r *repositoryImpl, userID UserID, full boo
 	if full {
 		_, err = storage.Exec(context.TODO(), r.DB, "delete from failed_quiz_sessions where user_id = $1", userID)
 		require.NoError(t, err)
+
+		_, err = storage.Exec(context.TODO(), r.DB, "delete from failed_quiz_sessions_history where user_id = $1", userID)
+		require.NoError(t, err)
+
+		_, err = storage.Exec(context.TODO(), r.DB, `delete from quiz_resets where user_id = $1`, userID)
+		require.NoError(t, err)
 	}
 }
 
-type mockUserReader struct{}
+func helperEnsureHistory(t *testing.T, r *repositoryImpl, userID UserID, count uint) {
+	t.Helper()
+
+	data, err := storage.Get[int](context.Background(), r.DB, "select count(1) from failed_quiz_sessions_history where user_id = $1", userID)
+	require.NoError(t, err)
+	require.Equal(t, count, uint(*data), "unexpected history count")
+}
+
+type mockUserReader struct {
+	OnModifyUser func(ctx context.Context, usr *users.User, profilePicture *multipart.FileHeader) error
+}
 
 func (*mockUserReader) GetUserByID(ctx context.Context, userID UserID) (*UserProfile, error) {
 	profile := &UserProfile{
@@ -105,7 +141,11 @@ func (*mockUserReader) GetUserByID(ctx context.Context, userID UserID) (*UserPro
 	return profile, nil
 }
 
-func (*mockUserReader) ModifyUser(ctx context.Context, usr *users.User, profilePicture *multipart.FileHeader) error {
+func (m *mockUserReader) ModifyUser(ctx context.Context, usr *users.User, profilePicture *multipart.FileHeader) error {
+	if m.OnModifyUser != nil {
+		return m.OnModifyUser(ctx, usr, profilePicture)
+	}
+
 	return nil
 }
 
@@ -187,6 +227,42 @@ func testManagerSessionStart(ctx context.Context, t *testing.T, r *repositoryImp
 			_, err = r.StartQuizSession(ctx, "bogus", "en")
 			require.ErrorIs(t, err, ErrSessionFinishedWithError)
 		})
+	})
+
+	t.Run("MaxAttempts", func(t *testing.T) {
+		helperSessionReset(t, r, "bogus", true)
+
+		for i := uint8(0); i < uint8(r.config.MaxAttemptsAllowed); i++ {
+			_, err := r.StartQuizSession(ctx, "bogus", "en")
+			require.NoError(t, err)
+
+			err = r.SkipQuizSession(ctx, "bogus")
+			require.NoError(t, err)
+
+			helperUpdateFailedSessionEndedAt(t, r, "bogus")
+		}
+
+		helperEnsureHistory(t, r, "bogus", uint(r.config.MaxAttemptsAllowed))
+	})
+
+	t.Run("ResetAttempts", func(t *testing.T) {
+		helperSessionReset(t, r, "bogus", true)
+
+		for reset := uint8(1); reset <= *r.config.MaxResetCount+1; reset++ {
+			for i := uint8(0); i < uint8(r.config.MaxAttemptsAllowed); i++ {
+				_, err := r.StartQuizSession(ctx, "bogus", "en")
+				require.NoError(t, err)
+
+				err = r.SkipQuizSession(ctx, "bogus")
+				require.NoError(t, err)
+
+				helperUpdateFailedSessionEndedAt(t, r, "bogus")
+			}
+			helperEnsureHistory(t, r, "bogus", uint(r.config.MaxAttemptsAllowed*reset))
+		}
+
+		_, err := r.StartQuizSession(ctx, "bogus", "en")
+		require.ErrorIs(t, err, ErrNotAvailable)
 	})
 }
 
@@ -402,6 +478,106 @@ func testManagerSessionContinueWithIncorrectAnswers(ctx context.Context, t *test
 	require.Equal(t, uint8(2), session.Progress.IncorrectAnswers)
 }
 
+func testManagerSessionStatus(ctx context.Context, t *testing.T, r *repositoryImpl) {
+	t.Run("Check", func(t *testing.T) {
+		helperSessionReset(t, r, "bogus", true)
+
+		session, err := r.StartQuizSession(ctx, "bogus", "en")
+		require.NoError(t, err)
+		require.NotNil(t, session)
+
+		status, err := r.getQuizStatus(ctx, "bogus")
+		require.NoError(t, err)
+		require.NotNil(t, status)
+
+		t.Logf("status: %#v", status)
+		require.True(t, status.HasUnfinishedSessions)
+		require.True(t, status.KYCQuizAvailabilityEndedAt.After(stdlibtime.Now()))
+		require.Equal(t, uint8(testQuizMaxAttempts), status.KYCQuizRemainingAttempts)
+		require.False(t, status.KYCQuizDisabled)
+		require.False(t, status.KYCQuizCompleted)
+	})
+
+	t.Run("UnknownUserOrSession", func(t *testing.T) {
+		_, err := r.getQuizStatus(ctx, "unknown_user")
+		require.ErrorIs(t, err, ErrUnknownSession)
+	})
+
+	t.Run("CheckWithFinish", func(t *testing.T) {
+		helperSessionReset(t, r, "bogus", true)
+
+		session, err := r.StartQuizSession(ctx, "bogus", "en")
+		require.NoError(t, err)
+		require.NotNil(t, session)
+
+		// Check + reset.
+		status, err := r.CheckQuizStatus(ctx, "bogus")
+		require.NoError(t, err)
+		require.NotNil(t, status)
+		require.False(t, status.HasUnfinishedSessions)
+
+		// Just check.
+		status, err = r.getQuizStatus(ctx, "bogus")
+		require.NoError(t, err)
+		require.NotNil(t, session)
+		t.Logf("status: %#v", status)
+		require.False(t, status.HasUnfinishedSessions)
+		require.True(t, status.KYCQuizAvailabilityEndedAt.After(stdlibtime.Now()))
+		require.Equal(t, uint8(testQuizMaxAttempts-1), status.KYCQuizRemainingAttempts)
+		require.False(t, status.KYCQuizDisabled)
+		require.False(t, status.KYCQuizCompleted)
+	})
+
+	t.Run("PrepareForReset", func(t *testing.T) {
+		helperSessionReset(t, r, "bogus", true)
+
+		session, err := r.StartQuizSession(ctx, "bogus", "en")
+		require.NoError(t, err)
+		require.NotNil(t, session)
+
+		configCopy := r.config
+		r.config.GlobalStartDate = time.New(stdlibtime.Now().Add(-stdlibtime.Hour * 100))
+		r.config.AvailabilityWindowSeconds = 1
+
+		reader := r.Users.(*mockUserReader)
+		require.NotNil(t, reader)
+		callNum := 0
+		reader.OnModifyUser = func(ctx context.Context, usr *users.User, profilePicture *multipart.FileHeader) error {
+			t.Logf("user motify key blocked: %#v", usr.KYCStepBlocked)
+
+			if callNum == 0 {
+				require.Nil(t, usr.KYCStepBlocked)
+			} else if callNum == 1 {
+				require.NotNil(t, usr.KYCStepBlocked)
+				require.Equal(t, users.QuizKYCStep, *usr.KYCStepBlocked)
+			} else {
+				require.FailNow(t, "unexpected call num")
+			}
+
+			callNum++
+
+			return nil
+		}
+
+		status, err := r.CheckQuizStatus(ctx, "bogus")
+		require.NoError(t, err)
+
+		t.Logf("status: %#v", status)
+
+		require.False(t, status.HasUnfinishedSessions)
+		require.False(t, status.KYCQuizDisabled)
+		require.False(t, status.KYCQuizCompleted)
+
+		require.NotNil(t, status.KYCQuizAvailabilityEndedAt)
+		require.Len(t, status.KYCQuizResetAt, 1)
+		require.True(t, status.KYCQuizResetAt[0].Before(stdlibtime.Now()))
+		require.Equal(t, uint8(testQuizMaxAttempts), status.KYCQuizRemainingAttempts)
+
+		reader.OnModifyUser = nil
+		r.config = configCopy
+	})
+}
+
 func TestSessionManager(t *testing.T) {
 	t.Parallel()
 
@@ -413,6 +589,12 @@ func TestSessionManager(t *testing.T) {
 
 	repo := newRepositoryImpl(ctx, new(mockUserReader))
 	require.NotNil(t, repo)
+
+	cnt := uint8(testQuizMaxResets)
+	repo.config.MaxAttemptsAllowed = testQuizMaxAttempts
+	repo.config.MaxResetCount = &cnt
+	repo.config.GlobalStartDate = time.New(time.Now().Add(-stdlibtime.Hour))
+	repo.config.AvailabilityWindowSeconds = 60 * 60 * 24 * 7 // 1 week.
 
 	helperInsertQuestion(t, repo)
 
@@ -427,6 +609,10 @@ func TestSessionManager(t *testing.T) {
 
 	t.Run("Skip", func(t *testing.T) {
 		testManagerSessionSkip(ctx, t, repo)
+	})
+
+	t.Run("Status", func(t *testing.T) {
+		testManagerSessionStatus(ctx, t, repo)
 	})
 
 	require.NoError(t, repo.Close())

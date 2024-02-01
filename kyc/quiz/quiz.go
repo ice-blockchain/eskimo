@@ -8,7 +8,6 @@ import (
 	"sync/atomic"
 	stdlibtime "time"
 
-	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 
 	"github.com/ice-blockchain/eskimo/users"
@@ -23,15 +22,23 @@ func mustLoadConfig() config {
 	appcfg.MustLoadFromKey(applicationYamlKey, &cfg)
 
 	if cfg.MaxSessionDurationSeconds == 0 {
-		panic("max_session_duration_seconds is not set")
+		panic("maxSessionDurationSeconds is not set")
 	}
 
 	if cfg.MaxQuestionsPerSession == 0 {
-		panic("max_questions_per_session is not set")
+		panic("maxQuestionsPerSession is not set")
 	}
 
 	if cfg.SessionCoolDownSeconds == 0 {
-		panic("session_cool_down_seconds is not set")
+		panic("sessionCoolDownSeconds is not set")
+	}
+
+	if cfg.MaxResetCount == nil {
+		panic("maxResetCount is not set")
+	}
+
+	if cfg.GlobalStartDate == nil {
+		panic("globalStartDate is not set")
 	}
 
 	defaultAlertFrequency := alertFrequency
@@ -90,6 +97,10 @@ func (r *repositoryImpl) CheckUserKYC(ctx context.Context, userID UserID) error 
 
 //nolint:revive // .
 func (r *repositoryImpl) validateKycStep(user *users.User) error {
+	if user.KYCStepBlocked != nil && *user.KYCStepBlocked >= users.QuizKYCStep {
+		return ErrNotAvailable
+	}
+
 	if sessionCoolDown := stdlibtime.Duration(r.config.SessionCoolDownSeconds) * stdlibtime.Second; user.KYCStepPassed == nil ||
 		*user.KYCStepPassed < users.QuizKYCStep-1 ||
 		(user.KYCStepPassed != nil &&
@@ -105,7 +116,7 @@ func (r *repositoryImpl) validateKycStep(user *users.User) error {
 	return nil
 }
 
-func (*repositoryImpl) addFailedAttempt(ctx context.Context, userID UserID, now *time.Time, tx storage.Execer, skipped bool) error {
+func (r *repositoryImpl) addFailedAttempt(ctx context.Context, userID UserID, now *time.Time, tx storage.QueryExecer, skipped bool) (bool, error) {
 	// $1: user_id.
 	// $2: now.
 	// $3: skipped.
@@ -114,8 +125,11 @@ func (*repositoryImpl) addFailedAttempt(ctx context.Context, userID UserID, now 
 		values ($2, $2, '{}', '{}', 'en', $1, $3)
 	`
 	_, err := storage.Exec(ctx, tx, stmt, userID, now.Time, skipped)
+	if err != nil {
+		return false, errors.Wrap(err, "failed to add failed attempt")
+	}
 
-	return errors.Wrap(err, "failed to add failed attempt")
+	return r.moveFailedAttempts(ctx, tx, now, userID)
 }
 
 func (r *repositoryImpl) SkipQuizSession(ctx context.Context, userID UserID) error { //nolint:funlen //.
@@ -138,39 +152,102 @@ func (r *repositoryImpl) SkipQuizSession(ctx context.Context, userID UserID) err
 	err := storage.DoInTransaction(ctx, r.DB, func(tx storage.QueryExecer) error {
 		now := time.Now()
 
+		blocked := false
 		data, err := storage.ExecOne[struct {
 			Finished bool `db:"finished"`
 			Success  bool `db:"ended_successfully"`
 		}](ctx, tx, stmt, userID)
 		if err != nil {
 			if errors.Is(err, storage.ErrNotFound) {
-				err = r.addFailedAttempt(ctx, userID, now, tx, true)
+				blocked, err = r.addFailedAttempt(ctx, userID, now, tx, true)
 				if err == nil {
-					err = r.modifyUser(ctx, false, now, userID)
+					err = r.modifyUser(ctx, false, blocked, now, userID)
 				}
 
 				return err
 			}
 
-			return errors.Wrap(wrapErrorInTx(err), "failed to get session data")
+			return errors.Wrap(err, "failed to get session data")
 		}
 
 		if data.Finished {
 			if data.Success {
-				return wrapErrorInTx(ErrSessionFinished)
+				return ErrSessionFinished
 			}
 
-			return r.modifyUser(ctx, false, now, userID)
+			return r.modifyUser(ctx, false, blocked, now, userID)
 		}
 
-		return wrapErrorInTx(r.UserMarkSessionAsFinished(ctx, userID, *now.Time, tx, false, true))
+		return r.UserMarkSessionAsFinished(ctx, userID, *now.Time, tx, false, true)
 	})
 
 	return errors.Wrap(err, "failed to skip session")
 }
 
-func (r *repositoryImpl) CheckQuizStatus(ctx context.Context, userID UserID) (*QuizStatus, error) {
-	sql := `SELECT GREATEST($5 - coalesce(count(fqs.user_id),0),0)			  							 AS kyc_quiz_remaining_attempts,
+func (r *repositoryImpl) prepareUserForReset(ctx context.Context, userID UserID, now *time.Time, tx storage.QueryExecer) error {
+	count, err := r.NumberOfFailedAttempts(ctx, tx, userID)
+	if err != nil {
+		return errors.Wrap(err, "failed to get failed attempts count")
+	}
+
+	if count < int(r.config.MaxAttemptsAllowed) {
+		for i := 0; i < int(r.config.MaxAttemptsAllowed)-count; i++ {
+			ts := now.Add(-stdlibtime.Second * stdlibtime.Duration(i))
+			_, err = r.addFailedAttempt(ctx, userID, time.New(ts), tx, true)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+func (r *repositoryImpl) CheckQuizStatus(ctx context.Context, userID UserID) (*QuizStatus, error) { //nolint:funlen //.
+	status, err := r.getQuizStatus(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	now := time.Now()
+	reRead := false
+	if status.HasUnfinishedSessions {
+		_, err = r.finishUnfinishedSession(ctx, r.DB, now, userID)
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to finish unfinished session for userID:%v", userID)
+		}
+		reRead = true
+	}
+
+	if status.KYCQuizAvailabilityEndedAt.Before(*now.Time) {
+		err = storage.DoInTransaction(ctx, r.DB, func(tx storage.QueryExecer) error {
+			prepareErr := r.prepareUserForReset(ctx, userID, now, tx)
+			if prepareErr != nil {
+				return prepareErr
+			}
+
+			return r.modifyUser(ctx, false, true, now, userID)
+		})
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to prepare user for reset for userID:%v", userID)
+		}
+		reRead = true
+	}
+
+	if reRead {
+		status, err = r.getQuizStatus(ctx, userID)
+	}
+
+	return status, err
+}
+
+func (r *repositoryImpl) getQuizStatus(ctx context.Context, userID UserID) (*QuizStatus, error) { //nolint:funlen //.
+	// $1: user_id.
+	// $2: global start date.
+	// $3: availability window (seconds).
+	// $4: max reset count.
+	// $5: max attempts allowed.
+	const sql = `SELECT GREATEST($5 - coalesce(count(fqs.user_id),0),0)			  						 AS kyc_quiz_remaining_attempts,
 				   (qr.user_id IS NOT NULL AND cardinality(qr.resets) > $4) 							 AS kyc_quiz_disabled,
 				   qr.resets  							 									 			 AS kyc_quiz_reset_at,
 				   (qs.user_id IS NOT NULL AND qs.ended_at is not null AND qs.ended_successfully = true) AS kyc_quiz_completed,
@@ -188,18 +265,22 @@ func (r *repositoryImpl) CheckQuizStatus(ctx context.Context, userID UserID) (*Q
 			GROUP BY qr.user_id,
 					 qs.user_id,
 					 u.id`
-	quizStatus, err := storage.ExecOne[QuizStatus](ctx, r.DB, sql, userID, time.Now().Time, 0, 0, 0 /* , globalQuizStartDate, quizAvailabilityWindowSeconds, maxResetsAllowed, maxAttemptsAllowed.*/) //nolint:lll // .
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to exec CheckQuizStatus sql for userID:%v", userID)
+	quizStatus, err := storage.ExecOne[QuizStatus](
+		ctx,
+		r.DB,
+		sql,
+		userID,
+		r.config.GlobalStartDate.Time,
+		r.config.AvailabilityWindowSeconds,
+		*r.config.MaxResetCount,
+		r.config.MaxAttemptsAllowed,
+	)
+
+	if errors.Is(err, storage.ErrNotFound) {
+		err = ErrUnknownSession
 	}
 
-	if quizStatus.HasUnfinishedSessions {
-		if _, err = r.finishUnfinishedSession(ctx, time.Now(), userID); err != nil {
-			return nil, errors.Wrapf(err, "failed to finishUnfinishedSession for userID:%v", userID)
-		}
-	}
-
-	return quizStatus, nil
+	return quizStatus, errors.Wrapf(err, "failed to exec CheckQuizStatus sql for userID:%v", userID)
 }
 
 func (r *repositoryImpl) SelectQuestions(ctx context.Context, tx storage.QueryExecer, lang string) ([]*Question, error) {
@@ -235,28 +316,94 @@ func questionsToSlice(questions []*Question) []uint {
 	return result
 }
 
-func wrapErrorInTx(err error) error {
-	if err == nil {
-		return nil
+func (r *repositoryImpl) NumberOfFailedAttempts(ctx context.Context, tx storage.QueryExecer, userID UserID) (int, error) {
+	// $1: user_id.
+	// $2: global start date.
+	const stmt = `
+select
+	count(1)
+from
+	failed_quiz_sessions
+left join users u on
+	id = user_id
+where
+	user_id = $1 and
+	started_at >= GREATEST(u.created_at, $2)
+`
+	count, err := storage.Get[int](ctx, tx, stmt, userID, r.config.GlobalStartDate.Time)
+	if err != nil {
+		if errors.Is(err, storage.ErrNotFound) {
+			return 0, nil
+		}
+
+		return 0, errors.Wrap(err, "failed to get failed attempts count")
 	}
 
-	var quizErr *quizError
-	if errors.As(err, &quizErr) {
-		// Wa want to stop/abort the transaction in case of logic/flow error.
-		return multierror.Append(storage.ErrCheckFailed, err)
-	}
-
-	return err
+	return *count, nil
 }
 
-func (r *repositoryImpl) finishUnfinishedSession(ctx context.Context, now *time.Time, userID UserID) (*time.Time, error) { //nolint:funlen //.
+func (r *repositoryImpl) moveFailedAttempts(ctx context.Context, tx storage.QueryExecer, now *time.Time, userID UserID) (bool, error) { //nolint:funlen //.
+	count, err := r.NumberOfFailedAttempts(ctx, tx, userID)
+	if err != nil {
+		return false, errors.Wrap(err, "failed to get failed attempts count")
+	}
+
+	if count < int(r.config.MaxAttemptsAllowed) {
+		return false, nil
+	}
+
+	const stmt = `
+with failed_sessions as (
+	delete from failed_quiz_sessions where user_id = $1 returning *
+)
+insert into failed_quiz_sessions_history(created_at, started_at, ended_at, questions, answers, language, user_id, skipped)
+select
+	$2 as created_at,
+	failed_sessions.started_at,
+	failed_sessions.ended_at,
+	failed_sessions.questions,
+	failed_sessions.answers,
+	failed_sessions.language,
+	failed_sessions.user_id,
+	failed_sessions.skipped
+from
+	failed_sessions
+`
+
+	_, err = storage.Exec(ctx, tx, stmt, userID, now.Time)
+	if err != nil {
+		return false, errors.Wrap(err, "failed to move failed attempts to history")
+	}
+
+	const stmtReset = `
+insert into quiz_resets
+	(user_id, resets)
+values
+	($1, ARRAY[$2::timestamp])
+on conflict on constraint quiz_resets_pkey do update set
+	resets = quiz_resets.resets || excluded.resets
+`
+
+	_, err = storage.Exec(ctx, tx, stmtReset, userID, now.Time)
+
+	return true, errors.Wrap(err, "failed to reset quiz resets")
+}
+
+//nolint:funlen //.
+func (r *repositoryImpl) finishUnfinishedSession(
+	ctx context.Context,
+	tx storage.QueryExecer,
+	now *time.Time,
+	userID UserID,
+) (*time.Time, error) {
 	// $1: user_id.
-	// $2: session cool down (seconds).
+	// $2: now.
+	// $3: session cool down (seconds).
 	const stmt = `
 	with result as (
 		update quiz_sessions
 		set
-			ended_at = now(),
+			ended_at = $2,
 			ended_successfully = false
 		where
 			user_id = $1 and
@@ -275,11 +422,11 @@ func (r *repositoryImpl) finishUnfinishedSession(ctx context.Context, now *time.
 	from
 		result
 	returning
-		ended_at + make_interval(secs => $2) as cooldown_at
+		ended_at + make_interval(secs => $3) as cooldown_at
 	`
 	data, err := storage.ExecOne[struct {
 		CooldownAt *time.Time `db:"cooldown_at"`
-	}](ctx, r.DB, stmt, userID, r.config.SessionCoolDownSeconds)
+	}](ctx, tx, stmt, userID, now.Time, r.config.SessionCoolDownSeconds)
 	if err != nil {
 		if errors.Is(err, storage.ErrNotFound) {
 			err = nil
@@ -288,7 +435,17 @@ func (r *repositoryImpl) finishUnfinishedSession(ctx context.Context, now *time.
 		return nil, err
 	}
 
-	return data.CooldownAt, errors.Wrapf(r.modifyUser(ctx, false, now, userID), "failed to modifyUser")
+	blocked := false
+	if data.CooldownAt != nil {
+		blocked, err = r.moveFailedAttempts(ctx, tx, now, userID)
+		if err != nil {
+			return nil, err
+		} else if blocked {
+			data.CooldownAt = nil
+		}
+	}
+
+	return data.CooldownAt, errors.Wrapf(r.modifyUser(ctx, false, blocked, now, userID), "failed to modifyUser")
 }
 
 func (r *repositoryImpl) startNewSession( //nolint:funlen //.
@@ -417,17 +574,41 @@ func (r *repositoryImpl) startNewSession( //nolint:funlen //.
 	panic("unreachable: " + userID)
 }
 
+func (r *repositoryImpl) IsQuizEnabledForUser(ctx context.Context, userID UserID) (bool, error) {
+	const stmt = `select false as val from quiz_resets where user_id = $1 and cardinality(resets) > $2`
+
+	_, err := storage.Get[struct {
+		Val bool `db:"val"`
+	}](ctx, r.DB, stmt, userID, *r.config.MaxResetCount)
+	if err != nil {
+		if errors.Is(err, storage.ErrNotFound) {
+			return true, nil
+		}
+
+		return false, errors.Wrap(err, "failed to check quiz resets")
+	}
+
+	return false, nil
+}
+
 func (r *repositoryImpl) StartQuizSession(ctx context.Context, userID UserID, lang string) (*Quiz, error) {
 	questions, err := r.SelectQuestions(ctx, r.DB, lang)
 	if err != nil {
 		return nil, err
 	}
 
-	cooldown, err := r.finishUnfinishedSession(ctx, time.Now(), userID)
+	cooldown, err := r.finishUnfinishedSession(ctx, r.DB, time.Now(), userID)
 	if err != nil {
 		return nil, err
 	} else if cooldown != nil {
 		return nil, errors.Wrapf(ErrSessionFinishedWithError, "cooldown until %v", cooldown)
+	}
+
+	enabled, err := r.IsQuizEnabledForUser(ctx, userID)
+	if err != nil {
+		return nil, err
+	} else if !enabled {
+		return nil, ErrNotAvailable
 	}
 
 	err = r.CheckUserKYC(ctx, userID)
@@ -577,7 +758,7 @@ select id, options, question from questions where "language" = $1 and id = $2
 	return question, nil
 }
 
-//nolint:revive // .
+//nolint:revive,funlen // .
 func (r *repositoryImpl) UserMarkSessionAsFinished(
 	ctx context.Context, userID UserID, now stdlibtime.Time, tx storage.QueryExecer, successful, skipped bool,
 ) error {
@@ -608,7 +789,12 @@ where
 		return errors.Wrap(err, "failed to mark session as finished")
 	}
 
-	return errors.Wrap(r.modifyUser(ctx, successful, time.New(now), userID), "failed to modifyUser")
+	blocked, err := r.moveFailedAttempts(ctx, tx, time.New(now), userID)
+	if err != nil {
+		return err
+	}
+
+	return errors.Wrap(r.modifyUser(ctx, successful, blocked, time.New(now), userID), "failed to modifyUser")
 }
 
 func (r *repositoryImpl) fetchUserProfileForModify(ctx context.Context, userID UserID) (*users.User, error) {
@@ -635,7 +821,7 @@ func (r *repositoryImpl) fetchUserProfileForModify(ctx context.Context, userID U
 }
 
 //nolint:revive // .
-func (r *repositoryImpl) modifyUser(ctx context.Context, success bool, now *time.Time, userID UserID) error {
+func (r *repositoryImpl) modifyUser(ctx context.Context, success, blocked bool, now *time.Time, userID UserID) error {
 	user, err := r.fetchUserProfileForModify(ctx, userID)
 	if err != nil {
 		return err
@@ -646,6 +832,8 @@ func (r *repositoryImpl) modifyUser(ctx context.Context, success bool, now *time
 	newKYCStep := users.QuizKYCStep
 	if success {
 		usr.KYCStepPassed = &newKYCStep
+	} else if blocked {
+		usr.KYCStepBlocked = &newKYCStep
 	}
 
 	usr.KYCStepsLastUpdatedAt = user.KYCStepsLastUpdatedAt
@@ -672,17 +860,17 @@ func (r *repositoryImpl) ContinueQuizSession( //nolint:funlen,revive,gocognit //
 				pErr = r.UserMarkSessionAsFinished(ctx, userID, now, tx, false, false)
 			}
 
-			return wrapErrorInTx(pErr)
+			return pErr
 		}
 		_, err = r.CheckQuestionNumber(ctx, progress.Lang, progress.Questions, question, tx)
 		if err != nil {
-			return wrapErrorInTx(err)
+			return err
 		} else if uint8(len(progress.Answers)) != question-1 {
-			return wrapErrorInTx(errors.Wrap(ErrUnknownQuestionNumber, "please answer questions in order"))
+			return errors.Wrap(ErrUnknownQuestionNumber, "please answer questions in order")
 		}
 		newAnswers, aErr := r.UserAddAnswer(ctx, userID, tx, answer)
 		if aErr != nil {
-			return wrapErrorInTx(aErr)
+			return aErr
 		}
 		correctNum, incorrectNum := calculateProgress(progress.CorrectAnswers, newAnswers)
 		quiz = &Quiz{
@@ -696,13 +884,13 @@ func (r *repositoryImpl) ContinueQuizSession( //nolint:funlen,revive,gocognit //
 		if int(incorrectNum) > r.config.MaxWrongAnswersPerSession {
 			quiz.Result = FailureResult
 
-			return wrapErrorInTx(r.UserMarkSessionAsFinished(ctx, userID, now, tx, false, false))
+			return r.UserMarkSessionAsFinished(ctx, userID, now, tx, false, false)
 		}
 
 		if len(newAnswers) != len(progress.CorrectAnswers) {
 			nextQuestion, nErr := r.LoadQuestionByID(ctx, tx, progress.Lang, progress.Questions[question])
 			if nErr != nil {
-				return wrapErrorInTx(nErr)
+				return nErr
 			}
 			nextQuestion.Number = question + 1
 			quiz.Progress.ExpiresAt = progress.Deadline
@@ -713,7 +901,7 @@ func (r *repositoryImpl) ContinueQuizSession( //nolint:funlen,revive,gocognit //
 
 		quiz.Result = SuccessResult
 
-		return wrapErrorInTx(r.UserMarkSessionAsFinished(ctx, userID, now, tx, true, false))
+		return r.UserMarkSessionAsFinished(ctx, userID, now, tx, true, false)
 	})
 
 	return quiz, err
