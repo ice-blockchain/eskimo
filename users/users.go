@@ -321,6 +321,9 @@ func (r *repository) sanitizeUser(usr *User) *User {
 	if usr.MiningBlockchainAccountAddress == usr.ID {
 		usr.MiningBlockchainAccountAddress = ""
 	}
+	if usr.SolanaMiningBlockchainAccountAddress == usr.ID {
+		usr.SolanaMiningBlockchainAccountAddress = ""
+	}
 	if usr.PhoneNumber == usr.ID {
 		usr.PhoneNumber = ""
 	}
