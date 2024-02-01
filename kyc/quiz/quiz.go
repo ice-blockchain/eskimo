@@ -252,6 +252,7 @@ func (r *repositoryImpl) getQuizStatus(ctx context.Context, userID UserID) (*Qui
 				   qr.resets  							 									 			 AS kyc_quiz_reset_at,
 				   (qs.user_id IS NOT NULL AND qs.ended_at is not null AND qs.ended_successfully = true) AS kyc_quiz_completed,
 				   GREATEST(u.created_at,$2) + (interval '1 second' * $3) 	  							 AS kyc_quiz_availability_ended_at,
+				   (u.kyc_step_passed >= 2 AND u.kyc_step_blocked = 0)			  						 AS kyc_quiz_available,
 				   (qs.user_id IS NOT NULL AND qs.ended_at IS NULL)			  							 AS has_unfinished_sessions
 			FROM users u
 				LEFT JOIN quiz_resets qr 

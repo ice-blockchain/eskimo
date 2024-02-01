@@ -1702,6 +1702,9 @@
                 "kycQuizAvailabilityEndedAt": {
                     "type": "string"
                 },
+                "kycQuizAvailable": {
+                    "type": "boolean"
+                },
                 "kycQuizCompleted": {
                     "type": "boolean"
                 },
@@ -2033,6 +2036,9 @@
                 "kycQuizAvailabilityEndedAt": {
                     "type": "string"
                 },
+                "kycQuizAvailable": {
+                    "type": "boolean"
+                },
                 "kycQuizCompleted": {
                     "type": "boolean"
                 },
@@ -2195,6 +2201,9 @@
             "properties": {
                 "kycQuizAvailabilityEndedAt": {
                     "type": "string"
+                },
+                "kycQuizAvailable": {
+                    "type": "boolean"
                 },
                 "kycQuizCompleted": {
                     "type": "boolean"

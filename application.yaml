@@ -69,6 +69,10 @@ kyc/quiz:
   maxQuestionsPerSession: 3
   maxWrongAnswersPerSession: 1
   sessionCoolDownSeconds: 3600
+  maxResetCount: 0
+  maxAttemptsAllowed: 3
+  availabilityWindowSeconds: 600
+  globalStartDate: 2024-01-01
 auth/email-link:
   wintr/connectors/storage/v2: *db
   fromEmailAddress: no-reply@ice.io

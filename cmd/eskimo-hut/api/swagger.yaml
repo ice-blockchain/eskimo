@@ -105,6 +105,8 @@ definitions:
         type: string
       kycQuizAvailabilityEndedAt:
         type: string
+      kycQuizAvailable:
+        type: boolean
       kycQuizCompleted:
         type: boolean
       kycQuizDisabled:
@@ -332,6 +334,8 @@ definitions:
         type: string
       kycQuizAvailabilityEndedAt:
         type: string
+      kycQuizAvailable:
+        type: boolean
       kycQuizCompleted:
         type: boolean
       kycQuizDisabled:
@@ -443,6 +447,8 @@ definitions:
     properties:
       kycQuizAvailabilityEndedAt:
         type: string
+      kycQuizAvailable:
+        type: boolean
       kycQuizCompleted:
         type: boolean
       kycQuizDisabled:

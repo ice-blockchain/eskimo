@@ -1708,6 +1708,9 @@ const docTemplate = `{
                 "kycQuizAvailabilityEndedAt": {
                     "type": "string"
                 },
+                "kycQuizAvailable": {
+                    "type": "boolean"
+                },
                 "kycQuizCompleted": {
                     "type": "boolean"
                 },
@@ -2039,6 +2042,9 @@ const docTemplate = `{
                 "kycQuizAvailabilityEndedAt": {
                     "type": "string"
                 },
+                "kycQuizAvailable": {
+                    "type": "boolean"
+                },
                 "kycQuizCompleted": {
                     "type": "boolean"
                 },
@@ -2201,6 +2207,9 @@ const docTemplate = `{
             "properties": {
                 "kycQuizAvailabilityEndedAt": {
                     "type": "string"
+                },
+                "kycQuizAvailable": {
+                    "type": "boolean"
                 },
                 "kycQuizCompleted": {
                     "type": "boolean"

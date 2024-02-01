@@ -47,6 +47,7 @@ type (
 		KYCQuizAvailabilityEndedAt *time.Time   `json:"kycQuizAvailabilityEndedAt" db:"kyc_quiz_availability_ended_at"`
 		KYCQuizResetAt             []*time.Time `json:"kycQuizResetAt,omitempty" db:"kyc_quiz_reset_at"`
 		KYCQuizRemainingAttempts   uint8        `json:"kycQuizRemainingAttempts,omitempty" db:"kyc_quiz_remaining_attempts"`
+		KYCQuizAvailable           bool         `json:"kycQuizAvailable" db:"kyc_quiz_available"`
 		KYCQuizDisabled            bool         `json:"kycQuizDisabled" db:"kyc_quiz_disabled"`
 		KYCQuizCompleted           bool         `json:"kycQuizCompleted" db:"kyc_quiz_completed"`
 		HasUnfinishedSessions      bool         `json:"-"`
