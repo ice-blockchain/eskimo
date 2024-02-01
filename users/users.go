@@ -341,7 +341,9 @@ func (r *repository) sanitizeUser(usr *User) *User {
 		usr.ReferredBy = ""
 	}
 	usr.ProfilePictureURL = r.pictureClient.DownloadURL(usr.ProfilePictureURL)
-
+	usr.Bonus = nil
+	usr.Years = nil
+	usr.Allocation = nil
 	return usr
 }
 

@@ -65,15 +65,9 @@ definitions:
       agendaPhoneNumberHashes:
         example: Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2
         type: string
-      allocation:
-        example: 100
-        type: number
       blockchainAccountAddress:
         example: 0x4B73C58370AEfcEf86A6021afCDe5673511376B2
         type: string
-      bonus:
-        example: 100
-        type: number
       checksum:
         example: "1232412415326543647657"
         type: string
@@ -180,9 +174,6 @@ definitions:
       verified:
         example: true
         type: boolean
-      years:
-        example: 1
-        type: integer
     type: object
   main.ProcessFaceRecognitionResultArg:
     properties:
@@ -303,15 +294,9 @@ definitions:
       agendaPhoneNumberHashes:
         example: Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2
         type: string
-      allocation:
-        example: 100
-        type: number
       blockchainAccountAddress:
         example: 0x4B73C58370AEfcEf86A6021afCDe5673511376B2
         type: string
-      bonus:
-        example: 100
-        type: number
       checksum:
         example: "1232412415326543647657"
         type: string
@@ -415,9 +400,6 @@ definitions:
       verified:
         example: true
         type: boolean
-      years:
-        example: 1
-        type: integer
     type: object
   quiz.Progress:
     properties:

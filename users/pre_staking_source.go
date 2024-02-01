@@ -18,7 +18,7 @@ func (s *preStakingSource) Process(ctx context.Context, msg *messagebroker.Messa
 	if len(msg.Value) == 0 {
 		return nil
 	}
-	message := new(PreStakingSnapshot)
+	message := new(preStakingSnapshot)
 	if err := json.UnmarshalContext(ctx, msg.Value, message); err != nil {
 		return errors.Wrapf(err, "cannot unmarshal %v into %#v", string(msg.Value), message)
 	}
