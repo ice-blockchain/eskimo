@@ -184,7 +184,10 @@ func (r *repositoryImpl) CheckQuizStatus(ctx context.Context, userID UserID) (*Q
 				LEFT JOIN failed_quiz_sessions fqs
 					   ON fqs.user_id = u.id
 					  AND fqs.started_at >= GREATEST(u.created_at,$2) 
-			WHERE u.id = $1`
+			WHERE u.id = $1
+			GROUP BY qr.user_id,
+					 qs.user_id,
+					 u.id`
 	quizStatus, err := storage.ExecOne[QuizStatus](ctx, r.DB, sql, userID, time.Now().Time, 0, 0, 0 /* , globalQuizStartDate, quizAvailabilityWindowSeconds, maxResetsAllowed, maxAttemptsAllowed.*/) //nolint:lll // .
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to exec CheckQuizStatus sql for userID:%v", userID)

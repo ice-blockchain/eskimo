@@ -285,13 +285,7 @@ func (s *service) TryResetKYCSteps( //nolint:gocritic,funlen,gocognit,revive,cyc
 	}
 	quizStatus, err := s.quizRepository.CheckQuizStatus(ctx, req.Data.UserID)
 	if err != nil {
-		if errors.Is(err, kycquiz.ErrInvalidKYCState) || errors.Is(err, kycquiz.ErrSessionFinished) || errors.Is(err, kycquiz.ErrSessionFinishedWithError) {
-			log.Error(errors.Wrapf(err, "checkQuizStatus failed unexpectedly during tryResetKYCSteps for userID:%v", req.Data.UserID))
-			err = nil
-		}
-		if err != nil {
-			return nil, server.Unexpected(errors.Wrapf(err, "failed to CheckQuizStatus for userID:%v", req.Data.UserID))
-		}
+		return nil, server.Unexpected(errors.Wrapf(err, "failed to CheckQuizStatus for userID:%v", req.Data.UserID))
 	}
 	resp, err := s.usersProcessor.TryResetKYCSteps(ctx, req.Data.UserID)
 	if err = errors.Wrapf(err, "failed to TryResetKYCSteps for userID:%v", req.Data.UserID); err != nil {

@@ -25,6 +25,19 @@ create table if not exists failed_quiz_sessions
 
 CREATE INDEX IF NOT EXISTS failed_quiz_sessions_lookup1_ix ON failed_quiz_sessions (ended_at DESC);
 
+create table if not exists failed_quiz_sessions_history
+(
+    created_at         timestamp  not null default current_timestamp,
+    started_at         timestamp  not null,
+    ended_at           timestamp  not null,
+    skipped            boolean    not null default false,
+    questions          bigint[]   not null,
+    answers            smallint[] not null,
+    user_id            text       not null references users (id) ON DELETE CASCADE,
+    language           text       not null,
+    primary key (user_id, started_at)
+);
+
 create table if not exists quiz_sessions
 (
     started_at         timestamp  not null,
@@ -48,3 +61,8 @@ insert into quiz_alerts (last_alert_at,     pk)
                  VALUES (current_timestamp, 1)
 ON CONFLICT (pk)
 DO NOTHING;
+
+CREATE TABLE IF NOT EXISTS quiz_resets (
+    user_id text        NOT NULL PRIMARY KEY REFERENCES users (id) ON DELETE CASCADE,
+    resets  timestamp[] NOT NULL
+) WITH (FILLFACTOR = 70);
