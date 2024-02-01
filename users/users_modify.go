@@ -34,6 +34,10 @@ func (r *repository) ModifyUser(ctx context.Context, usr *User, profilePicture *
 			usr.MiningBlockchainAccountAddress != "" && usr.MiningBlockchainAccountAddress != oldUsr.MiningBlockchainAccountAddress {
 			return errors.Errorf("changing the miningBlockchainAccountAddress a second time is not allowed")
 		}
+		if oldUsr.SolanaMiningBlockchainAccountAddress != "" && oldUsr.SolanaMiningBlockchainAccountAddress != oldUsr.ID &&
+			usr.SolanaMiningBlockchainAccountAddress != "" && usr.SolanaMiningBlockchainAccountAddress != oldUsr.SolanaMiningBlockchainAccountAddress {
+			return errors.Errorf("changing the solanaMiningBlockchainAccountAddress a second time is not allowed")
+		}
 	}
 	lu := lastUpdatedAt(ctx)
 	if lu != nil && oldUsr.UpdatedAt.UnixNano() != lu.UnixNano() {
@@ -140,6 +144,7 @@ func (u *User) override(user *User) *User {
 	usr.PhoneNumberHash = mergeStringField(u.PhoneNumberHash, user.PhoneNumberHash)
 	usr.BlockchainAccountAddress = mergeStringField(u.BlockchainAccountAddress, user.BlockchainAccountAddress)
 	usr.MiningBlockchainAccountAddress = mergeStringField(u.MiningBlockchainAccountAddress, user.MiningBlockchainAccountAddress)
+	usr.SolanaMiningBlockchainAccountAddress = mergeStringField(u.SolanaMiningBlockchainAccountAddress, user.SolanaMiningBlockchainAccountAddress)
 
 	return usr
 }
@@ -247,6 +252,11 @@ func (u *User) genSQLUpdate(ctx context.Context, agendaUserIDs []UserID) (sql st
 	if u.MiningBlockchainAccountAddress != "" {
 		params = append(params, u.MiningBlockchainAccountAddress)
 		sql += fmt.Sprintf(", MINING_BLOCKCHAIN_ACCOUNT_ADDRESS = $%v", nextIndex)
+		nextIndex++
+	}
+	if u.SolanaMiningBlockchainAccountAddress != "" {
+		params = append(params, u.SolanaMiningBlockchainAccountAddress)
+		sql += fmt.Sprintf(", SOLANA_MINING_BLOCKCHAIN_ACCOUNT_ADDRESS = $%v", nextIndex)
 		nextIndex++
 	}
 	if u.KYCStepsLastUpdatedAt != nil {

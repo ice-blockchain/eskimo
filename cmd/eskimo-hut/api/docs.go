@@ -1198,6 +1198,11 @@ const docTemplate = `{
                         "in": "formData"
                     },
                     {
+                        "type": "boolean",
+                        "name": "clearSolanaMiningBlockchainAccountAddress",
+                        "in": "formData"
+                    },
+                    {
                         "type": "string",
                         "description": "Optional. Example: ` + "`" + `{\"key1\":{\"something\":\"somethingElse\"},\"key2\":\"value\"}` + "`" + `.",
                         "name": "clientData",
@@ -1277,6 +1282,11 @@ const docTemplate = `{
                         "type": "boolean",
                         "description": "Optional. Example:` + "`" + `true` + "`" + `.",
                         "name": "resetProfilePicture",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "string",
+                        "name": "solanaMiningBlockchainAccountAddress",
                         "in": "formData"
                     },
                     {
@@ -1781,6 +1791,10 @@ const docTemplate = `{
                         "type": "string"
                     }
                 },
+                "solanaMiningBlockchainAccountAddress": {
+                    "type": "string",
+                    "example": "0x4B73C58370AEfcEf86A6021afCDe5673511376B2"
+                },
                 "updatedAt": {
                     "type": "string",
                     "example": "2022-01-03T16:20:52.156534Z"
@@ -2103,6 +2117,10 @@ const docTemplate = `{
                     "additionalProperties": {
                         "type": "string"
                     }
+                },
+                "solanaMiningBlockchainAccountAddress": {
+                    "type": "string",
+                    "example": "0x4B73C58370AEfcEf86A6021afCDe5673511376B2"
                 },
                 "updatedAt": {
                     "type": "string",
