@@ -356,7 +356,7 @@ func (r *repositoryImpl) moveFailedAttempts(ctx context.Context, tx storage.Quer
 with failed_sessions as (
 	delete from failed_quiz_sessions where user_id = $1 returning *
 )
-insert into quiz_sessions_history(created_at, started_at, ended_at, questions, answers, language, user_id, skipped)
+insert into failed_quiz_sessions_history(created_at, started_at, ended_at, questions, answers, language, user_id, skipped)
 select
 	$2 as created_at,
 	failed_sessions.started_at,

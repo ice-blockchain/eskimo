@@ -97,7 +97,7 @@ func helperSessionReset(t *testing.T, r *repositoryImpl, userID UserID, full boo
 		_, err = storage.Exec(context.TODO(), r.DB, "delete from failed_quiz_sessions where user_id = $1", userID)
 		require.NoError(t, err)
 
-		_, err = storage.Exec(context.TODO(), r.DB, "delete from quiz_sessions_history where user_id = $1", userID)
+		_, err = storage.Exec(context.TODO(), r.DB, "delete from failed_quiz_sessions_history where user_id = $1", userID)
 		require.NoError(t, err)
 
 		_, err = storage.Exec(context.TODO(), r.DB, `delete from quiz_resets where user_id = $1`, userID)
@@ -108,7 +108,7 @@ func helperSessionReset(t *testing.T, r *repositoryImpl, userID UserID, full boo
 func helperEnsureHistory(t *testing.T, r *repositoryImpl, userID UserID, count uint) {
 	t.Helper()
 
-	data, err := storage.Get[int](context.Background(), r.DB, "select count(1) from quiz_sessions_history where user_id = $1", userID)
+	data, err := storage.Get[int](context.Background(), r.DB, "select count(1) from failed_quiz_sessions_history where user_id = $1", userID)
 	require.NoError(t, err)
 	require.Equal(t, count, uint(*data), "unexpected history count")
 }

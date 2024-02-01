@@ -23,4 +23,5 @@ kyc/quiz:
   sessionCoolDownSeconds: 3600
   maxResetCount: 2
   maxAttemptsAllowed: 3
+  availabilityWindowSeconds: 604800
   globalStartDate: 2024-01-01
