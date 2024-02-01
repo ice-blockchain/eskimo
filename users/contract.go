@@ -122,7 +122,7 @@ type (
 		PrivateUserInformation
 		PublicUserInformation
 		ReferredBy                           UserID   `json:"referredBy,omitempty" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2" db:"referred_by"`
-		PhoneNumberHash                      string   `json:"phoneNumberHash,omitempty" example:"Ef86A6021afCDe5673511376B2" swaggerignore:"true" db:"phone_number_hash"`
+		PhoneNumberHash                      string   `json:"phoneNumberHash,omitempty" example:"Ef86A6021afCDe5673511376B2" swaggerignore:"true" db:"phone_number_hash"`                                                     //nolint:lll //.
 		AgendaPhoneNumberHashes              *string  `json:"agendaPhoneNumberHashes,omitempty" example:"Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2" db:"-"` //nolint:lll // .
 		MiningBlockchainAccountAddress       string   `json:"miningBlockchainAccountAddress,omitempty" example:"0x4B73C58370AEfcEf86A6021afCDe5673511376B2" db:"mining_blockchain_account_address"`                           //nolint:lll // .
 		BlockchainAccountAddress             string   `json:"blockchainAccountAddress,omitempty" example:"0x4B73C58370AEfcEf86A6021afCDe5673511376B2" db:"blockchain_account_address"`                                        //nolint:lll // .

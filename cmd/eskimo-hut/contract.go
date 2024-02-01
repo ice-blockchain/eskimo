@@ -57,9 +57,9 @@ type (
 		ReferredBy string `form:"referredBy" formMultipart:"referredBy"`
 		// Optional. Example: Array of [`globalRank`,`referralCount`,`level`,`role`,`badges`].
 		HiddenProfileElements                     *users.Enum[users.HiddenProfileElement] `form:"hiddenProfileElements" formMultipart:"hiddenProfileElements" swaggertype:"array,string" enums:"globalRank,referralCount,level,role,badges"` //nolint:lll // .
-		ClearHiddenProfileElements                *bool                                   `form:"clearHiddenProfileElements" formMultipart:"clearHiddenProfileElements"`
-		ClearMiningBlockchainAccountAddress       *bool                                   `form:"clearMiningBlockchainAccountAddress" formMultipart:"clearMiningBlockchainAccountAddress"`             //nolint:lll //.
-		ClearSolanaMiningBlockchainAccountAddress *bool                                   `form:"clearSolanaMiningBlockchainAccountAddress" formMultipart:"clearSolanaMiningBlockchainAccountAddress"` //nolint:lll //.
+		ClearHiddenProfileElements                *bool                                   `form:"clearHiddenProfileElements" formMultipart:"clearHiddenProfileElements"`                                                                     //nolint:lll //.
+		ClearMiningBlockchainAccountAddress       *bool                                   `form:"clearMiningBlockchainAccountAddress" formMultipart:"clearMiningBlockchainAccountAddress"`                                                   //nolint:lll //.
+		ClearSolanaMiningBlockchainAccountAddress *bool                                   `form:"clearSolanaMiningBlockchainAccountAddress" formMultipart:"clearSolanaMiningBlockchainAccountAddress"`                                       //nolint:lll //.
 		// Optional. Example: `{"key1":{"something":"somethingElse"},"key2":"value"}`.
 		ClientData *string     `form:"clientData" formMultipart:"clientData"`
 		clientData *users.JSON //nolint:revive // It's meant for internal use only.
