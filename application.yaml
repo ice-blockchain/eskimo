@@ -133,6 +133,7 @@ users: &users
       - name: users-table
       - name: mining-sessions-table
       - name: user-pings
+      - name: pre-stakings-table
   ip2LocationBinaryPath: ./users/internal/device/metadata/.testdata/IP-COUNTRY-REGION-CITY-LATITUDE-LONGITUDE-ZIPCODE-TIMEZONE-ISP-DOMAIN-NETSPEED-AREACODE-WEATHER-MOBILE-ELEVATION-USAGETYPE-SAMPLE.BIN
   requiredAppVersion:
     android: v0.0.1

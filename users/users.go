@@ -63,6 +63,7 @@ func StartProcessor(ctx context.Context, cancel context.CancelFunc) Processor {
 			&userSnapshotSource{processor: prc},
 			&miningSessionSource{processor: prc},
 			&userPingSource{processor: prc},
+			&preStakingSource{processor: prc},
 		)
 		go prc.startOldProcessedReferralsCleaner(ctx)
 	}

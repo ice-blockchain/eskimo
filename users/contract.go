@@ -104,6 +104,19 @@ type (
 		Username          string `json:"username,omitempty" example:"jdoe" db:"username"`
 		ProfilePictureURL string `json:"profilePictureUrl,omitempty" example:"https://somecdn.com/p1.jpg" db:"profile_picture_name"`
 	}
+	PreStaking struct {
+		Years      *uint64  `json:"years,omitempty" example:"1" db:"pre_staking_years"`
+		Allocation *float64 `json:"allocation,omitempty" example:"100.00" db:"pre_staking_allocation"`
+		Bonus      *float64 `json:"bonus,omitempty" example:"100.00" db:"pre_staking_bonus"`
+	}
+	PreStakingSummary struct {
+		*PreStaking
+		UserID string `json:"userId,omitempty" example:"edfd8c02-75e0-4687-9ac2-1ce4723865c4"`
+	}
+	PreStakingSnapshot struct {
+		*PreStakingSummary
+		Before *PreStakingSummary `json:"before,omitempty"`
+	}
 	User struct {
 		CreatedAt               *time.Time                  `json:"createdAt,omitempty" example:"2022-01-03T16:20:52.156534Z" db:"created_at"`
 		UpdatedAt               *time.Time                  `json:"updatedAt,omitempty" example:"2022-01-03T16:20:52.156534Z" db:"updated_at"`
@@ -121,12 +134,13 @@ type (
 		RepeatableKYCSteps      *map[KYCStep]*time.Time     `json:"repeatableKYCSteps,omitempty" db:"-"` //nolint:tagliatelle // Nope.
 		PrivateUserInformation
 		PublicUserInformation
+		PreStaking
 		ReferredBy                           UserID   `json:"referredBy,omitempty" example:"did:ethr:0x4B73C58370AEfcEf86A6021afCDe5673511376B2" db:"referred_by"`
-		PhoneNumberHash                      string   `json:"phoneNumberHash,omitempty" example:"Ef86A6021afCDe5673511376B2" swaggerignore:"true" db:"phone_number_hash"`                                                     //nolint:lll //.
+		PhoneNumberHash                      string   `json:"phoneNumberHash,omitempty" example:"Ef86A6021afCDe5673511376B2" swaggerignore:"true" db:"phone_number_hash"`
 		AgendaPhoneNumberHashes              *string  `json:"agendaPhoneNumberHashes,omitempty" example:"Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2" db:"-"` //nolint:lll // .
 		MiningBlockchainAccountAddress       string   `json:"miningBlockchainAccountAddress,omitempty" example:"0x4B73C58370AEfcEf86A6021afCDe5673511376B2" db:"mining_blockchain_account_address"`                           //nolint:lll // .
-		BlockchainAccountAddress             string   `json:"blockchainAccountAddress,omitempty" example:"0x4B73C58370AEfcEf86A6021afCDe5673511376B2" db:"blockchain_account_address"`                                        //nolint:lll // .
 		SolanaMiningBlockchainAccountAddress string   `json:"solanaMiningBlockchainAccountAddress,omitempty" example:"0x4B73C58370AEfcEf86A6021afCDe5673511376B2" db:"solana_mining_blockchain_account_address"`              //nolint:lll // .
+		BlockchainAccountAddress             string   `json:"blockchainAccountAddress,omitempty" example:"0x4B73C58370AEfcEf86A6021afCDe5673511376B2" db:"blockchain_account_address"`                                        //nolint:lll // .
 		Language                             string   `json:"language,omitempty" example:"en" db:"language"`
 		Lookup                               string   `json:"-" example:"username" db:"lookup"`
 		AgendaContactUserIDs                 []string `json:"agendaContactUserIDs,omitempty" swaggerignore:"true" db:"agenda_contact_user_ids"`
@@ -274,6 +288,9 @@ type (
 		*processor
 	}
 	userPingSource struct {
+		*processor
+	}
+	preStakingSource struct {
 		*processor
 	}
 

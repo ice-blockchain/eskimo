@@ -300,6 +300,21 @@ func (u *User) genSQLUpdate(ctx context.Context, agendaUserIDs []UserID) (sql st
 		sql += fmt.Sprintf(", agenda_contact_user_ids = $%v", nextIndex)
 		nextIndex++
 	}
+	if u.Allocation != nil {
+		params = append(params, u.Allocation)
+		sql += fmt.Sprintf(", pre_staking_allocation = $%v", nextIndex)
+		nextIndex++
+	}
+	if u.Years != nil {
+		params = append(params, u.Years)
+		sql += fmt.Sprintf(", pre_staking_years = $%v", nextIndex)
+		nextIndex++
+	}
+	if u.Bonus != nil {
+		params = append(params, u.Bonus)
+		sql += fmt.Sprintf(", pre_staking_bonus = $%v", nextIndex)
+		nextIndex++
+	}
 
 	sql += " WHERE ID = $1"
 

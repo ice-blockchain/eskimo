@@ -647,9 +647,17 @@ const docTemplate = `{
                     "type": "string",
                     "example": "Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2"
                 },
+                "allocation": {
+                    "type": "number",
+                    "example": 100
+                },
                 "blockchainAccountAddress": {
                     "type": "string",
                     "example": "0x4B73C58370AEfcEf86A6021afCDe5673511376B2"
+                },
+                "bonus": {
+                    "type": "number",
+                    "example": 100
                 },
                 "checksum": {
                     "type": "string",
@@ -785,6 +793,10 @@ const docTemplate = `{
                 "verified": {
                     "type": "boolean",
                     "example": true
+                },
+                "years": {
+                    "type": "integer",
+                    "example": 1
                 }
             }
         },
@@ -1005,9 +1017,17 @@ const docTemplate = `{
                     "type": "string",
                     "example": "Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2,Ef86A6021afCDe5673511376B2"
                 },
+                "allocation": {
+                    "type": "number",
+                    "example": 100
+                },
                 "blockchainAccountAddress": {
                     "type": "string",
                     "example": "0x4B73C58370AEfcEf86A6021afCDe5673511376B2"
+                },
+                "bonus": {
+                    "type": "number",
+                    "example": 100
                 },
                 "city": {
                     "type": "string",
@@ -1139,6 +1159,10 @@ const docTemplate = `{
                 "verified": {
                     "type": "boolean",
                     "example": true
+                },
+                "years": {
+                    "type": "integer",
+                    "example": 1
                 }
             }
         }
