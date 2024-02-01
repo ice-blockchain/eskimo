@@ -120,16 +120,17 @@ type (
 	}
 	config struct {
 		alertFrequency            *atomic.Pointer[stdlibtime.Duration]
-		MaxResetCount             *uint8     `yaml:"maxResetCount"`
-		GlobalStartDate           *time.Time `yaml:"globalStartDate" example:"YYYY-MM-DD"`
-		Environment               string     `yaml:"environment" mapstructure:"environment"`
-		AlertSlackWebhook         string     `yaml:"alert-slack-webhook" mapstructure:"alert-slack-webhook"` //nolint:tagliatelle // .
-		AvailabilityWindowSeconds int        `yaml:"availabilityWindowSeconds"`
-		MaxSessionDurationSeconds int        `yaml:"maxSessionDurationSeconds"`
-		MaxQuestionsPerSession    int        `yaml:"maxQuestionsPerSession"`
-		MaxWrongAnswersPerSession int        `yaml:"maxWrongAnswersPerSession"`
-		SessionCoolDownSeconds    int        `yaml:"sessionCoolDownSeconds"`
-		EnableAlerts              bool       `yaml:"enable-alerts" mapstructure:"enable-alerts"` //nolint:tagliatelle // .
-		MaxAttemptsAllowed        uint8      `yaml:"maxAttemptsAllowed"`
+		globalStartDate           *time.Time
+		MaxResetCount             *uint8 `yaml:"maxResetCount"`
+		GlobalStartDate           string `yaml:"globalStartDate" example:"YYYY-MM-DD"` //nolint:revive // .
+		Environment               string `yaml:"environment" mapstructure:"environment"`
+		AlertSlackWebhook         string `yaml:"alert-slack-webhook" mapstructure:"alert-slack-webhook"` //nolint:tagliatelle // .
+		AvailabilityWindowSeconds int    `yaml:"availabilityWindowSeconds"`
+		MaxSessionDurationSeconds int    `yaml:"maxSessionDurationSeconds"`
+		MaxQuestionsPerSession    int    `yaml:"maxQuestionsPerSession"`
+		MaxWrongAnswersPerSession int    `yaml:"maxWrongAnswersPerSession"`
+		SessionCoolDownSeconds    int    `yaml:"sessionCoolDownSeconds"`
+		EnableAlerts              bool   `yaml:"enable-alerts" mapstructure:"enable-alerts"` //nolint:tagliatelle // .
+		MaxAttemptsAllowed        uint8  `yaml:"maxAttemptsAllowed"`
 	}
 )

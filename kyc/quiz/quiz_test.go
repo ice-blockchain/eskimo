@@ -536,7 +536,7 @@ func testManagerSessionStatus(ctx context.Context, t *testing.T, r *repositoryIm
 		require.NotNil(t, session)
 
 		configCopy := r.config
-		r.config.GlobalStartDate = time.New(stdlibtime.Now().Add(-stdlibtime.Hour * 100))
+		r.config.globalStartDate = time.New(stdlibtime.Now().Add(-stdlibtime.Hour * 100))
 		r.config.AvailabilityWindowSeconds = 1
 
 		reader := r.Users.(*mockUserReader)
@@ -593,7 +593,7 @@ func TestSessionManager(t *testing.T) {
 	cnt := uint8(testQuizMaxResets)
 	repo.config.MaxAttemptsAllowed = testQuizMaxAttempts
 	repo.config.MaxResetCount = &cnt
-	repo.config.GlobalStartDate = time.New(time.Now().Add(-stdlibtime.Hour))
+	repo.config.globalStartDate = time.New(time.Now().Add(-stdlibtime.Hour))
 	repo.config.AvailabilityWindowSeconds = 60 * 60 * 24 * 7 // 1 week.
 
 	helperInsertQuestion(t, repo)

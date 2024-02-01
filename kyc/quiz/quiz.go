@@ -13,10 +13,11 @@ import (
 	"github.com/ice-blockchain/eskimo/users"
 	appcfg "github.com/ice-blockchain/wintr/config"
 	"github.com/ice-blockchain/wintr/connectors/storage/v2"
+	"github.com/ice-blockchain/wintr/log"
 	"github.com/ice-blockchain/wintr/time"
 )
 
-func mustLoadConfig() config {
+func mustLoadConfig() config { //nolint:funlen // .
 	var cfg config
 
 	appcfg.MustLoadFromKey(applicationYamlKey, &cfg)
@@ -37,8 +38,23 @@ func mustLoadConfig() config {
 		panic("maxResetCount is not set")
 	}
 
-	if cfg.GlobalStartDate == nil {
+	if cfg.GlobalStartDate == "" {
 		panic("globalStartDate is not set")
+	}
+	globalStartDate, err := stdlibtime.ParseInLocation(stdlibtime.DateOnly, cfg.GlobalStartDate, stdlibtime.UTC)
+	log.Panic(err) //nolint:revive // .
+	cfg.globalStartDate = time.New(globalStartDate)
+
+	if cfg.MaxWrongAnswersPerSession == 0 {
+		panic("maxWrongAnswersPerSession is not set")
+	}
+
+	if cfg.AvailabilityWindowSeconds == 0 {
+		panic("availabilityWindowSeconds is not set")
+	}
+
+	if cfg.MaxAttemptsAllowed == 0 {
+		panic("maxAttemptsAllowed is not set")
 	}
 
 	defaultAlertFrequency := alertFrequency
@@ -271,7 +287,7 @@ func (r *repositoryImpl) getQuizStatus(ctx context.Context, userID UserID) (*Qui
 		r.DB,
 		sql,
 		userID,
-		r.config.GlobalStartDate.Time,
+		r.config.globalStartDate.Time,
 		r.config.AvailabilityWindowSeconds,
 		*r.config.MaxResetCount,
 		r.config.MaxAttemptsAllowed,
@@ -331,7 +347,7 @@ where
 	user_id = $1 and
 	started_at >= GREATEST(u.created_at, $2)
 `
-	count, err := storage.Get[int](ctx, tx, stmt, userID, r.config.GlobalStartDate.Time)
+	count, err := storage.Get[int](ctx, tx, stmt, userID, r.config.globalStartDate.Time)
 	if err != nil {
 		if errors.Is(err, storage.ErrNotFound) {
 			return 0, nil
