@@ -314,6 +314,7 @@ func (r *repository) buildRepeatableKYCSteps(usr *User) {
 	usr.RepeatableKYCSteps = &repeatableKYCSteps
 }
 
+//nolint:funlen // .
 func (r *repository) sanitizeUser(usr *User) *User {
 	usr.LastPingCooldownEndedAt = nil
 	if usr.BlockchainAccountAddress == usr.ID {
