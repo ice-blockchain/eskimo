@@ -267,21 +267,14 @@ func (r *repository) validateKycStep(user *users.User, kycStep users.KYCStep, no
 	return nil
 }
 
-//nolint:revive,funlen,gocognit // Nope.
+//nolint:revive // Nope.
 func (r *repository) modifyUser(ctx context.Context, success, skip bool, kycStep users.KYCStep, now *time.Time, user *users.User) error {
 	usr := new(users.User)
 	usr.ID = user.ID
 	usr.KYCStepsLastUpdatedAt = user.KYCStepsLastUpdatedAt
 
 	switch {
-	case success && skip:
-		usr.KYCStepPassed = &kycStep
-		if len(*usr.KYCStepsLastUpdatedAt) < int(kycStep) {
-			*usr.KYCStepsLastUpdatedAt = append(*usr.KYCStepsLastUpdatedAt, now)
-		} else {
-			(*usr.KYCStepsLastUpdatedAt)[int(kycStep)-1] = now
-		}
-	case success && !skip:
+	case success:
 		usr.KYCStepPassed = &kycStep
 		if len(*usr.KYCStepsLastUpdatedAt) < int(kycStep) {
 			*usr.KYCStepsLastUpdatedAt = append(*usr.KYCStepsLastUpdatedAt, now)
@@ -305,7 +298,7 @@ func (r *repository) modifyUser(ctx context.Context, success, skip bool, kycStep
 		}
 	}
 
-	return errors.Wrapf(r.user.ModifyUser(ctx, usr, nil), "failed to modify user %#v", usr)
+	return errors.Wrapf(r.user.ModifyUser(ctx, usr, nil), "[skip:%v]failed to modify user %#v", skip, usr)
 }
 
 func (r *repository) saveSocialKYCStep(ctx context.Context, now *time.Time, userHandle string, metadata *VerificationMetadata) error {

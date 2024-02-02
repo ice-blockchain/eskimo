@@ -549,6 +549,12 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
+                        "description": "the type of the client calling this API. I.E. ` + "`" + `web` + "`" + `",
+                        "name": "x_client_type",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
                         "description": "ID of the user",
                         "name": "userId",
                         "in": "path",
@@ -1708,6 +1714,9 @@ const docTemplate = `{
                 "kycQuizAvailabilityEndedAt": {
                     "type": "string"
                 },
+                "kycQuizAvailabilityStartedAt": {
+                    "type": "string"
+                },
                 "kycQuizAvailable": {
                     "type": "boolean"
                 },
@@ -2042,6 +2051,9 @@ const docTemplate = `{
                 "kycQuizAvailabilityEndedAt": {
                     "type": "string"
                 },
+                "kycQuizAvailabilityStartedAt": {
+                    "type": "string"
+                },
                 "kycQuizAvailable": {
                     "type": "boolean"
                 },
@@ -2206,6 +2218,9 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "kycQuizAvailabilityEndedAt": {
+                    "type": "string"
+                },
+                "kycQuizAvailabilityStartedAt": {
                     "type": "string"
                 },
                 "kycQuizAvailable": {

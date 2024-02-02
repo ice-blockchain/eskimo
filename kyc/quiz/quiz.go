@@ -75,6 +75,7 @@ func newError(msg string) error {
 func NewRepository(ctx context.Context, userRepo UserRepository) Repository {
 	repo := newRepositoryImpl(ctx, userRepo)
 	go repo.startAlerter(ctx)
+	go repo.startKYCConfigJSONSyncer(ctx)
 
 	return repo
 }
@@ -111,21 +112,18 @@ func (r *repositoryImpl) CheckUserKYC(ctx context.Context, userID UserID) error 
 	return r.validateKycStep(profile.User)
 }
 
-//nolint:revive // .
 func (r *repositoryImpl) validateKycStep(user *users.User) error {
-	if user.KYCStepBlocked != nil && *user.KYCStepBlocked >= users.QuizKYCStep {
+	if user.KYCStepBlocked != nil && *user.KYCStepBlocked > users.NoneKYCStep {
 		return ErrNotAvailable
 	}
 
 	if sessionCoolDown := stdlibtime.Duration(r.config.SessionCoolDownSeconds) * stdlibtime.Second; user.KYCStepPassed == nil ||
-		*user.KYCStepPassed < users.QuizKYCStep-1 ||
+		*user.KYCStepPassed < users.LivenessDetectionKYCStep ||
 		(user.KYCStepPassed != nil &&
-			*user.KYCStepPassed == users.QuizKYCStep-1 &&
 			user.KYCStepsLastUpdatedAt != nil &&
 			len(*user.KYCStepsLastUpdatedAt) >= int(users.QuizKYCStep) &&
 			!(*user.KYCStepsLastUpdatedAt)[users.QuizKYCStep-1].IsNil() &&
-			time.Now().Sub(*(*user.KYCStepsLastUpdatedAt)[users.QuizKYCStep-1].Time) < sessionCoolDown) ||
-		(user.KYCStepPassed != nil && *user.KYCStepPassed >= users.QuizKYCStep) {
+			time.Now().Sub(*(*user.KYCStepsLastUpdatedAt)[users.QuizKYCStep-1].Time) < sessionCoolDown) {
 		return ErrInvalidKYCState
 	}
 
@@ -267,6 +265,7 @@ func (r *repositoryImpl) getQuizStatus(ctx context.Context, userID UserID) (*Qui
 				   (qr.user_id IS NOT NULL AND cardinality(qr.resets) > $4) 							 AS kyc_quiz_disabled,
 				   qr.resets  							 									 			 AS kyc_quiz_reset_at,
 				   (qs.user_id IS NOT NULL AND qs.ended_at is not null AND qs.ended_successfully = true) AS kyc_quiz_completed,
+				   GREATEST(u.created_at,$2)  	  							 							 AS kyc_quiz_availability_started_at,
 				   GREATEST(u.created_at,$2) + (interval '1 second' * $3) 	  							 AS kyc_quiz_availability_ended_at,
 				   (u.kyc_step_passed >= 2 AND u.kyc_step_blocked = 0)			  						 AS kyc_quiz_available,
 				   (qs.user_id IS NOT NULL AND qs.ended_at IS NULL)			  							 AS has_unfinished_sessions
@@ -296,6 +295,7 @@ func (r *repositoryImpl) getQuizStatus(ctx context.Context, userID UserID) (*Qui
 	if errors.Is(err, storage.ErrNotFound) {
 		err = ErrUnknownSession
 	}
+	quizStatus.KYCQuizAvailable = quizStatus.KYCQuizAvailable && r.isKYCEnabled(ctx)
 
 	return quizStatus, errors.Wrapf(err, "failed to exec CheckQuizStatus sql for userID:%v", userID)
 }
@@ -822,6 +822,7 @@ func (r *repositoryImpl) fetchUserProfileForModify(ctx context.Context, userID U
 
 	usr := new(users.User)
 	usr.ID = userID
+	usr.KYCStepPassed = profile.KYCStepPassed
 	usr.KYCStepsLastUpdatedAt = profile.KYCStepsLastUpdatedAt
 	usr.KYCStepsCreatedAt = profile.KYCStepsCreatedAt
 
@@ -847,18 +848,21 @@ func (r *repositoryImpl) modifyUser(ctx context.Context, success, blocked bool, 
 	usr.ID = user.ID
 
 	newKYCStep := users.QuizKYCStep
-	if success {
-		usr.KYCStepPassed = &newKYCStep
-	} else if blocked {
-		usr.KYCStepBlocked = &newKYCStep
+	if success || blocked {
+		if user.KYCStepPassed != nil && *user.KYCStepPassed == newKYCStep-1 {
+			usr.KYCStepPassed = &newKYCStep
+		}
+
+		if blocked {
+			usr.KYCStepBlocked = &newKYCStep
+		}
 	}
 
 	usr.KYCStepsLastUpdatedAt = user.KYCStepsLastUpdatedAt
-	if len(*usr.KYCStepsLastUpdatedAt) < int(newKYCStep) {
+	for len(*usr.KYCStepsLastUpdatedAt) < int(newKYCStep) {
 		*usr.KYCStepsLastUpdatedAt = append(*usr.KYCStepsLastUpdatedAt, now)
-	} else {
-		(*usr.KYCStepsLastUpdatedAt)[int(newKYCStep)-1] = now
 	}
+	(*usr.KYCStepsLastUpdatedAt)[int(newKYCStep)-1] = now
 
 	return errors.Wrapf(r.Users.ModifyUser(ctx, usr, nil), "failed to modify user %#v", usr)
 }

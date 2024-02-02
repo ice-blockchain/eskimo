@@ -105,6 +105,8 @@ definitions:
         type: string
       kycQuizAvailabilityEndedAt:
         type: string
+      kycQuizAvailabilityStartedAt:
+        type: string
       kycQuizAvailable:
         type: boolean
       kycQuizCompleted:
@@ -334,6 +336,8 @@ definitions:
         type: string
       kycQuizAvailabilityEndedAt:
         type: string
+      kycQuizAvailabilityStartedAt:
+        type: string
       kycQuizAvailable:
         type: boolean
       kycQuizCompleted:
@@ -446,6 +450,8 @@ definitions:
   quiz.QuizStatus:
     properties:
       kycQuizAvailabilityEndedAt:
+        type: string
+      kycQuizAvailabilityStartedAt:
         type: string
       kycQuizAvailable:
         type: boolean
@@ -916,6 +922,10 @@ paths:
         description: Insert your metadata token
         in: header
         name: X-Account-Metadata
+        type: string
+      - description: the type of the client calling this API. I.E. `web`
+        in: query
+        name: x_client_type
         type: string
       - description: ID of the user
         in: path

@@ -44,13 +44,14 @@ type (
 	}
 
 	QuizStatus struct { //nolint:revive // Nope cuz we want to be able to embed this
-		KYCQuizAvailabilityEndedAt *time.Time   `json:"kycQuizAvailabilityEndedAt" db:"kyc_quiz_availability_ended_at"`
-		KYCQuizResetAt             []*time.Time `json:"kycQuizResetAt,omitempty" db:"kyc_quiz_reset_at"`
-		KYCQuizRemainingAttempts   uint8        `json:"kycQuizRemainingAttempts,omitempty" db:"kyc_quiz_remaining_attempts"`
-		KYCQuizAvailable           bool         `json:"kycQuizAvailable" db:"kyc_quiz_available"`
-		KYCQuizDisabled            bool         `json:"kycQuizDisabled" db:"kyc_quiz_disabled"`
-		KYCQuizCompleted           bool         `json:"kycQuizCompleted" db:"kyc_quiz_completed"`
-		HasUnfinishedSessions      bool         `json:"-"`
+		KYCQuizAvailabilityStartedAt *time.Time   `json:"kycQuizAvailabilityStartedAt" db:"kyc_quiz_availability_started_at"`
+		KYCQuizAvailabilityEndedAt   *time.Time   `json:"kycQuizAvailabilityEndedAt" db:"kyc_quiz_availability_ended_at"`
+		KYCQuizResetAt               []*time.Time `json:"kycQuizResetAt,omitempty" db:"kyc_quiz_reset_at"`
+		KYCQuizRemainingAttempts     uint8        `json:"kycQuizRemainingAttempts,omitempty" db:"kyc_quiz_remaining_attempts"`
+		KYCQuizAvailable             bool         `json:"kycQuizAvailable" db:"kyc_quiz_available"`
+		KYCQuizDisabled              bool         `json:"kycQuizDisabled" db:"kyc_quiz_disabled"`
+		KYCQuizCompleted             bool         `json:"kycQuizCompleted" db:"kyc_quiz_completed"`
+		HasUnfinishedSessions        bool         `json:"-"`
 	}
 
 	Result string
@@ -90,6 +91,8 @@ var (
 const (
 	applicationYamlKey = "kyc/quiz"
 
+	clientTypeCtxValueKey = "clientTypeCtxValueKey"
+
 	requestDeadline = 25 * stdlibtime.Second
 )
 
@@ -118,9 +121,23 @@ type (
 		Users    UserRepository
 		config
 	}
+
+	kycConfigJSON struct {
+		QuizKYC struct {
+			DisabledVersions   []string `json:"disabledVersions"`
+			ForceKYCForUserIds []string `json:"forceKYCForUserIds"` //nolint:tagliatelle // .
+			Enabled            bool     `json:"enabled"`
+		} `json:"quiz-kyc"` //nolint:tagliatelle // .
+		WebQuizKYC struct {
+			Enabled bool `json:"enabled"`
+		} `json:"web-quiz-kyc"` //nolint:tagliatelle // .
+	}
+
 	config struct {
 		alertFrequency            *atomic.Pointer[stdlibtime.Duration]
+		kycConfigJSON             *atomic.Pointer[kycConfigJSON]
 		globalStartDate           *time.Time
+		ConfigJSONURL             string `yaml:"config-json-url" mapstructure:"config-json-url"` //nolint:tagliatelle // .
 		MaxResetCount             *uint8 `yaml:"maxResetCount"`
 		GlobalStartDate           string `yaml:"globalStartDate" example:"YYYY-MM-DD"` //nolint:revive // .
 		Environment               string `yaml:"environment" mapstructure:"environment"`

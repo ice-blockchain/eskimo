@@ -133,6 +133,7 @@ func (s *service) StartOrContinueKYCStep4Session( //nolint:gocritic,funlen // .
 //
 //	@Param			Authorization		header		string	true	"Insert your access token"		default(Bearer <Add access token here>)
 //	@Param			X-Account-Metadata	header		string	false	"Insert your metadata token"	default(<Add metadata token here>)
+//	@Param			x_client_type		query		string	false	"the type of the client calling this API. I.E. `web`"
 //	@Param			userId				path		string	true	"ID of the user"
 //	@Success		200					{object}	kycquiz.QuizStatus
 //	@Failure		400					{object}	server.ErrorResponse	"if validations fail"
@@ -146,6 +147,7 @@ func (s *service) CheckKYCStep4Status( //nolint:gocritic // .
 	ctx context.Context,
 	req *server.Request[CheckKYCStep4StatusRequestBody, kycquiz.QuizStatus],
 ) (*server.Response[kycquiz.QuizStatus], *server.Response[server.ErrorResponse]) {
+	ctx = kycquiz.ContextWithClientType(ctx, req.Data.XClientType) //nolint:revive // .
 	resp, err := s.quizRepository.CheckQuizStatus(ctx, req.AuthenticatedUser.UserID)
 	if err != nil {
 		return nil, server.Unexpected(errors.Wrapf(err, "failed to CheckQuizStatus for userID:%v", req.AuthenticatedUser.UserID))
@@ -242,7 +244,7 @@ func validateVerifySocialKYCStep(req *server.Request[kycsocial.VerificationMetad
 //	@Param			Authorization		header		string	true	"Insert your access token"		default(Bearer <Add access token here>)
 //	@Param			X-Account-Metadata	header		string	false	"Insert your metadata token"	default(<Add metadata token here>)
 //	@Param			userId				path		string	true	"ID of the user"
-//	@Param			skipKYCSteps		query		[]int	false	"the kyc steps you wish to skip" collectionFormat(multi)
+//	@Param			skipKYCSteps		query		[]int	false	"the kyc steps you wish to skip"	collectionFormat(multi)
 //	@Success		200					{object}	User
 //	@Failure		400					{object}	server.ErrorResponse	"if validations fail"
 //	@Failure		401					{object}	server.ErrorResponse	"if not authorized"

@@ -543,6 +543,12 @@
                     },
                     {
                         "type": "string",
+                        "description": "the type of the client calling this API. I.E. `web`",
+                        "name": "x_client_type",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
                         "description": "ID of the user",
                         "name": "userId",
                         "in": "path",
@@ -1702,6 +1708,9 @@
                 "kycQuizAvailabilityEndedAt": {
                     "type": "string"
                 },
+                "kycQuizAvailabilityStartedAt": {
+                    "type": "string"
+                },
                 "kycQuizAvailable": {
                     "type": "boolean"
                 },
@@ -2036,6 +2045,9 @@
                 "kycQuizAvailabilityEndedAt": {
                     "type": "string"
                 },
+                "kycQuizAvailabilityStartedAt": {
+                    "type": "string"
+                },
                 "kycQuizAvailable": {
                     "type": "boolean"
                 },
@@ -2200,6 +2212,9 @@
             "type": "object",
             "properties": {
                 "kycQuizAvailabilityEndedAt": {
+                    "type": "string"
+                },
+                "kycQuizAvailabilityStartedAt": {
                     "type": "string"
                 },
                 "kycQuizAvailable": {
