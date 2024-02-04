@@ -63,6 +63,7 @@ func StartProcessor(ctx context.Context, cancel context.CancelFunc) Processor {
 			&userSnapshotSource{processor: prc},
 			&miningSessionSource{processor: prc},
 			&userPingSource{processor: prc},
+			&preStakingSource{processor: prc},
 		)
 		go prc.startOldProcessedReferralsCleaner(ctx)
 	}
@@ -313,6 +314,7 @@ func (r *repository) buildRepeatableKYCSteps(usr *User) {
 	usr.RepeatableKYCSteps = &repeatableKYCSteps
 }
 
+//nolint:funlen // .
 func (r *repository) sanitizeUser(usr *User) *User {
 	usr.LastPingCooldownEndedAt = nil
 	if usr.BlockchainAccountAddress == usr.ID {
@@ -340,6 +342,9 @@ func (r *repository) sanitizeUser(usr *User) *User {
 		usr.ReferredBy = ""
 	}
 	usr.ProfilePictureURL = r.pictureClient.DownloadURL(usr.ProfilePictureURL)
+	usr.Bonus = 0
+	usr.Years = 0
+	usr.Allocation = 0
 
 	return usr
 }
