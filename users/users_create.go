@@ -24,11 +24,11 @@ func (r *repository) CreateUser(ctx context.Context, usr *User, clientIP net.IP)
 	r.setCreateUserDefaults(ctx, usr, clientIP)
 	sql := `
 	INSERT INTO users 
-		(ID, MINING_BLOCKCHAIN_ACCOUNT_ADDRESS, BLOCKCHAIN_ACCOUNT_ADDRESS, EMAIL, FIRST_NAME, LAST_NAME, PHONE_NUMBER, PHONE_NUMBER_HASH, USERNAME, REFERRED_BY, RANDOM_REFERRED_BY, CLIENT_DATA, PROFILE_PICTURE_NAME, COUNTRY, CITY, LANGUAGE, CREATED_AT, UPDATED_AT, LOOKUP)
+		(ID, MINING_BLOCKCHAIN_ACCOUNT_ADDRESS, BLOCKCHAIN_ACCOUNT_ADDRESS, SOLANA_MINING_BLOCKCHAIN_ACCOUNT_ADDRESS, EMAIL, FIRST_NAME, LAST_NAME, PHONE_NUMBER, PHONE_NUMBER_HASH, USERNAME, REFERRED_BY, RANDOM_REFERRED_BY, CLIENT_DATA, PROFILE_PICTURE_NAME, COUNTRY, CITY, LANGUAGE, CREATED_AT, UPDATED_AT, LOOKUP)
 	VALUES
-		($1,                                $2,                         $3,    $4,         $5,        $6,           $7,                $8,       $9,         $10,                $11,   $12::json,                  $13,     $14,  $15,      $16,        $17,        $18,    $19::tsvector)`
+		($1,                                $2,                         $3,    									  $4,    $5,         $6,        $7,           $8,       		  $9,     $10,         $11,                $12,   $13::json,                  $14,     $15,  $16,      $17,        $18,        $19, $20::tsvector)`
 	args := []any{
-		usr.ID, usr.MiningBlockchainAccountAddress, usr.BlockchainAccountAddress, usr.Email, usr.FirstName, usr.LastName,
+		usr.ID, usr.MiningBlockchainAccountAddress, usr.BlockchainAccountAddress, usr.SolanaMiningBlockchainAccountAddress, usr.Email, usr.FirstName, usr.LastName,
 		usr.PhoneNumber, usr.PhoneNumberHash, usr.Username, usr.ReferredBy, usr.RandomReferredBy, usr.ClientData, usr.ProfilePictureURL, usr.Country,
 		usr.City, usr.Language, usr.CreatedAt.Time, usr.UpdatedAt.Time, usr.lookup(),
 	}
@@ -67,6 +67,9 @@ func (r *repository) setCreateUserDefaults(ctx context.Context, usr *User, clien
 	if usr.MiningBlockchainAccountAddress == "" {
 		usr.MiningBlockchainAccountAddress = usr.ID
 	}
+	if usr.SolanaMiningBlockchainAccountAddress == "" {
+		usr.SolanaMiningBlockchainAccountAddress = usr.ID
+	}
 	if usr.Language == "" {
 		usr.Language = "en"
 	}
@@ -99,6 +102,8 @@ func detectAndParseDuplicateDatabaseError(err error) (field string, newErr error
 			field = "mining_blockchain_account_address"
 		} else if storage.IsErr(err, storage.ErrDuplicate, "blockchainaccountaddress") {
 			field = "blockchainAccountAddress"
+		} else if storage.IsErr(err, storage.ErrDuplicate, "solanaminingblockchainaccountaddress") {
+			field = "solana_mining_blockchain_account_address"
 		} else {
 			log.Panic("unexpected duplicate field for users space: %v", err)
 		}

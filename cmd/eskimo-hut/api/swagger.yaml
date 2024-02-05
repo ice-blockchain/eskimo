@@ -164,6 +164,9 @@ definitions:
         additionalProperties:
           type: string
         type: object
+      solanaMiningBlockchainAccountAddress:
+        example: 0x4B73C58370AEfcEf86A6021afCDe5673511376B2
+        type: string
       updatedAt:
         example: "2022-01-03T16:20:52.156534Z"
         type: string
@@ -389,6 +392,9 @@ definitions:
         additionalProperties:
           type: string
         type: object
+      solanaMiningBlockchainAccountAddress:
+        example: 0x4B73C58370AEfcEf86A6021afCDe5673511376B2
+        type: string
       updatedAt:
         example: "2022-01-03T16:20:52.156534Z"
         type: string
@@ -1362,6 +1368,9 @@ paths:
       - in: formData
         name: clearMiningBlockchainAccountAddress
         type: boolean
+      - in: formData
+        name: clearSolanaMiningBlockchainAccountAddress
+        type: boolean
       - description: 'Optional. Example: `{"key1":{"something":"somethingElse"},"key2":"value"}`.'
         in: formData
         name: clientData
@@ -1418,6 +1427,9 @@ paths:
         in: formData
         name: resetProfilePicture
         type: boolean
+      - in: formData
+        name: solanaMiningBlockchainAccountAddress
+        type: string
       - description: Optional. Example:`jdoe`.
         in: formData
         name: username

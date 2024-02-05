@@ -762,6 +762,10 @@ const docTemplate = `{
                         "type": "string"
                     }
                 },
+                "solanaMiningBlockchainAccountAddress": {
+                    "type": "string",
+                    "example": "0x4B73C58370AEfcEf86A6021afCDe5673511376B2"
+                },
                 "t1ReferralCount": {
                     "type": "integer",
                     "example": 100
@@ -1111,6 +1115,10 @@ const docTemplate = `{
                     "additionalProperties": {
                         "type": "string"
                     }
+                },
+                "solanaMiningBlockchainAccountAddress": {
+                    "type": "string",
+                    "example": "0x4B73C58370AEfcEf86A6021afCDe5673511376B2"
                 },
                 "t1ReferralCount": {
                     "type": "integer",
