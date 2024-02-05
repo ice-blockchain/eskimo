@@ -87,9 +87,6 @@ definitions:
         additionalProperties:
           type: string
         type: object
-      solanaMiningBlockchainAccountAddress:
-        example: 0x4B73C58370AEfcEf86A6021afCDe5673511376B2
-        type: string
       t1ReferralCount:
         example: 100
         type: integer
@@ -343,9 +340,6 @@ definitions:
         additionalProperties:
           type: string
         type: object
-      solanaMiningBlockchainAccountAddress:
-        example: 0x4B73C58370AEfcEf86A6021afCDe5673511376B2
-        type: string
       t1ReferralCount:
         example: 100
         type: integer
