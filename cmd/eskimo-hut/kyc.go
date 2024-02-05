@@ -278,7 +278,7 @@ func (s *service) TryResetKYCSteps( //nolint:gocritic,funlen,gocognit,revive,cyc
 			}
 		case users.QuizKYCStep:
 			if err := s.quizRepository.SkipQuizSession(ctx, req.Data.UserID); err != nil {
-				if errors.Is(err, kycquiz.ErrInvalidKYCState) || errors.Is(err, kycquiz.ErrSessionFinished) || errors.Is(err, kycquiz.ErrSessionFinishedWithError) { //nolint:lll // .
+				if errors.Is(err, kycquiz.ErrInvalidKYCState) || errors.Is(err, kycquiz.ErrNotAvailable) || errors.Is(err, kycquiz.ErrSessionFinished) || errors.Is(err, kycquiz.ErrSessionFinishedWithError) { //nolint:lll // .
 					log.Error(errors.Wrapf(err, "skipQuizSession failed unexpectedly during tryResetKYCSteps for userID:%v", req.Data.UserID))
 					err = nil
 				}
