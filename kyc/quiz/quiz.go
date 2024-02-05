@@ -233,7 +233,7 @@ func (r *repositoryImpl) CheckQuizStatus(ctx context.Context, userID UserID) (*Q
 		reRead = true
 	}
 
-	if status.KYCQuizAvailabilityEndedAt.Before(*now.Time) && !status.KYCQuizCompleted && !status.KYCQuizDisabled {
+	if !status.KYCQuizCompleted && !status.KYCQuizDisabled && status.KYCQuizAvailabilityEndedAt.Before(*now.Time) {
 		err = storage.DoInTransaction(ctx, r.DB, func(tx storage.QueryExecer) error {
 			prepareErr := r.prepareUserForReset(ctx, userID, now, tx)
 			if prepareErr != nil {
