@@ -138,7 +138,7 @@ func (r *repository) GetReferrals(ctx context.Context, userID string, referralTy
 					 	   END) != null) DESC,
 						 referrals.created_at DESC
 				LIMIT $5 OFFSET $3
-			 ) X`, r.pictureClient.SQLAliasDownloadURL(`referrals.profile_picture_name`), referralTypeJoin, totalAndActiveColumns, referralTypeJoinSumAgg, QuizKYCStep) //nolint:lll // .
+			 ) X`, r.pictureClient.SQLAliasDownloadURL(`referrals.profile_picture_name`), referralTypeJoin, totalAndActiveColumns, referralTypeJoinSumAgg, LivenessDetectionKYCStep) //nolint:lll // .
 	args := []any{userID, referralType, offset, time.Now().Time, limit}
 	result, err := storage.Select[MinimalUserProfile](ctx, r.db, sql, args...)
 	if err != nil {

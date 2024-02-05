@@ -455,16 +455,17 @@ func (r *repositoryImpl) finishUnfinishedSession(
 	}
 
 	blocked := false
-	if data.CooldownAt != nil {
+	var cooldownAt *time.Time
+	if data != nil && !data.CooldownAt.IsNil() {
 		blocked, err = r.moveFailedAttempts(ctx, tx, now, userID)
 		if err != nil {
 			return nil, err
-		} else if blocked {
-			data.CooldownAt = nil
+		} else if !blocked {
+			cooldownAt = data.CooldownAt
 		}
 	}
 
-	return data.CooldownAt, errors.Wrapf(r.modifyUser(ctx, false, blocked, now, userID), "failed to modifyUser")
+	return cooldownAt, errors.Wrapf(r.modifyUser(ctx, false, blocked, now, userID), "failed to modifyUser")
 }
 
 func (r *repositoryImpl) startNewSession( //nolint:funlen //.

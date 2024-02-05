@@ -261,7 +261,7 @@ func (r *repository) GetUsers(ctx context.Context, keyword string, limit, offset
 							u.t0_id = u.user_requesting_this_id DESC,
 							u.t0_referred_by = u.user_requesting_this_id DESC,
 							u.username DESC
-			LIMIT $3 OFFSET $4`, r.pictureClient.SQLAliasDownloadURL(`u.profile_picture_name`), QuizKYCStep)
+			LIMIT $3 OFFSET $4`, r.pictureClient.SQLAliasDownloadURL(`u.profile_picture_name`), LivenessDetectionKYCStep)
 	params := []any{
 		time.Now().Time,
 		strings.ReplaceAll(strings.ReplaceAll(strings.ToLower(keyword), "_", "\\_"), "%", "\\%"),
