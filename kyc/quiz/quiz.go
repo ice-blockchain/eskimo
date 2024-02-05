@@ -296,7 +296,7 @@ func (r *repositoryImpl) getQuizStatus(ctx context.Context, userID UserID) (*Qui
 		err = ErrUnknownSession
 	}
 	if quizStatus != nil {
-		quizStatus.KYCQuizAvailable = quizStatus.KYCQuizAvailable && r.isKYCEnabled(ctx)
+		quizStatus.KYCQuizAvailable = quizStatus.KYCQuizAvailable && (r.isKYCEnabled(ctx) || r.isKYCStepForced(userID))
 	}
 
 	return quizStatus, errors.Wrapf(err, "failed to exec CheckQuizStatus sql for userID:%v", userID)

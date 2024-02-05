@@ -94,6 +94,23 @@ func (r *repositoryImpl) isKYCEnabled(ctx context.Context) bool {
 	return true
 }
 
+func (r *repositoryImpl) isKYCStepForced(userID string) bool {
+	var forceKYCForUserIds []string
+	if cfgVal := r.config.kycConfigJSON.Load(); cfgVal != nil {
+		forceKYCForUserIds = cfgVal.QuizKYC.ForceKYCForUserIds
+	}
+	if len(forceKYCForUserIds) == 0 {
+		return false
+	}
+	for _, uID := range forceKYCForUserIds {
+		if strings.EqualFold(userID, strings.TrimSpace(uID)) {
+			return true
+		}
+	}
+
+	return false
+}
+
 func ContextWithClientType(ctx context.Context, clientType string) context.Context {
 	if clientType == "" {
 		return ctx
