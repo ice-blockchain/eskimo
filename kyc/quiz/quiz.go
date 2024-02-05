@@ -41,7 +41,7 @@ func mustLoadConfig() config { //nolint:funlen // .
 	if cfg.GlobalStartDate == "" {
 		panic("globalStartDate is not set")
 	}
-	globalStartDate, err := stdlibtime.ParseInLocation(stdlibtime.DateOnly, cfg.GlobalStartDate, stdlibtime.UTC)
+	globalStartDate, err := stdlibtime.ParseInLocation(stdlibtime.RFC3339Nano, cfg.GlobalStartDate, stdlibtime.UTC)
 	log.Panic(err) //nolint:revive // .
 	cfg.globalStartDate = time.New(globalStartDate)
 

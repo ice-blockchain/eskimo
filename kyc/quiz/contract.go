@@ -139,7 +139,7 @@ type (
 		globalStartDate           *time.Time
 		ConfigJSONURL             string `yaml:"config-json-url" mapstructure:"config-json-url"` //nolint:tagliatelle // .
 		MaxResetCount             *uint8 `yaml:"maxResetCount"`
-		GlobalStartDate           string `yaml:"globalStartDate" example:"YYYY-MM-DD"` //nolint:revive // .
+		GlobalStartDate           string `yaml:"globalStartDate" example:"2022-01-03T16:20:52.156534Z"` //nolint:revive // .
 		Environment               string `yaml:"environment" mapstructure:"environment"`
 		AlertSlackWebhook         string `yaml:"alert-slack-webhook" mapstructure:"alert-slack-webhook"` //nolint:tagliatelle // .
 		AvailabilityWindowSeconds int    `yaml:"availabilityWindowSeconds"`
