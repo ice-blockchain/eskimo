@@ -280,7 +280,8 @@ func (u *User) SetVerified() {
 }
 
 func (u *User) IsVerified() bool {
-	return u != nil && u.KYCStepPassed != nil && *u.KYCStepPassed >= QuizKYCStep
+	return u != nil && u.KYCStepPassed != nil && *u.KYCStepPassed >= QuizKYCStep &&
+		u.QuizCompleted != nil && *u.QuizCompleted
 }
 
 func (r *repository) sanitizeUserForUI(usr *User) {

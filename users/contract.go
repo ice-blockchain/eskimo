@@ -113,6 +113,7 @@ type (
 		HiddenProfileElements   *Enum[HiddenProfileElement] `json:"hiddenProfileElements,omitempty" swaggertype:"array,string" example:"level" enums:"globalRank,referralCount,level,role,badges" db:"hidden_profile_elements"` //nolint:lll // .
 		RandomReferredBy        *bool                       `json:"randomReferredBy,omitempty" example:"true" swaggerignore:"true" db:"random_referred_by"`
 		Verified                *bool                       `json:"verified,omitempty" example:"true" db:"-"`
+		QuizCompleted           *bool                       `json:"-" db:"quiz_completed"`
 		KYCStepsLastUpdatedAt   *[]*time.Time               `json:"kycStepsLastUpdatedAt,omitempty" swaggertype:"array,string" example:"2022-01-03T16:20:52.156534Z" db:"kyc_steps_last_updated_at"` //nolint:lll // .
 		KYCStepsCreatedAt       *[]*time.Time               `json:"kycStepsCreatedAt,omitempty" swaggertype:"array,string" example:"2022-01-03T16:20:52.156534Z" db:"kyc_steps_created_at"`          //nolint:lll // .
 		KYCStepPassed           *KYCStep                    `json:"kycStepPassed,omitempty" example:"0" db:"kyc_step_passed"`
