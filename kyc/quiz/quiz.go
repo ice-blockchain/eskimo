@@ -295,7 +295,9 @@ func (r *repositoryImpl) getQuizStatus(ctx context.Context, userID UserID) (*Qui
 	if errors.Is(err, storage.ErrNotFound) {
 		err = ErrUnknownSession
 	}
-	quizStatus.KYCQuizAvailable = quizStatus.KYCQuizAvailable && r.isKYCEnabled(ctx)
+	if quizStatus != nil {
+		quizStatus.KYCQuizAvailable = quizStatus.KYCQuizAvailable && r.isKYCEnabled(ctx)
+	}
 
 	return quizStatus, errors.Wrapf(err, "failed to exec CheckQuizStatus sql for userID:%v", userID)
 }
@@ -341,7 +343,7 @@ select
 	count(1)
 from
 	failed_quiz_sessions
-left join users u on
+join users u on
 	id = user_id
 where
 	user_id = $1 and

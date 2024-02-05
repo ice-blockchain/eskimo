@@ -90,9 +90,6 @@ func (r *repositoryImpl) isKYCEnabled(ctx context.Context) bool {
 	if !isWeb && !kycConfig.QuizKYC.Enabled {
 		return false
 	}
-	if !isWeb && kycConfig.QuizKYC.Enabled {
-		return false
-	}
 
 	return true
 }
