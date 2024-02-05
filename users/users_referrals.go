@@ -101,7 +101,7 @@ func (r *repository) GetReferrals(ctx context.Context, userID string, referralTy
 			   '' AS city,
 			   $2 AS referral_type
 		FROM (SELECT  
-				referrals.kyc_step_passed >= %[5]v              				   									AS verified,
+				(referrals.kyc_step_passed >= %[5]v AND qs.user_id IS NOT NULL AND qs.ended_at is not null AND qs.ended_successfully = true)	AS verified,
 				COALESCE(referrals.last_mining_ended_at, to_timestamp(0))              				   				AS last_mining_ended_at,
 				(CASE
 					WHEN u.id = referrals.referred_by OR u.referred_by = referrals.id
@@ -124,6 +124,8 @@ func (r *repository) GetReferrals(ctx context.Context, userID string, referralTy
 				referrals.created_at                                                                   				AS created_at
 				FROM USERS u
 						%[2]v
+				LEFT JOIN quiz_sessions qs
+					   ON qs.user_id = referrals.id
 				WHERE u.id = $1
 				ORDER BY ((CASE WHEN NULLIF(referrals.phone_number_hash,'') IS NOT NULL AND referrals.id = ANY(u.agenda_contact_user_ids)
 								THEN referrals.phone_number

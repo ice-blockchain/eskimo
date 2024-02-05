@@ -18,8 +18,11 @@ func (r *repository) getUserByID(ctx context.Context, id UserID) (*User, error) 
 		return nil, errors.Wrap(ctx.Err(), "get user failed because context failed")
 	}
 	result, err := storage.Get[User](ctx, r.db, `
-	SELECT *
+	SELECT users.*,
+	       qs.user_id IS NOT NULL AND qs.ended_at is not null AND qs.ended_successfully = true AS quiz_completed
 		FROM users
+		LEFT JOIN quiz_sessions qs
+			ON qs.user_id = users.id
 		WHERE id = $1`, id)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to get user by id %v", id)
@@ -38,11 +41,14 @@ func (r *repository) GetUserByID(ctx context.Context, userID string) (*UserProfi
 	sql := `
 		SELECT  	
 			u.*,
+			(qs.user_id IS NOT NULL AND qs.ended_at is not null AND qs.ended_successfully = true) AS quiz_completed,
 			COALESCE(refs.t1, 0) 		  as t1_referral_count,
 			COALESCE(refs.t2, 0)		  as t2_referral_count
 		FROM users u 
 				LEFT JOIN referral_acquisition_history refs
 						ON refs.user_id = u.id
+				LEFT JOIN quiz_sessions qs
+					ON qs.user_id = u.id
 		WHERE u.id = $1`
 	res, err := storage.Get[UserProfile](ctx, r.db, sql, userID)
 	if err != nil {
@@ -113,7 +119,13 @@ func (r *repository) GetUserByUsername(ctx context.Context, username string) (*U
 	if ctx.Err() != nil {
 		return nil, errors.Wrap(ctx.Err(), "get user failed because context failed")
 	}
-	result, err := storage.Get[User](ctx, r.db, `SELECT * FROM users WHERE username = $1`, username)
+	result, err := storage.Get[User](ctx, r.db, `
+		SELECT users.*, 
+       		   (qs.user_id IS NOT NULL AND qs.ended_at is not null AND qs.ended_successfully = true) AS quiz_completed
+		FROM users 
+		LEFT JOIN quiz_sessions qs
+			ON qs.user_id = users.id
+		WHERE username = $1`, username)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to get user by username %v", username)
 	}
@@ -127,7 +139,11 @@ func (r *repository) GetUserByUsername(ctx context.Context, username string) (*U
 }
 
 func (r *repository) GetUserByPhoneNumber(ctx context.Context, phoneNumber string) (*User, error) {
-	sql := `SELECT * FROM users WHERE phone_number = $1 AND phone_number != id`
+	sql := `SELECT users.*, (qs.user_id IS NOT NULL AND qs.ended_at is not null AND qs.ended_successfully = true) AS quiz_completed
+			FROM users 
+			LEFT JOIN quiz_sessions qs
+					ON qs.user_id = users.id
+			WHERE phone_number = $1 AND phone_number != id`
 	usr, err := storage.Get[User](ctx, r.db, sql, phoneNumber)
 	if err != nil {
 		if errors.Is(err, ErrNotFound) {
@@ -166,7 +182,7 @@ func (r *repository) GetUsers(ctx context.Context, keyword string, limit, offset
 	}
 	sql := fmt.Sprintf(`
 			SELECT 
-			    u.kyc_step_passed >= %[2]v 									 	  AS verified,
+			    (u.kyc_step_passed >= %[2]v AND u.quiz_completed) 				  AS verified,
 			    u.last_mining_ended_at 									 	 	  AS active,
 			    u.last_ping_cooldown_ended_at 							 	 	  AS pinged,
 			    u.phone_number_ 										  		  AS phone_number,
@@ -218,11 +234,12 @@ func (r *repository) GetUsers(ctx context.Context, keyword string, limit, offset
 						WHEN t0.referred_by = user_requesting_this.id and t0.id != t0.referred_by
 							THEN 'T2'
 						ELSE ''
-					END) 														  AS referral_type,
-			        user_requesting_this.id                                       AS user_requesting_this_id,
-				    user_requesting_this.referred_by                              AS user_requesting_this_referred_by,
-				    t0.referred_by                                                AS t0_referred_by,
-				    t0.id                                                         AS t0_id
+					END) 														                        AS referral_type,
+			        user_requesting_this.id                                                             AS user_requesting_this_id,
+				    user_requesting_this.referred_by                                                    AS user_requesting_this_referred_by,
+				    t0.referred_by                                                                      AS t0_referred_by,
+				    t0.id                                                                               AS t0_id,
+			        qs.user_id IS NOT NULL AND qs.ended_at is not null AND qs.ended_successfully = true AS quiz_completed
 			FROM users u
 					 JOIN USERS t0
 						  ON t0.id = u.referred_by
@@ -232,6 +249,8 @@ func (r *repository) GetUsers(ctx context.Context, keyword string, limit, offset
 						  ON user_requesting_this.id = $5
 						 AND user_requesting_this.username != user_requesting_this.id
 						 AND user_requesting_this.referred_by != user_requesting_this.id
+				     LEFT JOIN quiz_sessions qs
+					   ON qs.user_id = u.id
 			WHERE 
 					u.lookup @@ $2::tsquery
 				  ) u 
