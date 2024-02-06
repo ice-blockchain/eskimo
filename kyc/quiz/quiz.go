@@ -349,7 +349,7 @@ where
 	user_id = $1 and
 	started_at >= GREATEST(u.created_at, $2)
 `
-	count, err := storage.Get[int](ctx, tx, stmt, userID, r.config.globalStartDate.Time)
+	count, err := storage.ExecOne[int](ctx, tx, stmt, userID, r.config.globalStartDate.Time)
 	if err != nil {
 		if errors.Is(err, storage.ErrNotFound) {
 			return 0, nil
@@ -597,7 +597,7 @@ func (r *repositoryImpl) startNewSession( //nolint:funlen //.
 func (r *repositoryImpl) IsQuizEnabledForUser(ctx context.Context, userID UserID) (bool, error) {
 	const stmt = `select false as val from quiz_resets where user_id = $1 and cardinality(resets) > $2`
 
-	_, err := storage.Get[struct {
+	_, err := storage.ExecOne[struct {
 		Val bool `db:"val"`
 	}](ctx, r.DB, stmt, userID, *r.config.MaxResetCount)
 	if err != nil {
@@ -697,7 +697,7 @@ group by
 	ended_successfully
 `
 
-	data, err := storage.Get[userSession](ctx, tx, stmt, userID, r.config.MaxSessionDurationSeconds)
+	data, err := storage.ExecOne[userSession](ctx, tx, stmt, userID, r.config.MaxSessionDurationSeconds)
 	if err != nil {
 		if errors.Is(err, storage.ErrNotFound) {
 			return userProgress{}, ErrUnknownSession
@@ -731,7 +731,7 @@ func (*repositoryImpl) CheckQuestionNumber(ctx context.Context, lang string, que
 		return 0, ErrUnknownQuestionNumber
 	}
 
-	data, err := storage.Get[currentQuestion](ctx, tx, `select correct_option from questions where id = $1 and "language" = $2`, questions[num-1], lang)
+	data, err := storage.ExecOne[currentQuestion](ctx, tx, `select correct_option from questions where id = $1 and "language" = $2`, questions[num-1], lang)
 	if err != nil {
 		if errors.Is(err, storage.ErrNotFound) {
 			return 0, ErrUnknownQuestionNumber
