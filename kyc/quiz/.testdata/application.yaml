@@ -8,12 +8,12 @@ logger:
 users: &users
   wintr/connectors/storage/v2:
     runDDL: true
-    primaryURL: postgresql://root:pass@localhost:5432/ice
+    primaryURL: postgresql://root:pass@localhost:5433/eskimo
     credentials:
       user: root
       password: pass
     replicaURLs:
-      - postgresql://root:pass@localhost:5432/ice
+      - postgresql://root:pass@localhost:5433/eskimo
 
 kyc/quiz:
   <<: *users
@@ -24,4 +24,4 @@ kyc/quiz:
   maxResetCount: 2
   maxAttemptsAllowed: 3
   availabilityWindowSeconds: 604800
-  globalStartDate: 2024-02-03T16:20:52.156534Z
+  globalStartDate: '2024-02-03T16:20:52.156534Z'

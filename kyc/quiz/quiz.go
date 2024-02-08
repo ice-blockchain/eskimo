@@ -889,29 +889,43 @@ func (r *repositoryImpl) ContinueQuizSession( //nolint:funlen,revive,gocognit //
 		_, err = r.CheckQuestionNumber(ctx, progress.Lang, progress.Questions, question, tx)
 		if err != nil {
 			return err
-		} else if uint8(len(progress.Answers)) != question-1 {
+		} else if int(question)-len(progress.Answers) < 0 || question-uint8(len(progress.Answers)) > 1 {
 			return errors.Wrap(ErrUnknownQuestionNumber, "please answer questions in order")
 		}
-		newAnswers, aErr := r.UserAddAnswer(ctx, userID, tx, answer)
-		if aErr != nil {
-			return aErr
-		}
-		correctNum, incorrectNum := calculateProgress(progress.CorrectAnswers, newAnswers)
-		quiz = &Quiz{
-			Progress: &Progress{
-				MaxQuestions:     uint8(len(progress.Questions)),
-				CorrectAnswers:   correctNum,
-				IncorrectAnswers: incorrectNum,
-			},
+		var answeredQuestionsCount int
+		if uint8(len(progress.Answers)) == question-1 {
+			newAnswers, aErr := r.UserAddAnswer(ctx, userID, tx, answer)
+			if aErr != nil {
+				return aErr
+			}
+			answeredQuestionsCount = len(newAnswers)
+			correctNum, incorrectNum := calculateProgress(progress.CorrectAnswers, newAnswers)
+			quiz = &Quiz{
+				Progress: &Progress{
+					MaxQuestions:     uint8(len(progress.Questions)),
+					CorrectAnswers:   correctNum,
+					IncorrectAnswers: incorrectNum,
+				},
+			}
+
+			if int(incorrectNum) > r.config.MaxWrongAnswersPerSession {
+				quiz.Result = FailureResult
+
+				return r.UserMarkSessionAsFinished(ctx, userID, now, tx, false, false)
+			}
+		} else {
+			answeredQuestionsCount = len(progress.Answers)
+			correctNum, incorrectNum := calculateProgress(progress.CorrectAnswers, progress.Answers)
+			quiz = &Quiz{
+				Progress: &Progress{
+					MaxQuestions:     uint8(len(progress.Questions)),
+					CorrectAnswers:   correctNum,
+					IncorrectAnswers: incorrectNum,
+				},
+			}
 		}
 
-		if int(incorrectNum) > r.config.MaxWrongAnswersPerSession {
-			quiz.Result = FailureResult
-
-			return r.UserMarkSessionAsFinished(ctx, userID, now, tx, false, false)
-		}
-
-		if len(newAnswers) != len(progress.CorrectAnswers) {
+		if answeredQuestionsCount != len(progress.CorrectAnswers) {
 			nextQuestion, nErr := r.LoadQuestionByID(ctx, tx, progress.Lang, progress.Questions[question])
 			if nErr != nil {
 				return nErr
