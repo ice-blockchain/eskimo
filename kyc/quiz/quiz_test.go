@@ -128,7 +128,7 @@ func (*mockUserReader) GetUserByID(ctx context.Context, userID UserID) (*UserPro
 		profile.KYCStepPassed = &s
 
 	case "invalid_kyc":
-		s := users.LivenessDetectionKYCStep
+		s := users.FacialRecognitionKYCStep
 		profile.KYCStepPassed = &s
 
 	case "storage_error":
@@ -367,12 +367,19 @@ func testManagerSessionContinueErrors(ctx context.Context, t *testing.T, r *repo
 
 	t.Run("UnknownQuestionNumber", func(t *testing.T) {
 		helperSessionReset(t, r, "bogus", true)
-		_, err := r.StartQuizSession(ctx, "bogus", "en")
+		session, err := r.StartQuizSession(ctx, "bogus", "en")
 		require.NoError(t, err)
-		for _, n := range []uint8{0, 4, 5, 6, 7, 10, 20, 100} {
+		for _, n := range []uint8{0, 2, 4, 5, 6, 7, 10, 20, 100} {
 			_, err = r.ContinueQuizSession(ctx, "bogus", n, 1)
 			require.ErrorIs(t, err, ErrUnknownQuestionNumber)
 		}
+		ans := helperSolveQuestion(t, session.Progress.NextQuestion.Text)
+		_, err = r.ContinueQuizSession(ctx, "bogus", 1, ans)
+		require.NoError(t, err)
+		_, err = r.ContinueQuizSession(ctx, "bogus", 2, 1)
+		require.NoError(t, err)
+		_, err = r.ContinueQuizSession(ctx, "bogus", 1, ans)
+		require.ErrorIs(t, err, ErrUnknownQuestionNumber)
 	})
 
 	t.Run("AnswersOrder", func(t *testing.T) {
