@@ -889,11 +889,12 @@ func (r *repositoryImpl) ContinueQuizSession( //nolint:funlen,revive,gocognit //
 		_, err = r.CheckQuestionNumber(ctx, progress.Lang, progress.Questions, question, tx)
 		if err != nil {
 			return err
-		} else if int(question)-len(progress.Answers) < 0 || question-uint8(len(progress.Answers)) > 1 {
-			return errors.Wrap(ErrUnknownQuestionNumber, "please answer questions in order")
 		}
 		var answeredQuestionsCount int
-		if uint8(len(progress.Answers)) == question-1 {
+		switch {
+		case int(question)-len(progress.Answers) < 0 || question-uint8(len(progress.Answers)) > 1:
+			return errors.Wrap(ErrUnknownQuestionNumber, "please answer questions in order")
+		case uint8(len(progress.Answers)) == question-1:
 			newAnswers, aErr := r.UserAddAnswer(ctx, userID, tx, answer)
 			if aErr != nil {
 				return aErr
@@ -913,7 +914,7 @@ func (r *repositoryImpl) ContinueQuizSession( //nolint:funlen,revive,gocognit //
 
 				return r.UserMarkSessionAsFinished(ctx, userID, now, tx, false, false)
 			}
-		} else {
+		default:
 			answeredQuestionsCount = len(progress.Answers)
 			correctNum, incorrectNum := calculateProgress(progress.CorrectAnswers, progress.Answers)
 			quiz = &Quiz{

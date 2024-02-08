@@ -177,7 +177,7 @@ func (b *TestConnectorsBridge) MustDeleteAllUsers(ctx context.Context, tb testin
 	for ii := range userIDs {
 		go func(ix int) {
 			defer wg.Done()
-			body, status := b.DeleteUser(ctx, tb, userIDs[ix], tokens[ix])
+			body, status := b.DeleteUser(ctx, tb, userIDs[ix], tokens[ix]) //nolint:testifylint // .
 			assert.Empty(tb, body)
 			assert.True(tb, status == 204 || status == 200)
 		}(ii)

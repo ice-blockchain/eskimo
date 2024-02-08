@@ -81,7 +81,7 @@ func (r *repository) sendUnsuccessfulKYCStepsAlertToSlack(ctx context.Context, t
 		if time.Now().Sub(*alert.LastAlertAt.Time) < stdlibtime.Duration(float64(freq.(stdlibtime.Duration).Nanoseconds())*0.8) { //nolint:gomnd,forcetypeassert,lll // .
 			return errRaceCondition
 		}
-		if newFrequency := stdlibtime.Duration(alert.FrequencyInSeconds) * stdlibtime.Second; newFrequency != freq.(stdlibtime.Duration) { //nolint:revive,forcetypeassert,lll // .
+		if newFrequency := stdlibtime.Duration(alert.FrequencyInSeconds) * stdlibtime.Second; newFrequency != freq.(stdlibtime.Duration) { //nolint:forcetypeassert,lll // .
 			r.cfg.alertFrequency.Store(kycStep, newFrequency)
 			ticker.Reset(newFrequency)
 		}

@@ -152,7 +152,7 @@ func randomBetween(left, right uint64) uint64 {
 }
 
 func requestingUserID(ctx context.Context) (requestingUserID string) {
-	requestingUserID, _ = ctx.Value(RequestingUserIDCtxValueKey).(string) //nolint:errcheck,revive // Not needed.
+	requestingUserID, _ = ctx.Value(RequestingUserIDCtxValueKey).(string) //nolint:errcheck // Not needed.
 
 	return
 }
@@ -190,7 +190,7 @@ func ContextWithAuthorization(ctx context.Context, authorization string) context
 }
 
 func authorization(ctx context.Context) (authorization string) {
-	authorization, _ = ctx.Value(authorizationCtxValueKey).(string) //nolint:errcheck,revive // Not needed.
+	authorization, _ = ctx.Value(authorizationCtxValueKey).(string) //nolint:errcheck // Not needed.
 
 	return
 }
@@ -204,7 +204,7 @@ func ContextWithXAccountMetadata(ctx context.Context, xAccountMetadata string) c
 }
 
 func xAccountMetadata(ctx context.Context) (xAccountMetadata string) {
-	xAccountMetadata, _ = ctx.Value(xAccountMetadataCtxValueKey).(string) //nolint:revive,errcheck // Not needed.
+	xAccountMetadata, _ = ctx.Value(xAccountMetadataCtxValueKey).(string) //nolint:errcheck // Not needed.
 
 	return
 }

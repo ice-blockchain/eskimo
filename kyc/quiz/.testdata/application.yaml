@@ -24,4 +24,4 @@ kyc/quiz:
   maxResetCount: 2
   maxAttemptsAllowed: 3
   availabilityWindowSeconds: 604800
-  globalStartDate: 2024-02-03T16:20:52.156534Z
+  globalStartDate: '2024-02-03T16:20:52.156534Z'
