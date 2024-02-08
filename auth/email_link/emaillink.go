@@ -74,14 +74,14 @@ func loadConfiguration() *config {
 func loadEmailValidationConfiguration(cfg *config) {
 	if cfg.EmailValidation.JwtSecret == "" {
 		module := strings.ToUpper(strings.ReplaceAll(strings.ReplaceAll(applicationYamlKey, "-", "_"), "/", "_"))
-		cfg.EmailValidation.JwtSecret = os.Getenv(fmt.Sprintf("%s_EMAIL_JWT_SECRET", module))
+		cfg.EmailValidation.JwtSecret = os.Getenv(module + "_EMAIL_JWT_SECRET")
 		if cfg.EmailValidation.JwtSecret == "" {
 			cfg.EmailValidation.JwtSecret = os.Getenv("EMAIL_JWT_SECRET")
 		}
 		// If specific one for emails for found - let's use the same one as wintr/auth/ice uses for token generation.
 		if cfg.EmailValidation.JwtSecret == "" {
 			module = strings.ToUpper(strings.ReplaceAll(strings.ReplaceAll(applicationYamlKey, "-", "_"), "/", "_"))
-			cfg.EmailValidation.JwtSecret = os.Getenv(fmt.Sprintf("%s_JWT_SECRET", module))
+			cfg.EmailValidation.JwtSecret = os.Getenv(module + "_JWT_SECRET") //nolint:goconst // .
 			if cfg.EmailValidation.JwtSecret == "" {
 				cfg.EmailValidation.JwtSecret = os.Getenv("JWT_SECRET")
 			}
@@ -92,14 +92,14 @@ func loadEmailValidationConfiguration(cfg *config) {
 func loadLoginSessionConfiguration(cfg *config) {
 	if cfg.LoginSession.JwtSecret == "" {
 		module := strings.ToUpper(strings.ReplaceAll(strings.ReplaceAll(applicationYamlKey, "-", "_"), "/", "_"))
-		cfg.LoginSession.JwtSecret = os.Getenv(fmt.Sprintf("%s_LOGIN_JWT_SECRET", module))
+		cfg.LoginSession.JwtSecret = os.Getenv(module + "_LOGIN_JWT_SECRET")
 		if cfg.LoginSession.JwtSecret == "" {
 			cfg.LoginSession.JwtSecret = os.Getenv("LOGIN_JWT_SECRET")
 		}
 		// If specific one for emails for found - let's use the same one as wintr/auth/ice uses for token generation.
 		if cfg.LoginSession.JwtSecret == "" {
 			module = strings.ToUpper(strings.ReplaceAll(strings.ReplaceAll(applicationYamlKey, "-", "_"), "/", "_"))
-			cfg.LoginSession.JwtSecret = os.Getenv(fmt.Sprintf("%s_JWT_SECRET", module))
+			cfg.LoginSession.JwtSecret = os.Getenv(module + "_JWT_SECRET")
 			if cfg.LoginSession.JwtSecret == "" {
 				cfg.LoginSession.JwtSecret = os.Getenv("JWT_SECRET")
 			}
@@ -260,7 +260,7 @@ func ContextWithPhoneNumberToEmailMigration(ctx context.Context, userID string) 
 }
 
 func userIDForPhoneNumberToEmailMigration(ctx context.Context) (userID string) {
-	userID, _ = ctx.Value(phoneNumberToEmailMigrationCtxValueKey).(string) //nolint:errcheck,revive // Not needed.
+	userID, _ = ctx.Value(phoneNumberToEmailMigrationCtxValueKey).(string) //nolint:errcheck // Not needed.
 
 	return
 }

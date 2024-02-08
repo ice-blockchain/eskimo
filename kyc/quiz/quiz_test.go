@@ -128,7 +128,7 @@ func (*mockUserReader) GetUserByID(ctx context.Context, userID UserID) (*UserPro
 		profile.KYCStepPassed = &s
 
 	case "invalid_kyc":
-		s := users.LivenessDetectionKYCStep
+		s := users.FacialRecognitionKYCStep
 		profile.KYCStepPassed = &s
 
 	case "storage_error":
@@ -367,12 +367,19 @@ func testManagerSessionContinueErrors(ctx context.Context, t *testing.T, r *repo
 
 	t.Run("UnknownQuestionNumber", func(t *testing.T) {
 		helperSessionReset(t, r, "bogus", true)
-		_, err := r.StartQuizSession(ctx, "bogus", "en")
+		session, err := r.StartQuizSession(ctx, "bogus", "en")
 		require.NoError(t, err)
-		for _, n := range []uint8{0, 4, 5, 6, 7, 10, 20, 100} {
+		for _, n := range []uint8{0, 2, 4, 5, 6, 7, 10, 20, 100} {
 			_, err = r.ContinueQuizSession(ctx, "bogus", n, 1)
 			require.ErrorIs(t, err, ErrUnknownQuestionNumber)
 		}
+		ans := helperSolveQuestion(t, session.Progress.NextQuestion.Text)
+		_, err = r.ContinueQuizSession(ctx, "bogus", 1, ans)
+		require.NoError(t, err)
+		_, err = r.ContinueQuizSession(ctx, "bogus", 2, 1)
+		require.NoError(t, err)
+		_, err = r.ContinueQuizSession(ctx, "bogus", 1, ans)
+		require.ErrorIs(t, err, ErrUnknownQuestionNumber)
 	})
 
 	t.Run("AnswersOrder", func(t *testing.T) {
@@ -414,9 +421,24 @@ func testManagerSessionContinueWithCorrectAnswers(ctx context.Context, t *testin
 	require.Equal(t, uint8(1), session.Progress.CorrectAnswers)
 	require.Equal(t, uint8(0), session.Progress.IncorrectAnswers)
 
+	nextQNum := session.Progress.NextQuestion.Number
 	ans = helperSolveQuestion(t, session.Progress.NextQuestion.Text)
 	t.Logf("q: %v, ans: %d", session.Progress.NextQuestion.Text, ans)
-	session, err = r.ContinueQuizSession(ctx, "bogus", session.Progress.NextQuestion.Number, ans)
+	session, err = r.ContinueQuizSession(ctx, "bogus", nextQNum, ans)
+	require.NoError(t, err)
+	require.NotNil(t, session)
+	t.Logf("next q: %v, deadline %v", session.Progress.NextQuestion.Text, session.Progress.ExpiresAt)
+	require.Empty(t, session.Result)
+	require.NotNil(t, session.Progress)
+	require.NotNil(t, session.Progress.ExpiresAt)
+	require.Equal(t, uint8(3), session.Progress.MaxQuestions)
+	require.NotEmpty(t, session.Progress.NextQuestion.Text)
+	require.Equal(t, uint8(2), session.Progress.CorrectAnswers)
+	require.Equal(t, uint8(0), session.Progress.IncorrectAnswers)
+
+	ans = helperSolveQuestion(t, session.Progress.NextQuestion.Text)
+	t.Logf("q: %v, ans: %d", session.Progress.NextQuestion.Text, ans)
+	session, err = r.ContinueQuizSession(ctx, "bogus", nextQNum, ans)
 	require.NoError(t, err)
 	require.NotNil(t, session)
 	t.Logf("next q: %v, deadline %v", session.Progress.NextQuestion.Text, session.Progress.ExpiresAt)

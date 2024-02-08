@@ -306,7 +306,7 @@ func (s *service) findMetadataUsingIceID(ctx context.Context, loggedInUser *serv
 
 func (*service) handleFirebaseEmailMismatch(ctx context.Context, loggedInUser *server.AuthenticatedUser, err error) error {
 	emailErr := terror.As(err)
-	actualEmail := emailErr.Data["email"].(string) //nolint:forcetypeassert,revive,errcheck // .
+	actualEmail := emailErr.Data["email"].(string) //nolint:forcetypeassert,errcheck // .
 	if !loggedInUser.IsFirebase() {
 		return errors.Wrapf(emaillink.ErrUserDataMismatch, "actual email is %v, requested for %v", actualEmail, loggedInUser.Email)
 	}
@@ -315,7 +315,7 @@ func (*service) handleFirebaseEmailMismatch(ctx context.Context, loggedInUser *s
 	if hasFBClaim {
 		signInWithInterface, hasSignInProvider := fbClaimInterface.(map[string]any)["sign_in_provider"]
 		if hasSignInProvider {
-			if signInProvider := signInWithInterface.(string); signInProvider != "password" { //nolint:forcetypeassert,revive,errcheck // .
+			if signInProvider := signInWithInterface.(string); signInProvider != "password" { //nolint:forcetypeassert,errcheck // .
 				return nil
 			}
 		}

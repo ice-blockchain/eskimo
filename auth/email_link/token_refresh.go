@@ -87,7 +87,7 @@ func (c *client) generateTokens(now *time.Time, els *emailLinkSignIn, seq int64)
 	role := ""
 	if els.Metadata != nil {
 		if roleInterface, found := (*els.Metadata)["role"]; found {
-			role = roleInterface.(string) //nolint:errcheck,revive,forcetypeassert // .
+			role = roleInterface.(string) //nolint:errcheck,forcetypeassert // .
 		}
 	}
 	refreshToken, accessToken, err := c.authClient.GenerateTokens(now, *els.UserID, els.DeviceUniqueID, els.Email, els.HashCode, seq, role)

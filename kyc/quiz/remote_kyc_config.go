@@ -120,7 +120,7 @@ func ContextWithClientType(ctx context.Context, clientType string) context.Conte
 }
 
 func isWebClientType(ctx context.Context) bool {
-	clientType, _ := ctx.Value(clientTypeCtxValueKey).(string) //nolint:errcheck,revive // Not needed.
+	clientType, _ := ctx.Value(clientTypeCtxValueKey).(string) //nolint:errcheck // Not needed.
 
 	return strings.EqualFold(strings.TrimSpace(clientType), "web")
 }
