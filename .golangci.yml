@@ -160,7 +160,9 @@ linters-settings:
   revive:
     ignore-generated-header: true
     severity: error
-    enable-all-rules: true
+    # Temporarily disable until release: https://github.com/golangci/golangci-lint/issues/4353#issuecomment-1932470454
+    #enable-all-rules: true
+    enable-all-rules: false
     confidence: 0.1
     rules:
       # https://github.com/mgechev/revive/blob/master/RULES_DESCRIPTIONS.md#add-constant
