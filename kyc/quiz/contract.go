@@ -125,7 +125,7 @@ type (
 	kycConfigJSON struct {
 		QuizKYC struct {
 			DisabledVersions   []string `json:"disabledVersions"`
-			ForceKYCForUserIds []string `json:"forceKYCForUserIds"` //nolint:tagliatelle // .
+			ForceKYCForUserIDs []string `json:"forceKYCForUserIds"` //nolint:tagliatelle // .
 			Enabled            bool     `json:"enabled"`
 		} `json:"quiz-kyc"` //nolint:tagliatelle // .
 		WebQuizKYC struct {

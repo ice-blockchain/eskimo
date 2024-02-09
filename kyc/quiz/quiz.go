@@ -113,12 +113,13 @@ func (r *repositoryImpl) CheckUserKYC(ctx context.Context, userID UserID) error 
 }
 
 func (r *repositoryImpl) validateKycStep(user *users.User) error {
-	if user.KYCStepBlocked != nil && *user.KYCStepBlocked > users.NoneKYCStep {
+	if user.KYCStepBlocked != nil && *user.KYCStepBlocked > 0 &&
+		!(*user.KYCStepBlocked == users.LivenessDetectionKYCStep && user.KYCStepPassed != nil && *user.KYCStepPassed == users.FacialRecognitionKYCStep) {
 		return ErrNotAvailable
 	}
 
 	if sessionCoolDown := stdlibtime.Duration(r.config.SessionCoolDownSeconds) * stdlibtime.Second; user.KYCStepPassed == nil ||
-		*user.KYCStepPassed < users.LivenessDetectionKYCStep ||
+		*user.KYCStepPassed < users.FacialRecognitionKYCStep ||
 		(user.KYCStepPassed != nil &&
 			user.KYCStepsLastUpdatedAt != nil &&
 			len(*user.KYCStepsLastUpdatedAt) >= int(users.QuizKYCStep) &&
@@ -261,14 +262,14 @@ func (r *repositoryImpl) getQuizStatus(ctx context.Context, userID UserID) (*Qui
 	// $3: availability window (seconds).
 	// $4: max reset count.
 	// $5: max attempts allowed.
-	const sql = `SELECT GREATEST($5 - coalesce(count(fqs.user_id),0),0)			  						 AS kyc_quiz_remaining_attempts,
-				   (qr.user_id IS NOT NULL AND cardinality(qr.resets) > $4) 							 AS kyc_quiz_disabled,
-				   qr.resets  							 									 			 AS kyc_quiz_reset_at,
-				   (qs.user_id IS NOT NULL AND qs.ended_at is not null AND qs.ended_successfully = true) AS kyc_quiz_completed,
-				   GREATEST(u.created_at,$2)  	  							 							 AS kyc_quiz_availability_started_at,
-				   GREATEST(u.created_at,$2) + (interval '1 second' * $3) 	  							 AS kyc_quiz_availability_ended_at,
-				   (u.kyc_step_passed >= 2 AND u.kyc_step_blocked = 0)			  						 AS kyc_quiz_available,
-				   (qs.user_id IS NOT NULL AND qs.ended_at IS NULL)			  							 AS has_unfinished_sessions
+	const sql = `SELECT GREATEST($5 - coalesce(count(fqs.user_id),0),0)			  						                        AS kyc_quiz_remaining_attempts,
+				   (qr.user_id IS NOT NULL AND cardinality(qr.resets) > $4) 							                        AS kyc_quiz_disabled,
+				   qr.resets  							 									 			                        AS kyc_quiz_reset_at,
+				   (qs.user_id IS NOT NULL AND qs.ended_at is not null AND qs.ended_successfully = true)                        AS kyc_quiz_completed,
+				   GREATEST(u.created_at,$2)  	  							 							                        AS kyc_quiz_availability_started_at,
+				   GREATEST(u.created_at,$2) + (interval '1 second' * $3) 	  							                        AS kyc_quiz_availability_ended_at,
+				   ((u.kyc_step_passed >= 2 AND u.kyc_step_blocked = 0) OR (u.kyc_step_passed = 1 AND u.kyc_step_blocked = 2))  AS kyc_quiz_available,
+				   (qs.user_id IS NOT NULL AND qs.ended_at IS NULL)			  							                        AS has_unfinished_sessions
 			FROM users u
 				LEFT JOIN quiz_resets qr 
   					   ON qr.user_id = u.id
