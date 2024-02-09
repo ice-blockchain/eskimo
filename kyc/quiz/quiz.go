@@ -113,17 +113,13 @@ func (r *repositoryImpl) CheckUserKYC(ctx context.Context, userID UserID) error 
 }
 
 func (r *repositoryImpl) validateKycStep(user *users.User) error {
-	if user.KYCStepBlocked != nil && *user.KYCStepBlocked > users.NoneKYCStep {
-		err := ErrNotAvailable
-		if *user.KYCStepBlocked == users.LivenessDetectionKYCStep && user.KYCStepPassed != nil && *user.KYCStepPassed == users.FacialRecognitionKYCStep {
-			err = nil
-		}
-
-		return err
+	if user.KYCStepBlocked != nil && *user.KYCStepBlocked > 0 &&
+		!(*user.KYCStepBlocked == users.LivenessDetectionKYCStep && user.KYCStepPassed != nil && *user.KYCStepPassed == users.FacialRecognitionKYCStep) {
+		return ErrNotAvailable
 	}
 
 	if sessionCoolDown := stdlibtime.Duration(r.config.SessionCoolDownSeconds) * stdlibtime.Second; user.KYCStepPassed == nil ||
-		*user.KYCStepPassed < users.LivenessDetectionKYCStep ||
+		*user.KYCStepPassed < users.FacialRecognitionKYCStep ||
 		(user.KYCStepPassed != nil &&
 			user.KYCStepsLastUpdatedAt != nil &&
 			len(*user.KYCStepsLastUpdatedAt) >= int(users.QuizKYCStep) &&
