@@ -93,34 +93,38 @@ func (r *repository) updateReferredByForAllT1Referrals(ctx context.Context, user
 	if ctx.Err() != nil {
 		return errors.Wrap(ctx.Err(), "context failed")
 	}
-	sql := `SELECT (	SELECT X.ID 
+	sql := `
+		WITH randomized AS (
+			SELECT id, referred_by, created_at FROM users
+			WHERE id != 'bogus'
+			  AND id != 'icenetwork'
+			  AND username != id 
+			  AND referred_by != id 
+			  AND id != $1
+			  AND referred_by != $1
+			ORDER BY random()
+		)
+		SELECT (	SELECT X.ID 
 						FROM (	SELECT X.ID 
-								FROM (  SELECT r.id 
-										FROM users r
-										WHERE 1=1
-											  AND r.id != 'bogus'
-											  AND r.id != 'icenetwork'
-											  AND r.id != $1
-											  AND r.id != u.id 
-											  AND r.referred_by != u.id 
-											  AND r.referred_by != r.id 
-											  AND r.username != r.id 
-											  AND r.referred_by != $1
-											  AND r.created_at < u.created_at
-										ORDER BY RANDOM() 
-										LIMIT 1
-									 ) X
-			
-								UNION ALL 
-								 
-								SELECT u.id AS ID
-							  ) X
-						LIMIT 1
-				   ) new_referred_by,
-				   u.ID as id
-			FROM users u
-			WHERE u.referred_by = $1
-			  AND u.id != $1`
+									  FROM (
+										SELECT r.id
+										FROM randomized r
+										WHERE   r.id != u.id 
+												AND r.referred_by != u.id 								
+												AND r.created_at < u.created_at
+												LIMIT 1	
+									) X
+				
+									UNION ALL 
+									 
+									SELECT u.id AS ID
+								  ) X
+							LIMIT 1
+					   ) new_referred_by,
+					   u.ID as id
+				FROM users u
+				WHERE u.referred_by = $1
+				  AND u.id != $1`
 	type resp struct {
 		NewReferredBy UserID
 		ID            UserID `db:"id"`
