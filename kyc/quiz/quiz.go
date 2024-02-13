@@ -5,6 +5,7 @@ package quiz
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync/atomic"
 	stdlibtime "time"
 
@@ -80,18 +81,34 @@ func NewRepository(ctx context.Context, userRepo UserRepository) Repository {
 	return repo
 }
 
-func newRepositoryImpl(ctx context.Context, userRepo UserRepository) *repositoryImpl {
+func NewReadRepository(ctx context.Context) ReadRepository {
 	db := storage.MustConnect(ctx, ddl, applicationYamlKey)
 
-	return &repositoryImpl{
+	return &readRepository{
 		DB:       db,
 		Shutdown: db.Close,
-		Users:    userRepo,
 		config:   mustLoadConfig(),
 	}
 }
 
-func (r *repositoryImpl) Close() (err error) {
+func newRepositoryImpl(ctx context.Context, userRepo UserRepository) *repositoryImpl {
+	db := storage.MustConnect(ctx, ddl, applicationYamlKey)
+
+	return &repositoryImpl{
+		readRepository: &readRepository{
+			DB:       db,
+			Shutdown: db.Close,
+			config:   mustLoadConfig(),
+		},
+		Users: userRepo,
+	}
+}
+
+func (r *readRepository) CheckHealth(ctx context.Context) error {
+	return errors.Wrap(r.DB.Ping(ctx), "[health-check] quiz: failed to ping DB")
+}
+
+func (r *readRepository) Close() (err error) {
 	if r.Shutdown != nil {
 		err = r.Shutdown()
 	}
@@ -256,18 +273,48 @@ func (r *repositoryImpl) CheckQuizStatus(ctx context.Context, userID UserID) (*Q
 	return status, err
 }
 
-func (r *repositoryImpl) getQuizStatus(ctx context.Context, userID UserID) (*QuizStatus, error) { //nolint:funlen //.
-	// $1: user_id.
-	// $2: global start date.
-	// $3: availability window (seconds).
-	// $4: max reset count.
-	// $5: max attempts allowed.
-	const sql = `SELECT GREATEST($5 - coalesce(count(fqs.user_id),0),0)			  						                        AS kyc_quiz_remaining_attempts,
-				   (qr.user_id IS NOT NULL AND cardinality(qr.resets) > $4) 							                        AS kyc_quiz_disabled,
+func (r *repositoryImpl) getQuizStatus(ctx context.Context, userID UserID) (*QuizStatus, error) {
+	statuses, err := r.GetQuizStatus(ctx, userID)
+	if err == nil && len(statuses) == 0 {
+		err = ErrUnknownSession
+	}
+	quizStatus, found := statuses[userID]
+	if found && quizStatus != nil {
+		quizStatus.KYCQuizAvailable = quizStatus.KYCQuizAvailable && (r.isKYCEnabled(ctx) || r.isKYCStepForced(userID))
+	}
+
+	return quizStatus, errors.Wrapf(err, "failed to exec CheckQuizStatus sql for userID:%v", userID)
+}
+
+func (r *readRepository) GetQuizStatus(ctx context.Context, userIDs ...string) (map[string]*QuizStatus, error) { //nolint:funlen //.
+	// $1: global start date.
+	// $2: availability window (seconds).
+	// $3: max reset count.
+	// $4: max attempts allowed.
+	// $... UserIDs.
+	params, placeholders, res := []any{
+		r.config.globalStartDate.Time,
+		r.config.AvailabilityWindowSeconds,
+		*r.config.MaxResetCount,
+		r.config.MaxAttemptsAllowed,
+	}, make([]string, 0, len(userIDs)), make(map[string]*QuizStatus, len(userIDs))
+	if len(userIDs) == 0 {
+		return res, nil
+	}
+	i := len(params)
+	for _, userID := range userIDs {
+		params = append(params, userID)
+		placeholders = append(placeholders, fmt.Sprintf("$%v", i+1))
+		i++
+	}
+
+	sql := fmt.Sprintf(`SELECT u.id,
+    				GREATEST($4 - coalesce(count(fqs.user_id),0),0)			  						                            AS kyc_quiz_remaining_attempts,
+				   (qr.user_id IS NOT NULL AND cardinality(qr.resets) > $3) 							                        AS kyc_quiz_disabled,
 				   qr.resets  							 									 			                        AS kyc_quiz_reset_at,
 				   (qs.user_id IS NOT NULL AND qs.ended_at is not null AND qs.ended_successfully = true)                        AS kyc_quiz_completed,
-				   GREATEST(u.created_at,$2)  	  							 							                        AS kyc_quiz_availability_started_at,
-				   GREATEST(u.created_at,$2) + (interval '1 second' * $3) 	  							                        AS kyc_quiz_availability_ended_at,
+				   GREATEST(u.created_at,$1)  	  							 							                        AS kyc_quiz_availability_started_at,
+				   GREATEST(u.created_at,$1) + (interval '1 second' * $2) 	  							                        AS kyc_quiz_availability_ended_at,
 				   ((u.kyc_step_passed >= 2 AND u.kyc_step_blocked = 0) OR (u.kyc_step_passed = 1 AND u.kyc_step_blocked = 2))  AS kyc_quiz_available,
 				   (qs.user_id IS NOT NULL AND qs.ended_at IS NULL)			  							                        AS has_unfinished_sessions
 			FROM users u
@@ -277,30 +324,33 @@ func (r *repositoryImpl) getQuizStatus(ctx context.Context, userID UserID) (*Qui
 					   ON qs.user_id = u.id
 				LEFT JOIN failed_quiz_sessions fqs
 					   ON fqs.user_id = u.id
-					  AND fqs.started_at >= GREATEST(u.created_at,$2) 
-			WHERE u.id = $1
+					  AND fqs.started_at >= GREATEST(u.created_at,$1) 
+			WHERE u.id in (%v)
 			GROUP BY qr.user_id,
 					 qs.user_id,
-					 u.id`
-	quizStatus, err := storage.ExecOne[QuizStatus](
+					 u.id`,
+		strings.Join(placeholders, ","))
+	quizStatuses, err := storage.ExecMany[struct {
+		*QuizStatus
+		UserID string `db:"id"`
+	}](
 		ctx,
 		r.DB,
 		sql,
-		userID,
-		r.config.globalStartDate.Time,
-		r.config.AvailabilityWindowSeconds,
-		*r.config.MaxResetCount,
-		r.config.MaxAttemptsAllowed,
+		params...,
 	)
+	if err != nil {
+		if errors.Is(err, storage.ErrNotFound) {
+			err = nil
+		}
 
-	if errors.Is(err, storage.ErrNotFound) {
-		err = ErrUnknownSession
+		return res, errors.Wrapf(err, "failed to exec CheckQuizStatus sql for userIDs:%#v", userIDs)
 	}
-	if quizStatus != nil {
-		quizStatus.KYCQuizAvailable = quizStatus.KYCQuizAvailable && (r.isKYCEnabled(ctx) || r.isKYCStepForced(userID))
+	for _, qs := range quizStatuses {
+		res[qs.UserID] = qs.QuizStatus
 	}
 
-	return quizStatus, errors.Wrapf(err, "failed to exec CheckQuizStatus sql for userID:%v", userID)
+	return res, nil
 }
 
 func (r *repositoryImpl) SelectQuestions(ctx context.Context, tx storage.QueryExecer, lang string) ([]*Question, error) {
