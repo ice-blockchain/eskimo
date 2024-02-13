@@ -283,7 +283,7 @@ func (r *repositoryImpl) getQuizStatus(ctx context.Context, userID UserID) (*Qui
 		quizStatus.KYCQuizAvailable = quizStatus.KYCQuizAvailable && (r.isKYCEnabled(ctx) || r.isKYCStepForced(userID))
 	}
 
-	return quizStatus, errors.Wrapf(err, "failed to exec CheckQuizStatus sql for userID:%v", userID)
+	return quizStatus, errors.Wrapf(err, "failed to getQuizStatus for userID:%v", userID)
 }
 
 func (r *readRepository) GetQuizStatus(ctx context.Context, userIDs ...string) (map[string]*QuizStatus, error) { //nolint:funlen //.
@@ -344,7 +344,7 @@ func (r *readRepository) GetQuizStatus(ctx context.Context, userIDs ...string) (
 			err = nil
 		}
 
-		return res, errors.Wrapf(err, "failed to exec CheckQuizStatus sql for userIDs:%#v", userIDs)
+		return res, errors.Wrapf(err, "failed to exec GetQuizStatus sql for userIDs:%#v", userIDs)
 	}
 	for _, qs := range quizStatuses {
 		res[qs.UserID] = qs.QuizStatus
