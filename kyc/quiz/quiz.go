@@ -17,11 +17,8 @@ import (
 	"github.com/ice-blockchain/wintr/time"
 )
 
-func mustLoadConfig() config { //nolint:funlen // .
-	var cfg config
-
-	appcfg.MustLoadFromKey(applicationYamlKey, &cfg)
-
+func mustLoadConfig() config {
+	cfg := mustLoadReadConfig()
 	if cfg.MaxSessionDurationSeconds == 0 {
 		panic("maxSessionDurationSeconds is not set")
 	}
@@ -34,6 +31,22 @@ func mustLoadConfig() config { //nolint:funlen // .
 		panic("sessionCoolDownSeconds is not set")
 	}
 
+	if cfg.MaxWrongAnswersPerSession == 0 {
+		panic("maxWrongAnswersPerSession is not set")
+	}
+
+	defaultAlertFrequency := alertFrequency
+	cfg.alertFrequency = new(atomic.Pointer[stdlibtime.Duration])
+	cfg.alertFrequency.Store(&defaultAlertFrequency)
+
+	return cfg
+}
+
+func mustLoadReadConfig() config {
+	var cfg config
+
+	appcfg.MustLoadFromKey(applicationYamlKey, &cfg)
+
 	if cfg.MaxResetCount == nil {
 		panic("maxResetCount is not set")
 	}
@@ -45,10 +58,6 @@ func mustLoadConfig() config { //nolint:funlen // .
 	log.Panic(err) //nolint:revive // .
 	cfg.globalStartDate = time.New(globalStartDate)
 
-	if cfg.MaxWrongAnswersPerSession == 0 {
-		panic("maxWrongAnswersPerSession is not set")
-	}
-
 	if cfg.AvailabilityWindowSeconds == 0 {
 		panic("availabilityWindowSeconds is not set")
 	}
@@ -56,10 +65,6 @@ func mustLoadConfig() config { //nolint:funlen // .
 	if cfg.MaxAttemptsAllowed == 0 {
 		panic("maxAttemptsAllowed is not set")
 	}
-
-	defaultAlertFrequency := alertFrequency
-	cfg.alertFrequency = new(atomic.Pointer[stdlibtime.Duration])
-	cfg.alertFrequency.Store(&defaultAlertFrequency)
 
 	return cfg
 }
@@ -80,18 +85,34 @@ func NewRepository(ctx context.Context, userRepo UserRepository) Repository {
 	return repo
 }
 
+func NewReadRepository(ctx context.Context) ReadRepository {
+	db := storage.MustConnect(ctx, ddl, applicationYamlKey)
+
+	return &readRepository{
+		DB:       db,
+		Shutdown: db.Close,
+		config:   mustLoadReadConfig(),
+	}
+}
+
 func newRepositoryImpl(ctx context.Context, userRepo UserRepository) *repositoryImpl {
 	db := storage.MustConnect(ctx, ddl, applicationYamlKey)
 
 	return &repositoryImpl{
-		DB:       db,
-		Shutdown: db.Close,
-		Users:    userRepo,
-		config:   mustLoadConfig(),
+		readRepository: &readRepository{
+			DB:       db,
+			Shutdown: db.Close,
+			config:   mustLoadConfig(),
+		},
+		Users: userRepo,
 	}
 }
 
-func (r *repositoryImpl) Close() (err error) {
+func (r *readRepository) CheckHealth(ctx context.Context) error {
+	return errors.Wrap(r.DB.Ping(ctx), "[health-check] quiz: failed to ping DB")
+}
+
+func (r *readRepository) Close() (err error) {
 	if r.Shutdown != nil {
 		err = r.Shutdown()
 	}
@@ -256,13 +277,32 @@ func (r *repositoryImpl) CheckQuizStatus(ctx context.Context, userID UserID) (*Q
 	return status, err
 }
 
-func (r *repositoryImpl) getQuizStatus(ctx context.Context, userID UserID) (*QuizStatus, error) { //nolint:funlen //.
-	// $1: user_id.
+func (r *repositoryImpl) getQuizStatus(ctx context.Context, userID UserID) (*QuizStatus, error) {
+	statuses, err := r.GetQuizStatus(ctx, userID)
+	if err == nil && len(statuses) == 0 {
+		err = ErrUnknownSession
+	}
+	quizStatus, found := statuses[userID]
+	if found && quizStatus != nil {
+		quizStatus.KYCQuizAvailable = quizStatus.KYCQuizAvailable && (r.isKYCEnabled(ctx) || r.isKYCStepForced(userID))
+	}
+
+	return quizStatus, errors.Wrapf(err, "failed to getQuizStatus for userID:%v", userID)
+}
+
+func (r *readRepository) GetQuizStatus(ctx context.Context, userIDs ...string) (map[string]*QuizStatus, error) { //nolint:funlen //.
+	// $1: user_ids.
 	// $2: global start date.
 	// $3: availability window (seconds).
 	// $4: max reset count.
 	// $5: max attempts allowed.
-	const sql = `SELECT GREATEST($5 - coalesce(count(fqs.user_id),0),0)			  						                        AS kyc_quiz_remaining_attempts,
+	res := make(map[string]*QuizStatus, len(userIDs))
+	if len(userIDs) == 0 {
+		return res, nil
+	}
+
+	const sql = `SELECT u.id,
+    			   GREATEST($5 - coalesce(count(fqs.user_id),0),0)			  						                            AS kyc_quiz_remaining_attempts,
 				   (qr.user_id IS NOT NULL AND cardinality(qr.resets) > $4) 							                        AS kyc_quiz_disabled,
 				   qr.resets  							 									 			                        AS kyc_quiz_reset_at,
 				   (qs.user_id IS NOT NULL AND qs.ended_at is not null AND qs.ended_successfully = true)                        AS kyc_quiz_completed,
@@ -278,29 +318,35 @@ func (r *repositoryImpl) getQuizStatus(ctx context.Context, userID UserID) (*Qui
 				LEFT JOIN failed_quiz_sessions fqs
 					   ON fqs.user_id = u.id
 					  AND fqs.started_at >= GREATEST(u.created_at,$2) 
-			WHERE u.id = $1
+			WHERE u.id = ANY($1)
 			GROUP BY qr.user_id,
 					 qs.user_id,
 					 u.id`
-	quizStatus, err := storage.ExecOne[QuizStatus](
+	quizStatuses, err := storage.ExecMany[struct {
+		*QuizStatus
+		UserID string `db:"id"`
+	}](
 		ctx,
 		r.DB,
 		sql,
-		userID,
+		userIDs,
 		r.config.globalStartDate.Time,
 		r.config.AvailabilityWindowSeconds,
 		*r.config.MaxResetCount,
 		r.config.MaxAttemptsAllowed,
 	)
+	if err != nil {
+		if errors.Is(err, storage.ErrNotFound) {
+			err = nil
+		}
 
-	if errors.Is(err, storage.ErrNotFound) {
-		err = ErrUnknownSession
+		return res, errors.Wrapf(err, "failed to exec GetQuizStatus sql for userIDs:%#v", userIDs)
 	}
-	if quizStatus != nil {
-		quizStatus.KYCQuizAvailable = quizStatus.KYCQuizAvailable && (r.isKYCEnabled(ctx) || r.isKYCStepForced(userID))
+	for _, qs := range quizStatuses {
+		res[qs.UserID] = qs.QuizStatus
 	}
 
-	return quizStatus, errors.Wrapf(err, "failed to exec CheckQuizStatus sql for userID:%v", userID)
+	return res, nil
 }
 
 func (r *repositoryImpl) SelectQuestions(ctx context.Context, tx storage.QueryExecer, lang string) ([]*Question, error) {

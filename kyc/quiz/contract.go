@@ -23,12 +23,15 @@ const (
 )
 
 type (
-	UserID      = users.UserID
-	UserProfile = users.UserProfile
-
-	Repository interface {
+	UserID         = users.UserID
+	UserProfile    = users.UserProfile
+	ReadRepository interface {
 		io.Closer
-
+		GetQuizStatus(ctx context.Context, userIDs ...string) (map[string]*QuizStatus, error)
+		CheckHealth(ctx context.Context) error
+	}
+	Repository interface {
+		ReadRepository
 		StartQuizSession(ctx context.Context, userID UserID, lang string) (*Quiz, error)
 
 		SkipQuizSession(ctx context.Context, userID UserID) error
@@ -42,7 +45,6 @@ type (
 		GetUserByID(ctx context.Context, userID string) (*users.UserProfile, error)
 		ModifyUser(ctx context.Context, usr *users.User, profilePicture *multipart.FileHeader) error
 	}
-
 	QuizStatus struct { //nolint:revive // Nope cuz we want to be able to embed this
 		KYCQuizAvailabilityStartedAt *time.Time   `json:"kycQuizAvailabilityStartedAt" db:"kyc_quiz_availability_started_at"`
 		KYCQuizAvailabilityEndedAt   *time.Time   `json:"kycQuizAvailabilityEndedAt" db:"kyc_quiz_availability_ended_at"`
@@ -115,11 +117,14 @@ type (
 		Answers        []uint8    `db:"answers"`
 		CorrectAnswers []uint8    `db:"correct_answers"`
 	}
-	repositoryImpl struct {
+	readRepository struct {
 		DB       *storage.DB
 		Shutdown func() error
-		Users    UserRepository
 		config
+	}
+	repositoryImpl struct {
+		*readRepository
+		Users UserRepository
 	}
 
 	kycConfigJSON struct {

@@ -30,7 +30,7 @@ require (
 	cloud.google.com/go/firestore v1.14.0 // indirect
 	cloud.google.com/go/iam v1.1.6 // indirect
 	cloud.google.com/go/longrunning v0.5.5 // indirect
-	cloud.google.com/go/storage v1.37.0 // indirect
+	cloud.google.com/go/storage v1.38.0 // indirect
 	firebase.google.com/go/v4 v4.13.0 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20230124172434-306776ec8161 // indirect
 	github.com/KyleBanks/depth v1.2.1 // indirect
@@ -146,8 +146,8 @@ require (
 	golang.org/x/sys v0.17.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	golang.org/x/time v0.5.0 // indirect
-	golang.org/x/tools v0.17.0 // indirect
-	google.golang.org/api v0.163.0 // indirect
+	golang.org/x/tools v0.18.0 // indirect
+	google.golang.org/api v0.164.0 // indirect
 	google.golang.org/appengine v1.6.8 // indirect
 	google.golang.org/appengine/v2 v2.0.5 // indirect
 	google.golang.org/genproto v0.0.0-20240205150955-31a09d347014 // indirect
