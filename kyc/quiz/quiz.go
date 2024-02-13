@@ -291,18 +291,18 @@ func (r *repositoryImpl) getQuizStatus(ctx context.Context, userID UserID) (*Qui
 }
 
 func (r *readRepository) GetQuizStatus(ctx context.Context, userIDs ...string) (map[string]*QuizStatus, error) { //nolint:funlen //.
-	// $1: global start date.
-	// $2: availability window (seconds).
-	// $3: max reset count.
-	// $4: max attempts allowed.
-	// $5 UserIDs.
+	// $1: user_ids.
+	// $2: global start date.
+	// $3: availability window (seconds).
+	// $4: max reset count.
+	// $5: max attempts allowed.
 	res := make(map[string]*QuizStatus, len(userIDs))
 	if len(userIDs) == 0 {
 		return res, nil
 	}
 
 	const sql = `SELECT u.id,
-    			   GREATEST($5 - coalesce(count(fqs.user_id),0),0)			  						                        AS kyc_quiz_remaining_attempts,
+    			   GREATEST($5 - coalesce(count(fqs.user_id),0),0)			  						                            AS kyc_quiz_remaining_attempts,
 				   (qr.user_id IS NOT NULL AND cardinality(qr.resets) > $4) 							                        AS kyc_quiz_disabled,
 				   qr.resets  							 									 			                        AS kyc_quiz_reset_at,
 				   (qs.user_id IS NOT NULL AND qs.ended_at is not null AND qs.ended_successfully = true)                        AS kyc_quiz_completed,
