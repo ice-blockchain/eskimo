@@ -22,7 +22,7 @@ func mustLoadConfig() config { //nolint:funlen // .
 	var cfg config
 
 	appcfg.MustLoadFromKey(applicationYamlKey, &cfg)
-
+	cfg = mustLoadReadConfig()
 	if cfg.MaxSessionDurationSeconds == 0 {
 		panic("maxSessionDurationSeconds is not set")
 	}
@@ -35,6 +35,21 @@ func mustLoadConfig() config { //nolint:funlen // .
 		panic("sessionCoolDownSeconds is not set")
 	}
 
+	if cfg.MaxWrongAnswersPerSession == 0 {
+		panic("maxWrongAnswersPerSession is not set")
+	}
+
+	defaultAlertFrequency := alertFrequency
+	cfg.alertFrequency = new(atomic.Pointer[stdlibtime.Duration])
+	cfg.alertFrequency.Store(&defaultAlertFrequency)
+
+	return cfg
+}
+func mustLoadReadConfig() config { //nolint:funlen // .
+	var cfg config
+
+	appcfg.MustLoadFromKey(applicationYamlKey, &cfg)
+
 	if cfg.MaxResetCount == nil {
 		panic("maxResetCount is not set")
 	}
@@ -46,10 +61,6 @@ func mustLoadConfig() config { //nolint:funlen // .
 	log.Panic(err) //nolint:revive // .
 	cfg.globalStartDate = time.New(globalStartDate)
 
-	if cfg.MaxWrongAnswersPerSession == 0 {
-		panic("maxWrongAnswersPerSession is not set")
-	}
-
 	if cfg.AvailabilityWindowSeconds == 0 {
 		panic("availabilityWindowSeconds is not set")
 	}
@@ -57,10 +68,6 @@ func mustLoadConfig() config { //nolint:funlen // .
 	if cfg.MaxAttemptsAllowed == 0 {
 		panic("maxAttemptsAllowed is not set")
 	}
-
-	defaultAlertFrequency := alertFrequency
-	cfg.alertFrequency = new(atomic.Pointer[stdlibtime.Duration])
-	cfg.alertFrequency.Store(&defaultAlertFrequency)
 
 	return cfg
 }
@@ -87,7 +94,7 @@ func NewReadRepository(ctx context.Context) ReadRepository {
 	return &readRepository{
 		DB:       db,
 		Shutdown: db.Close,
-		config:   mustLoadConfig(),
+		config:   mustLoadReadConfig(),
 	}
 }
 
