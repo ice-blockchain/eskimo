@@ -10,6 +10,7 @@ import (
 	"sync/atomic"
 	stdlibtime "time"
 
+	"github.com/ice-blockchain/eskimo/kyc/quiz/api"
 	"github.com/ice-blockchain/eskimo/users"
 	"github.com/ice-blockchain/wintr/connectors/storage/v2"
 	"github.com/ice-blockchain/wintr/time"
@@ -42,17 +43,7 @@ type (
 		GetUserByID(ctx context.Context, userID string) (*users.UserProfile, error)
 		ModifyUser(ctx context.Context, usr *users.User, profilePicture *multipart.FileHeader) error
 	}
-
-	QuizStatus struct { //nolint:revive // Nope cuz we want to be able to embed this
-		KYCQuizAvailabilityStartedAt *time.Time   `json:"kycQuizAvailabilityStartedAt" db:"kyc_quiz_availability_started_at"`
-		KYCQuizAvailabilityEndedAt   *time.Time   `json:"kycQuizAvailabilityEndedAt" db:"kyc_quiz_availability_ended_at"`
-		KYCQuizResetAt               []*time.Time `json:"kycQuizResetAt,omitempty" db:"kyc_quiz_reset_at"`
-		KYCQuizRemainingAttempts     uint8        `json:"kycQuizRemainingAttempts,omitempty" db:"kyc_quiz_remaining_attempts"`
-		KYCQuizAvailable             bool         `json:"kycQuizAvailable" db:"kyc_quiz_available"`
-		KYCQuizDisabled              bool         `json:"kycQuizDisabled" db:"kyc_quiz_disabled"`
-		KYCQuizCompleted             bool         `json:"kycQuizCompleted" db:"kyc_quiz_completed"`
-		HasUnfinishedSessions        bool         `json:"-"`
-	}
+	QuizStatus = api.QuizStatus //nolint:revive // Nope cuz we want to be able to embed this
 
 	Result string
 
