@@ -56,7 +56,7 @@ func (r *repository) deleteUser(ctx context.Context, usr *User) error { //nolint
 	*usr = *gUser
 	sql := `DELETE FROM users WHERE id = $1`
 	if _, tErr := storage.Exec(ctx, r.db, sql, usr.ID); tErr != nil {
-		if storage.IsErr(tErr, storage.ErrRelationNotFound) {
+		if storage.IsErr(tErr, storage.ErrRelationNotFound) || storage.IsErr(tErr, storage.ErrRelationInUse) {
 			return r.deleteUser(ctx, usr)
 		}
 
@@ -88,76 +88,22 @@ func (r *repository) deleteUserReferences(ctx context.Context, userID UserID) er
 	return multierror.Append(nil, errs...).ErrorOrNil() //nolint:wrapcheck // Not needed.
 }
 
-//nolint:funlen // It's better to isolate everything together to decrease complexity; and it has some SQL, so...
 func (r *repository) updateReferredByForAllT1Referrals(ctx context.Context, userID UserID) error {
 	if ctx.Err() != nil {
 		return errors.Wrap(ctx.Err(), "context failed")
 	}
 	sql := `
-	WITH randomized AS (
-		SELECT id, referred_by, created_at, hash_code FROM users
-		WHERE id != 'bogus'
-			  AND id != 'icenetwork'
-			  AND username != id 
-			  AND referred_by != id 
-			  AND id != $1
-			  AND referred_by != $1
-			ORDER BY random()
-	)
-	SELECT (SELECT X.ID 
-					FROM (	SELECT X.ID
-								FROM (
-									SELECT r.id
-									FROM randomized r											
-									WHERE r.id != u.id
-										  AND r.referred_by != u.id
-										  AND r.created_at < u.created_at
-										  AND MOD(r.hash_code, (floor(random()*1000)+1)::bigint) = 0
-									LIMIT 1
-							) X
-		
-							UNION ALL 
+		UPDATE users SET
+		    referred_by = $2,
+		    random_referred_by = true
+		WHERE referred_by = $1
+			AND id != $1
+		    AND id != 'bogus'
+			AND id != 'icenetwork' 
+		    AND referred_by != id`
+	_, err := storage.Exec(ctx, r.db, sql, userID, icenetwork)
 
-							SELECT u.id AS ID
-							) X
-					LIMIT 1
-				) new_referred_by,
-				u.ID as id
-		FROM users u
-		WHERE u.referred_by = $1
-			AND u.id != $1`
-	type resp struct {
-		NewReferredBy UserID
-		ID            UserID `db:"id"`
-	}
-	res, err := storage.Select[resp](ctx, r.db, sql, userID)
-	if err != nil {
-		return errors.Wrapf(err, "failed to select for all t1 referrals of userID:%v + their new random referralID", userID)
-	}
-
-	wg := new(sync.WaitGroup)
-	wg.Add(len(res))
-	errChan := make(chan error, len(res))
-	for ii := range res {
-		go func(ix int) {
-			defer wg.Done()
-			valTrue := true
-			updatedReferral := new(User)
-			updatedReferral.ID = res[ix].ID
-			updatedReferral.ReferredBy = res[ix].NewReferredBy
-			updatedReferral.RandomReferredBy = &valTrue
-			errChan <- errors.Wrapf(r.ModifyUser(ctx, updatedReferral, nil),
-				"failed to update referred by for userID:%v", res[ix].ID)
-		}(ii)
-	}
-	wg.Wait()
-	close(errChan)
-	errs := make([]error, 0, len(res))
-	for err := range errChan {
-		errs = append(errs, err)
-	}
-
-	return errors.Wrap(multierror.Append(nil, errs...).ErrorOrNil(), "failed to update referred by for some/all of user's t1 referrals")
+	return errors.Wrap(err, "failed to update referred by for all of user's t1 referrals")
 }
 
 func (r *repository) deleteUserTracking(ctx context.Context, usr *UserSnapshot) error {

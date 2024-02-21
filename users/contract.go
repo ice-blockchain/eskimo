@@ -246,6 +246,8 @@ const (
 	requestDeadline                     = 25 * stdlibtime.Second
 
 	maxDaysReferralsHistory = 5
+
+	icenetwork = "icenetwork"
 )
 
 var (
