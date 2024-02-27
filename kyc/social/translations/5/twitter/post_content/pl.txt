@@ -1,5 +1,7 @@
-🌟 #Snowman (SNOW), oficjalna moneta memowa @ice_blockchain, została wydana jako uczciwy start na #Uniswap
+🌟 @ice_blockchain $ICE zostaje notowany na #KuCoin!
 
-Handel Teraz: https://dexscreener.com/ethereum/0xd1f3d2f5c12a205fc912358878b089eae48a557f
+📈 $ICE/USDT – handel otwarty 28 lutego o godz. 09:00 UTC
 
-🙌 Dołącz do mnie na #Ice "{{.Username}}"
+🙌 Dołącz do #Ice, korzystając z mojego kodu polecającego "{{.Username}}"
+
+#IceNetwork #DecentralizedFuture

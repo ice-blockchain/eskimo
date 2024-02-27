@@ -1,5 +1,7 @@
-🌟 #Snowman (SNOW), @ice_blockchain의 공식 미eme 코인은 #Uniswap에서 공정한 론칭으로 출시되었습니다
+🌟 @ice_blockchain $ICE 가 #KuCoin 에 상장되었습니다!
 
-지금 거래하세요: https://dexscreener.com/ethereum/0xd1f3d2f5c12a205fc912358878b089eae48a557f
+📈 $ICE/USDT - 2월 28일 오전 9시(UTC)에 거래 개시
 
-🙌 #Ice "{{.Username}}" 에 참여하세요
+🙌 내 추천 코드 "{{.Username}}"을(를) 사용하여 #Ice 에 가입하세요
+
+#IceNetwork #DecentralizedFuture

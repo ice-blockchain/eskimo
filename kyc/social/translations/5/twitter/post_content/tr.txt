@@ -1,5 +1,7 @@
-🌟 #Snowman (SNOW), @ice_blockchain'ın resmi meme parası olarak #Uniswap'te adil bir lansman olarak piyasaya sürüldü
+🌟 @ice_blockchain $ICE #KuCoin 'de listeleniyor!
 
-Şimdi Ticaret Yapın: https://dexscreener.com/ethereum/0xd1f3d2f5c12a205fc912358878b089eae48a557f
+📈 $ICE/USDT - İşlemler 28 Şubat 09:00 UTC'de açılıyor
 
-🙌 Bana #Ice "{{.Username}}" katılın
+🙌 "{{.Username}}" yönlendirme kodumu kullanarak #Ice 'a katılın
+
+#IceNetwork #DecentralizedFuture

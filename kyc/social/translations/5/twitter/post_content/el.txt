@@ -1,5 +1,7 @@
-🌟 #Snowman (SNOW), η επίσημη κόρη του μιμί του @ice_blockchain κυκλοφόρησε ως δίκαιη έναρξη στο #Uniswap
+🌟 Το @ice_blockchain $ICE εμφανίζεται στο #KuCoin!
 
-Εμπόριο τώρα: https://dexscreener.com/ethereum/0xd1f3d2f5c12a205fc912358878b089eae48a557f
+📈 $ICE/USDT - Άνοιγμα συναλλαγών στις 09:00 π.μ. UTC 28 Φεβρουαρίου
 
-🙌 Έλα στο #Ice μαζί μου "{{.Username}}"
+🙌 Εγγραφείτε στο #Ice χρησιμοποιώντας τον κωδικό παραπομπής μου "{{.Username}}"
+
+#IceNetwork #DecentralizedFuture

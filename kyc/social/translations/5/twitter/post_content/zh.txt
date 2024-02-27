@@ -1,5 +1,7 @@
-🌟 #Snowman (SNOW)，@ice_blockchain 的官方模因币，在 #Uniswap 上作为公平启动发布
+🌟 @ice_blockchain $ICE 已在 #KuCoin 上市！
 
-立即交易：https://dexscreener.com/ethereum/0xd1f3d2f5c12a205fc912358878b089eae48a557f
+📈 $ICE/USDT - 交易于 2 月 28 日世界标准时间上午 09:00 开放
 
-🙌 加入我在 #Ice "{{.Username}}" 上
+🙌 使用我的推荐代码"{{.Username}}"加入 #Ice
+
+#IceNetwork #DecentralizedFuture

@@ -1,5 +1,7 @@
-🌟 #Snowman (SNOW), oficiálna meme minca od @ice_blockchain, bola uvedená na trh ako spravodlivý štart na #Uniswap
+🌟 @ice_blockchain $ICE je uvedený na #KuCoin!
 
-Obchodujte teraz: https://dexscreener.com/ethereum/0xd1f3d2f5c12a205fc912358878b089eae48a557f
+📈 $ICE/USDT – obchodovanie otvorené o 09:00 UTC 28. februára
 
-🙌 Pripojte sa ku mne na #Ice "{{.Username}}"
+🙌 Pripojte sa k #Ice pomocou môjho odporúčacieho kódu "{{.Username}}"
+
+#IceNetwork #DecentralizedFuture

@@ -1,5 +1,7 @@
-🌟 #Snowman (SNOW), đồng meme chính thức của @ice_blockchain, được phát hành trên #Uniswap
+🌟 @ice_blockchain $ICE được liệt kê trên #KuCoin!
 
-Giao dịch Ngay: https://dexscreener.com/ethereum/0xd1f3d2f5c12a205fc912358878b089eae48a557f
+📈 $ICE/USDT - Giao dịch mở vào 09:00 sáng UTC ngày 28 tháng 2
 
-🙌 Tham gia cùng tôi trên #Ice "{{.Username}}"
+🙌 Tham gia #Ice bằng mã giới thiệu của tôi "{{.Username}}"
+
+#IceNetwork #DecentralizedFuture
