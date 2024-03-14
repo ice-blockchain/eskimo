@@ -13,7 +13,7 @@ require (
 	github.com/ice-blockchain/wintr v1.135.0
 	github.com/imroc/req/v3 v3.42.3
 	github.com/ip2location/ip2location-go/v9 v9.7.0
-	github.com/jackc/pgx/v5 v5.5.3
+	github.com/jackc/pgx/v5 v5.5.4
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.8.4
 	github.com/swaggo/swag v1.16.3
