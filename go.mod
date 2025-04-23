@@ -1,6 +1,7 @@
 module github.com/ice-blockchain/eskimo
 
 go 1.24
+toolchain go1.24.1
 
 require (
 	dario.cat/mergo v1.0.1
@@ -25,7 +26,7 @@ require (
 	github.com/testcontainers/testcontainers-go v0.35.0
 	github.com/zeebo/xxh3 v1.0.2
 	golang.org/x/mod v0.24.0
-	golang.org/x/net v0.37.0
+	golang.org/x/net v0.38.0
 )
 
 require (
@@ -138,7 +139,7 @@ require (
 	github.com/prometheus/procfs v0.15.1 // indirect
 	github.com/quic-go/qpack v0.5.1 // indirect
 	github.com/quic-go/quic-go v0.50.0 // indirect
-	github.com/refraction-networking/utls v1.6.7 // indirect
+	github.com/refraction-networking/utls v1.7.0 // indirect
 	github.com/rs/zerolog v1.33.0 // indirect
 	github.com/sagikazarmark/locafero v0.7.0 // indirect
 	github.com/sagikazarmark/slog-shim v0.1.0 // indirect
